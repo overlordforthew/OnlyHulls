@@ -13,6 +13,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Clerk needs a publishable key at build time for static pages
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_placeholder
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 RUN npm run build
 
 # --- Runner ---

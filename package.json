@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "npx tsx src/lib/db/migrate.ts",
+    "db:seed": "npx tsx scripts/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -24,6 +26,7 @@
     "react-dom": "19.2.3",
     "resend": "^6.9.3",
     "stripe": "^20.4.0",
+    "svix": "^1.86.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -34,6 +37,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
