@@ -1,0 +1,100 @@
+{
+  "common": {
+    "appName": "DateMyBoat",
+    "tagline": "AI-Powered Boat Matchmaking",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "next": "Next",
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort"
+  },
+  "nav": {
+    "browse": "Browse Boats",
+    "matches": "My Matches",
+    "listings": "My Listings",
+    "profile": "Profile",
+    "pricing": "Pricing",
+    "admin": "Admin"
+  },
+  "home": {
+    "hero": "Find Your Perfect Boat",
+    "subtitle": "AI-powered matchmaking connects you with the right boat — even when you don't know exactly what you're looking for.",
+    "ctaBuyer": "I'm Looking for a Boat",
+    "ctaSeller": "I'm Selling a Boat",
+    "howItWorks": "How It Works",
+    "step1Title": "Tell Us About Your Dream",
+    "step1Desc": "Chat with our AI to build your buyer profile. It learns what you need, even the things you haven't thought of yet.",
+    "step2Title": "Get Matched",
+    "step2Desc": "Our engine scores every listing against your unique profile. Best matches float to the top.",
+    "step3Title": "Connect Directly",
+    "step3Desc": "Found the one? Connect directly with the seller. No brokers, no middlemen, no 10% commission."
+  },
+  "boats": {
+    "matchScore": "{score}% Match",
+    "askingPrice": "Asking Price",
+    "year": "Year",
+    "length": "Length",
+    "location": "Location",
+    "condition": "Condition",
+    "viewDetails": "View Details",
+    "connect": "Connect",
+    "save": "Save",
+    "dismiss": "Dismiss",
+    "dreamboard": "Dreamboard",
+    "sampleListing": "Sample Listing",
+    "noResults": "No boats found matching your criteria.",
+    "filters": {
+      "priceRange": "Price Range",
+      "yearRange": "Year Range",
+      "lengthRange": "Length (ft)",
+      "hullType": "Hull Type",
+      "rigType": "Rig Type",
+      "location": "Location"
+    }
+  },
+  "onboarding": {
+    "title": "Let's Find Your Perfect Boat",
+    "subtitle": "Chat with our AI to build your buyer profile. The more you share, the better your matches.",
+    "placeholder": "Tell me about your dream boat experience...",
+    "generating": "Generating your profile...",
+    "profileReady": "Your Buyer Profile is Ready",
+    "reviewProfile": "Review Profile",
+    "startOver": "Start Over"
+  },
+  "listing": {
+    "createTitle": "List Your Boat",
+    "steps": {
+      "basics": "Basics",
+      "specs": "Specifications",
+      "details": "Details",
+      "location": "Location & Price",
+      "photos": "Photos",
+      "review": "Review"
+    },
+    "pendingReview": "Your listing is pending review. We'll notify you once it's approved.",
+    "publish": "Submit for Review"
+  },
+  "pricing": {
+    "title": "Simple, Fair Pricing",
+    "subtitle": "No commissions, no hidden fees. Just flat monthly pricing.",
+    "buyerTitle": "For Buyers",
+    "sellerTitle": "For Sellers",
+    "free": "Free",
+    "perMonth": "/month",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade",
+    "getStarted": "Get Started"
+  },
+  "email": {
+    "connectSubject": "New Match on DateMyBoat",
+    "introSubject": "DateMyBoat Introduction"
+  }
+}

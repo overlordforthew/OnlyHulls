@@ -1,0 +1,83 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: datemyboat-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3456:3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - datemyboat
+
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: datemyboat-db-dev
+    environment:
+      POSTGRES_DB: datemyboat
+      POSTGRES_USER: datemyboat
+      POSTGRES_PASSWORD: devpassword
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - datemyboat
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datemyboat"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: datemyboat-meili-dev
+    environment:
+      MEILI_MASTER_KEY: dev_meili_key
+      MEILI_ENV: development
+    volumes:
+      - dev-meili-data:/meili_data
+    ports:
+      - "127.0.0.1:7701:7700"
+    networks:
+      - datemyboat
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: datemyboat-redis-dev
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - dev-redis-data:/data
+    ports:
+      - "127.0.0.1:6380:6379"
+    networks:
+      - datemyboat
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  dev-db-data:
+  dev-meili-data:
+  dev-redis-data:
+
+networks:
+  datemyboat:
