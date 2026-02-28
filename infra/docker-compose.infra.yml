@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: onlyhulls
-      POSTGRES_USER: onlyhulls
+      POSTGRES_USER: datemyboat
       POSTGRES_PASSWORD: ${DATEMYBOAT_DB_PASSWORD:-changeme}
     volumes:
       - datemyboat-db-data:/var/lib/postgresql/data
@@ -16,7 +16,7 @@ services:
     networks:
       - coolify
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U onlyhulls"]
+      test: ["CMD-SHELL", "pg_isready -U datemyboat"]
       interval: 10s
       timeout: 5s
       retries: 5

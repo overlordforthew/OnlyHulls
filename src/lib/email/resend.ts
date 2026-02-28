@@ -5,7 +5,7 @@ function getResend() {
 }
 
 function getFrom() {
-  return process.env.RESEND_FROM_EMAIL || "OnlyHulls <hello@namibarden.com>";
+  return process.env.RESEND_FROM_EMAIL || "OnlyHulls <hello@onlyhulls.com>";
 }
 
 export async function sendSellerNotification(params: {
