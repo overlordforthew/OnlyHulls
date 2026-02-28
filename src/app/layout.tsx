@@ -16,14 +16,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "DateMyBoat — AI-Powered Boat Matchmaking",
-    template: "%s | DateMyBoat",
+    default: "OnlyHulls — AI-Powered Boat Matchmaking",
+    template: "%s | OnlyHulls",
   },
   description:
     "Find your perfect boat with AI-powered matchmaking. Browse listings, get personalized matches, and connect directly with sellers.",
   openGraph: {
     type: "website",
-    siteName: "DateMyBoat",
+    siteName: "OnlyHulls",
   },
 };
 

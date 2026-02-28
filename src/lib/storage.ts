@@ -22,7 +22,7 @@ function getS3(): S3Client {
   return _s3;
 }
 
-const BUCKET = process.env.S3_BUCKET || "datemyboat-media";
+const BUCKET = process.env.S3_BUCKET || "onlyhulls-media";
 
 export async function getPresignedUploadUrl(
   key: string,

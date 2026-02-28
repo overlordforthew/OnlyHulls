@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "DateMyBoat",
+    "appName": "OnlyHulls",
     "tagline": "AI-Powered Boat Matchmaking",
     "signIn": "Sign In",
     "signUp": "Sign Up",
@@ -94,7 +94,7 @@
     "getStarted": "Get Started"
   },
   "email": {
-    "connectSubject": "New Match on DateMyBoat",
-    "introSubject": "DateMyBoat Introduction"
+    "connectSubject": "New Match on OnlyHulls",
+    "introSubject": "OnlyHulls Introduction"
   }
 }

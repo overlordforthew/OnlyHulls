@@ -104,10 +104,10 @@ export async function GET(
 }
 
 function renderPage(title: string, message: string): string {
-  return `<!DOCTYPE html><html><head><title>${title} | DateMyBoat</title>
+  return `<!DOCTYPE html><html><head><title>${title} | OnlyHulls</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f1f5f9}
 .card{background:white;padding:48px;border-radius:16px;text-align:center;max-width:480px;box-shadow:0 4px 6px rgba(0,0,0,.1)}
 h1{color:#0369a1}a{color:#0369a1}</style></head>
-<body><div class="card"><h1>${title}</h1><p>${message}</p><a href="/">Back to DateMyBoat</a></div></body></html>`;
+<body><div class="card"><h1>${title}</h1><p>${message}</p><a href="/">Back to OnlyHulls</a></div></body></html>`;
 }

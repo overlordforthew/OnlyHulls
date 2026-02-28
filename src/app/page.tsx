@@ -8,7 +8,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⛵</span>
-            <span className="text-xl font-bold text-primary">DateMyBoat</span>
+            <span className="text-xl font-bold text-primary">OnlyHulls</span>
           </div>
           <nav className="flex items-center gap-6">
             <Link
@@ -108,7 +108,7 @@ export default function Home() {
       {/* Stats */}
       <section className="py-24">
         <div className="mx-auto max-w-7xl px-4 text-center">
-          <h2 className="text-3xl font-bold">Why DateMyBoat?</h2>
+          <h2 className="text-3xl font-bold">Why OnlyHulls?</h2>
           <div className="mt-16 grid gap-8 md:grid-cols-4">
             <div>
               <p className="text-4xl font-bold text-primary">$0</p>
@@ -133,7 +133,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border py-12">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-foreground/50">
-          <p>DateMyBoat — AI-Powered Boat Matchmaking</p>
+          <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
           <p className="mt-2">
             Be the matchmaker, not the broker. Low barrier, community first.
           </p>

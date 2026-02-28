@@ -55,7 +55,7 @@ export default function SignUpPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Join DateMyBoat and find your perfect boat
+            Join OnlyHulls and find your perfect boat
           </p>
         </div>
 

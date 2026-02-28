@@ -54,7 +54,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-3xl font-bold">Welcome to DateMyBoat</h1>
+      <h1 className="text-3xl font-bold">Welcome to OnlyHulls</h1>
       <p className="mt-2 text-foreground/60">
         How would you like to use the platform?
       </p>

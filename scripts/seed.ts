@@ -44,12 +44,12 @@ async function seed() {
 
   // Create a system seller user
   let seller = await queryOne<{ id: string }>(
-    "SELECT id FROM users WHERE email = 'system@datemyboat.namibarden.com'"
+    "SELECT id FROM users WHERE email = 'system@onlyhulls.com'"
   );
   if (!seller) {
     seller = await queryOne<{ id: string }>(
       `INSERT INTO users (email, display_name, role, subscription_tier)
-       VALUES ('system@datemyboat.namibarden.com', 'DateMyBoat Team', 'seller', 'featured')
+       VALUES ('system@onlyhulls.com', 'OnlyHulls Team', 'seller', 'featured')
        RETURNING id`
     );
   }

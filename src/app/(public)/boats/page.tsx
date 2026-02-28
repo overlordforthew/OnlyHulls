@@ -68,7 +68,7 @@ export default function BoatsPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">⛵</span>
-            <span className="text-xl font-bold text-primary">DateMyBoat</span>
+            <span className="text-xl font-bold text-primary">OnlyHulls</span>
           </Link>
           <nav className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm text-foreground/70 hover:text-foreground">

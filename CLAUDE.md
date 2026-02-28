@@ -1,4 +1,4 @@
-# DateMyBoat — AI Boat Matchmaking Platform
+# OnlyHulls — AI Boat Matchmaking Platform
 
 ## Stack
 Next.js 15 (App Router, TypeScript, Tailwind) | PostgreSQL 17 + pgvector | Meilisearch | Redis | Auth.js v5 (email/password) | Stripe billing | Claude Sonnet 4.6 (profiling) | Claude Haiku 4.5 (explanations) | OpenAI text-embedding-3-small (1536 dim) | Resend (email) | Hetzner Object Storage (photos)
@@ -26,8 +26,8 @@ migrations/         # SQL migration files
 ```
 
 ## Deploy
-- **Coolify auto-deploy** on git push to `bluemele/DateMyBoat`
-- Domain: `datemyboat.namibarden.com`
+- **Coolify auto-deploy** on git push to `bluemele/OnlyHulls`
+- Domain: `onlyhulls.com`
 - Infra services run via `infra/docker-compose.infra.yml` on host
 
 ## Key Patterns

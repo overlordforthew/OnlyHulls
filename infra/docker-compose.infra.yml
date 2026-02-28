@@ -1,13 +1,13 @@
 version: "3.8"
 
 services:
-  datemyboat-db:
+  onlyhulls-db:
     image: pgvector/pgvector:pg17
-    container_name: datemyboat-db
+    container_name: onlyhulls-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: datemyboat
-      POSTGRES_USER: datemyboat
+      POSTGRES_DB: onlyhulls
+      POSTGRES_USER: onlyhulls
       POSTGRES_PASSWORD: ${DATEMYBOAT_DB_PASSWORD:-changeme}
     volumes:
       - datemyboat-db-data:/var/lib/postgresql/data
@@ -16,14 +16,14 @@ services:
     networks:
       - coolify
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U datemyboat"]
+      test: ["CMD-SHELL", "pg_isready -U onlyhulls"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  datemyboat-meilisearch:
+  onlyhulls-meilisearch:
     image: getmeili/meilisearch:v1.12
-    container_name: datemyboat-meilisearch
+    container_name: onlyhulls-meilisearch
     restart: unless-stopped
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-changeme_meili_master_key}
@@ -40,9 +40,9 @@ services:
       timeout: 5s
       retries: 5
 
-  datemyboat-redis:
+  onlyhulls-redis:
     image: redis:7-alpine
-    container_name: datemyboat-redis
+    container_name: onlyhulls-redis
     restart: unless-stopped
     command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
     volumes:
