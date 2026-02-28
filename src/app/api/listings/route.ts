@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { generateEmbedding, boatToEmbeddingText } from "@/lib/ai/embeddings";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
@@ -58,14 +58,14 @@ function generateSlug(year: number, make: string, model: string, location?: stri
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const user = await queryOne<{ id: string; role: string; subscription_tier: string }>(
-    "SELECT id, role, subscription_tier FROM users WHERE clerk_id = $1",
-    [userId]
+    "SELECT id, role, subscription_tier FROM users WHERE id = $1",
+    [session.user.id]
   );
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

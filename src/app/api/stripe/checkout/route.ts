@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { queryOne, query } from "@/lib/db";
 import {
   createCheckoutSession,
@@ -13,8 +13,8 @@ const checkoutSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
     email: string;
     display_name: string | null;
     stripe_customer_id: string | null;
-  }>("SELECT id, email, display_name, stripe_customer_id FROM users WHERE clerk_id = $1", [
-    userId,
+  }>("SELECT id, email, display_name, stripe_customer_id FROM users WHERE id = $1", [
+    session.user.id,
   ]);
 
   if (!user) {

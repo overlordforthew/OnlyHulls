@@ -48,8 +48,8 @@ async function seed() {
   );
   if (!seller) {
     seller = await queryOne<{ id: string }>(
-      `INSERT INTO users (clerk_id, email, display_name, role, subscription_tier)
-       VALUES ('system_seller', 'system@datemyboat.namibarden.com', 'DateMyBoat Team', 'seller', 'featured')
+      `INSERT INTO users (email, display_name, role, subscription_tier)
+       VALUES ('system@datemyboat.namibarden.com', 'DateMyBoat Team', 'seller', 'featured')
        RETURNING id`
     );
   }

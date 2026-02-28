@@ -1,7 +1,7 @@
 # DateMyBoat — AI Boat Matchmaking Platform
 
 ## Stack
-Next.js 15 (App Router, TypeScript, Tailwind) | PostgreSQL 17 + pgvector | Meilisearch | Redis | Clerk auth | Stripe billing | Claude Sonnet 4.6 (profiling) | Claude Haiku 4.5 (explanations) | OpenAI text-embedding-3-small (1536 dim) | Resend (email) | Hetzner Object Storage (photos)
+Next.js 15 (App Router, TypeScript, Tailwind) | PostgreSQL 17 + pgvector | Meilisearch | Redis | Auth.js v5 (email/password) | Stripe billing | Claude Sonnet 4.6 (profiling) | Claude Haiku 4.5 (explanations) | OpenAI text-embedding-3-small (1536 dim) | Resend (email) | Hetzner Object Storage (photos)
 
 ## Structure
 ```
@@ -18,7 +18,7 @@ src/
     email/          # Resend email service
     storage/        # S3 object storage
     stripe/         # Stripe billing helpers
-    auth/           # Clerk auth helpers
+    auth/           # Auth.js helpers
   components/       # React components
   messages/         # i18n translation files
 infra/              # Docker infra (PG, Meilisearch, Redis)

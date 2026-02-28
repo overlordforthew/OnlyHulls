@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { BUYER_PROFILING_SYSTEM_PROMPT, extractProfileFromResponse } from "@/lib/ai/profiling";
 import { generateEmbedding, profileToEmbeddingText } from "@/lib/ai/embeddings";
@@ -8,14 +8,14 @@ import { NextResponse } from "next/server";
 const anthropic = new Anthropic();
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const user = await queryOne<{ id: string }>(
-    "SELECT id FROM users WHERE clerk_id = $1",
-    [userId]
+    "SELECT id FROM users WHERE id = $1",
+    [session.user.id]
   );
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

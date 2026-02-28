@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { getPresignedUploadUrl, generateMediaKey } from "@/lib/storage";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -10,8 +10,8 @@ const uploadSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

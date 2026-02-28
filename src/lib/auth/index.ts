@@ -1,10 +1,9 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
 import type { UserRole, SubscriptionTier } from "@/lib/config/plans";
 
 export interface AppUser {
   id: string;
-  clerkId: string;
   email: string;
   displayName: string | null;
   role: UserRole;
@@ -13,24 +12,22 @@ export interface AppUser {
 }
 
 export async function getCurrentUser(): Promise<AppUser | null> {
-  const { userId } = await auth();
-  if (!userId) return null;
+  const session = await auth();
+  if (!session?.user?.id) return null;
 
   const user = await queryOne<{
     id: string;
-    clerk_id: string;
     email: string;
     display_name: string | null;
     role: UserRole;
     subscription_tier: SubscriptionTier;
     stripe_customer_id: string | null;
-  }>("SELECT * FROM users WHERE clerk_id = $1", [userId]);
+  }>("SELECT * FROM users WHERE id = $1", [session.user.id]);
 
   if (!user) return null;
 
   return {
     id: user.id,
-    clerkId: user.clerk_id,
     email: user.email,
     displayName: user.display_name,
     role: user.role,
@@ -51,8 +48,4 @@ export async function requireRole(roles: UserRole[]): Promise<AppUser> {
     throw new Error("Forbidden");
   }
   return user;
-}
-
-export async function getClerkUser() {
-  return currentUser();
 }

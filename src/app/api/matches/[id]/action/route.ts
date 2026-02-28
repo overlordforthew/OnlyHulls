@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -11,8 +11,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,8 +25,8 @@ export async function POST(
 
   // Verify the match belongs to this user
   const user = await queryOne<{ id: string }>(
-    "SELECT id FROM users WHERE clerk_id = $1",
-    [userId]
+    "SELECT id FROM users WHERE id = $1",
+    [session.user.id]
   );
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

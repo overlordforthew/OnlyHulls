@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -8,8 +8,8 @@ const roleSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -20,17 +20,17 @@ export async function POST(req: Request) {
   }
 
   const user = await queryOne<{ id: string }>(
-    "SELECT id FROM users WHERE clerk_id = $1",
-    [userId]
+    "SELECT id FROM users WHERE id = $1",
+    [session.user.id]
   );
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  await query("UPDATE users SET role = $1 WHERE clerk_id = $2", [
+  await query("UPDATE users SET role = $1 WHERE id = $2", [
     parsed.data.role,
-    userId,
+    session.user.id,
   ]);
 
   return NextResponse.json({ success: true, role: parsed.data.role });
