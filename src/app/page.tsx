@@ -116,7 +116,7 @@ export default async function Home() {
               </span>
             </Link>
             <Link
-              href="/sign-up?role=buyer"
+              href="/match"
               className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
             >
               <Crosshair className="h-8 w-8 shrink-0 text-primary" strokeWidth={1.5} />
@@ -131,7 +131,7 @@ export default async function Home() {
               </span>
             </Link>
             <Link
-              href="/sign-up?role=seller"
+              href="/sell"
               className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
             >
               <ClipboardList className="h-8 w-8 shrink-0 text-primary" strokeWidth={1.5} />
