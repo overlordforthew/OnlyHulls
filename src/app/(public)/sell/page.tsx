@@ -9,11 +9,12 @@ import {
   Shield,
   Clock,
 } from "lucide-react";
+import { SellerPricing } from "@/components/PricingCards";
 
 export const metadata = {
   title: "Sell Your Boat",
   description:
-    "List your boat for free on OnlyHulls. No commissions, no brokers — connect directly with AI-matched buyers worldwide.",
+    "List your boat on OnlyHulls. No commissions, no brokers — connect directly with AI-matched buyers worldwide.",
 };
 
 const STEPS = [
@@ -93,7 +94,7 @@ export default function SellPage() {
       <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
         <div className="max-w-2xl">
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Sell Your Boat — Free, No Commission
+            Sell Your Boat — Zero Commission
           </h1>
           <p className="mt-4 text-lg text-foreground/60">
             List your boat on OnlyHulls and let our AI connect you with
@@ -105,14 +106,14 @@ export default function SellPage() {
               href="/sign-up?role=seller"
               className="rounded-full bg-primary px-8 py-3 text-center text-sm font-medium text-white hover:bg-primary-dark"
             >
-              List Your Boat — Free
+              List Your Boat
             </Link>
-            <Link
-              href="/pricing"
+            <a
+              href="#pricing"
               className="rounded-full border border-border px-8 py-3 text-center text-sm font-medium text-foreground hover:bg-muted"
             >
               See Pricing
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -209,8 +210,15 @@ export default function SellPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section id="pricing" className="py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <SellerPricing />
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="py-16">
+      <section className="border-t border-border bg-muted/30 py-16">
         <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
           <h2 className="text-2xl font-bold">Ready to Sell?</h2>
           <p className="mt-3 text-foreground/60">

@@ -109,8 +109,8 @@ function BoatsPageInner() {
             <span className="text-xl font-bold text-primary">OnlyHulls</span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/pricing" className="text-sm text-foreground/70 hover:text-foreground">
-              Pricing
+            <Link href="/sell" className="text-sm text-foreground/70 hover:text-foreground">
+              Sell
             </Link>
             <Link href="/sign-in" className="text-sm text-foreground/70 hover:text-foreground">
               Sign In

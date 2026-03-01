@@ -10,6 +10,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { getFeaturedBoats } from "@/lib/db/queries";
+import { BuyerPricing } from "@/components/PricingCards";
 
 export const dynamic = "force-dynamic";
 
@@ -217,8 +218,15 @@ export default async function MatchPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section id="pricing" className="border-t border-border bg-muted/30 py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <BuyerPricing />
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="border-t border-border bg-muted/30 py-16">
+      <section className="py-16">
         <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
           <h2 className="text-2xl font-bold">Ready to Find Your Boat?</h2>
           <p className="mt-3 text-foreground/60">

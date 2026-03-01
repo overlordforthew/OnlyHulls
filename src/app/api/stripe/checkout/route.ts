@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     plan.stripePriceId,
     user.id,
     `${appUrl}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-    `${appUrl}/pricing`
+    `${appUrl}/sell#pricing`
   );
 
   return NextResponse.json({ url });

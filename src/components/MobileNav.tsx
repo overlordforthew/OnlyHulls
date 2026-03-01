@@ -29,8 +29,8 @@ export default function MobileNav() {
             <Link href="/boats" className="text-sm text-foreground/70 hover:text-foreground" onClick={() => setOpen(false)}>
               Browse Boats
             </Link>
-            <Link href="/pricing" className="text-sm text-foreground/70 hover:text-foreground" onClick={() => setOpen(false)}>
-              Pricing
+            <Link href="/sell" className="text-sm text-foreground/70 hover:text-foreground" onClick={() => setOpen(false)}>
+              Sell
             </Link>
             <Link href="/sign-in" className="text-sm text-foreground/70 hover:text-foreground" onClick={() => setOpen(false)}>
               Sign In

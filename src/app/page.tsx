@@ -48,10 +48,10 @@ export default async function Home() {
               Browse Boats
             </Link>
             <Link
-              href="/pricing"
+              href="/sell"
               className="text-sm text-foreground/70 hover:text-foreground"
             >
-              Pricing
+              Sell
             </Link>
             <Link
               href="/sign-in"
@@ -138,11 +138,11 @@ export default async function Home() {
               <div>
                 <h3 className="font-bold">Sell Your Boat</h3>
                 <p className="text-sm text-foreground/60">
-                  List for free — no commissions, no middlemen
+                  No commissions, no middlemen
                 </p>
               </div>
               <span className="ml-auto text-sm font-medium text-primary">
-                List Free →
+                Start Selling →
               </span>
             </Link>
           </div>

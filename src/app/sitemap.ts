@@ -10,7 +10,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: appUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${appUrl}/boats`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${appUrl}/pricing`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${appUrl}/match`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    { url: `${appUrl}/sell`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // Dynamic boat listing pages

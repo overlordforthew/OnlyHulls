@@ -24,7 +24,7 @@ export async function POST() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const url = await createCustomerPortalSession(
     user.stripe_customer_id,
-    `${appUrl}/pricing`
+    `${appUrl}/sell#pricing`
   );
 
   return NextResponse.json({ url });
