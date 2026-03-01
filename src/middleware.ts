@@ -10,6 +10,8 @@ const publicRoutes = [
   "/sign-up",
   "/boats",
   "/pricing",
+  "/match",
+  "/sell",
   "/api/auth",
   "/api/webhooks",
   "/api/cron",
