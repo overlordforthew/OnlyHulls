@@ -1,16 +1,18 @@
 import Link from "next/link";
+import MobileNav from "@/components/MobileNav";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="border-b border-border">
+      <header className="relative border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⛵</span>
             <span className="text-xl font-bold text-primary">OnlyHulls</span>
           </div>
-          <nav className="flex items-center gap-6">
+          {/* Desktop nav */}
+          <nav className="hidden items-center gap-6 md:flex">
             <Link
               href="/boats"
               className="text-sm text-foreground/70 hover:text-foreground"
@@ -36,31 +38,33 @@ export default function Home() {
               Get Started
             </Link>
           </nav>
+          {/* Mobile nav */}
+          <MobileNav />
         </div>
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-4 py-24 text-center">
-        <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
+      <section className="mx-auto max-w-7xl px-4 py-16 text-center sm:py-24">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
           Find Your Perfect Boat
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-sm font-medium uppercase tracking-[0.25em] text-primary/70">
+        <p className="mx-auto mt-4 max-w-xl text-xs font-medium uppercase tracking-[0.15em] text-primary/70 sm:text-sm sm:tracking-[0.25em]">
           Where OnlyFans, Tinder and Boats Collide
         </p>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-foreground/60">
+        <p className="mx-auto mt-6 max-w-2xl text-base text-foreground/60 sm:text-lg">
           AI-powered matchmaking connects you with the right boat — even when
           you don&apos;t know exactly what you&apos;re looking for.
         </p>
-        <div className="mt-10 flex items-center justify-center gap-4">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
           <Link
             href="/sign-up?role=buyer"
-            className="rounded-full bg-primary px-8 py-3 text-lg font-medium text-white hover:bg-primary-dark"
+            className="w-full rounded-full bg-primary px-8 py-3 text-base font-medium text-white hover:bg-primary-dark sm:w-auto sm:text-lg"
           >
             I&apos;m Looking for a Boat
           </Link>
           <Link
             href="/sign-up?role=seller"
-            className="rounded-full border border-border px-8 py-3 text-lg font-medium text-foreground hover:bg-muted"
+            className="w-full rounded-full border border-border px-8 py-3 text-base font-medium text-foreground hover:bg-muted sm:w-auto sm:text-lg"
           >
             I&apos;m Selling a Boat
           </Link>
@@ -68,10 +72,12 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="bg-muted py-24">
+      <section className="bg-muted py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4">
-          <h2 className="text-center text-3xl font-bold">How It Works</h2>
-          <div className="mt-16 grid gap-12 md:grid-cols-3">
+          <h2 className="text-center text-2xl font-bold sm:text-3xl">
+            How It Works
+          </h2>
+          <div className="mt-12 grid gap-10 sm:mt-16 sm:gap-12 md:grid-cols-3">
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-3xl">
                 💬
@@ -109,32 +115,44 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      <section className="py-24">
+      <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 text-center">
-          <h2 className="text-3xl font-bold">Why OnlyHulls?</h2>
-          <div className="mt-16 grid gap-8 md:grid-cols-4">
+          <h2 className="text-2xl font-bold sm:text-3xl">Why OnlyHulls?</h2>
+          <div className="mt-12 grid grid-cols-2 gap-8 sm:mt-16 md:grid-cols-4">
             <div>
-              <p className="text-4xl font-bold text-primary">$0</p>
-              <p className="mt-2 text-foreground/60">Commission fees</p>
+              <p className="text-3xl font-bold text-primary sm:text-4xl">$0</p>
+              <p className="mt-2 text-sm text-foreground/60 sm:text-base">
+                Commission fees
+              </p>
             </div>
             <div>
-              <p className="text-4xl font-bold text-primary">AI</p>
-              <p className="mt-2 text-foreground/60">Powered matching</p>
+              <p className="text-3xl font-bold text-primary sm:text-4xl">AI</p>
+              <p className="mt-2 text-sm text-foreground/60 sm:text-base">
+                Powered matching
+              </p>
             </div>
             <div>
-              <p className="text-4xl font-bold text-primary">30-55ft</p>
-              <p className="mt-2 text-foreground/60">Cruising sailboats</p>
+              <p className="text-3xl font-bold text-primary sm:text-4xl">
+                30-55ft
+              </p>
+              <p className="mt-2 text-sm text-foreground/60 sm:text-base">
+                Cruising sailboats
+              </p>
             </div>
             <div>
-              <p className="text-4xl font-bold text-primary">Global</p>
-              <p className="mt-2 text-foreground/60">Worldwide listings</p>
+              <p className="text-3xl font-bold text-primary sm:text-4xl">
+                Global
+              </p>
+              <p className="mt-2 text-sm text-foreground/60 sm:text-base">
+                Worldwide listings
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12">
+      <footer className="border-t border-border py-8 sm:py-12">
         <div className="mx-auto max-w-7xl px-4 text-center text-sm text-foreground/50">
           <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
           <p className="mt-2">
