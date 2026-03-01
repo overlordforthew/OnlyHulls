@@ -31,48 +31,6 @@ const themes = [
       "--border": "#fed7aa",
     },
   },
-  {
-    name: "Deep Navy",
-    icon: "⚓",
-    vars: {
-      "--background": "#0b1120",
-      "--foreground": "#e2e8f0",
-      "--primary": "#c9a84c",
-      "--primary-light": "#e2c86d",
-      "--primary-dark": "#a68932",
-      "--accent": "#38bdf8",
-      "--muted": "#1a2332",
-      "--border": "#2a3a4e",
-    },
-  },
-  {
-    name: "Tropical",
-    icon: "🌴",
-    vars: {
-      "--background": "#f0fdfa",
-      "--foreground": "#134e4a",
-      "--primary": "#0d9488",
-      "--primary-light": "#2dd4bf",
-      "--primary-dark": "#0f766e",
-      "--accent": "#f59e0b",
-      "--muted": "#ccfbf1",
-      "--border": "#99f6e4",
-    },
-  },
-  {
-    name: "Midnight",
-    icon: "🔥",
-    vars: {
-      "--background": "#09090b",
-      "--foreground": "#fafafa",
-      "--primary": "#e11d48",
-      "--primary-light": "#fb7185",
-      "--primary-dark": "#be123c",
-      "--accent": "#a855f7",
-      "--muted": "#18181b",
-      "--border": "#27272a",
-    },
-  },
 ];
 
 export default function ThemeSwitcher() {

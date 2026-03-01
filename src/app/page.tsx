@@ -61,7 +61,7 @@ export default async function Home() {
 
       {/* Category Icon Strip */}
       <section className="border-b border-border bg-muted/30">
-        <div className="mx-auto flex max-w-5xl items-center justify-center gap-6 overflow-x-auto px-4 py-4 sm:gap-10">
+        <div className="mx-auto flex max-w-7xl gap-8 overflow-x-auto px-6 py-4 sm:gap-12 lg:px-8">
           {CATEGORIES.map((cat) => (
             <Link
               key={cat.tag}
@@ -77,52 +77,70 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Search Form — centered */}
-      <section className="flex justify-center px-4 py-12 sm:py-16">
-        <div className="w-full max-w-xl rounded-xl border border-border bg-background p-6 shadow-lg sm:p-8">
-          <HomeSearch />
-        </div>
-      </section>
+      {/* Main content — search left, right panel */}
+      <section className="mx-auto max-w-7xl px-6 py-10 sm:py-14 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_1fr]">
+          {/* Search Form — left aligned */}
+          <div className="max-w-lg">
+            <div className="rounded-xl border border-border bg-background p-6 shadow-lg sm:p-8">
+              <HomeSearch />
+            </div>
+          </div>
 
-      {/* Action Cards */}
-      <section className="mx-auto max-w-5xl px-4 pb-16">
-        <div className="grid gap-6 sm:grid-cols-3">
-          <Link
-            href="/boats"
-            className="flex flex-col items-center rounded-xl border border-border p-8 text-center transition hover:border-primary hover:shadow-md"
-          >
-            <span className="text-4xl">⛵</span>
-            <h3 className="mt-4 text-lg font-bold">Boats for Sale</h3>
-            <span className="mt-2 text-sm font-medium text-primary">
-              View All
-            </span>
-          </Link>
-          <Link
-            href="/sign-up?role=buyer"
-            className="flex flex-col items-center rounded-xl border border-border p-8 text-center transition hover:border-primary hover:shadow-md"
-          >
-            <span className="text-4xl">🎯</span>
-            <h3 className="mt-4 text-lg font-bold">AI Matching</h3>
-            <span className="mt-2 text-sm font-medium text-primary">
-              Get Matched
-            </span>
-          </Link>
-          <Link
-            href="/sign-up?role=seller"
-            className="flex flex-col items-center rounded-xl border border-border p-8 text-center transition hover:border-primary hover:shadow-md"
-          >
-            <span className="text-4xl">📋</span>
-            <h3 className="mt-4 text-lg font-bold">Sell Your Boat</h3>
-            <span className="mt-2 text-sm font-medium text-primary">
-              List Free
-            </span>
-          </Link>
+          {/* Right side — action cards stacked */}
+          <div className="flex flex-col gap-4">
+            <Link
+              href="/boats"
+              className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
+            >
+              <span className="text-3xl">⛵</span>
+              <div>
+                <h3 className="font-bold">Boats for Sale</h3>
+                <p className="text-sm text-foreground/60">
+                  Browse {count} listings worldwide
+                </p>
+              </div>
+              <span className="ml-auto text-sm font-medium text-primary">
+                View All →
+              </span>
+            </Link>
+            <Link
+              href="/sign-up?role=buyer"
+              className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
+            >
+              <span className="text-3xl">🎯</span>
+              <div>
+                <h3 className="font-bold">AI Matching</h3>
+                <p className="text-sm text-foreground/60">
+                  Tell us your dream boat, we&apos;ll find it
+                </p>
+              </div>
+              <span className="ml-auto text-sm font-medium text-primary">
+                Get Matched →
+              </span>
+            </Link>
+            <Link
+              href="/sign-up?role=seller"
+              className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
+            >
+              <span className="text-3xl">📋</span>
+              <div>
+                <h3 className="font-bold">Sell Your Boat</h3>
+                <p className="text-sm text-foreground/60">
+                  List for free — no commissions, no middlemen
+                </p>
+              </div>
+              <span className="ml-auto text-sm font-medium text-primary">
+                List Free →
+              </span>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Value Strip */}
       <section className="border-t border-border bg-muted/30 py-10">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 text-center md:grid-cols-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap justify-start gap-10 px-6 sm:gap-16 lg:px-8">
           <div>
             <p className="text-2xl font-bold text-primary">$0</p>
             <p className="mt-1 text-sm text-foreground/60">Commission</p>
@@ -146,7 +164,7 @@ export default async function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border py-8 sm:py-12">
-        <div className="mx-auto max-w-7xl px-4 text-center text-sm text-foreground/50">
+        <div className="mx-auto max-w-7xl px-6 text-sm text-foreground/50 lg:px-8">
           <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
           <p className="mt-2 italic text-foreground/30">
             Where you can be an OnlyFan of Boats, with plenty of Tinder
