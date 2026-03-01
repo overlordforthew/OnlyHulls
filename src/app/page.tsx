@@ -178,7 +178,7 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-6 text-sm text-foreground/50 lg:px-8">
           <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
           <p className="mt-2 italic text-foreground/30">
-            Where you can be an OnlyFan of Boats, with plenty of Tinder
+            The OnlyFan of Boats, with plenty of Tinder
           </p>
         </div>
       </footer>
