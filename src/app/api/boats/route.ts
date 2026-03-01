@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   const maxYear = url.searchParams.get("maxYear");
   const rigType = url.searchParams.get("rigType");
   const hullType = url.searchParams.get("hullType");
+  const tag = url.searchParams.get("tag");
 
   // If search query, use Meilisearch
   if (search) {
@@ -74,6 +75,10 @@ export async function GET(req: Request) {
   if (hullType) {
     conditions.push(`d.specs->>'hull_material' = $${paramIdx++}`);
     params.push(hullType);
+  }
+  if (tag) {
+    conditions.push(`$${paramIdx++} = ANY(d.character_tags)`);
+    params.push(tag);
   }
 
   const where = conditions.join(" AND ");

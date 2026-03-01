@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import BoatCard from "@/components/BoatCard";
 
 interface Boat {
@@ -20,9 +21,22 @@ interface Boat {
 }
 
 export default function BoatsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-foreground/60">Loading...</div>}>
+      <BoatsPageInner />
+    </Suspense>
+  );
+}
+
+function BoatsPageInner() {
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get("q") || "";
+  const initialTag = searchParams.get("tag") || "";
+
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialQ);
+  const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
@@ -38,10 +52,24 @@ export default function BoatsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  async function fetchBoats() {
+  // Re-fetch when URL params change (e.g. from homepage category click)
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const tag = searchParams.get("tag") || "";
+    setSearch(q);
+    setActiveTag(tag);
+    setPage(1);
+    fetchBoatsWithParams(q, tag);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function fetchBoatsWithParams(q?: string, tag?: string) {
     setLoading(true);
     const params = new URLSearchParams();
-    if (search) params.set("q", search);
+    const searchQ = q !== undefined ? q : search;
+    const searchTag = tag !== undefined ? tag : activeTag;
+    if (searchQ) params.set("q", searchQ);
+    if (searchTag) params.set("tag", searchTag);
     params.set("page", String(page));
     if (filters.minPrice) params.set("minPrice", filters.minPrice);
     if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
@@ -56,10 +84,20 @@ export default function BoatsPage() {
     setLoading(false);
   }
 
+  async function fetchBoats() {
+    await fetchBoatsWithParams();
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    setActiveTag("");
     setPage(1);
-    fetchBoats();
+    fetchBoatsWithParams(search, "");
+  }
+
+  function clearTag() {
+    setActiveTag("");
+    fetchBoatsWithParams(search, "");
   }
 
   return (
@@ -83,6 +121,23 @@ export default function BoatsPage() {
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         <h1 className="text-2xl font-bold">Browse Boats</h1>
+
+        {/* Active tag indicator */}
+        {activeTag && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-sm text-foreground/60">Showing:</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {activeTag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              <button
+                onClick={clearTag}
+                className="ml-1 text-primary/60 hover:text-primary"
+                aria-label="Clear tag filter"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* Search + Filters */}
         <form onSubmit={handleSearch} className="mt-6 flex gap-2">
