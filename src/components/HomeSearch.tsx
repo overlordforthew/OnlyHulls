@@ -3,38 +3,146 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const RIG_TYPES = [
+  { value: "", label: "All Rig Types" },
+  { value: "sloop", label: "Sloop" },
+  { value: "cutter", label: "Cutter" },
+  { value: "ketch", label: "Ketch" },
+  { value: "yawl", label: "Yawl" },
+  { value: "schooner", label: "Schooner" },
+];
+
+const PRICE_RANGES = [
+  { value: "", label: "All Price Ranges" },
+  { value: "0-25000", label: "Under $25,000" },
+  { value: "25000-50000", label: "$25,000 – $50,000" },
+  { value: "50000-100000", label: "$50,000 – $100,000" },
+  { value: "100000-250000", label: "$100,000 – $250,000" },
+  { value: "250000-", label: "$250,000+" },
+];
+
+const YEAR_RANGES = [
+  { value: "", label: "Any Year" },
+  { value: "2020", label: "2020 or newer" },
+  { value: "2010", label: "2010 or newer" },
+  { value: "2000", label: "2000 or newer" },
+  { value: "1990", label: "1990 or newer" },
+  { value: "1980", label: "1980 or newer" },
+];
+
 export default function HomeSearch() {
-  const [query, setQuery] = useState("");
   const router = useRouter();
+  const [makeModel, setMakeModel] = useState("");
+  const [rigType, setRigType] = useState("");
+  const [priceRange, setPriceRange] = useState("");
+  const [minYear, setMinYear] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const q = query.trim();
-    if (q) {
-      router.push(`/boats?q=${encodeURIComponent(q)}`);
-    } else {
-      router.push("/boats");
+    const params = new URLSearchParams();
+    if (makeModel.trim()) params.set("q", makeModel.trim());
+    if (rigType) params.set("rigType", rigType);
+    if (priceRange) {
+      const [min, max] = priceRange.split("-");
+      if (min) params.set("minPrice", min);
+      if (max) params.set("maxPrice", max);
     }
+    if (minYear) params.set("minYear", minYear);
+    router.push(`/boats?${params.toString()}`);
   }
 
+  const selectClass =
+    "w-full appearance-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-2 sm:flex-row"
-    >
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by make, model, or keyword..."
-        className="flex-1 rounded-full border border-border bg-background px-5 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-      />
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-bold text-foreground">Boats for Sale</h2>
+        <a
+          href="/boats"
+          className="text-sm font-medium text-primary hover:text-primary-dark"
+        >
+          View All
+        </a>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            Rig Type
+          </label>
+          <select
+            value={rigType}
+            onChange={(e) => setRigType(e.target.value)}
+            className={selectClass}
+          >
+            {RIG_TYPES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            Price
+          </label>
+          <select
+            value={priceRange}
+            onChange={(e) => setPriceRange(e.target.value)}
+            className={selectClass}
+          >
+            {PRICE_RANGES.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            Make or Model
+          </label>
+          <input
+            type="text"
+            value={makeModel}
+            onChange={(e) => setMakeModel(e.target.value)}
+            placeholder="Search Make or Model..."
+            className={selectClass}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+            Year
+          </label>
+          <select
+            value={minYear}
+            onChange={(e) => setMinYear(e.target.value)}
+            className={selectClass}
+          >
+            {YEAR_RANGES.map((y) => (
+              <option key={y.value} value={y.value}>
+                {y.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <button
         type="submit"
-        className="rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+        className="mt-4 w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-dark"
       >
         Search
       </button>
+      <div className="mt-2 text-center">
+        <a
+          href="/boats"
+          className="text-xs text-primary/70 hover:text-primary"
+        >
+          Advanced Search
+        </a>
+      </div>
     </form>
   );
 }
