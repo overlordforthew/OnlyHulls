@@ -135,10 +135,10 @@ export default function Home() {
             </div>
             <div>
               <p className="text-3xl font-bold text-primary sm:text-4xl">
-                30-55ft
+                All Types
               </p>
               <p className="mt-2 text-sm text-foreground/60 sm:text-base">
-                Cruising sailboats
+                Sail, power, yachts & more
               </p>
             </div>
             <div>
