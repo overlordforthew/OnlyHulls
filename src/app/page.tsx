@@ -1,9 +1,11 @@
 import Link from "next/link";
 import MobileNav from "@/components/MobileNav";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
+      <ThemeSwitcher />
       {/* Header */}
       <header className="relative border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
