@@ -16,6 +16,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1000.0",
     "@types/pg": "^8.18.0",
     "bcryptjs": "^3.0.3",
+    "ioredis": "^5.10.0",
+    "lucide-react": "^0.575.0",
     "meilisearch": "^0.55.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",

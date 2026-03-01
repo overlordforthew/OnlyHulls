@@ -3,16 +3,27 @@ import MobileNav from "@/components/MobileNav";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import HomeSearch from "@/components/HomeSearch";
 import { getBoatCount } from "@/lib/db/queries";
+import {
+  Sailboat,
+  Home as HomeIcon,
+  Flag,
+  Users,
+  DollarSign,
+  Landmark,
+  Ship,
+  Crosshair,
+  ClipboardList,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORIES = [
-  { label: "Cruising", icon: "⛵", tag: "bluewater" },
-  { label: "Liveaboard", icon: "🏠", tag: "liveaboard" },
-  { label: "Racing", icon: "🏁", tag: "race-ready" },
-  { label: "Family", icon: "👨‍👩‍👧", tag: "family-friendly" },
-  { label: "Budget", icon: "💰", tag: "budget-friendly" },
-  { label: "Classic", icon: "🏛️", tag: "classic" },
+  { label: "Cruising", Icon: Sailboat, tag: "bluewater" },
+  { label: "Liveaboard", Icon: HomeIcon, tag: "liveaboard" },
+  { label: "Racing", Icon: Flag, tag: "race-ready" },
+  { label: "Family", Icon: Users, tag: "family-friendly" },
+  { label: "Budget", Icon: DollarSign, tag: "budget-friendly" },
+  { label: "Classic", Icon: Landmark, tag: "classic" },
 ];
 
 export default async function Home() {
@@ -61,14 +72,14 @@ export default async function Home() {
 
       {/* Category Icon Strip */}
       <section className="border-b border-border bg-muted/30">
-        <div className="mx-auto flex max-w-7xl gap-8 overflow-x-auto px-6 py-4 sm:gap-12 lg:px-8">
+        <div className="mx-auto flex max-w-7xl justify-center gap-8 overflow-x-auto px-6 py-4 sm:gap-12 lg:px-8">
           {CATEGORIES.map((cat) => (
             <Link
               key={cat.tag}
               href={`/boats?tag=${cat.tag}`}
               className="flex flex-col items-center gap-1.5 text-foreground/60 transition hover:text-primary"
             >
-              <span className="text-2xl sm:text-3xl">{cat.icon}</span>
+              <cat.Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.5} />
               <span className="whitespace-nowrap text-xs font-medium">
                 {cat.label}
               </span>
@@ -93,7 +104,7 @@ export default async function Home() {
               href="/boats"
               className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
             >
-              <span className="text-3xl">⛵</span>
+              <Ship className="h-8 w-8 shrink-0 text-primary" strokeWidth={1.5} />
               <div>
                 <h3 className="font-bold">Boats for Sale</h3>
                 <p className="text-sm text-foreground/60">
@@ -108,7 +119,7 @@ export default async function Home() {
               href="/sign-up?role=buyer"
               className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
             >
-              <span className="text-3xl">🎯</span>
+              <Crosshair className="h-8 w-8 shrink-0 text-primary" strokeWidth={1.5} />
               <div>
                 <h3 className="font-bold">AI Matching</h3>
                 <p className="text-sm text-foreground/60">
@@ -123,7 +134,7 @@ export default async function Home() {
               href="/sign-up?role=seller"
               className="flex items-center gap-4 rounded-xl border border-border p-5 transition hover:border-primary hover:shadow-md"
             >
-              <span className="text-3xl">📋</span>
+              <ClipboardList className="h-8 w-8 shrink-0 text-primary" strokeWidth={1.5} />
               <div>
                 <h3 className="font-bold">Sell Your Boat</h3>
                 <p className="text-sm text-foreground/60">
@@ -140,7 +151,7 @@ export default async function Home() {
 
       {/* Value Strip */}
       <section className="border-t border-border bg-muted/30 py-10">
-        <div className="mx-auto flex max-w-7xl flex-wrap justify-start gap-10 px-6 sm:gap-16 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-10 px-6 sm:gap-16 lg:px-8">
           <div>
             <p className="text-2xl font-bold text-primary">$0</p>
             <p className="mt-1 text-sm text-foreground/60">Commission</p>
