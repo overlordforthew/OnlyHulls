@@ -7,16 +7,16 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: onlyhulls
-      POSTGRES_USER: datemyboat  # kept for data continuity (PG user can't be renamed live)
+      POSTGRES_USER: onlyhulls
       POSTGRES_PASSWORD: ${ONLYHULLS_DB_PASSWORD:-changeme}
     volumes:
-      - datemyboat-db-data:/var/lib/postgresql/data  # kept for data continuity
+      - onlyhulls-db-data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5433:5432"
     networks:
       - coolify
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U datemyboat"]
+      test: ["CMD-SHELL", "pg_isready -U onlyhulls"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
       MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-changeme_meili_master_key}
       MEILI_ENV: production
     volumes:
-      - datemyboat-meili-data:/meili_data  # kept for data continuity
+      - onlyhulls-meili-data:/meili_data
     ports:
       - "127.0.0.1:7701:7700"
     networks:
@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
     command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
     volumes:
-      - datemyboat-redis-data:/data  # kept for data continuity
+      - onlyhulls-redis-data:/data
     ports:
       - "127.0.0.1:6380:6379"
     networks:
@@ -58,9 +58,9 @@ services:
       retries: 5
 
 volumes:
-  datemyboat-db-data:
-  datemyboat-meili-data:
-  datemyboat-redis-data:
+  onlyhulls-db-data:
+  onlyhulls-meili-data:
+  onlyhulls-redis-data:
 
 networks:
   coolify:
