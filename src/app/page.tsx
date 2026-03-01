@@ -44,6 +44,9 @@ export default function Home() {
         <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
           Find Your Perfect Boat
         </h1>
+        <p className="mx-auto mt-4 max-w-xl text-sm font-medium uppercase tracking-[0.25em] text-primary/70">
+          Where OnlyFans, Tinder and Boats Collide
+        </p>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-foreground/60">
           AI-powered matchmaking connects you with the right boat — even when
           you don&apos;t know exactly what you&apos;re looking for.
