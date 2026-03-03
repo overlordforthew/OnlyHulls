@@ -26,6 +26,12 @@ function isPublic(pathname: string): boolean {
 }
 
 export default auth((req) => {
+  // Block invalid server action probes (valid IDs are 40+ char hex hashes)
+  const actionId = req.headers.get("Next-Action");
+  if (actionId !== null && !/^[0-9a-f]{40,}$/i.test(actionId)) {
+    return new NextResponse("Bad Request", { status: 400 });
+  }
+
   if (isPublic(req.nextUrl.pathname)) return NextResponse.next();
 
   if (!req.auth?.user) {
