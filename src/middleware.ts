@@ -32,6 +32,11 @@ export default auth((req) => {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
+  // Block legacy Clerk auth endpoints (migrated to Auth.js)
+  if (req.nextUrl.pathname.startsWith("/api/auth/v1/")) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   if (isPublic(req.nextUrl.pathname)) return NextResponse.next();
 
   if (!req.auth?.user) {
