@@ -45,21 +45,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Check monthly connect count
-  if (plan.limits.connectsPerMonth > 0) {
-    const countResult = await queryOne<{ count: string }>(
-      `SELECT COUNT(*) FROM introductions
-       WHERE buyer_id = $1 AND sent_at > NOW() - INTERVAL '30 days'`,
-      [user.id]
-    );
-    if (parseInt(countResult?.count || "0") >= plan.limits.connectsPerMonth) {
-      return NextResponse.json(
-        { error: `You've used all ${plan.limits.connectsPerMonth} connects this month` },
-        { status: 403 }
-      );
-    }
-  }
-
   // Get match details
   const match = await queryOne<{
     id: string;
@@ -91,10 +76,18 @@ export async function POST(req: Request) {
   const acceptToken = randomBytes(32).toString("hex");
   const declineToken = randomBytes(32).toString("hex");
 
-  // Create introduction record
-  await query(
+  // Atomically check monthly limit and insert in a single statement to prevent TOCTOU races.
+  // If connectsPerMonth is unlimited (-1) we skip the count check.
+  const limitClause =
+    plan.limits.connectsPerMonth > 0
+      ? `AND (SELECT COUNT(*) FROM introductions WHERE buyer_id = $2 AND sent_at > NOW() - INTERVAL '30 days') < ${plan.limits.connectsPerMonth}`
+      : "";
+
+  const intro = await queryOne<{ id: string }>(
     `INSERT INTO introductions (match_id, buyer_id, seller_id, accept_token, decline_token, buyer_message)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+     SELECT $1, $2, $3, $4, $5, $6
+     WHERE TRUE ${limitClause}
+     RETURNING id`,
     [
       match.id,
       user.id,
@@ -104,6 +97,13 @@ export async function POST(req: Request) {
       parsed.data.message || null,
     ]
   );
+
+  if (!intro) {
+    return NextResponse.json(
+      { error: `You've used all ${plan.limits.connectsPerMonth} connects this month` },
+      { status: 403 }
+    );
+  }
 
   // Send seller notification email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

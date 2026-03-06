@@ -34,6 +34,14 @@ export async function POST(req: Request) {
     );
     convId = conv?.id;
   } else {
+    // Verify the conversation belongs to this user before updating (prevents IDOR)
+    const owned = await queryOne<{ id: string }>(
+      "SELECT id FROM ai_conversations WHERE id = $1 AND user_id = $2",
+      [convId, user.id]
+    );
+    if (!owned) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    }
     await query(
       `UPDATE ai_conversations SET messages = $1, updated_at = NOW() WHERE id = $2`,
       [JSON.stringify(messages), convId]

@@ -8,7 +8,9 @@ import Link from "next/link";
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  // Only allow same-origin relative paths (no protocol-relative URLs like //)
+  const rawCallback = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

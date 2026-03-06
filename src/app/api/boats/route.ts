@@ -18,11 +18,16 @@ export async function GET(req: Request) {
   // If search query, use Meilisearch
   if (search) {
     try {
-      const filter: string[] = [];
-      if (minPrice) filter.push(`askingPrice >= ${minPrice}`);
-      if (maxPrice) filter.push(`askingPrice <= ${maxPrice}`);
-      if (minYear) filter.push(`year >= ${minYear}`);
-      if (maxYear) filter.push(`year <= ${maxYear}`);
+      // Always filter to active listings; coerce numeric params to prevent filter injection
+      const filter: string[] = ["status = 'active'"];
+      const minPriceNum = minPrice ? parseFloat(minPrice) : NaN;
+      const maxPriceNum = maxPrice ? parseFloat(maxPrice) : NaN;
+      const minYearNum = minYear ? parseInt(minYear, 10) : NaN;
+      const maxYearNum = maxYear ? parseInt(maxYear, 10) : NaN;
+      if (!isNaN(minPriceNum)) filter.push(`askingPrice >= ${minPriceNum}`);
+      if (!isNaN(maxPriceNum)) filter.push(`askingPrice <= ${maxPriceNum}`);
+      if (!isNaN(minYearNum)) filter.push(`year >= ${minYearNum}`);
+      if (!isNaN(maxYearNum)) filter.push(`year <= ${maxYearNum}`);
 
       const results = await getMeili().index(BOATS_INDEX).search(search, {
         limit,

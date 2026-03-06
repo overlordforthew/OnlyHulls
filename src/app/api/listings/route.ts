@@ -37,7 +37,18 @@ const listingSchema = z.object({
   media: z
     .array(
       z.object({
-        url: z.string(),
+        // Only accept URLs from our own object storage to prevent SSRF via Next.js image optimizer
+        url: z.string().url().refine(
+          (u) => {
+            try {
+              const { hostname } = new URL(u);
+              return hostname.endsWith(".your-objectstorage.com");
+            } catch {
+              return false;
+            }
+          },
+          { message: "Invalid media URL" }
+        ),
         caption: z.string().optional(),
         sortOrder: z.number().default(0),
       })

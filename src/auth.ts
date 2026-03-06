@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { queryOne } from "@/lib/db";
 import { authConfig } from "./auth.config";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -16,6 +17,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
+
+        // Rate limit: 10 attempts per email per 15 minutes
+        const rl = await rateLimit(`login:${email.toLowerCase()}`, 10, 900);
+        if (!rl.allowed) return null;
 
         const user = await queryOne<{
           id: string;
