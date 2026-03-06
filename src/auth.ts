@@ -13,13 +13,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
-        // Rate limit: 10 attempts per email per 15 minutes
-        const rl = await rateLimit(`login:${email.toLowerCase()}`, 10, 900);
+        // Rate limit per IP+email: 10 attempts per 15 minutes.
+        // Keyed on IP so attackers cannot lock out arbitrary accounts.
+        const ip =
+          (request as Request | undefined)?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          "unknown";
+        const rl = await rateLimit(`login:${ip}:${email.toLowerCase()}`, 10, 900);
         if (!rl.allowed) return null;
 
         const user = await queryOne<{
