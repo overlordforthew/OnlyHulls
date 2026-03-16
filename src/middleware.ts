@@ -26,9 +26,9 @@ function isPublic(pathname: string): boolean {
 }
 
 export default auth((req) => {
-  // Block invalid server action probes (valid IDs are 40+ char hex hashes)
+  // Block all server action requests — no server actions exist in this build
   const actionId = req.headers.get("Next-Action");
-  if (actionId !== null && !/^[0-9a-f]{40,}$/i.test(actionId)) {
+  if (actionId !== null) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
