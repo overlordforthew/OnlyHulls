@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import SiteNav from "@/components/SiteNav";
+import SiteFooter from "@/components/SiteFooter";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,11 +19,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "OnlyHulls — AI-Powered Boat Matchmaking",
+    default: "OnlyHulls — The OnlyFans of Boats",
     template: "%s | OnlyHulls",
   },
   description:
-    "Find your perfect boat with AI-powered matchmaking. Browse listings, get personalized matches, and connect directly with sellers.",
+    "The boat marketplace that doesn't suck. AI-powered matching, zero commission, and a community of boat lovers. Find your perfect hull.",
   openGraph: {
     type: "website",
     siteName: "OnlyHulls",
@@ -36,12 +39,15 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
-          {children}
+          <SiteNav />
+          <main className="min-h-screen">{children}</main>
+          <SiteFooter />
+          <ThemeSwitcher />
         </NextIntlClientProvider>
       </body>
     </html>

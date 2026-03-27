@@ -51,16 +51,16 @@ export default function HomeSearch() {
     router.push(`/boats?${params.toString()}`);
   }
 
-  const selectClass =
-    "w-full appearance-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const inputClass =
+    "w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-bold text-foreground">Boats for Sale</h2>
+        <h2 className="text-lg font-bold">Boats for Sale</h2>
         <a
           href="/boats"
-          className="text-sm font-medium text-primary hover:text-primary-dark"
+          className="text-sm font-medium text-primary hover:text-primary-light"
         >
           View All
         </a>
@@ -68,13 +68,13 @@ export default function HomeSearch() {
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Rig Type
           </label>
           <select
             value={rigType}
             onChange={(e) => setRigType(e.target.value)}
-            className={selectClass}
+            className={inputClass}
           >
             {RIG_TYPES.map((r) => (
               <option key={r.value} value={r.value}>
@@ -84,13 +84,13 @@ export default function HomeSearch() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Price
           </label>
           <select
             value={priceRange}
             onChange={(e) => setPriceRange(e.target.value)}
-            className={selectClass}
+            className={inputClass}
           >
             {PRICE_RANGES.map((p) => (
               <option key={p.value} value={p.value}>
@@ -100,7 +100,7 @@ export default function HomeSearch() {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Make or Model
           </label>
           <input
@@ -108,17 +108,17 @@ export default function HomeSearch() {
             value={makeModel}
             onChange={(e) => setMakeModel(e.target.value)}
             placeholder="Search Make or Model..."
-            className={selectClass}
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-foreground/60">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Year
           </label>
           <select
             value={minYear}
             onChange={(e) => setMinYear(e.target.value)}
-            className={selectClass}
+            className={inputClass}
           >
             {YEAR_RANGES.map((y) => (
               <option key={y.value} value={y.value}>
@@ -131,7 +131,7 @@ export default function HomeSearch() {
 
       <button
         type="submit"
-        className="mt-4 w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-dark"
+        className="mt-4 w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light"
       >
         Search
       </button>

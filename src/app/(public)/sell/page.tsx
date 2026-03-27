@@ -8,6 +8,8 @@ import {
   Globe,
   Shield,
   Clock,
+  Check,
+  X,
 } from "lucide-react";
 import { SellerPricing } from "@/components/PricingCards";
 
@@ -63,77 +65,75 @@ const BENEFITS = [
   },
 ];
 
+const COMPARISON = [
+  { feature: "Commission", us: "$0", them: "8–10% of sale price" },
+  { feature: "Listing Fee", us: "Free", them: "$200–500+" },
+  { feature: "Buyer Matching", us: "AI-powered", them: "Manual, limited" },
+  { feature: "Reach", us: "Global", them: "Local / regional" },
+  { feature: "Time to List", us: "Minutes", them: "Days to weeks" },
+];
+
 export default function SellPage() {
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">⛵</span>
-            <span className="text-xl font-bold text-primary">OnlyHulls</span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/boats"
-              className="text-sm text-foreground/70 hover:text-foreground"
-            >
-              Browse Boats
-            </Link>
-            <Link
-              href="/sign-in"
-              className="text-sm text-foreground/70 hover:text-foreground"
-            >
-              Sign In
-            </Link>
-          </nav>
-        </div>
-      </header>
-
+    <div>
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-        <div className="max-w-2xl">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Sell Your Boat — Zero Commission
-          </h1>
-          <p className="mt-4 text-lg text-foreground/60">
-            List your boat on OnlyHulls and let our AI connect you with
-            qualified buyers. No brokers, no middlemen, no percentage of your
-            sale.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/sign-up?role=seller"
-              className="rounded-full bg-primary px-8 py-3 text-center text-sm font-medium text-white hover:bg-primary-dark"
-            >
-              List Your Boat
-            </Link>
-            <a
-              href="#pricing"
-              className="rounded-full border border-border px-8 py-3 text-center text-sm font-medium text-foreground hover:bg-muted"
-            >
-              See Pricing
-            </a>
+      <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-transparent" />
+          <div className="absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-accent/5 blur-3xl" />
+        </div>
+
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+              <Zap className="h-3 w-3" />
+              For Sellers
+            </div>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+              Become a{" "}
+              <span className="text-primary">Creator</span>
+            </h1>
+            <p className="mt-4 text-lg text-text-secondary">
+              Show us your hull. List your boat for free and let our AI connect
+              you with qualified buyers worldwide. No brokers, no middlemen, no
+              percentage of your sale.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/sign-up?role=seller"
+                className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+              >
+                List Your Boat — Free
+              </Link>
+              <a
+                href="#pricing"
+                className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+              >
+                See Pricing
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="border-t border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-2xl font-bold">How Selling Works</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-2">
+      {/* How Selling Works */}
+      <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <h2 className="text-center text-2xl font-bold">How Selling Works</h2>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {STEPS.map((step, i) => (
-              <div key={step.title} className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <step.Icon className="h-5 w-5" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">
-                    <span className="text-primary">{i + 1}.</span>{" "}
-                    {step.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-foreground/60">{step.desc}</p>
+              <div key={step.title} className="rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <step.Icon className="h-6 w-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">
+                      <span className="text-primary">{i + 1}.</span>{" "}
+                      {step.title}
+                    </h3>
+                    <p className="mt-2 text-sm text-text-secondary">{step.desc}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -142,18 +142,25 @@ export default function SellPage() {
       </section>
 
       {/* Benefits */}
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-2xl font-bold">Why Sell on OnlyHulls?</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-2">
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <h2 className="text-center text-2xl font-bold">
+            Why Sell on <span className="text-primary">OnlyHulls</span>?
+          </h2>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {BENEFITS.map((b) => (
-              <div key={b.title} className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <b.Icon className="h-5 w-5" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{b.title}</h3>
-                  <p className="mt-1 text-sm text-foreground/60">{b.desc}</p>
+              <div
+                key={b.title}
+                className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all group-hover:bg-primary/20">
+                    <b.Icon className="h-6 w-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{b.title}</h3>
+                    <p className="mt-2 text-sm text-text-secondary">{b.desc}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -161,49 +168,39 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* Comparison */}
-      <section className="border-t border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-2xl font-bold">OnlyHulls vs. Traditional Brokers</h2>
-          <div className="mt-8 overflow-x-auto">
+      {/* Comparison Table */}
+      <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <h2 className="text-center text-2xl font-bold">
+            OnlyHulls vs. Traditional Brokers
+          </h2>
+          <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-2xl border border-border">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-3 pr-8 font-semibold"></th>
-                  <th className="pb-3 pr-8 font-semibold text-primary">
-                    OnlyHulls
-                  </th>
-                  <th className="pb-3 font-semibold text-foreground/60">
-                    Traditional Broker
-                  </th>
+                <tr className="border-b border-border bg-surface">
+                  <th className="px-6 py-4 font-semibold text-text-secondary"></th>
+                  <th className="px-6 py-4 font-semibold text-primary">OnlyHulls</th>
+                  <th className="px-6 py-4 font-semibold text-text-tertiary">Broker</th>
                 </tr>
               </thead>
-              <tbody className="text-foreground/70">
-                <tr className="border-b border-border/50">
-                  <td className="py-3 pr-8 font-medium text-foreground">Commission</td>
-                  <td className="py-3 pr-8 font-semibold text-primary">$0</td>
-                  <td className="py-3">8–10% of sale price</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 pr-8 font-medium text-foreground">Listing fee</td>
-                  <td className="py-3 pr-8 font-semibold text-primary">Free</td>
-                  <td className="py-3">$200–500+</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 pr-8 font-medium text-foreground">Buyer matching</td>
-                  <td className="py-3 pr-8 font-semibold text-primary">AI-powered</td>
-                  <td className="py-3">Manual, limited network</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 pr-8 font-medium text-foreground">Reach</td>
-                  <td className="py-3 pr-8 font-semibold text-primary">Global</td>
-                  <td className="py-3">Local / regional</td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-8 font-medium text-foreground">Time to list</td>
-                  <td className="py-3 pr-8 font-semibold text-primary">Minutes</td>
-                  <td className="py-3">Days to weeks</td>
-                </tr>
+              <tbody>
+                {COMPARISON.map((row, i) => (
+                  <tr key={row.feature} className={`border-b border-border last:border-0 ${i % 2 === 0 ? "bg-surface-elevated" : "bg-surface"}`}>
+                    <td className="px-6 py-4 font-medium">{row.feature}</td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-primary">
+                        <Check className="h-4 w-4" />
+                        {row.us}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 text-text-tertiary">
+                        <X className="h-4 w-4" />
+                        {row.them}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -211,35 +208,30 @@ export default function SellPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <section id="pricing" className="py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
           <SellerPricing />
         </div>
       </section>
 
       {/* CTA */}
-      <section className="border-t border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
-          <h2 className="text-2xl font-bold">Ready to Sell?</h2>
-          <p className="mt-3 text-foreground/60">
+      <section className="border-t border-border bg-surface/30 py-20">
+        <div className="mx-auto max-w-7xl px-5 text-center">
+          <h2 className="text-3xl font-bold">
+            Ready to Show Us Your <span className="text-primary">Hull</span>?
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-text-secondary">
             Create a free account and list your boat in minutes. No credit card
             required.
           </p>
           <Link
             href="/sign-up?role=seller"
-            className="mt-6 inline-block rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+            className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
           >
             List Your Boat — Free
           </Link>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-7xl px-6 text-sm text-foreground/50 lg:px-8">
-          <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
-        </div>
-      </footer>
     </div>
   );
 }

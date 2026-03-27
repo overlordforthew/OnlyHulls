@@ -1,59 +1,42 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const themes = [
-  {
-    name: "Ocean",
-    icon: "🌊",
-    vars: {
-      "--background": "#ffffff",
-      "--foreground": "#0f172a",
-      "--primary": "#0369a1",
-      "--primary-light": "#0ea5e9",
-      "--primary-dark": "#075985",
-      "--accent": "#f59e0b",
-      "--muted": "#f1f5f9",
-      "--border": "#e2e8f0",
-    },
-  },
-  {
-    name: "Sunset",
-    icon: "🌅",
-    vars: {
-      "--background": "#fffbf5",
-      "--foreground": "#1c1917",
-      "--primary": "#ea580c",
-      "--primary-light": "#fb923c",
-      "--primary-dark": "#c2410c",
-      "--accent": "#eab308",
-      "--muted": "#fef3c7",
-      "--border": "#fed7aa",
-    },
-  },
-];
+import { Moon, Sun } from "lucide-react";
 
 export default function ThemeSwitcher() {
-  const [index, setIndex] = useState(0);
+  const [isLight, setIsLight] = useState(false);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const theme = themes[index];
-    Object.entries(theme.vars).forEach(([key, value]) => {
-      root.style.setProperty(key, value);
-    });
-  }, [index]);
+    const saved = localStorage.getItem("oh-theme");
+    if (saved === "light") {
+      setIsLight(true);
+      document.documentElement.classList.add("light");
+    }
+  }, []);
 
-  const next = () => setIndex((i) => (i + 1) % themes.length);
+  function toggle() {
+    const next = !isLight;
+    setIsLight(next);
+    if (next) {
+      document.documentElement.classList.add("light");
+      localStorage.setItem("oh-theme", "light");
+    } else {
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("oh-theme", "dark");
+    }
+  }
 
   return (
     <button
-      onClick={next}
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-foreground/90 px-4 py-3 text-sm font-medium text-background shadow-lg backdrop-blur transition-all hover:scale-105 active:scale-95"
-      title={`Theme: ${themes[index].name} — Click to switch`}
+      onClick={toggle}
+      className="fixed bottom-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-lg backdrop-blur transition-all hover:border-primary hover:scale-105 active:scale-95"
+      title={isLight ? "Switch to dark mode" : "Switch to light mode"}
     >
-      <span className="text-lg">{themes[index].icon}</span>
-      <span className="hidden sm:inline">{themes[index].name}</span>
+      {isLight ? (
+        <Moon className="h-4.5 w-4.5 text-text-secondary" />
+      ) : (
+        <Sun className="h-4.5 w-4.5 text-text-secondary" />
+      )}
     </button>
   );
 }

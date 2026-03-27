@@ -8,6 +8,7 @@ import {
   Sparkles,
   Shield,
   DollarSign,
+  Heart,
 } from "lucide-react";
 import { getFeaturedBoats } from "@/lib/db/queries";
 import { BuyerPricing } from "@/components/PricingCards";
@@ -29,7 +30,7 @@ const STEPS = [
   {
     Icon: Target,
     title: "Get Matched",
-    desc: "Our engine scores every listing against your unique profile using vector similarity and rule-based filters. Best matches float to the top.",
+    desc: "Our engine scores every listing against your profile using AI similarity and smart filters. Best matches float to the top.",
   },
   {
     Icon: Handshake,
@@ -42,7 +43,7 @@ const FEATURES = [
   {
     Icon: Sparkles,
     title: "Learns What You Want",
-    desc: "The AI builds a rich profile from a natural conversation — not a tedious form. It picks up on preferences you might not even realize you have.",
+    desc: "The AI builds a rich profile from a natural conversation — not a tedious form. It picks up on preferences you might not realize you have.",
   },
   {
     Icon: Sailboat,
@@ -75,123 +76,108 @@ export default async function MatchPage() {
   const boats = await getFeaturedBoats(3);
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">⛵</span>
-            <span className="text-xl font-bold text-primary">OnlyHulls</span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/boats"
-              className="text-sm text-foreground/70 hover:text-foreground"
-            >
-              Browse Boats
-            </Link>
-            <Link
-              href="/sign-in"
-              className="text-sm text-foreground/70 hover:text-foreground"
-            >
-              Sign In
-            </Link>
-          </nav>
-        </div>
-      </header>
-
+    <div>
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          {/* Left — text */}
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              AI-Powered Boat Matching
-            </h1>
-            <p className="mt-4 text-lg text-foreground/60">
-              Tell us your dream boat and our AI will match you with the best
-              listings — even when you don&apos;t know exactly what you&apos;re
-              looking for.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/sign-up?role=buyer"
-                className="rounded-full bg-primary px-8 py-3 text-center text-sm font-medium text-white hover:bg-primary-dark"
-              >
-                Get Matched — It&apos;s Free
-              </Link>
-              <Link
-                href="/boats"
-                className="rounded-full border border-border px-8 py-3 text-center text-sm font-medium text-foreground hover:bg-muted"
-              >
-                Browse Boats Instead
-              </Link>
-            </div>
-          </div>
+      <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-success/5 via-transparent to-transparent" />
+          <div className="absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-success/5 blur-3xl" />
+        </div>
 
-          {/* Right — demo panel */}
-          {boats.length > 0 && (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-5">
-              <p className="mb-4 text-xs font-medium uppercase tracking-wider text-foreground/40">
-                Preview — AI Match Results
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Left — text */}
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                <Heart className="h-3 w-3" />
+                AI-Powered
+              </div>
+              <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                Your Perfect{" "}
+                <span className="text-primary">Match</span>{" "}
+                is Waiting
+              </h1>
+              <p className="mt-4 text-lg text-text-secondary">
+                Tell us your dream boat and our AI will match you with the best
+                listings — even when you don&apos;t know exactly what you&apos;re
+                looking for.
               </p>
-              <div className="flex flex-col gap-3">
-                {boats.map((boat, i) => (
-                  <div
-                    key={boat.id}
-                    className="flex items-center gap-3 rounded-lg border border-border/40 bg-background p-3"
-                  >
-                    <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {boat.hero_url ? (
-                        <Image
-                          src={boat.hero_url}
-                          alt={`${boat.year} ${boat.make} ${boat.model}`}
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-foreground/20">
-                          <Sailboat className="h-6 w-6" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {boat.year} {boat.make} {boat.model}
-                      </p>
-                      <p className="text-xs text-foreground/50">
-                        {formatPrice(boat.asking_price, boat.currency)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                      {MATCH_SCORES[i]}% match
-                    </span>
-                  </div>
-                ))}
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/sign-up?role=buyer"
+                  className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                >
+                  Get Matched — It&apos;s Free
+                </Link>
+                <Link
+                  href="/boats"
+                  className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+                >
+                  Browse Boats Instead
+                </Link>
               </div>
             </div>
-          )}
+
+            {/* Right — demo panel */}
+            {boats.length > 0 && (
+              <div className="rounded-2xl border border-border bg-surface p-6">
+                <p className="mb-5 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                  Preview — AI Match Results
+                </p>
+                <div className="flex flex-col gap-3">
+                  {boats.map((boat, i) => (
+                    <div
+                      key={boat.id}
+                      className="flex items-center gap-4 rounded-xl border border-border bg-surface-elevated p-4 transition-all hover:border-primary/30"
+                    >
+                      <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {boat.hero_url ? (
+                          <Image
+                            src={boat.hero_url}
+                            alt={`${boat.year} ${boat.make} ${boat.model}`}
+                            fill
+                            className="object-cover"
+                            sizes="96px"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <Sailboat className="h-6 w-6 text-text-tertiary" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">
+                          {boat.year} {boat.make} {boat.model}
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          {formatPrice(boat.asking_price, boat.currency)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-gradient-to-r from-success to-primary px-3 py-1 text-xs font-bold text-white">
+                        {MATCH_SCORES[i]}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="border-t border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-2xl font-bold">How It Works</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-3">
+      <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <h2 className="text-center text-2xl font-bold">How It Works</h2>
+          <div className="mt-12 grid gap-8 sm:grid-cols-3">
             {STEPS.map((step, i) => (
-              <div key={step.title} className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <step.Icon className="h-5 w-5" strokeWidth={1.5} />
+              <div key={step.title} className="rounded-2xl border border-border bg-surface p-8 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <step.Icon className="h-7 w-7" strokeWidth={1.5} />
                 </div>
-                <div>
-                  <h3 className="font-semibold">
-                    <span className="text-primary">{i + 1}.</span>{" "}
-                    {step.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-foreground/60">{step.desc}</p>
-                </div>
+                <p className="mt-2 text-xs font-semibold text-text-tertiary">Step {i + 1}</p>
+                <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
+                <p className="mt-2 text-sm text-text-secondary">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -199,18 +185,23 @@ export default async function MatchPage() {
       </section>
 
       {/* Features */}
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <h2 className="text-2xl font-bold">Why AI Matching?</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-2">
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <h2 className="text-center text-2xl font-bold">Why AI Matching?</h2>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {FEATURES.map((f) => (
-              <div key={f.title} className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <f.Icon className="h-5 w-5" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{f.title}</h3>
-                  <p className="mt-1 text-sm text-foreground/60">{f.desc}</p>
+              <div
+                key={f.title}
+                className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all group-hover:bg-primary/20">
+                    <f.Icon className="h-6 w-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{f.title}</h3>
+                    <p className="mt-2 text-sm text-text-secondary">{f.desc}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -219,35 +210,30 @@ export default async function MatchPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="border-t border-border bg-muted/30 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <section id="pricing" className="border-y border-border bg-surface/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
           <BuyerPricing />
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
-          <h2 className="text-2xl font-bold">Ready to Find Your Boat?</h2>
-          <p className="mt-3 text-foreground/60">
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-5 text-center">
+          <h2 className="text-3xl font-bold">
+            Ready to Find <span className="text-primary">The One</span>?
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-text-secondary">
             Create a free account, chat with our AI, and see your matches in
             minutes.
           </p>
           <Link
             href="/sign-up?role=buyer"
-            className="mt-6 inline-block rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+            className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
           >
-            Get Started — Free
+            Get Matched — Free
           </Link>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-7xl px-6 text-sm text-foreground/50 lg:px-8">
-          <p>OnlyHulls — AI-Powered Boat Matchmaking</p>
-        </div>
-      </footer>
     </div>
   );
 }

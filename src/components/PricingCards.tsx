@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Flame } from "lucide-react";
 
 const buyerPlans = [
   {
@@ -44,7 +45,7 @@ const buyerPlans = [
 const sellerPlans = [
   {
     tier: "standard",
-    name: "Standard",
+    name: "Creator",
     price: 30,
     features: [
       "AI-assisted listing creation",
@@ -56,11 +57,11 @@ const sellerPlans = [
   },
   {
     tier: "featured",
-    name: "Featured",
+    name: "Featured Creator",
     price: 50,
     popular: true,
     features: [
-      "Everything in Standard",
+      "Everything in Creator",
       "Boosted placement in feed",
       "Video walkthrough AI",
       "Analytics dashboard",
@@ -83,38 +84,41 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`rounded-xl border-2 p-6 ${
-        plan.popular ? "border-primary shadow-lg" : "border-border"
+      className={`relative rounded-2xl border-2 p-8 transition-all ${
+        plan.popular
+          ? "border-accent bg-surface shadow-lg shadow-accent/10"
+          : "border-border bg-surface hover:border-border-bright"
       }`}
     >
       {plan.popular && (
-        <span className="mb-4 inline-block rounded-full bg-primary px-3 py-1 text-xs font-medium text-white">
+        <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white">
+          <Flame className="h-3 w-3" />
           Most Popular
         </span>
       )}
       <h3 className="text-xl font-bold">{plan.name}</h3>
-      <p className="mt-2">
+      <p className="mt-3">
         <span className="text-4xl font-bold">${plan.price}</span>
         {plan.price > 0 && (
-          <span className="text-foreground/60">/month</span>
+          <span className="text-text-secondary">/month</span>
         )}
       </p>
       <ul className="mt-6 space-y-3">
         {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm">
-            <span className="mt-0.5 text-primary">&#10003;</span>
-            {f}
+          <li key={f} className="flex items-start gap-2.5 text-sm">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span className="text-text-secondary">{f}</span>
           </li>
         ))}
       </ul>
       <button
         onClick={() => onSelect(plan.tier)}
         disabled={loading}
-        className={`mt-8 w-full rounded-full py-2.5 text-sm font-medium ${
+        className={`mt-8 w-full rounded-full py-3 text-sm font-semibold transition-all disabled:opacity-50 ${
           plan.popular
-            ? "bg-primary text-white hover:bg-primary-dark"
-            : "border border-border hover:bg-muted"
-        } disabled:opacity-50`}
+            ? "bg-accent text-white hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+            : "border border-border text-foreground hover:border-primary hover:text-primary"
+        }`}
       >
         {plan.price === 0 ? "Get Started Free" : "Subscribe"}
       </button>
@@ -152,11 +156,11 @@ export function BuyerPricing() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold">Buyer Plans</h2>
-      <p className="mt-2 text-foreground/60">
+      <h2 className="text-center text-2xl font-bold">Buyer Plans</h2>
+      <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
         Browse for free, or upgrade for unlimited AI matching.
       </p>
-      <div className="mt-8 grid gap-6 sm:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
         {buyerPlans.map((plan) => (
           <PlanCard
             key={plan.tier}
@@ -175,11 +179,11 @@ export function SellerPricing() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold">Seller Plans</h2>
-      <p className="mt-2 text-foreground/60">
+      <h2 className="text-center text-2xl font-bold">Seller Plans</h2>
+      <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
         No commissions, no hidden fees — just flat monthly pricing.
       </p>
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 sm:max-w-2xl">
+      <div className="mx-auto mt-10 grid max-w-2xl gap-6 sm:grid-cols-2">
         {sellerPlans.map((plan) => (
           <PlanCard
             key={plan.tier}

@@ -2,6 +2,7 @@ import { query, queryOne } from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { MapPin, Sparkles, Camera, User, ArrowLeft } from "lucide-react";
 
 interface BoatDetail {
   id: string;
@@ -75,24 +76,10 @@ export default async function BoatDetailPage({
 
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
+  const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">⛵</span>
-            <span className="text-xl font-bold text-primary">OnlyHulls</span>
-          </Link>
-          <Link
-            href="/boats"
-            className="text-sm text-foreground/70 hover:text-foreground"
-          >
-            Back to Browse
-          </Link>
-        </div>
-      </header>
-
+    <div className="pb-16">
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
@@ -118,81 +105,124 @@ export default async function BoatDetailPage({
         }}
       />
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Hero */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">
-              {boat.year} {boat.make} {boat.model}
-            </h1>
-            {boat.location_text && (
-              <p className="mt-1 text-foreground/60">{boat.location_text}</p>
+      {/* Back link */}
+      <div className="border-b border-border bg-surface/50">
+        <div className="mx-auto max-w-6xl px-5 py-3">
+          <Link
+            href="/boats"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Browse
+          </Link>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-5 pt-6">
+        {/* Gallery */}
+        {media.length > 0 ? (
+          <div className="space-y-2">
+            {/* Hero image */}
+            <div className="relative overflow-hidden rounded-xl">
+              <img
+                src={media[0].url}
+                alt={media[0].caption || `${boat.make} ${boat.model}`}
+                className="aspect-[16/9] w-full object-cover"
+              />
+              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                <Camera className="h-3.5 w-3.5" />
+                {media.length} photo{media.length !== 1 ? "s" : ""}
+              </div>
+            </div>
+            {/* Thumbnail strip */}
+            {media.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {media.slice(1, 5).map((m) => (
+                  <img
+                    key={m.id}
+                    src={m.url}
+                    alt={m.caption || `${boat.make} ${boat.model}`}
+                    className="h-24 w-36 shrink-0 rounded-lg object-cover sm:h-28 sm:w-44"
+                  />
+                ))}
+                {media.length > 5 && (
+                  <div className="flex h-24 w-36 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-sm font-medium text-text-secondary sm:h-28 sm:w-44">
+                    +{media.length - 5} more
+                  </div>
+                )}
+              </div>
             )}
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold text-primary">
-              ${boat.asking_price.toLocaleString()}
-            </p>
-            <p className="text-sm text-foreground/60">{boat.currency}</p>
+        ) : (
+          <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-elevated">
+            <span className="text-6xl opacity-20">⛵</span>
           </div>
-        </div>
+        )}
 
         {boat.is_sample && (
-          <div className="mt-4 rounded-lg bg-accent/10 px-4 py-2 text-sm text-accent">
+          <div className="mt-4 rounded-lg bg-accent/10 border border-accent/20 px-4 py-2 text-sm text-accent">
             This is a sample listing for demonstration purposes.
           </div>
         )}
 
-        {/* Photos */}
-        {media.length > 0 ? (
-          <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            {media.map((m) => (
-              <img
-                key={m.id}
-                src={m.url}
-                alt={m.caption || `${boat.make} ${boat.model}`}
-                className="rounded-lg object-cover"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-6 flex aspect-video items-center justify-center rounded-lg bg-muted text-6xl text-foreground/20">
-            ⛵
-          </div>
-        )}
+        {/* Content grid */}
+        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          {/* Main content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Title + Price */}
+            <div>
+              <h1 className="text-3xl font-bold">
+                {boat.year} {boat.make} {boat.model}
+              </h1>
+              {boat.location_text && (
+                <p className="mt-2 flex items-center gap-1.5 text-text-secondary">
+                  <MapPin className="h-4 w-4" />
+                  {boat.location_text}
+                </p>
+              )}
+              <p className="mt-3 text-3xl font-bold">
+                ${boat.asking_price.toLocaleString()}
+                <span className="ml-2 text-sm font-normal text-text-secondary">{boat.currency}</span>
+              </p>
+            </div>
 
-        <div className="mt-8 grid gap-8 md:grid-cols-3">
-          {/* Specs */}
-          <div className="md:col-span-2">
+            {/* AI Summary */}
             {boat.ai_summary && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold">About This Boat</h2>
-                <p className="mt-3 whitespace-pre-wrap text-foreground/70">
+              <div className="rounded-xl border-l-4 border-primary bg-surface p-6">
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                  <Sparkles className="h-4 w-4" />
+                  AI Analysis
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-foreground/80 leading-relaxed">
                   {boat.ai_summary}
                 </p>
               </div>
             )}
 
-            <h2 className="text-xl font-semibold">Specifications</h2>
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-              {specs.loa ? <Spec label="LOA" value={`${specs.loa}ft`} /> : null}
-              {specs.beam ? <Spec label="Beam" value={`${specs.beam}ft`} /> : null}
-              {specs.draft ? <Spec label="Draft" value={`${specs.draft}ft`} /> : null}
-              {specs.rig_type ? <Spec label="Rig Type" value={String(specs.rig_type)} /> : null}
-              {specs.hull_material ? <Spec label="Hull" value={String(specs.hull_material)} /> : null}
-              {specs.engine ? <Spec label="Engine" value={String(specs.engine)} /> : null}
-              {specs.berths ? <Spec label="Berths" value={String(specs.berths)} /> : null}
-              {specs.heads ? <Spec label="Heads" value={String(specs.heads)} /> : null}
+            {/* Specifications */}
+            <div>
+              <h2 className="text-xl font-bold">Specifications</h2>
+              <div className="mt-4 grid grid-cols-2 gap-1">
+                {specs.loa ? <SpecRow label="LOA" value={`${specs.loa}ft`} /> : null}
+                {specs.beam ? <SpecRow label="Beam" value={`${specs.beam}ft`} /> : null}
+                {specs.draft ? <SpecRow label="Draft" value={`${specs.draft}ft`} /> : null}
+                {specs.rig_type ? <SpecRow label="Rig Type" value={String(specs.rig_type)} /> : null}
+                {specs.hull_material ? <SpecRow label="Hull" value={String(specs.hull_material)} /> : null}
+                {specs.engine ? <SpecRow label="Engine" value={String(specs.engine)} /> : null}
+                {specs.berths ? <SpecRow label="Berths" value={String(specs.berths)} /> : null}
+                {specs.heads ? <SpecRow label="Heads" value={String(specs.heads)} /> : null}
+              </div>
             </div>
 
+            {/* Character Tags */}
             {boat.character_tags.length > 0 && (
-              <div className="mt-6">
-                <h3 className="font-medium">Character</h3>
-                <div className="mt-2 flex flex-wrap gap-2">
+              <div>
+                <h3 className="font-semibold">Character</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
                   {boat.character_tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-muted px-3 py-1 text-sm"
+                      className="rounded-full bg-muted px-3 py-1.5 text-sm text-primary"
                     >
                       {tag}
                     </span>
@@ -203,25 +233,41 @@ export default async function BoatDetailPage({
           </div>
 
           {/* Sidebar */}
-          <div>
-            <div className="rounded-xl border border-border p-6">
-              <p className="text-2xl font-bold text-primary">
+          <div className="space-y-6">
+            {/* Seller Card (OnlyFans creator-style) */}
+            <div className="rounded-xl border border-border bg-surface p-6">
+              {/* Seller avatar + info */}
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+                  {boat.seller_name ? sellerInitial : <User className="h-5 w-5" />}
+                </div>
+                <div>
+                  <p className="font-semibold">{boat.seller_name || "Seller"}</p>
+                  <p className="text-xs text-text-secondary">Boat Owner</p>
+                </div>
+              </div>
+
+              <div className="my-5 h-px bg-border" />
+
+              <p className="text-2xl font-bold">
                 ${boat.asking_price.toLocaleString()}
+                <span className="ml-1 text-sm font-normal text-text-secondary">{boat.currency}</span>
               </p>
-              <p className="text-sm text-foreground/60">{boat.currency}</p>
+
               {boat.condition_score && (
-                <p className="mt-3 text-sm">
-                  Condition: {boat.condition_score}/10
+                <p className="mt-2 text-sm text-text-secondary">
+                  Condition: <span className="font-semibold text-foreground">{boat.condition_score}/10</span>
                 </p>
               )}
+
               <Link
                 href="/sign-up?role=buyer"
-                className="mt-6 block rounded-full bg-primary py-3 text-center text-sm font-medium text-white hover:bg-primary-dark"
+                className="mt-6 block rounded-full bg-accent py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               >
-                Sign Up to Connect
+                Make an Offer
               </Link>
-              <p className="mt-3 text-center text-xs text-foreground/40">
-                Free to browse. Connect with Plus or Pro plan.
+              <p className="mt-3 text-center text-xs text-text-tertiary">
+                Free to browse. Sign up to connect with sellers.
               </p>
             </div>
           </div>
@@ -231,11 +277,11 @@ export default async function BoatDetailPage({
   );
 }
 
-function Spec({ label, value }: { label: string; value: string }) {
+function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between border-b border-border pb-2">
-      <span className="text-foreground/60">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex justify-between rounded-lg px-3 py-2.5 odd:bg-surface even:bg-transparent">
+      <span className="text-sm text-text-secondary">{label}</span>
+      <span className="text-sm font-medium">{value}</span>
     </div>
   );
 }
