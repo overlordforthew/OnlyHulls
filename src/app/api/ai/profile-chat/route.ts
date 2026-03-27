@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { BUYER_PROFILING_SYSTEM_PROMPT, extractProfileFromResponse } from "@/lib/ai/profiling";
 import { NextResponse } from "next/server";
-import { spawn } from "child_process";
+
+const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://host.docker.internal:3099";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Build prompt for Claude CLI
+  // Build prompt for Claude
   const conversationText = messages
     .map((m: { role: string; content: string }) =>
       m.role === "user" ? `Human: ${m.content}` : `Assistant: ${m.content}`
@@ -53,34 +54,72 @@ export async function POST(req: Request) {
 
   const fullPrompt = `${BUYER_PROFILING_SYSTEM_PROMPT}\n\nHere is the conversation so far:\n\n${conversationText}\n\nRespond as the assistant. Continue the buyer profiling conversation naturally.`;
 
-  // Stream response from Claude CLI
+  // Call Claude proxy running on the host
+  let proxyRes: Response;
+  try {
+    proxyRes = await fetch(`${CLAUDE_PROXY_URL}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: fullPrompt }),
+    });
+  } catch (err) {
+    console.error("Claude proxy unreachable:", err);
+    return NextResponse.json(
+      { error: "AI service unavailable. Please try again later." },
+      { status: 503 }
+    );
+  }
+
+  if (!proxyRes.ok || !proxyRes.body) {
+    return NextResponse.json(
+      { error: "AI service error" },
+      { status: 502 }
+    );
+  }
+
+  // Stream the proxy response through to the client
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
   let fullResponse = "";
+  const reader = proxyRes.body.getReader();
 
   const readableStream = new ReadableStream({
-    start(controller) {
-      const proc = spawn("claude", ["-p", "--output-format", "text", fullPrompt], {
-        env: { ...process.env, HOME: "/root" },
-        stdio: ["pipe", "pipe", "pipe"],
-      });
+    async start(controller) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      proc.stdout.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
-        fullResponse += text;
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
-        );
-      });
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
 
-      proc.stderr.on("data", (chunk: Buffer) => {
-        console.error("Claude CLI stderr:", chunk.toString());
-      });
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
 
-      proc.on("close", async () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.text) {
+                fullResponse += parsed.text;
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ text: parsed.text })}\n\n`)
+                );
+              }
+              if (parsed.error) {
+                console.error("Claude proxy error:", parsed.error);
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ text: "Sorry, I'm having trouble right now. Please try again." })}\n\n`)
+                );
+              }
+            } catch {
+              // ignore parse errors for incomplete chunks
+            }
+          }
+        }
+
         // Check if profile is complete
         const profile = extractProfileFromResponse(fullResponse);
         if (profile) {
-          // Save buyer profile (skip embedding for now — use rule-based matching)
           const existing = await queryOne<{ id: string }>(
             "SELECT id FROM buyer_profiles WHERE user_id = $1",
             [user.id]
@@ -147,16 +186,14 @@ export async function POST(req: Request) {
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
-      });
-
-      proc.on("error", (err) => {
-        console.error("Claude CLI error:", err);
+      } catch (err) {
+        console.error("Stream processing error:", err);
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ text: "Sorry, I'm having trouble connecting. Please try again." })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ text: "\n\nSorry, something went wrong. Please try again." })}\n\n`)
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
-      });
+      }
     },
   });
 

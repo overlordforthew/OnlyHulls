@@ -24,19 +24,20 @@ export default function ProfileChatPage() {
   // Start conversation automatically
   useEffect(() => {
     if (messages.length === 0) {
-      sendMessage([
-        {
-          role: "user",
-          content:
-            "Hi! I'm looking for a boat and would love help figuring out what's right for me.",
-        },
-      ]);
+      const initialMsg: Message = {
+        role: "user",
+        content: "Hi! I'm looking for a boat and would love help figuring out what's right for me.",
+      };
+      sendMessage([initialMsg]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function sendMessage(messagesToSend: Message[]) {
     setStreaming(true);
+
+    // Set messages to include all sent messages + empty assistant placeholder
+    setMessages([...messagesToSend, { role: "assistant", content: "" }]);
 
     const res = await fetch("/api/ai/profile-chat", {
       method: "POST",
@@ -55,8 +56,6 @@ export default function ProfileChatPage() {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let assistantMessage = "";
-
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     while (true) {
       const { done, value } = await reader.read();
@@ -103,8 +102,7 @@ export default function ProfileChatPage() {
     if (!input.trim() || streaming) return;
 
     const userMessage: Message = { role: "user", content: input.trim() };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const updatedMessages = [...messages.filter(m => m.content), userMessage];
     setInput("");
 
     await sendMessage(updatedMessages);
@@ -118,17 +116,17 @@ export default function ProfileChatPage() {
   }
 
   return (
-    <div className="mx-auto flex h-screen max-w-3xl flex-col">
+    <div className="mx-auto flex min-h-[70vh] max-w-3xl flex-col">
       <div className="border-b border-border px-4 py-4">
         <h1 className="text-xl font-bold">Build Your Buyer Profile</h1>
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-text-secondary">
           Chat with our AI to find your perfect boat match
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 px-4 py-6">
         <div className="space-y-4">
-          {messages.slice(1).map((msg, i) => (
+          {messages.map((msg, i) => (
             <div
               key={i}
               className={`flex ${
