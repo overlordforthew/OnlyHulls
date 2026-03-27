@@ -264,10 +264,10 @@ export default async function BoatDetailPage({
                 href="/sign-up?role=buyer"
                 className="mt-6 block rounded-full bg-accent py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               >
-                Make an Offer
+                Contact Owner
               </Link>
               <p className="mt-3 text-center text-xs text-text-tertiary">
-                Free to browse. Sign up to connect with sellers.
+                Free to message sellers.
               </p>
             </div>
           </div>
