@@ -38,24 +38,27 @@ function SignInForm() {
     router.refresh();
   }
 
+  const inputClass =
+    "mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-foreground placeholder:text-text-tertiary shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
+
   return (
-    <div className="w-full max-w-md space-y-6 rounded-xl bg-white p-8 shadow-lg">
+    <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <p className="mt-1 text-sm text-text-secondary">
           Sign in to OnlyHulls
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-text-secondary">
             Email
           </label>
           <input
@@ -64,12 +67,12 @@ function SignInForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
             Password
           </label>
           <input
@@ -78,22 +81,22 @@ function SignInForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClass}
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="w-full rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-text-secondary">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/sign-up" className="font-medium text-primary hover:text-primary-light">
           Sign up
         </Link>
       </p>
@@ -103,7 +106,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-[80vh] items-center justify-center px-5">
       <Suspense>
         <SignInForm />
       </Suspense>
