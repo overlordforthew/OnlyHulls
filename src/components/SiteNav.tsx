@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Waves, Menu, X } from "lucide-react";
+import { Waves, Menu, X, User, LogOut } from "lucide-react";
 
 export default function SiteNav() {
+  const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const isLoggedIn = status === "authenticated" && !!session?.user;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -14,11 +19,18 @@ export default function SiteNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    if (!profileOpen) return;
+    const close = () => setProfileOpen(false);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [profileOpen]);
 
   return (
     <>
@@ -41,40 +53,80 @@ export default function SiteNav() {
 
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-8 md:flex">
-            <Link
-              href="/boats"
-              className="text-sm font-medium text-text-secondary transition-colors hover:text-primary"
-            >
+            <Link href="/boats" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
               Browse
             </Link>
-            <Link
-              href="/match"
-              className="text-sm font-medium text-text-secondary transition-colors hover:text-primary"
-            >
+            <Link href="/match" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
               Match
             </Link>
-            <Link
-              href="/sell"
-              className="text-sm font-medium text-text-secondary transition-colors hover:text-primary"
-            >
+            <Link href="/sell" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
               Sell
             </Link>
           </nav>
 
           {/* Desktop Actions */}
           <div className="hidden items-center gap-4 md:flex">
-            <Link
-              href="/sign-in"
-              className="text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/sign-up"
-              className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-            >
-              Get Started
-            </Link>
+            {isLoggedIn ? (
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
+                  className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:border-primary"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {session.user.name?.[0]?.toUpperCase() || <User className="h-3.5 w-3.5" />}
+                  </div>
+                  <span className="max-w-[100px] truncate">{session.user.name || "Account"}</span>
+                </button>
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface p-2 shadow-xl">
+                    <Link
+                      href="/matches"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      My Matches
+                    </Link>
+                    <Link
+                      href="/listings/new"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      List a Boat
+                    </Link>
+                    <Link
+                      href="/onboarding/profile"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      AI Profile
+                    </Link>
+                    <div className="my-1 h-px bg-border" />
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-muted"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/sign-in"
+                  className="text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Hamburger */}
@@ -92,48 +144,47 @@ export default function SiteNav() {
       {menuOpen && (
         <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl md:hidden">
           <nav className="flex h-full flex-col items-center justify-center gap-8">
-            <Link
-              href="/boats"
-              className="text-2xl font-bold text-foreground transition-colors hover:text-primary"
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link href="/boats" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
               Browse Boats
             </Link>
-            <Link
-              href="/match"
-              className="text-2xl font-bold text-foreground transition-colors hover:text-primary"
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link href="/match" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
               AI Match
             </Link>
-            <Link
-              href="/sell"
-              className="text-2xl font-bold text-foreground transition-colors hover:text-primary"
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link href="/sell" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
               Sell Your Boat
             </Link>
             <div className="mt-4 flex flex-col items-center gap-4">
-              <Link
-                href="/sign-in"
-                className="text-lg text-text-secondary transition-colors hover:text-foreground"
-                onClick={() => setMenuOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/sign-up"
-                className="rounded-full bg-accent px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-accent-light"
-                onClick={() => setMenuOpen(false)}
-              >
-                Get Started
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link href="/matches" className="text-lg text-primary transition-colors hover:text-primary-light" onClick={() => setMenuOpen(false)}>
+                    My Matches
+                  </Link>
+                  <Link href="/listings/new" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
+                    List a Boat
+                  </Link>
+                  <button
+                    onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }}
+                    className="text-lg text-red-400 transition-colors hover:text-red-300"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/sign-in" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
+                    Sign In
+                  </Link>
+                  <Link href="/sign-up" className="rounded-full bg-accent px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-accent-light" onClick={() => setMenuOpen(false)}>
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
       )}
 
-      {/* Spacer to prevent content from hiding behind fixed nav */}
+      {/* Spacer */}
       <div className="h-[72px]" />
     </>
   );

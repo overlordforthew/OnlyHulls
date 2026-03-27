@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import Providers from "@/components/Providers";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
@@ -43,12 +44,14 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>
-          <SiteNav />
-          <main className="min-h-screen">{children}</main>
-          <SiteFooter />
-          <ThemeSwitcher />
-        </NextIntlClientProvider>
+        <Providers>
+          <NextIntlClientProvider messages={messages}>
+            <SiteNav />
+            <main className="min-h-screen">{children}</main>
+            <SiteFooter />
+            <ThemeSwitcher />
+          </NextIntlClientProvider>
+        </Providers>
       </body>
     </html>
   );
