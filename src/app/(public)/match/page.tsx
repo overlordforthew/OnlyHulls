@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { getFeaturedBoats } from "@/lib/db/queries";
 import { BuyerPricing } from "@/components/PricingCards";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,11 @@ function formatPrice(price: number, currency: string): string {
 }
 
 export default async function MatchPage() {
-  const boats = await getFeaturedBoats(3);
+  const [boats, session] = await Promise.all([
+    getFeaturedBoats(3),
+    auth(),
+  ]);
+  const matchUrl = session?.user ? "/onboarding/profile" : "/sign-up?role=buyer";
 
   return (
     <div>
@@ -104,7 +109,7 @@ export default async function MatchPage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/sign-up?role=buyer"
+                  href={matchUrl}
                   className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
                 >
                   Get Matched — It&apos;s Free
@@ -227,7 +232,7 @@ export default async function MatchPage() {
             minutes.
           </p>
           <Link
-            href="/sign-up?role=buyer"
+            href={matchUrl}
             className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
           >
             Get Matched — Free

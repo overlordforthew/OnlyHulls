@@ -1,4 +1,5 @@
 import { query, queryOne } from "@/lib/db";
+import { auth } from "@/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -71,12 +72,13 @@ export default async function BoatDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const boat = await getBoat(slug);
+  const [boat, session] = await Promise.all([getBoat(slug), auth()]);
   if (!boat) notFound();
 
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
+  const contactUrl = session?.user ? "/onboarding/profile" : "/sign-up?role=buyer";
 
   return (
     <div className="pb-16">
@@ -261,7 +263,7 @@ export default async function BoatDetailPage({
               )}
 
               <Link
-                href="/sign-up?role=buyer"
+                href={contactUrl}
                 className="mt-6 block rounded-full bg-accent py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               >
                 Contact Owner
