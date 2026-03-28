@@ -2,6 +2,7 @@ export type SubscriptionTier =
   | "free"
   | "plus"
   | "pro"
+  | "free-seller"
   | "standard"
   | "featured"
   | "broker";
@@ -16,13 +17,18 @@ export interface PlanConfig {
   stripePriceId: string;
   features: string[];
   limits: {
-    savesPerDay: number;
-    connectsPerMonth: number;
+    savesPerDay: number; // -1 = unlimited
+    connectsPerMonth: number; // -1 = unlimited
     photosPerListing: number;
+    activeListings: number; // -1 = unlimited
   };
+  emailAlerts: "none" | "weekly" | "instant";
+  emailBlast: boolean; // featured in buyer email blasts
+  externalSearch: boolean; // search other sites for boats
 }
 
 export const PLANS: Record<string, PlanConfig> = {
+  // ─── Buyer Plans ───
   free: {
     tier: "free",
     name: "Free",
@@ -35,7 +41,10 @@ export const PLANS: Record<string, PlanConfig> = {
       "Basic search filters",
       "View match scores",
     ],
-    limits: { savesPerDay: 10, connectsPerMonth: 0, photosPerListing: 0 },
+    limits: { savesPerDay: 10, connectsPerMonth: 0, photosPerListing: 0, activeListings: 0 },
+    emailAlerts: "none",
+    emailBlast: false,
+    externalSearch: false,
   },
   plus: {
     tier: "plus",
@@ -49,8 +58,12 @@ export const PLANS: Record<string, PlanConfig> = {
       "Match score breakdowns",
       "Saved searches & alerts",
       "Dreamboard",
+      "Weekly new listing digest",
     ],
-    limits: { savesPerDay: -1, connectsPerMonth: 3, photosPerListing: 0 },
+    limits: { savesPerDay: -1, connectsPerMonth: 3, photosPerListing: 0, activeListings: 0 },
+    emailAlerts: "weekly",
+    emailBlast: false,
+    externalSearch: false,
   },
   pro: {
     tier: "pro",
@@ -61,43 +74,75 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       "Everything in Plus",
       "Priority in seller notifications",
-      "Advanced match filters",
-      "External boat aggregation",
       "Direct messaging",
+      "Search boats on other sites",
+      "Instant match alerts",
     ],
-    limits: { savesPerDay: -1, connectsPerMonth: 10, photosPerListing: 0 },
+    limits: { savesPerDay: -1, connectsPerMonth: 10, photosPerListing: 0, activeListings: 0 },
+    emailAlerts: "instant",
+    emailBlast: false,
+    externalSearch: true,
+  },
+
+  // ─── Seller Plans ───
+  "free-seller": {
+    tier: "free-seller",
+    name: "Free",
+    price: 0,
+    role: "seller",
+    stripePriceId: "",
+    features: [
+      "1 active listing",
+      "Manual text-based entry",
+      "Up to 10 photos",
+      "Standard visibility",
+      "Match notifications",
+    ],
+    limits: { savesPerDay: 0, connectsPerMonth: 0, photosPerListing: 10, activeListings: 1 },
+    emailAlerts: "none",
+    emailBlast: false,
+    externalSearch: false,
   },
   standard: {
     tier: "standard",
-    name: "Standard",
+    name: "Creator",
     price: 30,
     role: "seller",
     stripePriceId: process.env.STRIPE_PRICE_SELLER_STANDARD || "",
     features: [
+      "Unlimited active listings",
       "AI-assisted listing creation",
-      "Standard visibility",
-      "Up to 20 photos",
+      "Dynamic photo uploads",
+      "Up to 30 photos per listing",
       "Match notifications",
-      "Email introductions",
     ],
-    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 20 },
+    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 30, activeListings: -1 },
+    emailAlerts: "none",
+    emailBlast: false,
+    externalSearch: false,
   },
   featured: {
     tier: "featured",
-    name: "Featured",
+    name: "Featured Creator",
     price: 50,
     role: "seller",
     stripePriceId: process.env.STRIPE_PRICE_SELLER_FEATURED || "",
     features: [
-      "Everything in Standard",
+      "Everything in Creator",
+      "Video upload + AI analysis",
       "Boosted placement in feed",
-      "Video walkthrough AI",
+      "Featured in buyer email blasts",
       "Analytics dashboard",
-      "Up to 50 photos",
+      "Up to 50 photos per listing",
       "Priority matching",
     ],
-    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 50 },
+    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 50, activeListings: -1 },
+    emailAlerts: "none",
+    emailBlast: true,
+    externalSearch: false,
   },
+
+  // ─── Broker ───
   broker: {
     tier: "broker",
     name: "Broker",
@@ -109,14 +154,16 @@ export const PLANS: Record<string, PlanConfig> = {
       "Specialty & geographic matching",
       "Qualified lead notifications",
       "Direct messaging with clients",
-      "Ratings & review system",
       "Analytics on lead volume",
     ],
-    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 0 },
+    limits: { savesPerDay: 0, connectsPerMonth: -1, photosPerListing: 50, activeListings: -1 },
+    emailAlerts: "none",
+    emailBlast: false,
+    externalSearch: false,
   },
 };
 
-export function getPlanByTier(tier: SubscriptionTier): PlanConfig {
+export function getPlanByTier(tier: SubscriptionTier | string): PlanConfig {
   return PLANS[tier] || PLANS.free;
 }
 
@@ -125,5 +172,5 @@ export function getBuyerPlans(): PlanConfig[] {
 }
 
 export function getSellerPlans(): PlanConfig[] {
-  return [PLANS.standard, PLANS.featured];
+  return [PLANS["free-seller"], PLANS.standard, PLANS.featured];
 }
