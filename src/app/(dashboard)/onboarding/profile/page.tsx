@@ -243,7 +243,7 @@ export default function ProfileQuestionnaire() {
                 </button>
               ))}
             </div>
-            {boatType && boatType !== "powerboat" && boatType !== "no-preference" && (
+            {boatType === "monohull" && (
               <div>
                 <p className="mb-2 text-sm font-medium text-text-secondary">Rig preference</p>
                 <div className="flex flex-wrap gap-2">
