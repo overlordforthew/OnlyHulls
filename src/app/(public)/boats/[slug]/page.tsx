@@ -1,6 +1,6 @@
 import { query, queryOne } from "@/lib/db";
-import { auth } from "@/auth";
 import Link from "next/link";
+import { ContactOwnerCTA } from "@/components/MatchCTA";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Sparkles, Camera, User, ArrowLeft } from "lucide-react";
@@ -72,13 +72,12 @@ export default async function BoatDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [boat, session] = await Promise.all([getBoat(slug), auth()]);
+  const boat = await getBoat(slug);
   if (!boat) notFound();
 
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
-  const contactUrl = session?.user ? "/onboarding/profile" : "/sign-up?role=buyer";
 
   return (
     <div className="pb-16">
@@ -262,12 +261,9 @@ export default async function BoatDetailPage({
                 </p>
               )}
 
-              <Link
-                href={contactUrl}
+              <ContactOwnerCTA
                 className="mt-6 block rounded-full bg-accent py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-              >
-                Contact Owner
-              </Link>
+              />
               <p className="mt-3 text-center text-xs text-text-tertiary">
                 Free to message sellers.
               </p>

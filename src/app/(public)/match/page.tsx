@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { getFeaturedBoats } from "@/lib/db/queries";
 import { BuyerPricing } from "@/components/PricingCards";
-import { auth } from "@/auth";
+import { MatchCTAPrimary, MatchCTASecondary } from "@/components/MatchCTA";
 
 export const dynamic = "force-dynamic";
 
@@ -74,11 +74,7 @@ function formatPrice(price: number, currency: string): string {
 }
 
 export default async function MatchPage() {
-  const [boats, session] = await Promise.all([
-    getFeaturedBoats(3),
-    auth(),
-  ]);
-  const matchUrl = session?.user ? "/onboarding/profile" : "/sign-up?role=buyer";
+  const boats = await getFeaturedBoats(3);
 
   return (
     <div>
@@ -108,12 +104,9 @@ export default async function MatchPage() {
                 looking for.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href={matchUrl}
+                <MatchCTAPrimary
                   className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-                >
-                  Get Matched — It&apos;s Free
-                </Link>
+                />
                 <Link
                   href="/boats"
                   className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
@@ -231,12 +224,9 @@ export default async function MatchPage() {
             Create a free account, chat with our AI, and see your matches in
             minutes.
           </p>
-          <Link
-            href={matchUrl}
+          <MatchCTASecondary
             className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-          >
-            Get Matched — Free
-          </Link>
+          />
         </div>
       </section>
     </div>
