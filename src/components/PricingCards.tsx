@@ -44,28 +44,41 @@ const buyerPlans = [
 
 const sellerPlans = [
   {
+    tier: "free-seller",
+    name: "Free",
+    price: 0,
+    features: [
+      "1 active listing",
+      "Manual text-based entry",
+      "Up to 10 photos",
+      "Standard visibility",
+      "Match notifications",
+    ],
+  },
+  {
     tier: "standard",
     name: "Creator",
     price: 30,
+    popular: true,
     features: [
+      "Unlimited active listings",
       "AI-assisted listing creation",
-      "Standard visibility",
-      "Up to 20 photos",
+      "Dynamic photo uploads",
+      "Up to 30 photos per listing",
       "Match notifications",
-      "Email introductions",
     ],
   },
   {
     tier: "featured",
     name: "Featured Creator",
     price: 50,
-    popular: true,
     features: [
       "Everything in Creator",
+      "Video upload + AI analysis",
       "Boosted placement in feed",
-      "Video walkthrough AI",
+      "Featured in buyer email blasts",
       "Analytics dashboard",
-      "Up to 50 photos",
+      "Up to 50 photos per listing",
       "Priority matching",
     ],
   },
@@ -183,7 +196,7 @@ export function SellerPricing() {
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
         No commissions, no hidden fees — just flat monthly pricing.
       </p>
-      <div className="mx-auto mt-10 grid max-w-2xl gap-6 sm:grid-cols-2">
+      <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
         {sellerPlans.map((plan) => (
           <PlanCard
             key={plan.tier}

@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { SellerPricing } from "@/components/PricingCards";
+import { ListBoatCTA } from "@/components/MatchCTA";
 
 export const metadata = {
   title: "Sell Your Boat",
@@ -99,12 +100,9 @@ export default function SellPage() {
               percentage of your sale.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/sign-up?role=seller"
+              <ListBoatCTA
                 className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-              >
-                List Your Boat — Free
-              </Link>
+              />
               <a
                 href="#pricing"
                 className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
@@ -224,12 +222,9 @@ export default function SellPage() {
             Create a free account and list your boat in minutes. No credit card
             required.
           </p>
-          <Link
-            href="/sign-up?role=seller"
+          <ListBoatCTA
             className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-          >
-            List Your Boat — Free
-          </Link>
+          />
         </div>
       </section>
     </div>

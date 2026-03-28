@@ -17,6 +17,7 @@ import {
   Flame,
 } from "lucide-react";
 import BoatCard from "@/components/BoatCard";
+import { ListBoatCTA } from "@/components/MatchCTA";
 import { getBoatCount, getFeaturedBoats } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
@@ -267,12 +268,9 @@ export default async function Home() {
               List your boat for free. Our AI connects you with qualified buyers
               worldwide. No commission, no brokers, no middlemen.
             </p>
-            <Link
-              href="/sign-up?role=seller"
+            <ListBoatCTA
               className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-            >
-              List Your Boat — Free
-            </Link>
+            />
             <p className="mt-3 text-xs text-text-tertiary">
               No credit card required. List in under 5 minutes.
             </p>

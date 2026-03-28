@@ -2,34 +2,38 @@
 
 import { useRouter } from "next/navigation";
 
-function useMatchNav() {
-  const router = useRouter();
-  return () => router.push("/onboarding/profile");
-}
-
 export function MatchCTAPrimary({ className = "" }: { className?: string }) {
-  const go = useMatchNav();
+  const router = useRouter();
   return (
-    <button onClick={go} className={className}>
+    <button onClick={() => router.push("/onboarding/profile")} className={className}>
       Get Matched — It&apos;s Free
     </button>
   );
 }
 
 export function MatchCTASecondary({ className = "" }: { className?: string }) {
-  const go = useMatchNav();
+  const router = useRouter();
   return (
-    <button onClick={go} className={className}>
+    <button onClick={() => router.push("/onboarding/profile")} className={className}>
       Get Matched — Free
     </button>
   );
 }
 
 export function ContactOwnerCTA({ className = "" }: { className?: string }) {
-  const go = useMatchNav();
+  const router = useRouter();
   return (
-    <button onClick={go} className={className}>
+    <button onClick={() => router.push("/onboarding/profile")} className={className}>
       Contact Owner
+    </button>
+  );
+}
+
+export function ListBoatCTA({ className = "", children = "List Your Boat — Free" }: { className?: string; children?: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <button onClick={() => router.push("/listings/new")} className={className}>
+      {children}
     </button>
   );
 }
