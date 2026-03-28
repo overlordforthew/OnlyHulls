@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { generateEmbedding, boatToEmbeddingText } from "@/lib/ai/embeddings";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -151,7 +152,9 @@ export async function POST(req: Request) {
   }
 
   // Generate embedding (async, don't block response)
-  generateBoatEmbedding(boat.id, data).catch(console.error);
+  generateBoatEmbedding(boat.id, data).catch((err) =>
+    logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
+  );
 
   return NextResponse.json({ id: boat.id, slug });
 }
@@ -197,6 +200,6 @@ async function generateBoatEmbedding(
       },
     ]);
   } catch (err) {
-    console.error("Meilisearch indexing failed:", err);
+    logger.error({ err, boatId }, "Meilisearch indexing failed");
   }
 }

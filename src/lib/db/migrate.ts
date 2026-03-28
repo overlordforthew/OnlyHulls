@@ -1,6 +1,7 @@
 import { pool } from "./index";
 import * as fs from "fs";
 import * as path from "path";
+import { logger } from "../logger";
 
 async function migrate() {
   const client = await pool.connect();
@@ -29,11 +30,11 @@ async function migrate() {
 
     for (const file of files) {
       if (appliedSet.has(file)) {
-        console.log(`  [skip] ${file}`);
+        logger.debug({ migration: file }, "migration already applied, skipping");
         continue;
       }
 
-      console.log(`  [run]  ${file}`);
+      logger.info({ migration: file }, "applying migration");
       const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
 
       await client.query("BEGIN");
@@ -49,7 +50,7 @@ async function migrate() {
       }
     }
 
-    console.log("All migrations applied.");
+    logger.info("all migrations applied");
   } finally {
     client.release();
     await pool.end();
@@ -57,6 +58,6 @@ async function migrate() {
 }
 
 migrate().catch((err) => {
-  console.error("Migration failed:", err);
+  logger.fatal({ err }, "migration failed");
   process.exit(1);
 });
