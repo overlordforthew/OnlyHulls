@@ -218,7 +218,7 @@ export default function SellPage() {
       <section className="border-t border-border bg-surface/30 py-20">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold">
-            Ready to Show Us Your <span className="text-primary">Hull</span>?
+            Ready to Show Us Your <span className="text-primary">Hull(s)</span>!?
           </h2>
           <p className="mx-auto mt-4 max-w-md text-text-secondary">
             Create a free account and list your boat in minutes. No credit card

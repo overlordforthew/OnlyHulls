@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Flame } from "lucide-react";
+import { Check, Star } from "lucide-react";
 
 const buyerPlans = [
   {
@@ -84,15 +84,15 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`relative rounded-2xl border-2 p-8 transition-all ${
+      className={`relative rounded-2xl border p-8 transition-all ${
         plan.popular
-          ? "border-accent bg-surface shadow-lg shadow-accent/10"
-          : "border-border bg-surface hover:border-border-bright"
+          ? "border-primary/40 bg-surface-elevated"
+          : "border-border bg-surface"
       }`}
     >
       {plan.popular && (
-        <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white">
-          <Flame className="h-3 w-3" />
+        <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
+          <Star className="h-3 w-3" />
           Most Popular
         </span>
       )}
@@ -114,9 +114,9 @@ function PlanCard({
       <button
         onClick={() => onSelect(plan.tier)}
         disabled={loading}
-        className={`mt-8 w-full rounded-full py-3 text-sm font-semibold transition-all disabled:opacity-50 ${
+        className={`mt-8 w-full rounded-full py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 ${
           plan.popular
-            ? "bg-accent text-white hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+            ? "bg-primary text-white hover:bg-primary-light"
             : "border border-border text-foreground hover:border-primary hover:text-primary"
         }`}
       >
