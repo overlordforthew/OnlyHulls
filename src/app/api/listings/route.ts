@@ -3,6 +3,7 @@ import { query, queryOne } from "@/lib/db";
 import { generateEmbedding, boatToEmbeddingText } from "@/lib/ai/embeddings";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { logger } from "@/lib/logger";
+import { getPlanByTier } from "@/lib/config/plans";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -87,6 +88,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Must be a seller" }, { status: 403 });
   }
 
+  // Enforce listing count limit based on subscription tier
+  const tier = user.subscription_tier || "free-seller";
+  const plan = getPlanByTier(tier);
+  if (plan.limits.activeListings !== -1) {
+    const countResult = await queryOne<{ count: string }>(
+      "SELECT COUNT(*) FROM boats WHERE seller_id = $1 AND status IN ('active', 'pending_review', 'draft')",
+      [user.id]
+    );
+    const activeCount = parseInt(countResult?.count || "0");
+    if (activeCount >= plan.limits.activeListings) {
+      return NextResponse.json(
+        { error: `Your ${plan.name} plan allows ${plan.limits.activeListings} active listing(s). Upgrade to list more.` },
+        { status: 403 }
+      );
+    }
+  }
+
   const body = await req.json();
   const parsed = listingSchema.safeParse(body);
   if (!parsed.success) {
@@ -97,6 +115,14 @@ export async function POST(req: Request) {
   }
 
   const data = parsed.data;
+
+  // Enforce photo limit
+  if (data.media && data.media.length > plan.limits.photosPerListing) {
+    return NextResponse.json(
+      { error: `Your ${plan.name} plan allows ${plan.limits.photosPerListing} photos per listing. You sent ${data.media.length}.` },
+      { status: 403 }
+    );
+  }
   const slug = generateSlug(data.year, data.make, data.model, data.locationText);
 
   // Create boat listing

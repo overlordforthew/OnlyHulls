@@ -100,6 +100,13 @@ export default function SiteNav() {
                     >
                       AI Profile
                     </Link>
+                    <Link
+                      href="/account"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      Account & Billing
+                    </Link>
                     <div className="my-1 h-px bg-border" />
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
