@@ -1,63 +1,34 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-export function MatchCTAPrimary({ className = "" }: { className?: string }) {
-  const { data: session, status } = useSession();
+function useMatchNav() {
   const router = useRouter();
+  return () => router.push("/onboarding/profile");
+}
 
-  function handleClick(e: React.MouseEvent) {
-    e.preventDefault();
-    if (status === "authenticated" && session?.user) {
-      router.push("/onboarding/profile");
-    } else {
-      router.push("/sign-up?role=buyer");
-    }
-  }
-
+export function MatchCTAPrimary({ className = "" }: { className?: string }) {
+  const go = useMatchNav();
   return (
-    <button onClick={handleClick} className={className}>
+    <button onClick={go} className={className}>
       Get Matched — It&apos;s Free
     </button>
   );
 }
 
 export function MatchCTASecondary({ className = "" }: { className?: string }) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  function handleClick(e: React.MouseEvent) {
-    e.preventDefault();
-    if (status === "authenticated" && session?.user) {
-      router.push("/onboarding/profile");
-    } else {
-      router.push("/sign-up?role=buyer");
-    }
-  }
-
+  const go = useMatchNav();
   return (
-    <button onClick={handleClick} className={className}>
+    <button onClick={go} className={className}>
       Get Matched — Free
     </button>
   );
 }
 
 export function ContactOwnerCTA({ className = "" }: { className?: string }) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  function handleClick(e: React.MouseEvent) {
-    e.preventDefault();
-    if (status === "authenticated" && session?.user) {
-      router.push("/onboarding/profile");
-    } else {
-      router.push("/sign-up?role=buyer");
-    }
-  }
-
+  const go = useMatchNav();
   return (
-    <button onClick={handleClick} className={className}>
+    <button onClick={go} className={className}>
       Contact Owner
     </button>
   );
