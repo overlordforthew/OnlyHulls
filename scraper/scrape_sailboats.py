@@ -92,15 +92,17 @@ def scrape_boat(boat_id, url):
     boat = {"id": boat_id, "url": url}
     html = page.body.decode("utf-8", errors="replace")
 
-    # Name from title — clean up "1979 1979 catalina 30 sailboat" pattern
+    # Name from title — clean up patterns like "1979 catalina 30 sailboat"
     title_m = re.search(r"<title>([^<]+)</title>", html)
     if title_m:
         name = title_m.group(1).split(" - ")[0].split(" for sale")[0].strip()
-        # Strip leading duplicate year: "1979 1979 catalina" → "1979 catalina"
-        name = re.sub(r'^(\d{4})\s+\1\s+', r'\1 ', name)
-        # Strip trailing "sailboat"
-        name = re.sub(r'\s+sailboat\s*$', '', name, flags=re.I)
-        boat["name"] = name
+        # Strip leading year(s): "1979 1979 catalina" or "1979 catalina" → "catalina"
+        name = re.sub(r'^(\d{4}\s+)+', '', name).strip()
+        # Strip trailing "sailboat" / "yacht" / "boat"
+        name = re.sub(r'\s+(sailboat|yacht|boat)\s*$', '', name, flags=re.I)
+        # Strip leading "Length" (bad parse artifact)
+        name = re.sub(r'^Length\s+', '', name, flags=re.I)
+        boat["name"] = name if len(name) > 2 else None
 
     # Parse spec tables: header row has labels, next row has values
     rows = page.css("tr")
@@ -115,7 +117,12 @@ def scrape_boat(boat_id, url):
                 for j, label in enumerate(cell_texts):
                     if j < len(val_texts) and val_texts[j]:
                         key = label.lower().strip()
-                        if key in ("year", "length", "beam", "draft", "location", "price"):
+                        if key == "year":
+                            # Only accept valid 4-digit years
+                            ym = re.match(r'^(\d{4})$', val_texts[j].strip())
+                            if ym and 1950 <= int(ym.group(1)) <= 2030:
+                                boat["year"] = ym.group(1)
+                        elif key in ("length", "beam", "draft", "location", "price"):
                             boat[key] = val_texts[j]
 
         if "Hull" in cell_texts and "Type" in cell_texts:
