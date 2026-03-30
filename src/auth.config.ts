@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
-  session: { strategy: "jwt" as const },
+  session: { strategy: "jwt" as const, maxAge: 24 * 60 * 60 },
   pages: { signIn: "/sign-in" },
   callbacks: {
     authorized() {

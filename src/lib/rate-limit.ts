@@ -32,7 +32,7 @@ export async function rateLimit(
 
     return { allowed: true };
   } catch {
-    // Fail open: if Redis is unavailable, don't block legitimate traffic
-    return { allowed: true };
+    // Fail closed: if Redis is unavailable, deny requests to prevent brute force
+    return { allowed: false, retryAfter: 60 };
   }
 }

@@ -12,16 +12,13 @@ const registerSchema = z.object({
 
 export async function POST(req: Request) {
   // Rate limit: 5 registrations per IP per hour.
-  // Skip if the IP cannot be determined — avoids blocking all users under a shared unknown key.
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  if (ip) {
-    const rl = await rateLimit(`register:${ip}`, 5, 3600);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
-      );
-    }
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await rateLimit(`register:${ip}`, 5, 3600);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
   }
 
   const body = await req.json();
@@ -35,19 +32,20 @@ export async function POST(req: Request) {
 
   const { email, password, displayName } = parsed.data;
 
+  // Always hash the password first to prevent timing-based email enumeration
+  // (bcrypt takes ~100ms — without this, existing-email responses are instant)
+  const passwordHash = await bcrypt.hash(password, 12);
+
   const existing = await queryOne<{ id: string }>(
     "SELECT id FROM users WHERE email = $1",
     [email]
   );
   if (existing) {
-    // Return generic error to prevent user enumeration
     return NextResponse.json(
       { error: "Unable to create account. Please check your information and try again." },
       { status: 400 }
     );
   }
-
-  const passwordHash = await bcrypt.hash(password, 12);
 
   await queryOne(
     `INSERT INTO users (email, password_hash, display_name)

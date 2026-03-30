@@ -144,7 +144,7 @@ export default function BoatCard({
         {boat.source_name && (
           <div className="mt-2 flex items-center gap-1 text-xs text-text-tertiary">
             <span>Found on</span>
-            {boat.source_url ? (
+            {boat.source_url && /^https?:\/\//i.test(boat.source_url) ? (
               <a
                 href={boat.source_url}
                 target="_blank"
