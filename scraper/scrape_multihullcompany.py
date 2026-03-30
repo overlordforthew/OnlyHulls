@@ -22,9 +22,11 @@ def scrape(limit=30):
         ctx = re.sub(r'\s+', ' ', ctx)
         boat = {"url": f"{BASE}{path}"}
         boat["name"] = slug.replace("-", " ").title()
-        # Price: "US$ 5,650,000" or "$ 2,449,000" or "EUR 1,950,000"
-        price_m = re.search(r'(?:US)?\$\s*([\d,]+)', ctx) or re.search(r'EUR\s*([\d,]+)', ctx, re.I) or re.search(r'€\s*([\d,]+)', ctx)
-        if price_m: boat["price"] = price_m.group(0).strip()
+        # Price: "$ 5,650,000" or "€ 1,950,000" or "EUR 1,950,000"
+        price_m = re.search(r'\$\s*([\d,]{4,})', ctx) or re.search(r'€\s*([\d,]{4,})', ctx) or re.search(r'EUR\s*([\d,]{4,})', ctx, re.I)
+        if price_m:
+            sym = "$" if "$" in price_m.group(0) else "€"
+            boat["price"] = f"{sym}{price_m.group(1)}"
         year_m = re.search(r'\b(19[5-9]\d|20[0-2]\d)\b', ctx)
         if year_m: boat["year"] = year_m.group(1)
         len_m = re.search(r'(\d+(?:\.\d+)?)\s*(?:ft|\')', ctx, re.I)

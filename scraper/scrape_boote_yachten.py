@@ -23,7 +23,7 @@ def scrape(limit=30):
         boat = {"url": f"{BASE}{path}"}
         boat["name"] = slug.replace("-", " ").title()
         # Price: German format "EUR 170.000" or "4.900.000 EUR"
-        price_m = re.search(r'(?:EUR|€)\s*([\d.]+)', ctx) or re.search(r'([\d.]+)\s*(?:EUR|€)', ctx)
+        price_m = re.search(r'(?:EUR|€)\s*([\d.]+(?:\.\d{3})*)', ctx) or re.search(r'([\d.]+(?:\.\d{3})*)\s*(?:EUR|€)', ctx)
         if price_m:
             raw = price_m.group(1).replace(".", "")  # German dots = thousands
             try:

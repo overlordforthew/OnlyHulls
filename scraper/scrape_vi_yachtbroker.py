@@ -32,8 +32,8 @@ def scrape(limit=30):
                     name = name[len(year_m.group()):].strip()
                 boat["name"] = name
 
-                # Price from card text
-                price_m = re.search(r'\$([\d,]{4,})', text)
+                # Price from card text — may have space: "$ 149,000"
+                price_m = re.search(r'\$\s*([\d,]{4,})', text)
                 if price_m: boat["price"] = f"${price_m.group(1)}"
 
                 # Location

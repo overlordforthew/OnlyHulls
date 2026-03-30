@@ -16,12 +16,14 @@ def scrape(limit=30):
             try:
                 html = page.content()
                 # Find listing links
-                links = re.findall(r'href="(/pre-owned-yachts/listings/([a-z0-9-]+)/)"', html)
+                links = re.findall(r'href="(/pre-owned-yachts/listings/([a-z][a-z0-9-]+)/)"', html)
                 if not links: break
 
                 seen = set()
                 for path, slug in links:
-                    if slug in seen or slug in ("page",): continue
+                    # Skip non-boat links (anchors, pagination, filters)
+                    if slug in seen or slug.startswith(("#", "page")) or len(slug) < 3: continue
+                    if slug.startswith("gf_") or slug == "breadcrumb": continue
                     seen.add(slug)
 
                     # Get card context from rendered HTML
@@ -33,8 +35,8 @@ def scrape(limit=30):
                     boat = {"url": f"{BASE}{path}"}
                     boat["name"] = slug.replace("-", " ").title()
 
-                    # Price — EUR format: "350.000,00 EUR" or "€350,000"
-                    price_m = re.search(r'€\s*([\d.,]+)', ctx) or re.search(r'([\d.]+(?:,\d+)?)\s*EUR', ctx)
+                    # Price — EUR format: "€ 350,000" or "350.000 EUR" or "€350,000"
+                    price_m = re.search(r'€\s*([\d,.]+)', ctx) or re.search(r'([\d.]+(?:,\d+)?)\s*EUR', ctx, re.I)
                     if price_m:
                         raw = price_m.group(1) if price_m.group(1) else price_m.group(0)
                         # Handle German format: 350.000 → 350000

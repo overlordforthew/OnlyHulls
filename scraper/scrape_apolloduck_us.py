@@ -21,12 +21,12 @@ def scrape(limit=30):
                 if bid in seen_this or bid in {b.get("id") for b in all_boats}: continue
                 seen_this.add(bid)
                 pos = m.start()
-                ctx = re.sub(r'<[^>]+>', ' ', html[max(0,pos-800):pos+800])
+                ctx = re.sub(r'<[^>]+>', ' ', html[max(0,pos-1500):pos+1500])
                 ctx = re.sub(r'\s+', ' ', ctx)
                 boat = {"id": bid, "url": f"{BASE}/boat/{slug}-for-sale/{bid}"}
                 name = slug.replace("-", " ").title()
                 boat["name"] = re.sub(r'\bFor Sale\b', '', name, flags=re.I).strip()
-                price_m = re.search(r'\$([\d,]{4,})', ctx)
+                price_m = re.search(r'\$\s*([\d,]{4,})', ctx)
                 if price_m: boat["price"] = f"${price_m.group(1)}"
                 year_m = re.search(r'\b(19[5-9]\d|20[0-2]\d)\b', ctx)
                 if year_m: boat["year"] = year_m.group(1)
