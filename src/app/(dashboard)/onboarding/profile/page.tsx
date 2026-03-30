@@ -253,7 +253,7 @@ export default function ProfileQuestionnaire() {
                       onClick={() => setRigType(rt.value)}
                       className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
                         rigType === rt.value
-                          ? "bg-primary text-white"
+                          ? "bg-primary-btn text-white"
                           : "border border-border text-text-secondary hover:border-primary hover:text-primary"
                       }`}
                     >
@@ -358,7 +358,7 @@ export default function ProfileQuestionnaire() {
           <button
             onClick={() => setStep((s) => s + 1)}
             disabled={!canAdvance()}
-            className="flex items-center gap-1.5 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-full bg-primary-btn px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light disabled:opacity-30"
           >
             Next
             <ArrowRight className="h-4 w-4" />
@@ -367,7 +367,7 @@ export default function ProfileQuestionnaire() {
           <button
             onClick={handleFinish}
             disabled={!canAdvance() || saving}
-            className="flex items-center gap-1.5 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-full bg-accent-btn px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
             {saving ? "Finding your matches..." : "Find My Matches"}

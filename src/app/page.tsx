@@ -120,7 +120,7 @@ export default async function Home() {
               </div>
               <button
                 type="submit"
-                className="m-1.5 rounded-full bg-accent px-6 text-sm font-semibold text-white transition-all hover:bg-accent-light"
+                className="m-1.5 rounded-full bg-accent-btn px-6 text-sm font-semibold text-white transition-all hover:bg-accent-light"
               >
                 Search
               </button>
@@ -130,7 +130,7 @@ export default async function Home() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/boats"
-                className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
+                className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
               >
                 Browse All Boats
               </Link>
@@ -269,7 +269,7 @@ export default async function Home() {
               worldwide. No commission, no brokers, no middlemen.
             </p>
             <ListBoatCTA
-              className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+              className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
             />
             <p className="mt-3 text-xs text-text-tertiary">
               No credit card required. List in under 5 minutes.
@@ -291,7 +291,7 @@ export default async function Home() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/sign-up"
-              className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
+              className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
             >
               Get Started — It&apos;s Free
             </Link>

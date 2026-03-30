@@ -83,7 +83,7 @@ export default function BoatCard({
               via {boat.source_name}
             </span>
           ) : boat.is_sample ? (
-            <span className="absolute left-3 top-3 rounded-full bg-accent/90 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+            <span className="absolute left-3 top-3 rounded-full bg-accent-btn/90 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
               Sample
             </span>
           ) : null}
@@ -183,7 +183,7 @@ export default function BoatCard({
             {onConnect && (
               <button
                 onClick={onConnect}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent py-2 text-xs font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent-btn py-2 text-xs font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 Connect

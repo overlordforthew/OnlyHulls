@@ -100,7 +100,7 @@ export default function AccountPage() {
             <>
               <a
                 href="/match#pricing"
-                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
               >
                 Upgrade Buyer Plan
               </a>
@@ -136,7 +136,7 @@ export default function AccountPage() {
                   onClick={() => setEmailAlerts(opt)}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
                     emailAlerts === opt
-                      ? "bg-primary text-white"
+                      ? "bg-primary-btn text-white"
                       : "border border-border text-text-secondary hover:border-primary hover:text-primary"
                   }`}
                 >
@@ -177,7 +177,7 @@ export default function AccountPage() {
         <button
           onClick={savePreferences}
           disabled={saving}
-          className="mt-6 rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light disabled:opacity-50"
+          className="mt-6 rounded-full bg-primary-btn px-6 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save Preferences"}
         </button>

@@ -99,7 +99,7 @@ export default function NewListingPage() {
             onClick={() => i <= currentIdx && setStep(s)}
             className={`flex-1 rounded-full py-1.5 text-xs font-medium ${
               s === step
-                ? "bg-primary text-white"
+                ? "bg-primary-btn text-white"
                 : i < currentIdx
                   ? "bg-primary/20 text-primary"
                   : "bg-muted text-foreground/40"
@@ -176,7 +176,7 @@ export default function NewListingPage() {
                     }}
                     className={`rounded-full px-3 py-1 text-xs ${
                       data.characterTags.includes(tag)
-                        ? "bg-primary text-white"
+                        ? "bg-primary-btn text-white"
                         : "bg-muted text-foreground/60"
                     }`}
                   >
@@ -249,7 +249,7 @@ export default function NewListingPage() {
           <button
             onClick={handleSubmit}
             disabled={submitting || !data.make || !data.model}
-            className="rounded-full bg-primary px-8 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+            className="rounded-full bg-primary-btn px-8 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
           >
             {submitting ? "Submitting..." : "Submit for Review"}
           </button>
@@ -257,7 +257,7 @@ export default function NewListingPage() {
           <button
             onClick={() => canNext && setStep(STEPS[currentIdx + 1])}
             disabled={!canNext}
-            className="rounded-full bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+            className="rounded-full bg-primary-btn px-6 py-2 text-sm font-medium text-white hover:bg-primary-dark"
           >
             Next
           </button>

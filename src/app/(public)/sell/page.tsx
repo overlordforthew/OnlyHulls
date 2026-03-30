@@ -101,7 +101,7 @@ export default function SellPage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <ListBoatCTA
-                className="rounded-full bg-accent px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                className="rounded-full bg-accent-btn px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <a
                 href="#pricing"
@@ -223,7 +223,7 @@ export default function SellPage() {
             required.
           </p>
           <ListBoatCTA
-            className="mt-8 inline-block rounded-full bg-accent px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+            className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
           />
         </div>
       </section>

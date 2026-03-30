@@ -74,7 +74,7 @@ export default function MatchesPage() {
         </p>
         <button
           onClick={() => router.push("/onboarding/profile")}
-          className="mt-8 rounded-full bg-primary px-8 py-3 text-lg font-medium text-white hover:bg-primary-dark"
+          className="mt-8 rounded-full bg-primary-btn px-8 py-3 text-lg font-medium text-white hover:bg-primary-dark"
         >
           Start AI Profile Chat
         </button>

@@ -84,7 +84,7 @@ export default function OnboardingPage() {
       <button
         onClick={handleSubmit}
         disabled={!selectedRole || loading}
-        className="mt-8 w-full rounded-full bg-primary py-3 text-lg font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+        className="mt-8 w-full rounded-full bg-primary-btn py-3 text-lg font-medium text-white hover:bg-primary-dark disabled:opacity-50"
       >
         {loading ? "Setting up..." : "Continue"}
       </button>

@@ -104,7 +104,7 @@ function PlanCard({
       }`}
     >
       {plan.popular && (
-        <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
+        <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-primary-btn px-3 py-1 text-xs font-semibold text-white">
           <Star className="h-3 w-3" />
           Most Popular
         </span>
@@ -129,7 +129,7 @@ function PlanCard({
         disabled={loading}
         className={`mt-8 w-full rounded-full py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 ${
           plan.popular
-            ? "bg-primary text-white hover:bg-primary-light"
+            ? "bg-primary-btn text-white hover:bg-primary-light"
             : "border border-border text-foreground hover:border-primary hover:text-primary"
         }`}
       >

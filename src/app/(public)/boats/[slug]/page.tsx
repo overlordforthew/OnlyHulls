@@ -268,7 +268,7 @@ export default async function BoatDetailPage({
               )}
 
               <ContactOwnerCTA
-                className="mt-6 block rounded-full bg-accent py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                className="mt-6 block rounded-full bg-accent-btn py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">
                 Free to message sellers.

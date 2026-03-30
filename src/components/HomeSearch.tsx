@@ -131,7 +131,7 @@ export default function HomeSearch() {
 
       <button
         type="submit"
-        className="mt-4 w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light"
+        className="mt-4 w-full rounded-lg bg-accent-btn py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light"
       >
         Search
       </button>

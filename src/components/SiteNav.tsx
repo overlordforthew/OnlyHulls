@@ -128,7 +128,7 @@ export default function SiteNav() {
                 </Link>
                 <Link
                   href="/sign-up"
-                  className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                  className="rounded-full bg-accent-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
                 >
                   Get Started
                 </Link>
@@ -181,7 +181,7 @@ export default function SiteNav() {
                   <Link href="/sign-in" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
                     Sign In
                   </Link>
-                  <Link href="/sign-up" className="rounded-full bg-accent px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-accent-light" onClick={() => setMenuOpen(false)}>
+                  <Link href="/sign-up" className="rounded-full bg-accent-btn px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-accent-light" onClick={() => setMenuOpen(false)}>
                     Get Started
                   </Link>
                 </>

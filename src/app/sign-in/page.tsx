@@ -88,7 +88,7 @@ function SignInForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
+          className="w-full rounded-full bg-accent-btn px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
