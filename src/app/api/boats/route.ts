@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   // Map sort params to SQL ORDER BY
   const SORT_MAP: Record<string, string> = {
     price: "COALESCE(b.asking_price_usd, b.asking_price)",
-    size: "(d.specs->>'loa')::float",
+    size: "CAST(NULLIF(REGEXP_REPLACE(d.specs->>'loa', '[^0-9.]', '', 'g'), '') AS float)",
     year: "b.year",
     newest: "b.created_at",
   };
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       // Fetch full boat data from DB for Meilisearch results
       if (results.hits.length) {
         const ids = results.hits.map((h) => h.id as string);
-        const boats = await fetchBoats(ids);
+        const boats = await fetchBoats(ids, orderBy);
         return NextResponse.json({
           boats,
           total: results.estimatedTotalHits || 0,
@@ -132,13 +132,13 @@ export async function GET(req: Request) {
   });
 }
 
-async function fetchBoats(ids: string[]) {
+async function fetchBoats(ids: string[], orderBy: string) {
   return query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.id = ANY($1)
-     ORDER BY COALESCE(b.asking_price_usd, b.asking_price) ASC`,
+     ORDER BY ${orderBy}`,
     [ids]
   );
 }
