@@ -173,6 +173,13 @@ async function importBoats(filePath: string, sourceSite: string) {
         continue;
       }
 
+      // Minimum 25ft — no dinghies, daysailers, or racing boats
+      const loa = parseNumber(b.length || b.loa);
+      if (loa && loa < 25) {
+        skipped++;
+        continue;
+      }
+
       const location = b.location || "";
       const sourceUrl = b.url || "";
 
@@ -212,7 +219,6 @@ async function importBoats(filePath: string, sourceSite: string) {
       }
 
       // Insert boat_dna
-      const loa = parseNumber(b.length || b.loa);
       const beam = parseNumber(b.beam);
       const draft = parseNumber(b.draft);
       const rigType = b.rigging || b.type || "";
