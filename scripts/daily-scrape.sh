@@ -73,6 +73,11 @@ else
     log "  FAILED: theyachtmarket scrape error"
 fi
 
+# --- Expire stale listings (not seen in 14+ days) ---
+log "Expiring stale listings..."
+EXPIRE_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/expire-stale.ts" 2>&1)
+log "  $EXPIRE_RESULT"
+
 # --- Summary ---
 TOTAL_BOATS=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT count(*) FROM boats WHERE status='active'" 2>/dev/null | tr -d ' ')
 SOURCE_BREAKDOWN=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT COALESCE(source_name, 'Platform') as src, count(*) FROM boats WHERE status='active' GROUP BY source_name ORDER BY count DESC" 2>/dev/null)

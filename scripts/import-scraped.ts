@@ -194,8 +194,8 @@ async function importBoats(filePath: string, sourceSite: string) {
         `INSERT INTO boats (
           seller_id, slug, make, model, year, asking_price, currency,
           asking_price_usd, status, location_text, listing_source,
-          source_site, source_name, source_url, is_sample
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false)
+          source_site, source_name, source_url, is_sample, last_seen_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false, NOW())
         ON CONFLICT DO NOTHING
         RETURNING id`,
         [sellerId, finalSlug, make, model, year, price, currency,
@@ -267,6 +267,20 @@ async function importBoats(filePath: string, sourceSite: string) {
       errors++;
       console.error(`  [!] Error importing ${b.name}: ${err}`);
     }
+  }
+
+  // Bump last_seen_at for ALL boats in this scrape batch (new + existing)
+  // This is how we track freshness — boats that stop appearing in scrapes
+  // will have stale last_seen_at and get expired after 14 days
+  const sourceUrls = boats.map((b) => b.url).filter(Boolean);
+  if (sourceUrls.length > 0) {
+    const updated = await query<{ id: string }>(
+      `UPDATE boats SET last_seen_at = NOW(), updated_at = NOW()
+       WHERE source_url = ANY($1)
+       RETURNING id`,
+      [sourceUrls]
+    );
+    console.log(`Freshness: bumped last_seen_at for ${updated.length} listings`);
   }
 
   console.log(`\nImport complete: ${imported} imported, ${skipped} skipped, ${errors} errors`);
