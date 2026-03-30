@@ -1,5 +1,7 @@
 import { queryOne } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { sendVerificationEmail } from "@/lib/email/resend";
+import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -47,12 +49,23 @@ export async function POST(req: Request) {
     );
   }
 
-  await queryOne(
-    `INSERT INTO users (email, password_hash, display_name)
-     VALUES ($1, $2, $3)
+  const verifyToken = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  const newUser = await queryOne<{ id: string }>(
+    `INSERT INTO users (email, password_hash, display_name, email_verified, email_verify_token, email_verify_token_expires_at)
+     VALUES ($1, $2, $3, false, $4, $5)
      RETURNING id`,
-    [email, passwordHash, displayName || null]
+    [email, passwordHash, displayName || null, verifyToken, expiresAt.toISOString()]
   );
 
-  return NextResponse.json({ success: true });
+  if (newUser) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://onlyhulls.com";
+    sendVerificationEmail({
+      email,
+      verifyUrl: `${appUrl}/api/auth/verify?token=${verifyToken}`,
+    }).catch(() => {}); // fire-and-forget
+  }
+
+  return NextResponse.json({ success: true, requiresVerification: true });
 }

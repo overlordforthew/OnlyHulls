@@ -22,8 +22,9 @@ export async function GET(
     buyer_id: string;
     seller_id: string;
     status: string;
+    expires_at: string | null;
   }>(
-    `SELECT id, match_id, buyer_id, seller_id, status
+    `SELECT id, match_id, buyer_id, seller_id, status, expires_at
      FROM introductions WHERE ${tokenColumn} = $1`,
     [token]
   );
@@ -31,6 +32,13 @@ export async function GET(
   if (!intro) {
     return new Response(renderPage("Link Not Found", "This introduction link is invalid or has expired."), {
       status: 404,
+      headers: { "Content-Type": "text/html" },
+    });
+  }
+
+  if (intro.expires_at && new Date(intro.expires_at) < new Date()) {
+    return new Response(renderPage("Link Expired", "This introduction link has expired. Please ask the buyer to send a new connection request."), {
+      status: 410,
       headers: { "Content-Type": "text/html" },
     });
   }

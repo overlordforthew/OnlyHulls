@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         const subscriptionId = session.subscription as string;
         const email = session.customer_details?.email;
 
-        logger.info({ customerId, subscriptionId, email }, "Checkout completed");
+        logger.info({ customerId, subscriptionId }, "Checkout completed");
 
         if (subscriptionId) {
           const subscription = await getStripe().subscriptions.retrieve(subscriptionId);

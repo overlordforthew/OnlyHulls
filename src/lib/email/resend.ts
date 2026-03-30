@@ -16,6 +16,27 @@ function esc(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export async function sendVerificationEmail(params: {
+  email: string;
+  verifyUrl: string;
+}) {
+  return getResend().emails.send({
+    from: getFrom(),
+    to: params.email,
+    subject: "Verify your OnlyHulls email",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0369a1;">Welcome to OnlyHulls</h2>
+        <p>Please verify your email address to activate your account.</p>
+        <div style="margin: 24px 0;">
+          <a href="${esc(params.verifyUrl)}" style="background: #0369a1; color: white; padding: 12px 24px; border-radius: 24px; text-decoration: none; display: inline-block;">Verify Email</a>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendSellerNotification(params: {
   sellerEmail: string;
   sellerName: string;

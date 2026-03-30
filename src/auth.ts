@@ -31,12 +31,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: string;
           display_name: string | null;
           password_hash: string | null;
+          email_verified: boolean;
         }>(
-          "SELECT id, email, display_name, password_hash FROM users WHERE email = $1",
+          "SELECT id, email, display_name, password_hash, email_verified FROM users WHERE email = $1",
           [email]
         );
 
         if (!user || !user.password_hash) return null;
+        if (!user.email_verified) return null;
 
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) return null;

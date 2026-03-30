@@ -1,10 +1,11 @@
-import { getCurrentUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "admin") {
+  try {
+    await requireRole(["admin"]);
+  } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
