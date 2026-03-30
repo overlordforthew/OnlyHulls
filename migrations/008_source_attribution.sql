@@ -10,6 +10,9 @@ ALTER TABLE boats ADD COLUMN IF NOT EXISTS source_name TEXT;
 ALTER TABLE boats ADD COLUMN IF NOT EXISTS source_url TEXT;
 -- Direct link to original listing on source site
 
+ALTER TABLE boats ADD COLUMN IF NOT EXISTS asking_price_usd DECIMAL(12,2);
+-- USD conversion of asking_price for cross-currency comparison
+
 -- Update existing import_url data to populate source_url
 UPDATE boats SET source_url = import_url WHERE import_url IS NOT NULL AND source_url IS NULL;
 

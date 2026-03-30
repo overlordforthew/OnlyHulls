@@ -68,8 +68,14 @@ function parseMakeModel(name: string, year?: number): { make: string; model: str
   let cleaned = name.trim();
   // Strip leading year if present (e.g. "1979 catalina 30 sailboat" → "catalina 30 sailboat")
   if (year) cleaned = cleaned.replace(new RegExp(`^${year}\\s+`), "");
-  // Strip trailing "sailboat", "yacht", "for sale" noise
+  // Strip trailing noise words
   cleaned = cleaned.replace(/\s+(sailboat|yacht|for sale|boat)$/i, "").trim();
+  // Strip price bleed: anything starting with currency symbol (e.g. "Sadler 32 £24,000")
+  cleaned = cleaned.replace(/\s+[£$€][\d,]+.*$/, "").trim();
+  // Strip parenthetical year: "Beneteau 211 (2001)"
+  cleaned = cleaned.replace(/\s*\(\d{4}\)\s*$/, "").trim();
+  // Strip trailing periods, dots
+  cleaned = cleaned.replace(/[\s.]+$/, "").trim();
   // Capitalize first letter of each word
   cleaned = cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -84,6 +90,24 @@ function detectCurrency(priceStr: string | undefined): string {
   if (s.includes("€") || s.includes("EUR")) return "EUR";
   if (s.includes("£") || s.includes("GBP")) return "GBP";
   return "USD";
+}
+
+// Approximate conversion rates — updated periodically, good enough for comparison
+const USD_RATES: Record<string, number> = {
+  USD: 1,
+  EUR: 1.08,
+  GBP: 1.26,
+  AUD: 0.65,
+  CAD: 0.74,
+  NZD: 0.60,
+  SEK: 0.095,
+  DKK: 0.145,
+  NOK: 0.092,
+};
+
+function toUsd(price: number, currency: string): number {
+  const rate = USD_RATES[currency] || 1;
+  return Math.round(price * rate);
 }
 
 function generateSlug(year: number, make: string, model: string, location: string): string {
@@ -169,13 +193,13 @@ async function importBoats(filePath: string, sourceSite: string) {
       const boat = await queryOne<{ id: string }>(
         `INSERT INTO boats (
           seller_id, slug, make, model, year, asking_price, currency,
-          status, location_text, listing_source, source_site, source_name,
-          source_url, is_sample
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8, 'imported', $9, $10, $11, false)
+          asking_price_usd, status, location_text, listing_source,
+          source_site, source_name, source_url, is_sample
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false)
         ON CONFLICT DO NOTHING
         RETURNING id`,
         [sellerId, finalSlug, make, model, year, price, currency,
-         location, sourceSite, source.name, sourceUrl]
+         toUsd(price, currency), location, sourceSite, source.name, sourceUrl]
       );
 
       // ON CONFLICT DO NOTHING returns null if duplicate — skip

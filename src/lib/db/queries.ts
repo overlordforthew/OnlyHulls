@@ -16,10 +16,12 @@ interface BoatRow {
   source_site: string | null;
   source_name: string | null;
   source_url: string | null;
+  asking_price_usd: number | null;
 }
 
 const BOAT_SELECT = `
   SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
+         b.asking_price_usd,
          b.location_text, b.slug, b.is_sample,
          b.source_site, b.source_name, b.source_url,
          (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,

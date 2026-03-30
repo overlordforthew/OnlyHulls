@@ -18,6 +18,7 @@ interface BoatCardProps {
     source_site?: string | null;
     source_name?: string | null;
     source_url?: string | null;
+    asking_price_usd?: number | null;
   };
   matchScore?: number;
   showActions?: boolean;
@@ -77,9 +78,15 @@ export default function BoatCard({
           {/* Price overlay on image */}
           <div className="absolute bottom-3 left-3">
             <p className="text-lg font-bold text-white drop-shadow-lg">
-              ${boat.asking_price.toLocaleString()}
+              {boat.currency === "GBP" ? "£" : boat.currency === "EUR" ? "€" : "$"}
+              {boat.asking_price.toLocaleString()}
               <span className="ml-1 text-xs font-normal text-white/70">{boat.currency}</span>
             </p>
+            {boat.asking_price_usd && boat.currency !== "USD" && (
+              <p className="text-xs text-white/60 drop-shadow-lg">
+                ~${boat.asking_price_usd.toLocaleString()} USD
+              </p>
+            )}
           </div>
         </div>
       </Link>
