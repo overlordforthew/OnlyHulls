@@ -26,6 +26,13 @@ const SOURCES: Record<string, { name: string; domain: string }> = {
   moorings: { name: "Moorings Brokerage", domain: "mooringsbrokerage.com" },
   dreamyacht: { name: "Dream Yacht Sales", domain: "dreamyachtsales.com" },
   denison: { name: "Denison Yachting", domain: "denisonyachtsales.com" },
+  multihullworld: { name: "Multihull World", domain: "multihullworld.com" },
+  apolloduck_us: { name: "Apollo Duck US", domain: "apolloduck.us" },
+  catamaransite: { name: "CatamaranSite", domain: "catamaransite.com" },
+  multihullcompany: { name: "Multihull Company", domain: "multihullcompany.com" },
+  camperandnicholsons: { name: "Camper & Nicholsons", domain: "camperandnicholsons.com" },
+  vi_yachtbroker: { name: "VI Yacht Broker", domain: "virginislandsyachtbroker.com" },
+  boote_yachten: { name: "Boote & Yachten", domain: "boote-yachten.de" },
   craigslist: { name: "Craigslist", domain: "craigslist.org" },
 };
 

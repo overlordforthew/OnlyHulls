@@ -90,6 +90,49 @@ else
     log "  FAILED: mooringsbrokerage scrape error"
 fi
 
+# --- Denison Yachting (16,793 listings, data-price SSR) ---
+log "Scraping denisonyachtsales.com..."
+if python3 "$SCRAPER_DIR/scrape_denison.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_denison.json'))))" 2>/dev/null || echo 0)
+    log "  Scraped $COUNT boats from denisonyachtsales.com"
+    if [ "$COUNT" -gt 0 ]; then
+        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_denison.json denison 2>&1 | tail -1)
+        log "  $RESULT"
+        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
+        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+    fi
+else
+    log "  FAILED: denison scrape error"
+fi
+
+# --- Playwright-based scrapers (run sequentially to manage memory) ---
+# Kill any orphaned chromium processes before starting
+pkill -f "chromium.*headless" 2>/dev/null || true
+
+for PW_SCRAPER in multihullworld:multihullworld apolloduck_us:apolloduck_us catamaransite:catamaransite multihullcompany:multihullcompany camperandnicholsons:camperandnicholsons vi_yachtbroker:vi_yachtbroker dreamyacht:dreamyacht boote_yachten:boote_yachten; do
+    PW_FILE="${PW_SCRAPER%%:*}"
+    PW_SOURCE="${PW_SCRAPER##*:}"
+    PW_JSON="/tmp/scraped_${PW_FILE}.json"
+
+    log "Scraping ${PW_FILE} (Playwright)..."
+    if timeout 120 python3 "$SCRAPER_DIR/scrape_${PW_FILE}.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('${PW_JSON}'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats"
+        if [ "$COUNT" -gt 0 ]; then
+            RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" "$PW_JSON" "$PW_SOURCE" 2>&1 | tail -1)
+            log "  $RESULT"
+            IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
+            TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        fi
+    else
+        log "  FAILED: ${PW_FILE} scrape error or timeout"
+    fi
+
+    # Clean up chromium between runs
+    pkill -f "chromium.*headless" 2>/dev/null || true
+    sleep 2
+done
+
 # --- Expire stale listings (not seen in 14+ days) ---
 log "Expiring stale listings..."
 EXPIRE_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/expire-stale.ts" 2>&1)
@@ -97,7 +140,7 @@ log "  $EXPIRE_RESULT"
 
 # --- Summary ---
 TOTAL_BOATS=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT count(*) FROM boats WHERE status='active'" 2>/dev/null | tr -d ' ')
-SOURCE_BREAKDOWN=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT COALESCE(source_name, 'Platform') as src, count(*) FROM boats WHERE status='active' GROUP BY source_name ORDER BY count DESC" 2>/dev/null)
+SOURCE_BREAKDOWN=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT COALESCE(source_name, 'Platform') as src, count(*) as cnt FROM boats WHERE status='active' GROUP BY source_name ORDER BY cnt DESC" 2>/dev/null)
 
 log ""
 log "=== Summary ==="
