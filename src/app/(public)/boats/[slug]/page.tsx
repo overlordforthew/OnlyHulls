@@ -1,9 +1,10 @@
 import { query, queryOne } from "@/lib/db";
 import Link from "next/link";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
+import { ImageGallery } from "@/components/ImageGallery";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MapPin, Sparkles, Camera, User, ArrowLeft } from "lucide-react";
+import { MapPin, Sparkles, User, ArrowLeft } from "lucide-react";
 
 interface BoatDetail {
   id: string;
@@ -55,13 +56,13 @@ export async function generateMetadata({
   const boat = await getBoat(slug);
   if (!boat) return { title: "Boat Not Found" };
   return {
-    title: `${boat.year} ${boat.make} ${boat.model} — $${boat.asking_price.toLocaleString()}`,
+    title: `${boat.year} ${boat.make} ${boat.model} — $${Math.round(boat.asking_price).toLocaleString("en-US")}`,
     description:
       boat.ai_summary ||
-      `${boat.year} ${boat.make} ${boat.model} for sale at $${boat.asking_price.toLocaleString()} ${boat.currency}. ${boat.location_text || ""}`,
+      `${boat.year} ${boat.make} ${boat.model} for sale at $${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}. ${boat.location_text || ""}`,
     openGraph: {
       title: `${boat.year} ${boat.make} ${boat.model}`,
-      description: `$${boat.asking_price.toLocaleString()} ${boat.currency} — ${boat.location_text || "Location TBD"}`,
+      description: `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency} — ${boat.location_text || "Location TBD"}`,
     },
   };
 }
@@ -127,44 +128,7 @@ export default async function BoatDetailPage({
 
       <div className="mx-auto max-w-6xl px-5 pt-6">
         {/* Gallery */}
-        {media.length > 0 ? (
-          <div className="space-y-2">
-            {/* Hero image */}
-            <div className="relative overflow-hidden rounded-xl">
-              <img
-                src={media[0].url}
-                alt={media[0].caption || `${boat.make} ${boat.model}`}
-                className="aspect-[16/9] w-full object-cover"
-              />
-              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                <Camera className="h-3.5 w-3.5" />
-                {media.length} photo{media.length !== 1 ? "s" : ""}
-              </div>
-            </div>
-            {/* Thumbnail strip */}
-            {media.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                {media.slice(1, 5).map((m) => (
-                  <img
-                    key={m.id}
-                    src={m.url}
-                    alt={m.caption || `${boat.make} ${boat.model}`}
-                    className="h-24 w-36 shrink-0 rounded-lg object-cover sm:h-28 sm:w-44"
-                  />
-                ))}
-                {media.length > 5 && (
-                  <div className="flex h-24 w-36 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-sm font-medium text-text-secondary sm:h-28 sm:w-44">
-                    +{media.length - 5} more
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-elevated">
-            <span className="text-6xl opacity-20">⛵</span>
-          </div>
-        )}
+        <ImageGallery media={media} alt={`${boat.make} ${boat.model}`} />
 
         {boat.is_sample && (
           <div className="mt-4 rounded-lg bg-accent/10 border border-accent/20 px-4 py-2 text-sm text-accent">
@@ -188,7 +152,7 @@ export default async function BoatDetailPage({
                 </p>
               )}
               <p className="mt-3 text-3xl font-bold">
-                ${boat.asking_price.toLocaleString()}
+                ${Math.round(boat.asking_price).toLocaleString("en-US")}
                 <span className="ml-2 text-sm font-normal text-text-secondary">{boat.currency}</span>
               </p>
             </div>
@@ -257,7 +221,7 @@ export default async function BoatDetailPage({
               <div className="my-5 h-px bg-border" />
 
               <p className="text-2xl font-bold">
-                ${boat.asking_price.toLocaleString()}
+                ${Math.round(boat.asking_price).toLocaleString("en-US")}
                 <span className="ml-1 text-sm font-normal text-text-secondary">{boat.currency}</span>
               </p>
 
@@ -268,7 +232,7 @@ export default async function BoatDetailPage({
               )}
 
               <ContactOwnerCTA
-                className="mt-6 block rounded-full bg-accent-btn py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
+                className="mt-6 block w-full rounded-full bg-accent-btn px-6 py-3.5 text-center text-base font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">
                 Free to message sellers.
@@ -283,7 +247,7 @@ export default async function BoatDetailPage({
 
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between rounded-lg px-3 py-2.5 odd:bg-surface even:bg-transparent">
+    <div className="flex justify-between rounded-lg bg-surface px-3 py-2.5">
       <span className="text-sm text-text-secondary">{label}</span>
       <span className="text-sm font-medium">{value}</span>
     </div>
