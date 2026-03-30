@@ -75,6 +75,12 @@ export default async function BoatDetailPage({
   const boat = await getBoat(slug);
   if (!boat) notFound();
 
+  // Increment view count (fire-and-forget, don't block render)
+  query(
+    `UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`,
+    [boat.id]
+  ).catch(() => {});
+
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";

@@ -33,8 +33,9 @@ const BOAT_SELECT = `
   WHERE b.status = 'active'`;
 
 export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
+  // Trending = most viewed, with recently added as fallback for new boats
   return query<BoatRow>(
-    `${BOAT_SELECT} ORDER BY b.asking_price DESC LIMIT $1`,
+    `${BOAT_SELECT} ORDER BY b.view_count DESC, b.created_at DESC LIMIT $1`,
     [limit]
   );
 }
