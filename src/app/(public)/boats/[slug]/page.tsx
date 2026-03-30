@@ -21,12 +21,13 @@ interface BoatDetail {
   character_tags: string[];
   condition_score: number | null;
   ai_summary: string | null;
+  source_url: string | null;
 }
 
 async function getBoat(slug: string): Promise<BoatDetail | null> {
   return queryOne<BoatDetail>(
     `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
-            b.location_text, b.slug, b.is_sample,
+            b.location_text, b.slug, b.is_sample, b.source_url,
             u.display_name as seller_name,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
@@ -232,6 +233,7 @@ export default async function BoatDetailPage({
               )}
 
               <ContactOwnerCTA
+                sourceUrl={boat.source_url}
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">

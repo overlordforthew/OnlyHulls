@@ -20,8 +20,17 @@ export function MatchCTASecondary({ className = "" }: { className?: string }) {
   );
 }
 
-export function ContactOwnerCTA({ className = "" }: { className?: string }) {
+export function ContactOwnerCTA({ className = "", sourceUrl }: { className?: string; sourceUrl?: string | null }) {
   const router = useRouter();
+
+  if (sourceUrl) {
+    return (
+      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
+        Contact Owner
+      </a>
+    );
+  }
+
   return (
     <button onClick={() => router.push("/onboarding/profile")} className={`cursor-pointer ${className}`}>
       Contact Owner
