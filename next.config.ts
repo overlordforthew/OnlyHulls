@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' https://*.posthog.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://*.your-objectstorage.com https://www.sailboatlistings.com https://ics.apolloduck.com https://cdnx.theyachtmarket.com",
+              "img-src 'self' data: https://*.your-objectstorage.com https://*.sailboatlistings.com https://ics.apolloduck.com https://*.theyachtmarket.com https://images.boatsgroup.com",
               "connect-src 'self' https://*.posthog.com",
               "font-src 'self'",
               "frame-ancestors 'none'",
@@ -45,7 +45,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "www.sailboatlistings.com",
+        hostname: "*.sailboatlistings.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.boatsgroup.com",
       },
       {
         protocol: "https",
