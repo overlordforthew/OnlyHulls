@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, X, MessageCircle } from "lucide-react";
+import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
 
 interface BoatCardProps {
   boat: {
@@ -15,6 +15,9 @@ interface BoatCardProps {
     hero_url: string | null;
     specs: { loa?: number; rig_type?: string };
     character_tags: string[];
+    source_site?: string | null;
+    source_name?: string | null;
+    source_url?: string | null;
   };
   matchScore?: number;
   showActions?: boolean;
@@ -60,12 +63,16 @@ export default function BoatCard({
             </span>
           )}
 
-          {/* Sample badge */}
-          {boat.is_sample && (
+          {/* Source badge */}
+          {boat.source_name ? (
+            <span className="absolute left-3 top-3 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+              via {boat.source_name}
+            </span>
+          ) : boat.is_sample ? (
             <span className="absolute left-3 top-3 rounded-full bg-accent/90 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
               Sample
             </span>
-          )}
+          ) : null}
 
           {/* Price overlay on image */}
           <div className="absolute bottom-3 left-3">
@@ -110,6 +117,26 @@ export default function BoatCard({
                 {tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {boat.source_name && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-text-tertiary">
+            <span>Found on</span>
+            {boat.source_url ? (
+              <a
+                href={boat.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 font-medium text-text-secondary hover:text-primary transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {boat.source_name}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <span className="font-medium text-text-secondary">{boat.source_name}</span>
+            )}
           </div>
         )}
 
