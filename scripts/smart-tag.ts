@@ -73,7 +73,7 @@ Return ONLY a comma-separated list of 2-5 tags. No explanation.`;
   const response = data.choices?.[0]?.message?.content?.trim() || "";
 
   // Parse comma-separated tags, validate against allowed list
-  const tags = response
+  const tags: string[] = response
     .toLowerCase()
     .split(/[,\n]+/)
     .map((t: string) => t.trim().replace(/[^a-z-]/g, ""))
