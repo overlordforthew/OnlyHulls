@@ -1,68 +1,46 @@
 #!/usr/bin/env python3
-"""Scrape multihull listings from multihullcompany.com. SSR with US$/EUR prices.
-
-Usage: python scrape_multihullcompany.py [limit]
-"""
-import json, re, sys
-from scrapling import Fetcher
+"""Scrape multihull listings from multihullcompany.com via Playwright."""
+import json, re, sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+from pw_fetch import PlaywrightFetcher
 
 BASE = "https://www.multihullcompany.com"
-fetcher = Fetcher()
 
-def scrape_page(url):
-    page = fetcher.get(url, timeout=20)
-    if page.status != 200: return []
-    html = page.body.decode("utf-8", errors="replace")
+def scrape(limit=30):
+    with PlaywrightFetcher() as pf:
+        html = pf.get(BASE, wait_ms=3000)
+    if not html: return []
     boats = []
-
-    # Split by boat links: /boat/{slug}-{id}/
-    parts = re.split(r'(href="(?:/boat/[^"]+?-\d{5,}/)")', html)
-
+    pattern = re.compile(r'href="(/boat/(.+?)-(\d{5,})/)"')
     seen = set()
-    for i, part in enumerate(parts):
-        m = re.match(r'href="(/boat/(.+?)-(\d{5,})/)"', part)
-        if not m: continue
+    for m in pattern.finditer(html):
         path, slug, bid = m.group(1), m.group(2), m.group(3)
         if bid in seen: continue
         seen.add(bid)
-
-        before = parts[i-1][-500:] if i > 0 else ""
-        after = parts[i+1][:500] if i+1 < len(parts) else ""
-        ctx = re.sub(r'<[^>]+>', ' ', before + after)
+        pos = m.start()
+        ctx = re.sub(r'<[^>]+>', ' ', html[max(0,pos-500):pos+1500])
         ctx = re.sub(r'\s+', ' ', ctx)
-
         boat = {"url": f"{BASE}{path}"}
         boat["name"] = slug.replace("-", " ").title()
-
-        # Price — US$ or EUR
-        price_m = re.search(r'US\$\s*([\d,]+)', ctx)
-        if price_m:
-            boat["price"] = f"${price_m.group(1)}"
-        else:
-            price_m = re.search(r'EUR\s*([\d,]+)', ctx, re.I)
-            if not price_m: price_m = re.search(r'€\s*([\d,]+)', ctx)
-            if price_m: boat["price"] = f"€{price_m.group(1)}"
-
+        # Price: "US$ 5,650,000" or "$ 2,449,000" or "EUR 1,950,000"
+        price_m = re.search(r'(?:US)?\$\s*([\d,]+)', ctx) or re.search(r'EUR\s*([\d,]+)', ctx, re.I) or re.search(r'€\s*([\d,]+)', ctx)
+        if price_m: boat["price"] = price_m.group(0).strip()
         year_m = re.search(r'\b(19[5-9]\d|20[0-2]\d)\b', ctx)
         if year_m: boat["year"] = year_m.group(1)
-
         len_m = re.search(r'(\d+(?:\.\d+)?)\s*(?:ft|\')', ctx, re.I)
         if len_m: boat["length"] = f"{len_m.group(1)}'"
-
         loc_m = re.search(r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)', ctx)
         if loc_m and len(loc_m.group(1)) > 3: boat["location"] = loc_m.group(1)
-
         boat["images"] = []
-        if boat.get("price"): boats.append(boat)
-
-    return boats
+        if boat.get("price") and boat.get("name"): boats.append(boat)
+    return boats[:limit]
 
 def main():
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 30
     print(f"Scraping multihullcompany.com (limit={limit})...")
-    boats = scrape_page(BASE)[:limit]
+    boats = scrape(limit)
     with open("/tmp/scraped_multihullcompany.json", "w") as f: json.dump(boats, f, indent=2)
-    print(f"Done! {len(boats)} boats saved")
+    print(f"Done! {len(boats)} boats")
     for b in boats[:5]:
         print(f"  {b.get('year','?')} {b.get('name','?')[:35]:<35} | {b.get('price','?'):<20} | {b.get('length','?')}")
 
