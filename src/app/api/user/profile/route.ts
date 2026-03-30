@@ -15,17 +15,19 @@ export async function POST(req: Request) {
     [session.user.id]
   );
 
-  const toArray = (v: unknown): string[] =>
-    Array.isArray(v) ? v : v ? [String(v)] : [];
+  const toPgArray = (v: unknown): string => {
+    const arr = Array.isArray(v) ? v.map(String) : v ? [String(v)] : [];
+    return `{${arr.map(s => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',')}}`;
+  };
 
   const fields = [
-    toArray(profile.use_case),
+    toPgArray(profile.use_case),
     JSON.stringify(profile.budget_range || {}),
     JSON.stringify(profile.boat_type_prefs || {}),
     JSON.stringify(profile.spec_preferences || {}),
     JSON.stringify(profile.location_prefs || {}),
     profile.experience_level || "novice",
-    toArray(profile.deal_breakers),
+    toPgArray(profile.deal_breakers),
     profile.timeline || "browsing",
     profile.refit_tolerance || "minor",
   ];
