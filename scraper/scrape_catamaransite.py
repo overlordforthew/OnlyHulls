@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Scrape cruising catamaran listings from catamaransite.com.
-
-JSON-LD structured data, curated listings.
+"""Scrape cruising catamarans from catamaransite.com. Prices in page HTML.
 
 Usage: python scrape_catamaransite.py [limit]
 """
@@ -17,68 +15,50 @@ def scrape_page(url):
     html = page.body.decode("utf-8", errors="replace")
     boats = []
 
-    # Try JSON-LD first
-    for block_m in re.finditer(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, re.DOTALL):
-        try:
-            data = json.loads(block_m.group(1))
-            items = []
-            if isinstance(data, list): items = data
-            elif data.get("@type") == "ItemList": items = data.get("itemListElement", [])
-            elif data.get("@type") == "Product": items = [data]
+    # Split HTML by yacht detail links
+    parts = re.split(r'(href="(/yachts-for-sale/[^"]+?)/?")', html)
 
-            for item in items:
-                product = item.get("item", item) if isinstance(item, dict) else item
-                if not isinstance(product, dict) or product.get("@type") != "Product": continue
+    seen = set()
+    for i, part in enumerate(parts):
+        m = re.match(r'href="(/yachts-for-sale/([^"]+?))/?"', part)
+        if not m: continue
+        path, slug = m.group(1), m.group(2)
+        if slug in seen: continue
+        seen.add(slug)
 
-                boat = {}
-                if product.get("name"): boat["name"] = product["name"]
-                if product.get("url"):
-                    u = product["url"]
-                    boat["url"] = BASE + u if u.startswith("/") else u
+        # Get surrounding context
+        before = parts[i-1][-400:] if i > 0 else ""
+        after = parts[i+1][:400] if i+1 < len(parts) else ""
+        ctx = re.sub(r'<[^>]+>', ' ', before + after)
+        ctx = re.sub(r'\s+', ' ', ctx)
 
-                offers = product.get("offers", {})
-                if isinstance(offers, list): offers = offers[0] if offers else {}
-                if offers.get("price"):
-                    price = float(offers["price"])
-                    if price > 500:
-                        currency = offers.get("priceCurrency", "USD")
-                        sym = {"USD": "$", "EUR": "€", "GBP": "£"}.get(currency, "$")
-                        boat["price"] = f"{sym}{price:,.0f}"
+        boat = {"url": f"{BASE}{path}/"}
 
-                if product.get("image"):
-                    img = product["image"]
-                    boat["images"] = [img] if isinstance(img, str) else img[:5]
-                else:
-                    boat["images"] = []
+        # Name from slug
+        name = slug.replace("-", " ").title()
+        # Remove trailing numbers (WordPress duplicate suffixes like "-5", "-6")
+        name = re.sub(r'\s+\d+$', '', name)
+        boat["name"] = name
 
-                # Year from name
-                year_m = re.search(r'\b(19[5-9]\d|20[0-2]\d)\b', boat.get("name", ""))
-                if year_m: boat["year"] = year_m.group(1)
+        # Price
+        price_m = re.search(r'\$([\d,]{4,})', ctx)
+        if price_m:
+            boat["price"] = f"${price_m.group(1)}"
+        else:
+            price_m = re.search(r'€([\d,]{4,})', ctx)
+            if price_m: boat["price"] = f"€{price_m.group(1)}"
 
-                if boat.get("name") and boat.get("price"): boats.append(boat)
-        except: continue
+        # Year
+        year_m = re.search(r'\b(20[0-2]\d)\b', ctx)
+        if year_m: boat["year"] = year_m.group(1)
 
-    # Fallback: parse links
-    if not boats:
-        links = re.findall(r'/yachts-for-sale/([^"]+?)/', html)
-        seen = set()
-        for slug in links:
-            if slug in seen: continue
-            seen.add(slug)
-            boat = {"url": f"{BASE}/yachts-for-sale/{slug}/"}
-            name = slug.replace("-", " ").title()
-            boat["name"] = name
+        # Location
+        loc_m = re.search(r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z][a-z]+)', ctx)
+        if loc_m: boat["location"] = loc_m.group(1)
 
-            ctx_idx = html.find(slug)
-            if ctx_idx >= 0:
-                ctx = re.sub(r'<[^>]+>', ' ', html[max(0,ctx_idx-400):ctx_idx+400])
-                price_m = re.search(r'[€$]([\d,]{4,})', ctx)
-                if price_m: boat["price"] = price_m.group(0)
-                year_m = re.search(r'\b(20[0-2]\d)\b', ctx)
-                if year_m: boat["year"] = year_m.group(1)
-
-            boat["images"] = []
-            if boat.get("name") and boat.get("price"): boats.append(boat)
+        boat["images"] = []
+        if boat.get("price"):
+            boats.append(boat)
 
     return boats
 
@@ -88,5 +68,7 @@ def main():
     boats = scrape_page(BASE)[:limit]
     with open("/tmp/scraped_catamaransite.json", "w") as f: json.dump(boats, f, indent=2)
     print(f"Done! {len(boats)} boats saved")
+    for b in boats[:5]:
+        print(f"  {b.get('year','?')} {b.get('name','?')[:35]:<35} | {b.get('price','?'):<20}")
 
 if __name__ == "__main__": main()

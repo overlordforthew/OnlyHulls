@@ -99,7 +99,7 @@ export default async function Home() {
               <span className="text-primary">Hull</span>
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg text-text-secondary sm:text-xl">
-              The boat marketplace that actually doesn&apos;t suck.
+              The boat marketplace that actually doesn&apos;t suck.{" "}
               <br className="hidden sm:block" />
               AI-powered. Zero commission. Built for boat lovers.
             </p>
@@ -163,7 +163,7 @@ export default async function Home() {
 
       {/* ─── Categories ─── */}
       <section className="border-y border-border bg-surface/50">
-        <div className="mx-auto flex max-w-7xl justify-center gap-6 overflow-x-auto px-5 py-5 pr-16 no-scrollbar sm:gap-10 sm:pr-5">
+        <div className="mx-auto flex max-w-7xl justify-center gap-6 overflow-x-auto px-5 py-5 no-scrollbar sm:gap-10">
           {CATEGORIES.map((cat) => (
             <Link
               key={cat.tag}

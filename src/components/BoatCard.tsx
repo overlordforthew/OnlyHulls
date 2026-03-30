@@ -108,12 +108,12 @@ export default function BoatCard({
       <div className="p-4">
         <Link href={href}>
           <h3 className="font-semibold text-foreground transition-colors group-hover:text-primary">
-            {boat.year} {boat.make} {boat.model}
+            {`${boat.year} ${boat.make} ${boat.model}`}
           </h3>
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-          {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
+          {boat.specs.loa && <span>{boat.specs.loa > 300 ? Math.round(boat.specs.loa / 100) : boat.specs.loa}ft</span>}
           {boat.specs.rig_type && (
             <>
               <span className="text-text-tertiary">·</span>

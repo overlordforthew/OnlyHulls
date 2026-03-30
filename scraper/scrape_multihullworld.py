@@ -1,36 +1,33 @@
 #!/usr/bin/env python3
-"""Scrape multihull listings from multihullworld.com/for-sale.
-
-Usage: python scrape_multihullworld.py [limit]
-"""
+"""Scrape multihull listings from multihullworld.com/for-sale. Prices in static HTML."""
 import json, re, sys
 from scrapling import Fetcher
 
 BASE = "https://www.multihullworld.com"
-LIST_URL = f"{BASE}/for-sale"
 fetcher = Fetcher()
 
-def scrape_page(url):
-    page = fetcher.get(url, timeout=20)
+def scrape(limit=30):
+    page = fetcher.get(f"{BASE}/for-sale", timeout=20)
     if page.status != 200: return []
     html = page.body.decode("utf-8", errors="replace")
+    boats = []
 
     # Links: /for-sale/{slug}/{id}
-    links = re.findall(r'/for-sale/([^"]+?)/(\d{4,})', html)
-    seen, boats = {}, []
-    for slug, bid in links:
-        if bid in seen: continue
-        seen[bid] = True
-        boat = {"url": f"{BASE}/for-sale/{slug}/{bid}"}
+    link_pattern = re.compile(r'href="(/for-sale/([^"]+?)/(\d{4,}))"')
+    seen = set()
 
-        ctx_parts = []
-        for m in re.finditer(bid, html):
-            s, e = max(0, m.start()-500), min(len(html), m.end()+300)
-            ctx_parts.append(html[s:e])
-        ctx = re.sub(r'<[^>]+>', ' ', " ".join(ctx_parts))
+    for m in link_pattern.finditer(html):
+        path, slug, bid = m.group(1), m.group(2), m.group(3)
+        if bid in seen: continue
+        seen.add(bid)
+
+        # Get surrounding context (prices are near links)
+        pos = m.start()
+        ctx = re.sub(r'<[^>]+>', ' ', html[max(0,pos-500):pos+1500])
         ctx = re.sub(r'\s+', ' ', ctx)
 
-        # Name from slug
+        boat = {"url": f"{BASE}{path}"}
+
         name = slug.replace("-", " ").title()
         year_m = re.match(r'^(\d{4})\s+', name)
         if year_m:
@@ -38,30 +35,31 @@ def scrape_page(url):
             name = name[len(year_m.group()):].strip()
         boat["name"] = name
 
-        # Price (GBP or EUR)
-        price_m = re.search(r'[£€]\s*([\d,]+)', ctx)
+        # Price
+        price_m = re.search(r'[£€]\s*([\d,]+)', ctx) or re.search(r'\$([\d,]{4,})', ctx)
         if price_m: boat["price"] = price_m.group(0).strip()
 
-        # Length — "16.75m / 55 ft" pattern
-        len_m = re.search(r'(\d+(?:\.\d+)?)\s*m\s*/\s*(\d+)\s*ft', ctx)
-        if len_m:
-            boat["length"] = f"{len_m.group(2)}'"
-        else:
+        # Length
+        len_m = re.search(r'(\d+)\s*ft', ctx)
+        if len_m: boat["length"] = f"{len_m.group(1)}'"
+        elif not boat.get("length"):
             len_m = re.search(r'(\d+(?:\.\d+)?)\s*m\b', ctx)
             if len_m:
-                m_val = float(len_m.group(1))
-                if 5 < m_val < 50: boat["length"] = f"{m_val * 3.28084:.0f}'"
+                val = float(len_m.group(1))
+                if 5 < val < 50: boat["length"] = f"{val * 3.28084:.0f}'"
 
         boat["images"] = []
-        if boat.get("name") and boat.get("price"): boats.append(boat)
+        if boat.get("price"): boats.append(boat)
 
-    return boats
+    return boats[:limit]
 
 def main():
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 30
     print(f"Scraping multihullworld.com (limit={limit})...")
-    boats = scrape_page(LIST_URL)[:limit]
+    boats = scrape(limit)
     with open("/tmp/scraped_multihullworld.json", "w") as f: json.dump(boats, f, indent=2)
-    print(f"Done! {len(boats)} boats saved")
+    print(f"Done! {len(boats)} boats")
+    for b in boats[:5]:
+        print(f"  {b.get('year','?')} {b.get('name','?')[:35]:<35} | {b.get('price','?'):<20} | {b.get('length','?')}")
 
 if __name__ == "__main__": main()

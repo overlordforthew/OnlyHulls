@@ -145,7 +145,7 @@ export default async function MatchPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">
-                          {boat.year} {boat.make} {boat.model}
+                          {`${boat.year} ${boat.make} ${boat.model}`}
                         </p>
                         <p className="text-xs text-text-secondary">
                           {formatPrice(boat.asking_price, boat.currency)}

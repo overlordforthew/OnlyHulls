@@ -25,6 +25,7 @@ const SOURCES: Record<string, { name: string; domain: string }> = {
   catamarans_com: { name: "Catamarans.com", domain: "catamarans.com" },
   moorings: { name: "Moorings Brokerage", domain: "mooringsbrokerage.com" },
   dreamyacht: { name: "Dream Yacht Sales", domain: "dreamyachtsales.com" },
+  denison: { name: "Denison Yachting", domain: "denisonyachtsales.com" },
   craigslist: { name: "Craigslist", domain: "craigslist.org" },
 };
 

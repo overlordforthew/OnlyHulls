@@ -179,7 +179,7 @@ export default async function BoatDetailPage({
             {/* Title + Price */}
             <div>
               <h1 className="text-3xl font-bold">
-                {boat.year} {boat.make} {boat.model}
+                {`${boat.year} ${boat.make} ${boat.model}`}
               </h1>
               {boat.location_text && (
                 <p className="mt-2 flex items-center gap-1.5 text-text-secondary">
@@ -210,7 +210,7 @@ export default async function BoatDetailPage({
             <div>
               <h2 className="text-xl font-bold">Specifications</h2>
               <div className="mt-4 grid grid-cols-2 gap-1">
-                {specs.loa ? <SpecRow label="LOA" value={`${specs.loa}ft`} /> : null}
+                {specs.loa ? <SpecRow label="LOA" value={`${Number(specs.loa) > 300 ? Math.round(Number(specs.loa) / 100) : specs.loa}ft`} /> : null}
                 {specs.beam ? <SpecRow label="Beam" value={`${specs.beam}ft`} /> : null}
                 {specs.draft ? <SpecRow label="Draft" value={`${specs.draft}ft`} /> : null}
                 {specs.rig_type ? <SpecRow label="Rig Type" value={String(specs.rig_type)} /> : null}

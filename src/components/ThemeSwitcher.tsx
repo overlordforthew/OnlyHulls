@@ -29,7 +29,7 @@ export default function ThemeSwitcher() {
   return (
     <button
       onClick={toggle}
-      className="fixed bottom-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-lg backdrop-blur transition-all hover:border-primary hover:scale-105 active:scale-95"
+      className="fixed bottom-20 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-lg backdrop-blur transition-all hover:border-primary hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
       title={isLight ? "Switch to dark mode" : "Switch to light mode"}
     >
       {isLight ? (
