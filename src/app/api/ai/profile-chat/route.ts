@@ -148,14 +148,17 @@ export async function POST(req: Request) {
             [user.id]
           );
 
+          const toArray = (v: unknown): string[] =>
+            Array.isArray(v) ? v : v ? [String(v)] : [];
+
           const profileFields = [
-            profile.use_case,
+            toArray(profile.use_case),
             JSON.stringify(profile.budget_range),
             JSON.stringify(profile.boat_type_prefs),
             JSON.stringify(profile.spec_preferences),
             JSON.stringify(profile.location_prefs),
             profile.experience_level,
-            profile.deal_breakers,
+            toArray(profile.deal_breakers),
             profile.timeline,
             profile.refit_tolerance,
             convId,

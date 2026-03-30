@@ -15,14 +15,17 @@ export async function POST(req: Request) {
     [session.user.id]
   );
 
+  const toArray = (v: unknown): string[] =>
+    Array.isArray(v) ? v : v ? [String(v)] : [];
+
   const fields = [
-    profile.use_case || [],
+    toArray(profile.use_case),
     JSON.stringify(profile.budget_range || {}),
     JSON.stringify(profile.boat_type_prefs || {}),
     JSON.stringify(profile.spec_preferences || {}),
     JSON.stringify(profile.location_prefs || {}),
     profile.experience_level || "novice",
-    profile.deal_breakers || [],
+    toArray(profile.deal_breakers),
     profile.timeline || "browsing",
     profile.refit_tolerance || "minor",
   ];
