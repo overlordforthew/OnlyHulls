@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Scrape sailboat listings from sailboatlistings.com using Scrapling."""
+"""Scrape sailboat listings from sailboatlistings.com using Scrapling.
+
+16,864 active listings across ~480 pages. Pagination via nh= parameter.
+
+Usage:
+    python scrape_sailboats.py [limit]           # default: 200 (daily mode)
+    python scrape_sailboats.py --bulk [limit]    # all pages up to limit (initial import)
+
+Output: /tmp/scraped_boats.json
+"""
 
 import json
 import re
@@ -12,8 +21,11 @@ LIST_URL = f"{BASE}/cgi-bin/saildata/db.cgi?db=default&uid=default&view_records=
 fetcher = Fetcher()
 
 
-def get_listing_urls(page, limit=10):
-    """Extract unique boat listing URLs from the index page."""
+def get_listing_urls_from_page(url, limit=200):
+    """Extract unique boat listing URLs from one index page."""
+    page = fetcher.get(url, timeout=15)
+    if page.status != 200:
+        return []
     seen = []
     for link in page.css('a[href*="/view/"]'):
         href = link.attrib.get("href", "")
@@ -23,6 +35,44 @@ def get_listing_urls(page, limit=10):
             if len(seen) >= limit:
                 break
     return seen
+
+
+def get_all_listing_urls(limit=200, bulk=False):
+    """Get listing URLs, paginating through index pages."""
+    all_urls = []
+
+    if not bulk:
+        # Daily mode: just first page
+        print(f"Daily mode: scraping first page (limit={limit})")
+        urls = get_listing_urls_from_page(LIST_URL, limit)
+        print(f"  Found {len(urls)} listings on page 1")
+        return urls[:limit]
+
+    # Bulk mode: paginate through all pages
+    page_num = 1
+    while len(all_urls) < limit:
+        url = f"{LIST_URL}&nh={page_num}" if page_num > 1 else LIST_URL
+        print(f"  Index page {page_num}...", end=" ", flush=True)
+
+        urls = get_listing_urls_from_page(url, 200)
+        if not urls:
+            print("no listings (end of pages)")
+            break
+
+        # Filter out already-seen IDs
+        new_urls = [(bid, burl) for bid, burl in urls if bid not in {u[0] for u in all_urls}]
+        if not new_urls:
+            print("no new listings (end)")
+            break
+
+        all_urls.extend(new_urls)
+        print(f"{len(new_urls)} new (total: {len(all_urls)})")
+
+        if len(all_urls) >= limit:
+            break
+        page_num += 1
+
+    return all_urls[:limit]
 
 
 def extract_text(el):
@@ -49,15 +99,12 @@ def scrape_boat(boat_id, url):
         boat["name"] = name
 
     # Parse spec tables: header row has labels, next row has values
-    # Pattern: row of labels (Year/Length/Beam/Draft/Location/Price), then row of values
     rows = page.css("tr")
     for i, row in enumerate(rows):
         cells = row.css("td")
         cell_texts = [extract_text(c) for c in cells]
 
-        # Check if this is a label row
         if "Year" in cell_texts and "Length" in cell_texts:
-            # Next row has the values
             if i + 1 < len(rows):
                 val_cells = rows[i + 1].css("td")
                 val_texts = [extract_text(c) for c in val_cells]
@@ -67,7 +114,6 @@ def scrape_boat(boat_id, url):
                         if key in ("year", "length", "beam", "draft", "location", "price"):
                             boat[key] = val_texts[j]
 
-        # Second spec row: Hull, Type, Rigging, Engine etc
         if "Hull" in cell_texts and "Type" in cell_texts:
             if i + 1 < len(rows):
                 val_cells = rows[i + 1].css("td")
@@ -105,16 +151,14 @@ def scrape_boat(boat_id, url):
 
 
 def main():
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    bulk = "--bulk" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--bulk"]
+    limit = int(args[0]) if args else (5000 if bulk else 200)
 
-    print(f"Fetching listing index...")
-    page = fetcher.get(LIST_URL, timeout=15)
-    if page.status != 200:
-        print(f"Failed: {page.status}")
-        return
+    print(f"{'Bulk' if bulk else 'Daily'} scrape of sailboatlistings.com (limit={limit})")
 
-    urls = get_listing_urls(page, limit)
-    print(f"Found {len(urls)} unique listings. Scraping details...\n")
+    urls = get_all_listing_urls(limit, bulk)
+    print(f"\nFound {len(urls)} unique listings. Scraping details...\n")
 
     boats = []
     for i, (boat_id, url) in enumerate(urls):
@@ -126,13 +170,13 @@ def main():
             price = boat.get("price", "N/A")
             loc = boat.get("location", "?")
             length = boat.get("length", "?")
-            hull = boat.get("hull", "?")
             n_imgs = len(boat.get("images", []))
-            print(f"  [{i+1}/{len(urls)}] {year} {name} | {length} | {hull} | {loc} | {price} | {n_imgs} photos")
+            if (i + 1) % 50 == 0 or i < 5:
+                print(f"  [{i+1}/{len(urls)}] {year} {name} | {length} | {loc} | {price} | {n_imgs} photos")
         else:
-            print(f"  [{i+1}/{len(urls)}] Failed to scrape {url}")
+            if (i + 1) % 50 == 0:
+                print(f"  [{i+1}/{len(urls)}] Failed to scrape {url}")
 
-    # Save results
     output_path = "/tmp/scraped_boats.json"
     with open(output_path, "w") as f:
         json.dump(boats, f, indent=2)
