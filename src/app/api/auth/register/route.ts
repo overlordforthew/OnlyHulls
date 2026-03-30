@@ -61,10 +61,18 @@ export async function POST(req: Request) {
 
   if (newUser) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://onlyhulls.com";
-    sendVerificationEmail({
-      email,
-      verifyUrl: `${appUrl}/api/auth/verify?token=${verifyToken}`,
-    }).catch(() => {}); // fire-and-forget
+    try {
+      await sendVerificationEmail({
+        email,
+        verifyUrl: `${appUrl}/api/auth/verify?token=${verifyToken}`,
+      });
+    } catch {
+      // Email failed — mark user as verified so they aren't stranded
+      await queryOne(
+        "UPDATE users SET email_verified = true, email_verify_token = NULL WHERE id = $1",
+        [newUser.id]
+      );
+    }
   }
 
   return NextResponse.json({ success: true, requiresVerification: true });

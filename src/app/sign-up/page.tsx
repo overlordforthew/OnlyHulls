@@ -12,6 +12,7 @@ export default function SignUpPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,29 +25,15 @@ export default function SignUpPage() {
       body: JSON.stringify({ email, password, displayName: displayName || undefined }),
     });
 
+    setLoading(false);
+
     if (!res.ok) {
       const data = await res.json();
       setError(data.error || "Registration failed");
-      setLoading(false);
       return;
     }
 
-    // Auto sign-in after registration
-    const signInRes = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (signInRes?.error) {
-      setError("Account created but sign-in failed. Please sign in manually.");
-      return;
-    }
-
-    router.push("/onboarding");
-    router.refresh();
+    setVerificationSent(true);
   }
 
   const inputClass =
@@ -55,6 +42,22 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-5">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8">
+        {verificationSent ? (
+          <div className="text-center space-y-4 py-4">
+            <div className="text-4xl">&#9993;</div>
+            <h1 className="text-2xl font-bold">Check your email</h1>
+            <p className="text-text-secondary">
+              We sent a verification link to <strong>{email}</strong>. Click the link to activate your account, then sign in.
+            </p>
+            <Link
+              href="/sign-in"
+              className="inline-block mt-4 rounded-full bg-accent-btn px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent-light"
+            >
+              Go to Sign In
+            </Link>
+          </div>
+        ) : (
+        <>
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
           <p className="mt-1 text-sm text-text-secondary">
@@ -127,6 +130,8 @@ export default function SignUpPage() {
             Sign in
           </Link>
         </p>
+        </>
+        )}
       </div>
     </div>
   );

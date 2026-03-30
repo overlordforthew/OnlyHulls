@@ -11,11 +11,12 @@ export async function DELETE() {
 
   const userId = session.user.id;
 
-  // Cascade delete all user data in dependency order
-  await query("DELETE FROM ai_conversations WHERE user_id = $1", [userId]);
+  // Cascade delete all user data — null FK refs first, then delete in dependency order
+  await query("UPDATE buyer_profiles SET ai_conversation_id = NULL WHERE user_id = $1", [userId]);
   await query("DELETE FROM introductions WHERE buyer_id = $1 OR seller_id = $1", [userId]);
   await query("DELETE FROM matches WHERE buyer_id = $1", [userId]);
   await query("DELETE FROM buyer_profiles WHERE user_id = $1", [userId]);
+  await query("DELETE FROM ai_conversations WHERE user_id = $1", [userId]);
   await query(
     `DELETE FROM boat_media WHERE boat_id IN (SELECT id FROM boats WHERE seller_id = $1)`,
     [userId]
