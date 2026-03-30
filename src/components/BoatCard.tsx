@@ -113,7 +113,7 @@ export default function BoatCard({
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-          {boat.specs.loa && <span>{boat.specs.loa > 300 ? Math.round(boat.specs.loa / 100) : boat.specs.loa}ft</span>}
+          {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
           {boat.specs.rig_type && (
             <>
               <span className="text-text-tertiary">·</span>

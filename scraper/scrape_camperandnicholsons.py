@@ -17,7 +17,7 @@ def scrape_page(url):
     boats = []
 
     # Links: /buy-a-yacht/yachts-for-sale/{slug}
-    parts = re.split(r'(href="(/buy-a-yacht/yachts-for-sale/[^"]+)")', html)
+    parts = re.split(r'(href="(?:/buy-a-yacht/yachts-for-sale/[^"]+)")', html)
 
     seen = set()
     for i, part in enumerate(parts):

@@ -13,7 +13,7 @@ def scrape(limit=30):
     boats = []
 
     # Links: /for-sale/{slug}/{id}
-    link_pattern = re.compile(r'href="(/for-sale/([^"]+?)/(\d{4,}))"')
+    link_pattern = re.compile(r'href="(/for-sale/([^"]+?)/(\d{4,})/?)"')
     seen = set()
 
     for m in link_pattern.finditer(html):
