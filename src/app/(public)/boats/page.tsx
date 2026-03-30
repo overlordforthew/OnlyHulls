@@ -3,7 +3,10 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import BoatCard from "@/components/BoatCard";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+
+type SortField = "price" | "size" | "year" | "newest";
+type SortDir = "asc" | "desc";
 
 interface Boat {
   id: string;
@@ -55,6 +58,8 @@ function BoatsPageInner() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("price");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [filters, setFilters] = useState({
     minPrice: "",
     maxPrice: "",
@@ -64,6 +69,23 @@ function BoatsPageInner() {
   });
 
   const BATCH_SIZE = 30;
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      // Same field — reverse direction
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      // New field — set smart defaults
+      setSortField(field);
+      setSortDir(field === "newest" ? "desc" : "asc");
+    }
+  }
+
+  // Refetch when sort changes
+  useEffect(() => {
+    fetchBoats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortField, sortDir]);
 
   const buildParams = useCallback((q?: string, tag?: string, pageNum?: number) => {
     const params = new URLSearchParams();
@@ -78,8 +100,10 @@ function BoatsPageInner() {
     if (filters.minYear) params.set("minYear", filters.minYear);
     if (filters.maxYear) params.set("maxYear", filters.maxYear);
     if (filters.rigType) params.set("rigType", filters.rigType);
+    params.set("sort", sortField);
+    params.set("dir", sortDir);
     return params;
-  }, [search, activeTag, page, filters]);
+  }, [search, activeTag, page, filters, sortField, sortDir]);
 
   async function fetchBoats(q?: string, tag?: string) {
     setLoading(true);
@@ -138,7 +162,7 @@ function BoatsPageInner() {
               <h1 className="text-2xl font-bold">Browse Boats</h1>
               {!loading && (
                 <p className="mt-1 text-sm text-text-secondary">
-                  {total} boats &middot; sorted by price
+                  {total} boats
                 </p>
               )}
             </div>
@@ -237,6 +261,37 @@ function BoatsPageInner() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Sort Bar */}
+      <div className="border-b border-border bg-surface/30">
+        <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-5 py-2">
+          <span className="mr-1 text-xs text-text-tertiary whitespace-nowrap">Sort by</span>
+          {(["price", "size", "year", "newest"] as SortField[]).map((field) => {
+            const active = sortField === field;
+            const labels: Record<SortField, string> = {
+              price: "Price", size: "Size", year: "Year", newest: "Newest",
+            };
+            return (
+              <button
+                key={field}
+                onClick={() => toggleSort(field)}
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
+                  active
+                    ? "bg-primary/10 text-primary border border-primary/30"
+                    : "text-text-secondary hover:text-foreground hover:bg-surface-elevated border border-transparent"
+                }`}
+              >
+                {labels[field]}
+                {active ? (
+                  sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-30" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

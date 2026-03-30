@@ -11,6 +11,18 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.your-objectstorage.com",
       },
+      {
+        protocol: "https",
+        hostname: "www.sailboatlistings.com",
+      },
+      {
+        protocol: "https",
+        hostname: "ics.apolloduck.com",
+      },
+      {
+        protocol: "https",
+        hostname: "cdnx.theyachtmarket.com",
+      },
     ],
   },
 };

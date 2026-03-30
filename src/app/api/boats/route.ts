@@ -22,6 +22,19 @@ export async function GET(req: Request) {
   const rigType = url.searchParams.get("rigType");
   const hullType = url.searchParams.get("hullType");
   const tag = url.searchParams.get("tag");
+  const sort = url.searchParams.get("sort") || "price";
+  const dir = url.searchParams.get("dir") || "asc";
+
+  // Map sort params to SQL ORDER BY
+  const SORT_MAP: Record<string, string> = {
+    price: "COALESCE(b.asking_price_usd, b.asking_price)",
+    size: "(d.specs->>'loa')::float",
+    year: "b.year",
+    newest: "b.created_at",
+  };
+  const sortCol = SORT_MAP[sort] || SORT_MAP.price;
+  const sortDir = dir === "desc" ? "DESC" : "ASC";
+  const orderBy = `${sortCol} ${sortDir} NULLS LAST`;
 
   // If search query, use Meilisearch
   if (search) {
@@ -101,7 +114,7 @@ export async function GET(req: Request) {
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE ${where}
-     ORDER BY COALESCE(b.asking_price_usd, b.asking_price) ASC
+     ORDER BY ${orderBy}
      LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
     [...params, limit, (page - 1) * limit]
   );
