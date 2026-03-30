@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Scrape catamaran listings from catamarans.com.
+"""Scrape catamaran listings from catamarans.com via detail pages.
 
-2,013 verified listings, SSR, clean pagination. World's leading cat brokerage.
+2,013 listings. Index page gives URLs, detail pages give full specs + price.
 
 Usage:
     python scrape_catamarans_com.py [limit]    # default: 100
@@ -10,6 +10,7 @@ Usage:
 import json
 import re
 import sys
+import time
 
 from scrapling import Fetcher
 
@@ -19,118 +20,156 @@ LIST_URL = f"{BASE}/catamarans-for-sale/catamarans-all-listing-search-boats"
 fetcher = Fetcher()
 
 
-def scrape_page(url):
-    """Scrape a single page of catamaran listings."""
+def get_listing_urls(limit=100):
+    """Get detail page URLs from index pages."""
+    all_urls = []
+    page_num = 0
+
+    while len(all_urls) < limit:
+        url = f"{LIST_URL}?pageNumber={page_num}" if page_num > 0 else LIST_URL
+        print(f"  Index page {page_num}...", end=" ", flush=True)
+
+        page = fetcher.get(url, timeout=20)
+        if page.status != 200:
+            print(f"HTTP {page.status}")
+            break
+
+        html = page.body.decode("utf-8", errors="replace")
+        # Match: /used-sail-catamaran-for-sale/{year}-{make}-{model}/{name}/{id}
+        pattern = re.compile(r'/used-[^/]+-for-sale/\d{4}-[^/]+/[^/]+/(\d+)$')
+        seen = set(u[1] for u in all_urls)
+        new = 0
+
+        for link in page.css('a[href*="-for-sale/"]'):
+            href = link.attrib.get("href", "")
+            m = pattern.search(href)
+            if m and m.group(1) not in seen:
+                full_url = BASE + href if href.startswith("/") else href
+                all_urls.append((m.group(1), full_url))
+                seen.add(m.group(1))
+                new += 1
+
+        print(f"{new} new (total: {len(all_urls)})")
+        if new == 0:
+            break
+        page_num += 1
+
+    return all_urls[:limit]
+
+
+def scrape_detail(boat_id, url):
+    """Scrape a single boat detail page for full specs."""
     page = fetcher.get(url, timeout=20)
     if page.status != 200:
-        print(f"  HTTP {page.status}")
-        return [], False
+        return None
 
-    boats = []
     html = page.body.decode("utf-8", errors="replace")
+    text = re.sub(r'<[^>]+>', ' ', html)
+    text = re.sub(r'\s+', ' ', text)
+    boat = {"id": boat_id, "url": url}
 
-    # Find detail page links: /used-sail-catamaran-for-sale/{year}-{make}-{model}/{name}/{id}
-    detail_pattern = re.compile(r'/used-[^/]+-for-sale/\d{4}-[^/]+/[^/]+/(\d+)$')
-    seen = set()
+    # Name — extract from URL slug (most reliable): /2017-lagoon-560/no-name-lagoon-560/389854
+    url_parts = url.rstrip("/").split("/")
+    if len(url_parts) >= 3:
+        # Slug is the make-model part: "2017-lagoon-560"
+        slug = url_parts[-3]  # e.g. "2017-lagoon-560"
+        name = re.sub(r'^\d{4}-', '', slug).replace("-", " ").title()
+        boat["name"] = name
 
-    for link in page.css('a[href*="-for-sale/"]'):
-        href = link.attrib.get("href", "")
-        m = detail_pattern.search(href)
-        if not m:
-            continue
-        boat_id = m.group(1)
-        if boat_id in seen:
-            continue
-        seen.add(boat_id)
-        # Use the canonical URL (without Image-Gallery etc)
-        full_url = BASE + href if href.startswith("/") else href
-
-        boat = {"url": full_url}
-
-        # Get all text content from the card
-        text = str(link.get_all_text()).strip() if hasattr(link, 'get_all_text') else ""
-
-        # Extract year from URL: /used-sail-catamaran-for-sale/2017-lagoon-560/...
-        url_year = re.search(r'/(\d{4})-', href)
-        if url_year and 1960 <= int(url_year.group(1)) <= 2030:
-            boat["year"] = url_year.group(1)
-
-        # Extract make/model from URL path
-        path_match = re.search(r'-for-sale/\d{4}-([^/]+)/', href)
-        if path_match:
-            raw = path_match.group(1).replace("-", " ").title()
-            boat["name"] = raw
-
-        # Price from text: $1,295,000 or €372,800
-        price_m = re.search(r'[£$€]\s?[\d,]+', text)
+    # Price — "Asking Price</span><p>$1,295,000</p>" pattern
+    price_m = re.search(r'Asking\s+Price</span>\s*<p>\s*([£$€][\d,]+)', html, re.I)
+    if price_m:
+        boat["price"] = price_m.group(1)
+    else:
+        # Fallback: "Price" label near a dollar amount
+        price_m = re.search(r'(?:Price|Asking)[^<]*<[^>]*>\s*([£$€][\d,]+)', html, re.I)
         if price_m:
-            boat["price"] = price_m.group()
+            boat["price"] = price_m.group(1)
 
-        # Length from text: "56 ft" or "42'"
-        len_m = re.search(r'(\d+(?:\.\d+)?)\s*(?:ft|feet|\')', text, re.I)
+    # Year — from "Year Built" or "Model Year" fields
+    year_m = re.search(r'(?:Year\s+Built|Model\s+Year)[:\s]+(\d{4})', text, re.I)
+    if year_m:
+        boat["year"] = year_m.group(1)
+    else:
+        year_m = re.search(r'\b(19[6-9]\d|20[0-2]\d)\b', url)
+        if year_m:
+            boat["year"] = year_m.group(1)
+
+    # Length
+    len_m = re.search(r"(?:Length|LOA)[:\s]+(\d+)['\s]*(?:\d+)?[\"']?\s*\(?\s*(\d+(?:\.\d+)?)\s*m", text, re.I)
+    if len_m:
+        boat["length"] = f"{len_m.group(1)}'"
+    else:
+        len_m = re.search(r"(\d+)['\s]*(?:\d+)?[\"']?\s*\(\s*[\d.]+\s*m\s*\)", text)
         if len_m:
             boat["length"] = f"{len_m.group(1)}'"
 
-        # Location from text — usually city, state format
-        loc_m = re.search(r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,?\s*[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)', text)
-        if loc_m and not re.match(r'\d', loc_m.group()):
-            boat["location"] = loc_m.group().strip()
+    # Beam
+    beam_m = re.search(r"Beam[:\s]+(\d+)['\s]", text, re.I)
+    if beam_m:
+        boat["beam"] = f"{beam_m.group(1)}'"
 
-        # Images
-        images = []
-        for img in link.css("img"):
-            src = img.attrib.get("data-src") or img.attrib.get("src", "")
-            if src and "/BoatImages/" in src:
-                if src.startswith("/"):
-                    src = BASE + src
-                images.append(src)
-        boat["images"] = images[:15]
+    # Draft
+    draft_m = re.search(r"Draft[:\s]+(\d+)['\s]", text, re.I)
+    if draft_m:
+        boat["draft"] = f"{draft_m.group(1)}'"
 
-        if boat.get("name"):
-            boats.append(boat)
+    # Location
+    loc_m = re.search(r'(?:Location|Located)[:\s]+([A-Z][a-zA-Z\s,]+?)(?:\s{2,}|\.|United States)', text, re.I)
+    if loc_m:
+        boat["location"] = loc_m.group(1).strip().rstrip(",")
 
-    # Check pagination
-    has_next = bool(re.search(r'pageNumber=\d+[^"]*"[^>]*>(?:Next|>|&gt;)', html, re.I))
+    # Engine
+    engine_m = re.search(r'(?:Engine|Engines?)[:\s]+(.+?)(?:Fuel|Propeller|Hours|$)', text, re.I)
+    if engine_m:
+        boat["engine"] = engine_m.group(1).strip()[:100]
 
-    return boats, has_next
+    # Hull type
+    hull_m = re.search(r'Hull\s+(?:Material|Type)[:\s]+(\w+)', text, re.I)
+    if hull_m:
+        boat["hull"] = hull_m.group(1)
+
+    # Rigging
+    rig_m = re.search(r'Rig\s+Type[:\s]+(\w+)', text, re.I)
+    if rig_m:
+        boat["rigging"] = rig_m.group(1)
+
+    # Images
+    images = []
+    for img_m in re.finditer(r'/BoatImages/\d+/[^"\'>\s]+\.(?:webp|jpg|jpeg|png)', html):
+        img_url = BASE + img_m.group()
+        if img_url not in images:
+            images.append(img_url)
+    boat["images"] = images[:15]
+
+    return boat if boat.get("name") else None
 
 
 def main():
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-    all_boats = []
-    page_num = 0
 
-    print(f"Scraping catamarans.com (limit={limit})...")
+    print(f"Scraping catamarans.com detail pages (limit={limit})...")
+    urls = get_listing_urls(limit)
+    print(f"\nFound {len(urls)} listings. Scraping details...\n")
 
-    while len(all_boats) < limit:
-        url = f"{LIST_URL}?pageNumber={page_num}" if page_num > 0 else LIST_URL
-        print(f"  Page {page_num}...", end=" ")
-
-        boats, has_next = scrape_page(url)
-        if not boats:
-            print("no results")
-            break
-
-        all_boats.extend(boats)
-        print(f"{len(boats)} boats (total: {len(all_boats)})")
-
-        if not has_next or len(all_boats) >= limit:
-            break
-        page_num += 1
-
-    all_boats = all_boats[:limit]
+    boats = []
+    for i, (bid, url) in enumerate(urls):
+        boat = scrape_detail(bid, url)
+        if boat:
+            boats.append(boat)
+            if (i + 1) <= 5 or (i + 1) % 50 == 0:
+                name = boat.get("name", "?")
+                price = boat.get("price", "N/A")
+                year = boat.get("year", "?")
+                imgs = len(boat.get("images", []))
+                print(f"  [{i+1}/{len(urls)}] {year} {name[:40]} | {price} | {imgs} photos")
+        time.sleep(0.5)  # Be respectful
 
     output_path = "/tmp/scraped_catamarans_com.json"
     with open(output_path, "w") as f:
-        json.dump(all_boats, f, indent=2)
+        json.dump(boats, f, indent=2)
 
-    print(f"\nDone! {len(all_boats)} boats saved to {output_path}")
-    for b in all_boats[:5]:
-        name = b.get("name", "?")
-        price = b.get("price", "N/A")
-        year = b.get("year", "?")
-        imgs = len(b.get("images", []))
-        print(f"  {year} {name} | {price} | {imgs} photos")
+    print(f"\nDone! {len(boats)} boats saved to {output_path}")
 
 
 if __name__ == "__main__":

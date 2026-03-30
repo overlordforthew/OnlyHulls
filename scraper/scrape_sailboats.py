@@ -92,10 +92,14 @@ def scrape_boat(boat_id, url):
     boat = {"id": boat_id, "url": url}
     html = page.body.decode("utf-8", errors="replace")
 
-    # Name from title
+    # Name from title — clean up "1979 1979 catalina 30 sailboat" pattern
     title_m = re.search(r"<title>([^<]+)</title>", html)
     if title_m:
         name = title_m.group(1).split(" - ")[0].split(" for sale")[0].strip()
+        # Strip leading duplicate year: "1979 1979 catalina" → "1979 catalina"
+        name = re.sub(r'^(\d{4})\s+\1\s+', r'\1 ', name)
+        # Strip trailing "sailboat"
+        name = re.sub(r'\s+sailboat\s*$', '', name, flags=re.I)
         boat["name"] = name
 
     # Parse spec tables: header row has labels, next row has values

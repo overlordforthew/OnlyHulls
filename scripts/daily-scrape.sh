@@ -43,20 +43,7 @@ else
     log "  FAILED: sailboatlistings scrape error"
 fi
 
-# --- Apollo Duck (cruising yachts, EU+US) ---
-log "Scraping apolloduck.com..."
-if python3 "$SCRAPER_DIR/scrape_apolloduck.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_apolloduck.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from apolloduck.com"
-    if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_apolloduck.json apolloduck 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
-    fi
-else
-    log "  FAILED: apolloduck scrape error"
-fi
+# --- Apollo Duck — DROPPED (prices are JS-rendered, no static HTML access) ---
 
 # --- The Yacht Market (sailing boats, bluewater focus) ---
 log "Scraping theyachtmarket.com..."
