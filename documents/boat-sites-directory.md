@@ -50,6 +50,13 @@
 | 19 | BoatNation | boatnation.com | **~12** | Yes (SSR) | Yes (lazy) | US | Small marketplace. |
 | 20 | Boatnet.de | boatnet.de | **~9** | Yes (SSR) | Yes | Germany | Clean SSR. |
 | 21 | Boatsfsbo.com | boatsfsbo.com | **~10** | Yes (SSR) | Yes | US | FSBO focus. |
+| 22 | Asia Yacht Brokers | asiayachtbrokers.com | **52** | Yes (SSR) | Yes | Singapore/SEA | SSR, SGD prices, WP thumbnails. |
+| 23 | Virgin Islands YB | virginislandsyachtbroker.com | **23** | Yes (SSR) | Yes | Caribbean | $59K-$2.8M. Responsive images. |
+| 24 | Boote & Yachten | boote-yachten.de | **17** | Yes (SSR) | Yes | Germany | EUR 15K-4.9M. boat-images.com CDN. |
+| 25 | Apollo Duck US | apolloduck.us | **10** | Yes (SSR) | Yes | US | **Prices in HTML** (unlike .com). $13K-$949K. |
+| 26 | Yacht Sales Co | yachtsalesco.com | **9** | Yes (SSR) | Yes | AU/NZ | Multi-currency. $170K-$1.89M. |
+| 27 | Edwards Yacht Sales | edwardsyachtsales.com | **4** | Yes (SSR) | Yes | US | reCAPTCHA on forms only. $169K-$850K. |
+| 28 | Sailboat Owners | sailboatowners.com | **40+** | Yes (SSR) | Yes | US | Bad SSL cert (needs -k). $5K-$123K. |
 
 ---
 
@@ -66,8 +73,8 @@
 | 28 | bateaux.com | bateaux.com | **~5 shown** | French, full listings behind link | France |
 | 29 | Leopard Brokerage | leopardbrokerage.com | **~3 featured** | Hybrid SSR+JS search. reCAPTCHA. | Global |
 | 30 | Sailboat Owners | sailboatowners.com | **100+ est** | 200 status, forum classifieds | US |
-| 31 | SailingTexas | sailingtexas.com | **100+ est** | 200, SSR, 141 price signals | US (TX) |
-| 32 | GoodOldBoat | goodoldboat.com | **unknown** | 200, SSR, 378 listing signals | US |
+| 31 | SailingTexas | sailingtexas.com | **~35** | SSR classifieds, no prices in index (detail pages only) | US (TX) |
+| 32 | Best-Boats24 | best-boats24.net | **~15** | Hybrid, lazy-loaded images/prices | Germany |
 | 33 | YBW | ybw.com | **unknown** | 200, SSR, 293 listing signals | UK |
 | 34 | PBO | pbo.co.uk | **unknown** | 200, SSR, 251 listing signals | UK |
 | 35 | BoatClassifieds.US | boatclassifieds.us | **~25** | Forum-style, prices in titles, images need JS | US |
@@ -91,6 +98,9 @@
 | 46 | PopSells | popsells.com | 7,000+ | Next.js | Claims 7K+ but zero in HTML |
 | 47 | Canadian Boat Sales | canadianboatsales.ca | 7 | JS carousel | Too small, no prices |
 | 48 | The Boat Shop CA | theboatshop.ca | unknown | WP + isotope | Landing page, no listings visible |
+| 49 | Windcraft Multihulls | windcraftmultihulls.com | 30+ | Avada/WP | Zero content in HTML |
+| 50 | Bluewater Yacht Sales | bluewateryachtsales.com | 100+ | Divi/WP | /used-yachts is 404, homepage JS-heavy |
+| 51 | Trade A Boat AU | tradeaboat.com.au | ~12 | Next.js | Embedded JSON data may be extractable |
 
 ---
 
@@ -167,7 +177,7 @@
 | 92 | IYC | iyc.com/yachts-for-sale | 404 (path removed) |
 | 93 | Horizon Yacht Sales | horizonyachtsales.com | Connection refused |
 | 94 | Asia Power Boats | asiapowerboats.com | Connection refused |
-| 95 | ReelBoating | reelboating.com | 406 Not Acceptable |
+| 95 | ReelBoating | reelboating.com | 406 Not Acceptable (forum, not marketplace) |
 
 ---
 
@@ -183,20 +193,15 @@
 | 101 | Leopard Catamarans | leopardcatamarans.com | Manufacturer site, 6 model lines, no individual listings |
 | 102 | Row2k | row2k.com | Rowing/sculling site, 403 from Hetzner |
 | 103 | OffshoreOnly | offshoreonly.com | Performance powerboat forum, 403 from Hetzner |
+| 104 | GoodOldBoat | goodoldboat.com | Sailing magazine/content, not a marketplace |
 
 ---
 
-## NICHE — Too small or specialized
+## NICHE / AUTH-BLOCKED — Too small, specialized, or behind auth
 
 | # | Site | Domain | Listings | Notes |
 |---|------|--------|---------|-------|
-| 104 | Windcraft Multihulls | windcraftmultihulls.com | 30+ | Corsair/Rapido tris. Not tested. |
-| 105 | Multihull Centre | multihullcentre.com | 50+ | 401 from Hetzner (auth required) |
-| 106 | Asia Yacht Brokers | asiayachtbrokers.com | 100+ | SEA market. Not tested from Hetzner. |
-| 107 | The Yacht Sales Co | yachtsalesco.com | unknown | AU/NZ/Pacific. Not tested. |
-| 108 | Bluewater Yacht Sales | bluewateryachtsales.com | 100+ | 301 redirect. US brokerage. |
-| 109 | Edwards Yacht Sales | edwardsyachtsales.com | 100+ | Not tested. |
-| 110 | Virgin Islands YB | virginislandsyachtbroker.com | 50+ | Caribbean. Not tested. |
+| 104 | Multihull Centre | multihullcentre.com | 50+ | 401 auth required from Hetzner |
 
 ---
 
