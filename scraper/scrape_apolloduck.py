@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Scrape cruising yacht listings from apolloduck.com.
 
-Focus: cruising yachts 25ft+.
-Server-rendered HTML with CDN images.
+14,000+ listings. Extract boat data from surrounding HTML context per boat ID.
+Note: Apollo Duck CDN images are hotlink-protected (return 400 from external referers).
 
 Usage:
     python scrape_apolloduck.py [limit]    # default: 100
@@ -21,85 +21,80 @@ fetcher = Fetcher()
 
 
 def scrape_page(url):
-    """Scrape a single page of listings."""
+    """Scrape boat listings by extracting data from HTML context around each boat ID."""
     page = fetcher.get(url, timeout=20)
     if page.status != 200:
         print(f"  HTTP {page.status}")
         return [], False
 
-    boats = []
     html = page.body.decode("utf-8", errors="replace")
 
-    # Detail links: /boat/{model}-for-sale/{id}
-    detail_pattern = re.compile(r'/boat/[^/]+-for-sale/\d+')
-    seen = set()
+    # Find all unique boat IDs and their slugs
+    links = re.findall(r'/boat/([^"]+)-for-sale/(\d+)', html)
+    seen_ids = {}
+    for slug, bid in links:
+        if bid not in seen_ids:
+            seen_ids[bid] = slug
 
-    for link in page.css('a[href]'):
-        href = link.attrib.get("href", "")
-        if not detail_pattern.search(href):
-            continue
-        full_url = BASE + href if href.startswith("/") else href
-        if full_url in seen:
-            continue
-        seen.add(full_url)
+    boats = []
+    for bid, slug in seen_ids.items():
+        boat = {
+            "url": f"{BASE}/boat/{slug}-for-sale/{bid}",
+        }
 
-        boat = {"url": full_url}
-        text = str(link.get_all_text()).strip() if hasattr(link, 'get_all_text') else ""
+        # Name from slug: "morecambe-bay-prawner-42" → "Morecambe Bay Prawner 42"
+        name = slug.replace("-", " ").title()
+        # Clean up common noise
+        name = re.sub(r'\bFor Sale\b', '', name, flags=re.I).strip()
+        boat["name"] = name
 
-        # Name from link text or URL
-        title_els = link.css('strong, b, h2, h3, h4')
-        title_el = title_els[0] if title_els else None
-        if title_el:
-            raw_name = str(title_el.get_all_text()).strip()
-            # Clean up: remove leading year, trailing "for sale"
-            raw_name = re.sub(r'^\d{4}\s+', '', raw_name)
-            raw_name = re.sub(r'\s+for\s+sale\s*$', '', raw_name, flags=re.I)
-            boat["name"] = raw_name
-        elif text:
-            first_line = text.split("\n")[0].strip()[:80]
-            first_line = re.sub(r'^\d{4}\s+', '', first_line)
-            first_line = re.sub(r'\s+for\s+sale\s*$', '', first_line, flags=re.I)
-            if first_line:
-                boat["name"] = first_line
+        # Extract data from HTML context around this boat ID
+        # Find all occurrences and grab surrounding text
+        contexts = []
+        for m in re.finditer(re.escape(bid), html):
+            start = max(0, m.start() - 800)
+            end = min(len(html), m.end() + 400)
+            contexts.append(html[start:end])
 
-        # Structured fields from text: "Year: 1985", "Length: 7.50m", "Location: Portugal"
-        year_m = re.search(r'Year:\s*(\d{4})', text)
+        combined = " ".join(contexts)
+        # Strip HTML tags for text analysis
+        text = re.sub(r'<[^>]+>', ' ', combined)
+        text = re.sub(r'\s+', ' ', text)
+
+        # Year
+        year_m = re.search(r'\b(19[6-9]\d|20[0-2]\d)\b', text)
         if year_m:
             boat["year"] = year_m.group(1)
-        else:
-            year_m = re.search(r'\b(19[6-9]\d|20[0-2]\d)\b', text)
-            if year_m:
-                boat["year"] = year_m.group(1)
 
-        len_m = re.search(r'Length:\s*(\d+(?:\.\d+)?)\s*m', text)
-        if len_m:
-            meters = float(len_m.group(1))
-            boat["length"] = f"{meters * 3.28084:.0f}'"
-        else:
-            len_m = re.search(r'(\d+(?:\.\d+)?)\s*m\b', text)
-            if len_m:
-                val = float(len_m.group(1))
-                if 5 < val < 50:  # plausible boat length in meters
-                    boat["length"] = f"{val * 3.28084:.0f}'"
-
-        loc_m = re.search(r'Location:\s*(.+?)(?:\n|$)', text)
-        if loc_m:
-            boat["location"] = loc_m.group(1).strip()
-
-        price_m = re.search(r'[£$€]\s?[\d,]+', text)
+        # Price — look for currency patterns
+        price_m = re.search(r'[£$€]\s?[\d,]+(?:\.\d{2})?', text)
         if price_m:
             boat["price"] = price_m.group()
 
-        # Note: Apollo Duck CDN (ics.apolloduck.com) is hotlink-protected
-        # Images return 400 when loaded from external domains
-        # Don't store these URLs — they won't render on our site
+        # Length — meters or feet
+        len_m = re.search(r'(\d+(?:\.\d+)?)\s*(?:m\b|metres?)', text, re.I)
+        if len_m:
+            meters = float(len_m.group(1))
+            if 5 < meters < 50:
+                boat["length"] = f"{meters * 3.28084:.0f}'"
+        if not boat.get("length"):
+            len_ft = re.search(r'(\d+(?:\.\d+)?)\s*(?:ft|feet|\')', text, re.I)
+            if len_ft:
+                boat["length"] = f"{len_ft.group(1)}'"
+
+        # Location — look for country/region patterns
+        loc_m = re.search(r'(?:Location|Based|Lying)[:\s]+([A-Za-z\s,]+?)(?:\s*[|<]|\s{2,})', text)
+        if loc_m:
+            boat["location"] = loc_m.group(1).strip()
+
+        # No images — Apollo Duck CDN is hotlink-protected
         boat["images"] = []
 
         if boat.get("name"):
             boats.append(boat)
 
     # Pagination
-    has_next = bool(re.search(r'next=\d+', html)) or bool(page.css('a:contains("Next"), a:contains("next")'))
+    has_next = bool(re.search(r'next=\d+', html))
 
     return boats, has_next
 
@@ -138,9 +133,7 @@ def main():
         name = b.get("name", "?")
         price = b.get("price", "N/A")
         year = b.get("year", "?")
-        loc = b.get("location", "?")
-        imgs = len(b.get("images", []))
-        print(f"  {year} {name} | {price} | {loc} | {imgs} photos")
+        print(f"  {year} {name} | {price}")
 
 
 if __name__ == "__main__":

@@ -87,7 +87,7 @@ export default async function BoatDetailPage({
 
   return (
     <div className="pb-16">
-      {/* JSON-LD Structured Data */}
+      {/* JSON-LD Structured Data — replace </ to prevent script breakout */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -108,7 +108,7 @@ export default async function BoatDetailPage({
                 name: boat.location_text,
               },
             }),
-          }),
+          }).replace(/</g, "\\u003c"),
         }}
       />
 

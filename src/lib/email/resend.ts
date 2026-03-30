@@ -8,6 +8,14 @@ function getFrom() {
   return process.env.RESEND_FROM_EMAIL || "OnlyHulls <hello@onlyhulls.com>";
 }
 
+function esc(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function sendSellerNotification(params: {
   sellerEmail: string;
   sellerName: string;
@@ -24,11 +32,11 @@ export async function sendSellerNotification(params: {
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #0369a1;">New Buyer Match on OnlyHulls</h2>
-        <p>Hi ${params.sellerName || "there"},</p>
-        <p>A buyer matched <strong>${Math.round(params.matchScore * 100)}%</strong> with your listing: <strong>${params.boatTitle}</strong></p>
+        <p>Hi ${esc(params.sellerName || "there")},</p>
+        <p>A buyer matched <strong>${Math.round(params.matchScore * 100)}%</strong> with your listing: <strong>${esc(params.boatTitle)}</strong></p>
         <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 16px 0;">
           <h3 style="margin-top: 0;">Buyer Profile Summary</h3>
-          <p>${params.buyerSummary}</p>
+          <p>${esc(params.buyerSummary)}</p>
         </div>
         <p>Would you like to connect with this buyer?</p>
         <div style="margin: 24px 0;">
@@ -58,13 +66,13 @@ export async function sendIntroductionEmail(params: {
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #0369a1;">You've Been Connected!</h2>
-        <p><strong>${params.buyerName || "A buyer"}</strong> and <strong>${params.sellerName || "a seller"}</strong> have been matched on OnlyHulls.</p>
+        <p><strong>${esc(params.buyerName || "A buyer")}</strong> and <strong>${esc(params.sellerName || "a seller")}</strong> have been matched on OnlyHulls.</p>
         <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 16px 0;">
-          <p><strong>Boat:</strong> ${params.boatTitle}</p>
+          <p><strong>Boat:</strong> ${esc(params.boatTitle)}</p>
           <p><strong>Match Score:</strong> ${Math.round(params.matchScore * 100)}%</p>
         </div>
-        <p><strong>Buyer:</strong> ${params.buyerName} (${params.buyerEmail})</p>
-        <p><strong>Seller:</strong> ${params.sellerName} (${params.sellerEmail})</p>
+        <p><strong>Buyer:</strong> ${esc(params.buyerName)} (${esc(params.buyerEmail)})</p>
+        <p><strong>Seller:</strong> ${esc(params.sellerName)} (${esc(params.sellerEmail)})</p>
         <p>You're now connected! Reply to this email or reach out directly to start your conversation.</p>
         <p style="color: #94a3b8; font-size: 12px;">OnlyHulls — Be the matchmaker, not the broker.</p>
       </div>

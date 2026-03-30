@@ -22,7 +22,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     role: UserRole;
     subscription_tier: SubscriptionTier;
     stripe_customer_id: string | null;
-  }>("SELECT * FROM users WHERE id = $1", [session.user.id]);
+  }>("SELECT id, email, display_name, role, subscription_tier, stripe_customer_id FROM users WHERE id = $1", [session.user.id]);
 
   if (!user) return null;
 

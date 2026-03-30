@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Scrape sailing yacht listings from theyachtmarket.com.
 
-Focus: bluewater cruisers, coastal cruisers, catamarans, liveaboards 25ft+.
-Server-rendered HTML, lazy-loaded images via data-src.
+5,700 verified sail listings. Prices/specs in HTML context around each boat ID.
 
 Usage:
     python scrape_yachtmarket.py [limit]    # default: 100
@@ -21,100 +20,90 @@ fetcher = Fetcher()
 
 
 def scrape_page(url):
-    """Scrape a single page of listings."""
+    """Scrape listings by extracting data from HTML context around each boat detail URL."""
     page = fetcher.get(url, timeout=20)
     if page.status != 200:
         print(f"  HTTP {page.status}")
         return [], False
 
-    boats = []
     html = page.body.decode("utf-8", errors="replace")
 
-    # Detail page links: /en/boats-for-sale/{make}/{model}/id{number}/
-    detail_pattern = re.compile(r'/en/boats-for-sale/[^/]+/[^/]+/id\d+/')
-    seen = set()
+    # Find all detail page links: /en/boats-for-sale/{make}/{model}/id{number}/
+    links = re.findall(r'/en/boats-for-sale/([^/]+)/([^/]+)/id(\d+)/', html)
+    seen_ids = {}
+    for make_slug, model_slug, bid in links:
+        if bid not in seen_ids:
+            seen_ids[bid] = (make_slug, model_slug)
 
-    # Find all detail page links
-    for link in page.css('a[href]'):
-        href = link.attrib.get("href", "")
-        if not detail_pattern.search(href):
-            continue
-        full_url = BASE + href if href.startswith("/") else href
-        if full_url in seen:
-            continue
-        seen.add(full_url)
+    boats = []
+    for bid, (make_slug, model_slug) in seen_ids.items():
+        boat = {
+            "url": f"{BASE}/en/boats-for-sale/{make_slug}/{model_slug}/id{bid}/",
+        }
 
-        boat = {"url": full_url}
-        text = str(link.get_all_text()).strip() if hasattr(link, 'get_all_text') else ""
+        # Name from URL slugs
+        make = make_slug.replace("-", " ").title()
+        model = model_slug.replace("-", " ").title()
+        # Remove "Id12345" from model if present
+        model = re.sub(r'\bId\d+\b', '', model).strip()
+        boat["name"] = f"{make} {model}".strip() if model else make
 
-        # Extract name from URL path: /make/model/
-        parts = href.strip("/").split("/")
-        if len(parts) >= 4:
-            make = parts[2].replace("-", " ").title()
-            model = parts[3].replace("-", " ").title()
-            # Remove "Id12345" from model
-            model = re.sub(r'\bId\d+\b', '', model).strip()
-            if model:
-                boat["name"] = f"{make} {model}"
-            else:
-                boat["name"] = make
+        # Extract data from surrounding HTML context
+        contexts = []
+        for m in re.finditer(f'id{bid}', html):
+            start = max(0, m.start() - 600)
+            end = min(len(html), m.end() + 400)
+            contexts.append(html[start:end])
 
-        # Parse pipe-separated specs from card text: "2008 | 17.70m | Diesel | Sail"
-        specs = re.findall(r'(\d{4})\s*\|?\s*(\d+(?:\.\d+)?)\s*m', text)
-        if specs:
-            boat["year"] = specs[0][0]
-            meters = float(specs[0][1])
-            boat["length"] = f"{meters * 3.28084:.0f}'"
-        else:
-            # Try standalone patterns
-            year_m = re.search(r'\b(19[6-9]\d|20[0-2]\d)\b', text)
-            if year_m:
-                boat["year"] = year_m.group()
-            len_m = re.search(r'(\d+(?:\.\d+)?)\s*m\b', text)
-            if len_m:
-                boat["length"] = f"{float(len_m.group(1)) * 3.28084:.0f}'"
+        combined = " ".join(contexts)
+        text = re.sub(r'<[^>]+>', ' ', combined)
+        text = re.sub(r'\s+', ' ', text)
 
-        # Price from text
-        price_m = re.search(r'[£$€]\s?[\d,]+', text)
+        # Year — from pipe-separated specs: "2008 | 17.70m | Diesel"
+        year_m = re.search(r'\b(19[6-9]\d|20[0-2]\d)\b', text)
+        if year_m:
+            boat["year"] = year_m.group(1)
+
+        # Price
+        price_m = re.search(r'[£$€]\s?[\d,]+(?:\.\d{2})?', text)
         if price_m:
             boat["price"] = price_m.group()
 
-        # Location — look for known patterns
-        loc_m = re.search(r'(?:Location|Based)[\s:]+([A-Z][a-zA-Z\s,]+?)(?:\s*\||$)', text)
-        if loc_m:
-            boat["location"] = loc_m.group(1).strip()
+        # Length — meters (convert to feet)
+        len_m = re.search(r'(\d+(?:\.\d+)?)\s*m\b', text)
+        if len_m:
+            meters = float(len_m.group(1))
+            if 5 < meters < 50:
+                boat["length"] = f"{meters * 3.28084:.0f}'"
 
-        # Images: lazy-loaded via data-src on background divs or img tags
-        images = []
-        for img in link.css("img"):
-            src = img.attrib.get("data-src") or img.attrib.get("src", "")
-            if src and "theyachtmarket" in src:
-                if src.startswith("//"):
-                    src = "https:" + src
-                images.append(src)
-        for div in link.css("[data-src]"):
-            src = div.attrib.get("data-src", "")
-            if src and "theyachtmarket" in src:
-                if src.startswith("//"):
-                    src = "https:" + src
-                images.append(src)
-        boat["images"] = list(dict.fromkeys(images))[:15]
-
-        # Try extracting year from image filename (e.g. "pilot-saloon-55-2008-0001.jpg")
-        if not boat.get("year") and images:
-            for img_url in images:
-                y = re.search(r'-(\d{4})-\d{4}\.', img_url)
-                if y and 1960 <= int(y.group(1)) <= 2030:
-                    boat["year"] = y.group(1)
+        # Location
+        loc_patterns = [
+            r'(?:Location|Based|Lying)[:\s]+([A-Za-z\s,]+?)(?:\s*[|<]|\s{2,})',
+            r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z][a-z]+(?:\s[A-Z][a-z]+)*)',
+        ]
+        for pat in loc_patterns:
+            loc_m = re.search(pat, text)
+            if loc_m:
+                loc = loc_m.group(1).strip()
+                if len(loc) > 3 and not re.match(r'\d', loc):
+                    boat["location"] = loc
                     break
+
+        # Images — lazy-loaded from CDN
+        images = []
+        for img_m in re.finditer(r'((?:https?:)?//cdnx\.theyachtmarket\.com/img/[^"\'>\s]+)', combined):
+            img_url = img_m.group(1)
+            if img_url.startswith("//"):
+                img_url = "https:" + img_url
+            if img_url not in images:
+                images.append(img_url)
+        boat["images"] = images[:5]
 
         if boat.get("name"):
             boats.append(boat)
 
-    # Next page
-    has_next = 'page=' in html and bool(re.search(r'page=\d+[^"]*"[^>]*>[Nn]ext', html))
-    if not has_next:
-        has_next = bool(page.css('a[rel="next"]'))
+    # Check for next page
+    has_next = bool(re.search(r'page=\d+', html))
 
     return boats, has_next
 

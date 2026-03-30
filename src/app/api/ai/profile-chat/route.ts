@@ -2,13 +2,31 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { BUYER_PROFILING_SYSTEM_PROMPT, extractProfileFromResponse } from "@/lib/ai/profiling";
 import { NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
 
 const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://host.docker.internal:3099";
+
+const chatSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().max(10000),
+  })).min(1).max(50),
+  conversationId: z.string().uuid().optional(),
+});
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await rateLimit(`ai-chat:${session.user.id}`, 20, 3600);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded", retryAfter: rl.retryAfter },
+      { status: 429 }
+    );
   }
 
   const user = await queryOne<{ id: string }>(
@@ -19,7 +37,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const { messages, conversationId } = await req.json();
+  const body = await req.json();
+  const parsed = chatSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { messages, conversationId } = parsed.data;
 
   // Get or create conversation
   let convId = conversationId;

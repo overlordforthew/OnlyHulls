@@ -42,11 +42,16 @@ export async function GET(
   }
 
   if (action === "accept") {
-    // Update status
-    await query(
-      "UPDATE introductions SET status = 'accepted', responded_at = NOW() WHERE id = $1",
+    // Atomic update: prevents TOCTOU race (double-accept firing duplicate emails)
+    const updated = await queryOne<{ id: string }>(
+      "UPDATE introductions SET status = 'accepted', responded_at = NOW() WHERE id = $1 AND status = 'pending' RETURNING id",
       [intro.id]
     );
+    if (!updated) {
+      return new Response(renderPage("Already Responded", "This introduction was already handled."), {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
 
     // Get both parties' details
     const buyer = await queryOne<{ email: string; display_name: string | null }>(
@@ -91,11 +96,16 @@ export async function GET(
     );
   }
 
-  // Decline
-  await query(
-    "UPDATE introductions SET status = 'declined', responded_at = NOW() WHERE id = $1",
+  // Decline — atomic to prevent race
+  const declined = await queryOne<{ id: string }>(
+    "UPDATE introductions SET status = 'declined', responded_at = NOW() WHERE id = $1 AND status = 'pending' RETURNING id",
     [intro.id]
   );
+  if (!declined) {
+    return new Response(renderPage("Already Responded", "This introduction was already handled."), {
+      headers: { "Content-Type": "text/html" },
+    });
+  }
 
   return new Response(
     renderPage("Declined", "You've declined this introduction. The buyer will not receive your contact information."),
@@ -103,11 +113,15 @@ export async function GET(
   );
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function renderPage(title: string, message: string): string {
-  return `<!DOCTYPE html><html><head><title>${title} | OnlyHulls</title>
+  return `<!DOCTYPE html><html><head><title>${esc(title)} | OnlyHulls</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f1f5f9}
 .card{background:white;padding:48px;border-radius:16px;text-align:center;max-width:480px;box-shadow:0 4px 6px rgba(0,0,0,.1)}
 h1{color:#0369a1}a{color:#0369a1}</style></head>
-<body><div class="card"><h1>${title}</h1><p>${message}</p><a href="/">Back to OnlyHulls</a></div></body></html>`;
+<body><div class="card"><h1>${esc(title)}</h1><p>${esc(message)}</p><a href="/">Back to OnlyHulls</a></div></body></html>`;
 }

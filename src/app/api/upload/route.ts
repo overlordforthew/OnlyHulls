@@ -4,10 +4,17 @@ import { getPresignedUploadUrl, generateMediaKey } from "@/lib/storage";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
 const uploadSchema = z.object({
   boatId: z.string().uuid(),
   filename: z.string(),
-  contentType: z.string().startsWith("image/"),
+  contentType: z.enum(ALLOWED_IMAGE_TYPES),
 });
 
 export async function POST(req: Request) {
