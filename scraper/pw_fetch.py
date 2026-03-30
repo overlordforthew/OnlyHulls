@@ -38,11 +38,11 @@ class PlaywrightFetcher:
         if self._pw:
             self._pw.stop()
 
-    def get(self, url: str, wait_ms: int = 3000, timeout: int = 30000) -> str:
+    def get(self, url: str, wait_ms: int = 3000, timeout: int = 45000) -> str:
         """Navigate to URL, wait for JS, return rendered HTML string."""
         page = self._browser.new_page()
         try:
-            page.goto(url, timeout=timeout, wait_until="networkidle")
+            page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             page.wait_for_timeout(wait_ms)
             return page.content()
         except Exception as e:
@@ -51,11 +51,11 @@ class PlaywrightFetcher:
         finally:
             page.close()
 
-    def get_page(self, url: str, wait_ms: int = 5000, timeout: int = 30000) -> Page:
+    def get_page(self, url: str, wait_ms: int = 5000, timeout: int = 45000) -> Page:
         """Navigate to URL, wait for JS, return the Page object (caller must close)."""
         page = self._browser.new_page()
         try:
-            page.goto(url, timeout=timeout, wait_until="networkidle")
+            page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             page.wait_for_timeout(wait_ms)
             return page
         except Exception as e:

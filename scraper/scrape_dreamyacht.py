@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scrape charter exit fleet from dreamyachtsales.com via Playwright DOM queries."""
+"""Scrape charter exit fleet from dreamyachtsales.com via Playwright DOM."""
 import json, re, sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from pw_fetch import PlaywrightFetcher
@@ -14,32 +14,32 @@ def scrape(limit=30):
             url = f"{BASE}/pre-owned-yachts/listings/page/{page_num}/" if page_num > 1 else f"{BASE}/pre-owned-yachts/listings/"
             page = pf.get_page(url, wait_ms=5000)
             try:
-                html = page.content()
-                # Find listing links
-                links = re.findall(r'href="(/pre-owned-yachts/listings/([a-z][a-z0-9-]+)/)"', html)
-                if not links: break
+                # Find cards containing boat links
+                cards = page.query_selector_all('a[href*="/pre-owned-yachts/listings/"]')
+                if not cards: break
 
-                seen = set()
-                for path, slug in links:
-                    # Skip non-boat links (anchors, pagination, filters)
-                    if slug in seen or slug.startswith(("#", "page")) or len(slug) < 3: continue
-                    if slug.startswith("gf_") or slug == "breadcrumb": continue
-                    seen.add(slug)
+                new_count = 0
+                seen_slugs = set()
+                for card in cards:
+                    href = card.get_attribute("href") or ""
+                    m = re.search(r'/pre-owned-yachts/listings/([a-z][a-z0-9-]{2,})/?', href)
+                    if not m: continue
+                    slug = m.group(1)
+                    if slug in seen_slugs or slug.startswith("page") or slug.startswith("gf_"): continue
+                    seen_slugs.add(slug)
 
-                    # Get card context from rendered HTML
-                    idx = html.find(slug)
-                    if idx < 0: continue
-                    ctx = re.sub(r'<[^>]+>', ' ', html[max(0,idx-500):idx+800])
-                    ctx = re.sub(r'\s+', ' ', ctx)
+                    text = card.inner_text() or ""
+                    parent = card.evaluate("el => el.closest('article, .card, div')?.innerText || ''")
+                    if len(parent) > len(text): text = parent
 
-                    boat = {"url": f"{BASE}{path}"}
+                    boat = {"url": f"{BASE}/pre-owned-yachts/listings/{slug}/"}
                     boat["name"] = slug.replace("-", " ").title()
 
-                    # Price — EUR format: "€ 350,000" or "350.000 EUR" or "€350,000"
-                    price_m = re.search(r'€\s*([\d,.]+)', ctx) or re.search(r'([\d.]+(?:,\d+)?)\s*EUR', ctx, re.I)
+                    # Price — EUR format: "350.000,00 € incl." or "€350,000"
+                    price_m = re.search(r'([\d.]+(?:,\d+)?)\s*€', text) or re.search(r'€\s*([\d,.]+)', text) or re.search(r'([\d.]+(?:,\d+)?)\s*EUR', text, re.I)
                     if price_m:
-                        raw = price_m.group(1) if price_m.group(1) else price_m.group(0)
-                        # Handle German format: 350.000 → 350000
+                        raw = price_m.group(1)
+                        # German format: 350.000,00 → 350000
                         if '.' in raw and ',' in raw:
                             raw = raw.replace('.', '').replace(',', '.')
                         elif raw.count('.') > 1:
@@ -49,20 +49,26 @@ def scrape(limit=30):
                             if val > 500: boat["price"] = f"€{val:,.0f}"
                         except: pass
 
-                    year_m = re.search(r'\b(201[0-9]|202[0-6])\b', ctx)
+                    year_m = re.search(r'\b(201[0-9]|202[0-6])\b', text)
                     if year_m: boat["year"] = year_m.group(1)
 
-                    loc_m = re.search(r'(Martinique|Guadeloupe|Grenada|St\.\s*Martin|France|Croatia|Greece|Turkey|Saint Lucia)', ctx, re.I)
+                    # Model from text
+                    model_m = re.search(r'(Lagoon|Bali|Dufour|Nautitech|Astrea|Fountaine|Leopard|Lucia)\s*[\d.]*\w*', text, re.I)
+                    if model_m: boat["name"] = f"{boat['name']} ({model_m.group(0).strip()})"
+
+                    loc_m = re.search(r'(Martinique|Guadeloupe|Grenada|Saint Lucia|Croatia|Greece|Turkey|France)', text, re.I)
                     if loc_m: boat["location"] = loc_m.group(1)
 
                     boat["images"] = []
                     if boat.get("price") and boat.get("name"):
                         boats.append(boat)
+                        new_count += 1
             finally:
                 page.close()
 
+            if new_count == 0: break
             page_num += 1
-            if page_num > 15: break  # Safety limit
+            if page_num > 15: break
 
     return boats[:limit]
 
