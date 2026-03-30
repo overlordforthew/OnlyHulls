@@ -22,6 +22,9 @@ const SOURCES: Record<string, { name: string; domain: string }> = {
   theyachtmarket: { name: "TheYachtMarket", domain: "theyachtmarket.com" },
   apolloduck: { name: "Apollo Duck", domain: "apolloduck.com" },
   boatcrazy: { name: "BoatCrazy", domain: "boatcrazy.com" },
+  catamarans_com: { name: "Catamarans.com", domain: "catamarans.com" },
+  moorings: { name: "Moorings Brokerage", domain: "mooringsbrokerage.com" },
+  dreamyacht: { name: "Dream Yacht Sales", domain: "dreamyachtsales.com" },
   craigslist: { name: "Craigslist", domain: "craigslist.org" },
 };
 

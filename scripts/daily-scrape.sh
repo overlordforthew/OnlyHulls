@@ -73,6 +73,36 @@ else
     log "  FAILED: theyachtmarket scrape error"
 fi
 
+# --- Catamarans.com (pure catamaran brokerage) ---
+log "Scraping catamarans.com..."
+if python3 "$SCRAPER_DIR/scrape_catamarans_com.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_catamarans_com.json'))))" 2>/dev/null || echo 0)
+    log "  Scraped $COUNT boats from catamarans.com"
+    if [ "$COUNT" -gt 0 ]; then
+        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_catamarans_com.json catamarans_com 2>&1 | tail -1)
+        log "  $RESULT"
+        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
+        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+    fi
+else
+    log "  FAILED: catamarans.com scrape error"
+fi
+
+# --- Moorings Brokerage (charter exit fleet catamarans) ---
+log "Scraping mooringsbrokerage.com..."
+if python3 "$SCRAPER_DIR/scrape_moorings.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_moorings.json'))))" 2>/dev/null || echo 0)
+    log "  Scraped $COUNT boats from mooringsbrokerage.com"
+    if [ "$COUNT" -gt 0 ]; then
+        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_moorings.json moorings 2>&1 | tail -1)
+        log "  $RESULT"
+        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
+        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+    fi
+else
+    log "  FAILED: mooringsbrokerage scrape error"
+fi
+
 # --- Expire stale listings (not seen in 14+ days) ---
 log "Expiring stale listings..."
 EXPIRE_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/expire-stale.ts" 2>&1)
