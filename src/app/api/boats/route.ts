@@ -2,11 +2,19 @@ import { query, queryOne } from "@/lib/db";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { NextResponse } from "next/server";
 
+const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
+    b.asking_price_usd, b.location_text, b.slug, b.is_sample,
+    b.source_site, b.source_name, b.source_url,
+    (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,
+    COALESCE(d.specs, '{}') as specs,
+    COALESCE(d.character_tags, '{}') as character_tags,
+    d.condition_score`;
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.searchParams.get("q") || "";
   const page = parseInt(url.searchParams.get("page") || "1");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "30"), 100);
   const minPrice = url.searchParams.get("minPrice");
   const maxPrice = url.searchParams.get("maxPrice");
   const minYear = url.searchParams.get("minYear");
@@ -89,16 +97,11 @@ export async function GET(req: Request) {
   const where = conditions.join(" AND ");
 
   const boats = await query<Record<string, unknown>>(
-    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
-            b.location_text, b.slug, b.is_sample,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,
-            COALESCE(d.specs, '{}') as specs,
-            COALESCE(d.character_tags, '{}') as character_tags,
-            d.condition_score
+    `SELECT ${BOAT_FIELDS}
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE ${where}
-     ORDER BY b.created_at DESC
+     ORDER BY COALESCE(b.asking_price_usd, b.asking_price) ASC
      LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
     [...params, limit, (page - 1) * limit]
   );
@@ -118,16 +121,11 @@ export async function GET(req: Request) {
 
 async function fetchBoats(ids: string[]) {
   return query<Record<string, unknown>>(
-    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
-            b.location_text, b.slug, b.is_sample,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,
-            COALESCE(d.specs, '{}') as specs,
-            COALESCE(d.character_tags, '{}') as character_tags,
-            d.condition_score
+    `SELECT ${BOAT_FIELDS}
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.id = ANY($1)
-     ORDER BY b.created_at DESC`,
+     ORDER BY COALESCE(b.asking_price_usd, b.asking_price) ASC`,
     [ids]
   );
 }

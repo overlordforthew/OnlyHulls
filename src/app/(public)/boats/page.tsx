@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import BoatCard from "@/components/BoatCard";
 import { Search, SlidersHorizontal, X } from "lucide-react";
@@ -12,12 +12,16 @@ interface Boat {
   year: number;
   asking_price: number;
   currency: string;
+  asking_price_usd: number | null;
   location_text: string | null;
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
   specs: { loa?: number; rig_type?: string };
   character_tags: string[];
+  source_site?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
 }
 
 export default function BoatsPage() {
@@ -45,6 +49,7 @@ function BoatsPageInner() {
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState(initialQ);
   const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
@@ -58,35 +63,28 @@ function BoatsPageInner() {
     rigType: "",
   });
 
-  useEffect(() => {
-    fetchBoats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  const BATCH_SIZE = 30;
 
-  useEffect(() => {
-    const q = searchParams.get("q") || "";
-    const tag = searchParams.get("tag") || "";
-    setSearch(q);
-    setActiveTag(tag);
-    setPage(1);
-    fetchBoatsWithParams(q, tag);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  async function fetchBoatsWithParams(q?: string, tag?: string) {
-    setLoading(true);
+  const buildParams = useCallback((q?: string, tag?: string, pageNum?: number) => {
     const params = new URLSearchParams();
     const searchQ = q !== undefined ? q : search;
     const searchTag = tag !== undefined ? tag : activeTag;
     if (searchQ) params.set("q", searchQ);
     if (searchTag) params.set("tag", searchTag);
-    params.set("page", String(page));
+    params.set("page", String(pageNum || page));
+    params.set("limit", String(BATCH_SIZE));
     if (filters.minPrice) params.set("minPrice", filters.minPrice);
     if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
     if (filters.minYear) params.set("minYear", filters.minYear);
     if (filters.maxYear) params.set("maxYear", filters.maxYear);
     if (filters.rigType) params.set("rigType", filters.rigType);
+    return params;
+  }, [search, activeTag, page, filters]);
 
+  async function fetchBoats(q?: string, tag?: string) {
+    setLoading(true);
+    setPage(1);
+    const params = buildParams(q, tag, 1);
     const res = await fetch(`/api/boats?${params}`);
     const data = await res.json();
     setBoats(data.boats || []);
@@ -94,21 +92,38 @@ function BoatsPageInner() {
     setLoading(false);
   }
 
-  async function fetchBoats() {
-    await fetchBoatsWithParams();
+  async function loadMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    const params = buildParams(undefined, undefined, nextPage);
+    const res = await fetch(`/api/boats?${params}`);
+    const data = await res.json();
+    setBoats((prev) => [...prev, ...(data.boats || [])]);
+    setPage(nextPage);
+    setLoadingMore(false);
   }
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const tag = searchParams.get("tag") || "";
+    setSearch(q);
+    setActiveTag(tag);
+    fetchBoats(q, tag);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setActiveTag("");
-    setPage(1);
-    fetchBoatsWithParams(search, "");
+    fetchBoats(search, "");
   }
 
   function clearTag() {
     setActiveTag("");
-    fetchBoatsWithParams(search, "");
+    fetchBoats(search, "");
   }
+
+  const hasMore = boats.length < total;
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
@@ -123,7 +138,7 @@ function BoatsPageInner() {
               <h1 className="text-2xl font-bold">Browse Boats</h1>
               {!loading && (
                 <p className="mt-1 text-sm text-text-secondary">
-                  {total} boats found
+                  {total} boats &middot; sorted by price
                 </p>
               )}
             </div>
@@ -215,7 +230,7 @@ function BoatsPageInner() {
                 <option value="schooner">Schooner</option>
               </select>
               <button
-                onClick={() => { setPage(1); fetchBoats(); }}
+                onClick={() => fetchBoats()}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light"
               >
                 Apply
@@ -254,24 +269,22 @@ function BoatsPageInner() {
                 <BoatCard key={boat.id} boat={boat} />
               ))}
             </div>
-            {total > 20 && (
-              <div className="mt-10 flex items-center justify-center gap-4">
+
+            {hasMore && (
+              <div className="mt-10 flex justify-center">
                 <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="rounded-full border border-border px-5 py-2 text-sm font-medium text-text-secondary transition-all hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-border disabled:hover:text-text-secondary"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="rounded-full border border-border px-8 py-3 text-sm font-medium text-text-secondary transition-all hover:border-primary hover:text-primary disabled:opacity-50"
                 >
-                  Previous
-                </button>
-                <span className="text-sm text-text-secondary">
-                  Page {page} of {Math.ceil(total / 20)}
-                </span>
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page * 20 >= total}
-                  className="rounded-full border border-border px-5 py-2 text-sm font-medium text-text-secondary transition-all hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-border disabled:hover:text-text-secondary"
-                >
-                  Next
+                  {loadingMore ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Loading...
+                    </span>
+                  ) : (
+                    `Show More (${total - boats.length} remaining)`
+                  )}
                 </button>
               </div>
             )}

@@ -90,16 +90,10 @@ def scrape_page(url):
         if price_m:
             boat["price"] = price_m.group()
 
-        # Images from CDN
-        images = []
-        for img in link.css("img"):
-            src = img.attrib.get("data-src") or img.attrib.get("src", "")
-            if src and ("apolloduck" in src or "ics." in src):
-                # Upsize thumbnail to larger version
-                full_src = re.sub(r'/trim/\d+x\d+/', '/trim/800x600/', src)
-                if full_src not in images:
-                    images.append(full_src)
-        boat["images"] = images[:15]
+        # Note: Apollo Duck CDN (ics.apolloduck.com) is hotlink-protected
+        # Images return 400 when loaded from external domains
+        # Don't store these URLs — they won't render on our site
+        boat["images"] = []
 
         if boat.get("name"):
             boats.append(boat)
