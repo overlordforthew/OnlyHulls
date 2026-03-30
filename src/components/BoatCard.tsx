@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
 
@@ -136,7 +138,6 @@ export default function BoatCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-0.5 font-medium text-text-secondary hover:text-primary transition-colors"
-                onClick={(e) => e.stopPropagation()}
               >
                 {boat.source_name}
                 <ExternalLink className="h-3 w-3" />
