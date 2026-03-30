@@ -18,8 +18,8 @@
   --muted: #1e1e2e;
   --border: rgba(255, 255, 255, 0.07);
   --border-bright: rgba(255, 255, 255, 0.12);
-  --text-secondary: #8a96a3;
-  --text-tertiary: #555e6b;
+  --text-secondary: #a0aab4;
+  --text-tertiary: #6b7685;
 }
 
 /* Light mode override */

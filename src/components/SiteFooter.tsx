@@ -11,9 +11,9 @@ export default function SiteFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Browse */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
               Browse
-            </h4>
+            </h3>
             <ul className="mt-4 space-y-3">
               <li><Link href="/boats" className="text-sm text-text-secondary hover:text-primary transition-colors">All Boats</Link></li>
               <li><Link href="/boats?tag=bluewater" className="text-sm text-text-secondary hover:text-primary transition-colors">Cruising</Link></li>
@@ -25,9 +25,9 @@ export default function SiteFooter() {
 
           {/* Sellers */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
               Sellers
-            </h4>
+            </h3>
             <ul className="mt-4 space-y-3">
               <li><Link href="/sell" className="text-sm text-text-secondary hover:text-primary transition-colors">List Your Boat</Link></li>
               <li><Link href="/sell#pricing" className="text-sm text-text-secondary hover:text-primary transition-colors">Seller Pricing</Link></li>
@@ -37,9 +37,9 @@ export default function SiteFooter() {
 
           {/* Buyers */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">
               Buyers
-            </h4>
+            </h3>
             <ul className="mt-4 space-y-3">
               <li><Link href="/match" className="text-sm text-text-secondary hover:text-primary transition-colors">AI Matching</Link></li>
               <li><Link href="/match#pricing" className="text-sm text-text-secondary hover:text-primary transition-colors">Buyer Plans</Link></li>

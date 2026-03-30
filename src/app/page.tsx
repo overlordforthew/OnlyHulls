@@ -163,7 +163,7 @@ export default async function Home() {
 
       {/* ─── Categories ─── */}
       <section className="border-y border-border bg-surface/50">
-        <div className="mx-auto flex max-w-7xl justify-center gap-6 overflow-x-auto px-5 py-5 no-scrollbar sm:gap-10">
+        <div className="mx-auto flex max-w-7xl justify-center gap-6 overflow-x-auto px-5 py-5 pr-16 no-scrollbar sm:gap-10 sm:pr-5">
           {CATEGORIES.map((cat) => (
             <Link
               key={cat.tag}
