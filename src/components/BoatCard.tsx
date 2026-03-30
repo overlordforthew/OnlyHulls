@@ -29,6 +29,17 @@ interface BoatCardProps {
   onConnect?: () => void;
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", AUD: "A$", CAD: "C$", NZD: "NZ$",
+  SEK: "kr", DKK: "kr", NOK: "kr",
+};
+
+function formatPrice(amount: number | string, currency: string): string {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  const sym = CURRENCY_SYMBOLS[currency] || "$";
+  return `${sym}${Math.round(num).toLocaleString("en-US")}`;
+}
+
 export default function BoatCard({
   boat,
   matchScore,
@@ -80,13 +91,14 @@ export default function BoatCard({
           {/* Price overlay on image */}
           <div className="absolute bottom-3 left-3">
             <p className="text-lg font-bold text-white drop-shadow-lg">
-              {boat.currency === "GBP" ? "£" : boat.currency === "EUR" ? "€" : "$"}
-              {boat.asking_price.toLocaleString()}
-              <span className="ml-1 text-xs font-normal text-white/70">{boat.currency}</span>
+              {formatPrice(boat.asking_price, boat.currency)}
+              {boat.currency !== "USD" && (
+                <span className="ml-1 text-xs font-normal text-white/70">{boat.currency}</span>
+              )}
             </p>
             {boat.asking_price_usd && boat.currency !== "USD" && (
               <p className="text-xs text-white/60 drop-shadow-lg">
-                ~${boat.asking_price_usd.toLocaleString()} USD
+                ~{formatPrice(boat.asking_price_usd, "USD")}
               </p>
             )}
           </div>
