@@ -92,7 +92,18 @@ function parseMakeModel(name: string, year?: number): { make: string; model: str
 
   const parts = cleaned.split(/\s+/);
   if (parts.length === 1) return { make: parts[0], model: "" };
-  return { make: parts[0], model: parts.slice(1).join(" ") };
+
+  // If first word is 1-2 chars, merge with next word for proper make name
+  // "J Boats J30" → make="J Boats", model="J30"
+  // "X Yachts X4 9" → make="X Yachts", model="X4 9"
+  let make = parts[0];
+  let modelStart = 1;
+  if (make.length <= 2 && parts.length >= 3) {
+    make = `${parts[0]} ${parts[1]}`;
+    modelStart = 2;
+  }
+
+  return { make, model: parts.slice(modelStart).join(" ") };
 }
 
 function detectCurrency(priceStr: string | undefined): string {
@@ -175,8 +186,8 @@ async function importBoats(filePath: string, sourceSite: string) {
       const price = parsePrice(b.price);
       const { make, model } = parseMakeModel(b.name, year ?? undefined);
 
-      // Skip if missing critical fields
-      if (!year || !price) {
+      // Skip if missing critical fields or suspiciously low price
+      if (!year || !price || price < 500) {
         skipped++;
         continue;
       }
