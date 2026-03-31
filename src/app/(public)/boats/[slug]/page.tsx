@@ -22,12 +22,13 @@ interface BoatDetail {
   condition_score: number | null;
   ai_summary: string | null;
   source_url: string | null;
+  source_site: string | null;
 }
 
 async function getBoat(slug: string): Promise<BoatDetail | null> {
   return queryOne<BoatDetail>(
     `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
-            b.location_text, b.slug, b.is_sample, b.source_url,
+            b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
@@ -206,16 +207,15 @@ export default async function BoatDetailPage({
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Seller Card (OnlyFans creator-style) */}
+            {/* Seller Card */}
             <div className="rounded-xl border border-border bg-surface p-6">
-              {/* Seller avatar + info */}
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                  {boat.seller_name ? sellerInitial : <User className="h-5 w-5" />}
+                  {boat.source_url ? <Sparkles className="h-5 w-5" /> : boat.seller_name ? sellerInitial : <User className="h-5 w-5" />}
                 </div>
                 <div>
-                  <p className="font-semibold">{boat.seller_name || "Seller"}</p>
-                  <p className="text-xs text-text-secondary">Boat Owner</p>
+                  <p className="font-semibold">{boat.source_url ? formatSourceSite(boat.source_site) : boat.seller_name || "Seller"}</p>
+                  <p className="text-xs text-text-secondary">{boat.source_url ? "Original Listing" : "Boat Owner"}</p>
                 </div>
               </div>
 
@@ -245,6 +245,27 @@ export default async function BoatDetailPage({
       </div>
     </div>
   );
+}
+
+const SOURCE_NAMES: Record<string, string> = {
+  sailboatlistings: "Sailboat Listings",
+  theyachtmarket: "The Yacht Market",
+  catamarans_com: "Catamarans.com",
+  catamaransite: "Catamaran Site",
+  camperandnicholsons: "Camper & Nicholsons",
+  denison: "Denison Yachting",
+  dreamyacht: "Dream Yacht Sales",
+  moorings: "The Moorings",
+  multihullcompany: "Multihull Company",
+  multihullworld: "Multihull World",
+  apolloduck_us: "Apollo Duck",
+  boote_yachten: "Boote & Yachten",
+  vi_yachtbroker: "VI Yacht Broker",
+};
+
+function formatSourceSite(source: string | null): string {
+  if (!source) return "External Listing";
+  return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {
