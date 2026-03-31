@@ -24,6 +24,7 @@ interface BoatDetail {
   asking_price_usd: number | null;
   source_url: string | null;
   source_site: string | null;
+  hero_url: string | null;
 }
 
 async function getBoat(slug: string): Promise<BoatDetail | null> {
@@ -33,7 +34,8 @@ async function getBoat(slug: string): Promise<BoatDetail | null> {
             u.display_name as seller_name,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
-            d.condition_score, d.ai_summary
+            d.condition_score, d.ai_summary,
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
@@ -58,14 +60,31 @@ export async function generateMetadata({
   const { slug } = await params;
   const boat = await getBoat(slug);
   if (!boat) return { title: "Boat Not Found" };
+
+  const heroImage = boat.hero_url || undefined;
+  const priceStr = boat.asking_price_usd
+    ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}`
+    : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`;
+  const boatTitle = `${boat.year} ${boat.make} ${boat.model}`;
+  const desc = boat.ai_summary || `${boatTitle} for sale. ${boat.location_text || ""}`;
+
   return {
-    title: `${boat.year} ${boat.make} ${boat.model} — ${boat.asking_price_usd ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}` : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`}`,
-    description:
-      boat.ai_summary ||
-      `${boat.year} ${boat.make} ${boat.model} for sale. ${boat.location_text || ""}`,
+    title: `${boatTitle} — ${priceStr}`,
+    description: desc,
+    alternates: {
+      canonical: `https://onlyhulls.com/boats/${slug}`,
+    },
     openGraph: {
-      title: `${boat.year} ${boat.make} ${boat.model}`,
-      description: `${boat.asking_price_usd ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")} USD` : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`} — ${boat.location_text || "Location TBD"}`,
+      title: boatTitle,
+      description: `${priceStr} — ${boat.location_text || "Location TBD"}`,
+      url: `https://onlyhulls.com/boats/${slug}`,
+      ...(heroImage && { images: [{ url: heroImage, alt: boatTitle }] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: boatTitle,
+      description: `${priceStr} — ${boat.location_text || ""}`,
+      ...(heroImage && { images: [heroImage] }),
     },
   };
 }
@@ -100,11 +119,14 @@ export default async function BoatDetailPage({
             "@type": "Product",
             name: `${boat.year} ${boat.make} ${boat.model}`,
             description: boat.ai_summary || `${boat.year} ${boat.make} ${boat.model} for sale`,
+            ...(media.length > 0 && { image: media.slice(0, 5).map((m: { url: string }) => m.url) }),
+            brand: { "@type": "Brand", name: boat.make },
             offers: {
               "@type": "Offer",
               price: boat.asking_price,
               priceCurrency: boat.currency,
               availability: "https://schema.org/InStock",
+              url: `https://onlyhulls.com/boats/${slug}`,
             },
             ...(boat.location_text && {
               availableAtOrFrom: {

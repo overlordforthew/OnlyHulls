@@ -25,9 +25,25 @@ export const metadata: Metadata = {
   },
   description:
     "The boat marketplace that doesn't suck. AI-powered matching, zero commission, and a community of boat lovers. Find your perfect hull.",
+  metadataBase: new URL("https://onlyhulls.com"),
   openGraph: {
     type: "website",
     siteName: "OnlyHulls",
+    url: "https://onlyhulls.com",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "OnlyHulls — AI-Powered Boat Marketplace" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OnlyHulls — The OnlyFans of Boats",
+    description: "AI-powered boat matching. Zero commission. 14,000+ sailboats.",
+    images: ["/og-image.png"],
+  },
+  alternates: {
+    canonical: "https://onlyhulls.com",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
@@ -42,6 +58,20 @@ export default async function RootLayout({
   return (
     <html lang={locale} className="dark">
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "OnlyHulls",
+              url: "https://onlyhulls.com",
+              logo: "https://onlyhulls.com/og-image.png",
+              description: "AI-powered boat marketplace. Zero commission. 14,000+ sailboats.",
+              sameAs: [],
+            }),
+          }}
+        />
         {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
           <script
             dangerouslySetInnerHTML={{
