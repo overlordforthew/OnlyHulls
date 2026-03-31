@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface MediaItem {
@@ -17,6 +17,17 @@ export function ImageGallery({
   alt: string;
 }) {
   const [current, setCurrent] = useState(0);
+  const thumbsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll thumbnail strip to keep active thumb visible
+  useEffect(() => {
+    const container = thumbsRef.current;
+    if (!container) return;
+    const thumb = container.children[current] as HTMLElement | undefined;
+    if (thumb) {
+      thumb.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [current]);
 
   if (media.length === 0) {
     return (
@@ -68,7 +79,7 @@ export function ImageGallery({
 
       {/* Thumbnail strip */}
       {media.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div ref={thumbsRef} className="flex gap-2 overflow-x-auto">
           {media.map((m, i) => (
             <button
               key={m.id}
