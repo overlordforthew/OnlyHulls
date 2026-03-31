@@ -191,43 +191,114 @@ def extract_images(html):
 
 
 def extract_specs(html):
-    """Extract specs from page text using regex patterns."""
-    # Strip HTML tags to get plain text
-    text = re.sub(r'<[^>]+>', ' ', html)
-    text = re.sub(r'&[a-z]+;', ' ', text)  # HTML entities
-    text = re.sub(r'\s+', ' ', text)
-
+    """Extract specs from structured HTML fields and engine section."""
     specs = {}
-    for key, pattern in SPEC_PATTERNS.items():
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            val = m.group(1).strip()
-            # Convert meters to feet for dimensions
-            if key in ("loa", "beam", "draft"):
-                try:
-                    meters = float(val)
-                    if 1 < meters < 100:
-                        specs[key] = f"{meters * METERS_TO_FEET:.1f}'"
-                except ValueError:
-                    specs[key] = val
-            # Normalize displacement
-            elif key == "displacement":
-                val_clean = val.replace(",", "")
-                try:
-                    num = float(val_clean)
-                    unit = m.group(0).lower()
-                    if "tonne" in unit:
-                        num *= 1000
-                    elif "lb" in unit:
-                        num *= 0.453592
-                    specs[key] = str(int(num))  # kg
-                except ValueError:
-                    pass
-            # Clean capacity values
-            elif key in ("water_capacity", "fuel_capacity"):
-                specs[key] = val.replace(",", "")
-            else:
-                specs[key] = val
+
+    # Method 1: Structured <strong>Label</strong><br />Value pattern
+    FIELD_MAP = {
+        "length overall": "loa",
+        "beam": "beam",
+        "draft": "draft",
+        "displacement": "displacement",
+        "hull material": "hull_material",
+        "keel type": "keel_type",
+        "keel": "keel_type",  # sometimes just "Keel"
+        "fuel capacity": "fuel_capacity",
+        "water capacity": "water_capacity",
+        "cabins": "cabins",
+        "number of cabins": "cabins",
+        "berths": "berths",
+        "number of berths": "berths",
+        "heads": "heads",
+        "number of heads": "heads",
+        "rig type": "rig_type",
+        "max speed": "max_speed",
+        "cruising speed": "cruising_speed",
+        "location": "_location",  # stored separately
+        "category": "_category",
+    }
+
+    for m in re.finditer(r'<strong>(.*?)</strong>\s*<br\s*/?\s*>\s*\n?\s*([^<\n]+)', html):
+        label = m.group(1).strip().lower().rstrip(":")
+        value = m.group(2).strip()
+        if not value or value in ("", "-", "N/A"):
+            continue
+        field = FIELD_MAP.get(label)
+        if field and not field.startswith("_"):
+            # Don't overwrite if we already have a value (first match wins)
+            if field not in specs:
+                specs[field] = value
+
+    # Convert meters to feet for dimensions
+    for key in ("loa", "beam", "draft"):
+        if key in specs:
+            m = re.search(r'([\d.]+)\s*(?:m(?:etres?)?)', specs[key])
+            if m:
+                meters = float(m.group(1))
+                if 1 < meters < 100:
+                    specs[key] = f"{meters * METERS_TO_FEET:.1f}'"
+
+    # Normalize displacement to kg
+    if "displacement" in specs:
+        val = specs["displacement"]
+        num_m = re.search(r'([\d,]+(?:\.\d+)?)', val)
+        if num_m:
+            num = float(num_m.group(1).replace(",", ""))
+            if "tonne" in val.lower():
+                num *= 1000
+            elif "lb" in val.lower():
+                num *= 0.453592
+            specs["displacement"] = str(int(num))
+
+    # Normalize capacity values to just numbers
+    for key in ("fuel_capacity", "water_capacity"):
+        if key in specs:
+            num_m = re.search(r'([\d,]+)', specs[key])
+            if num_m:
+                specs[key] = num_m.group(1).replace(",", "")
+
+    # Method 2: Engine from structured <h5>Engines</h5> section
+    engine_m = re.search(r'<h5>Engines?</h5>\s*<ul>\s*<li>(.*?)(?:<ul>|</li>)', html, re.DOTALL)
+    if engine_m:
+        engine_text = re.sub(r'<[^>]+>', ' ', engine_m.group(1))
+        engine_text = re.sub(r'\s+', ' ', engine_text).strip()
+        # Build clean engine string from key parts
+        parts = []
+        make_m = re.search(r'(Yanmar|Volvo|Caterpillar|Perkins|Cummins|Mercury|Nanni|Beta|Sole|Lombardini|Vetus)\s+([\w.-]+)', engine_text, re.IGNORECASE)
+        hp_m = re.search(r'(\d+)\s*hp', engine_text, re.IGNORECASE)
+        if make_m:
+            parts.append(f"{make_m.group(1)} {make_m.group(2)}")
+        if hp_m:
+            parts.append(f"{hp_m.group(1)}hp")
+        # Check for diesel
+        if "diesel" in engine_text.lower():
+            if "fuel_type" not in specs:
+                specs["fuel_type"] = "Diesel"
+        if parts:
+            specs["engine"] = " ".join(parts)
+        elif engine_text and len(engine_text) < 80:
+            specs["engine"] = engine_text
+
+    # Method 3: Cabins/berths from accommodation section if not in structured fields
+    if "cabins" not in specs:
+        cab_m = re.search(r'(\d+)\s*(?:cabin|stateroom)s?\b', html, re.IGNORECASE)
+        if cab_m:
+            specs["cabins"] = cab_m.group(1)
+    if "berths" not in specs:
+        berth_m = re.search(r'(\d+)\s*(?:berth|guest)s?\b', html, re.IGNORECASE)
+        if berth_m:
+            specs["berths"] = berth_m.group(1)
+    if "heads" not in specs:
+        head_m = re.search(r'(\d+)\s*(?:head|toilet|bathroom)s?\b', html, re.IGNORECASE)
+        if head_m:
+            specs["heads"] = head_m.group(1)
+
+    # Method 4: Fuel type from structured engine list
+    if "fuel_type" not in specs:
+        if re.search(r'<li>Diesel</li>', html, re.IGNORECASE):
+            specs["fuel_type"] = "Diesel"
+        elif re.search(r'<li>Petrol</li>', html, re.IGNORECASE):
+            specs["fuel_type"] = "Petrol"
 
     return specs
 
@@ -269,23 +340,25 @@ def extract_description(html):
 
 def extract_location(html):
     """Extract location from detail page."""
-    # Pattern 1: location metadata field
-    loc_m = re.search(r'(?:Location|Lying|Based(?:\s+in)?)[:\s]+([A-Z][\w\s,]+?)(?:\s*[<|]|\s{3,})', html)
+    # Pattern 1: Structured <strong>Location</strong><br />Value
+    loc_m = re.search(r'<strong>Location</strong>\s*<br\s*/?\s*>\s*\n?\s*([^<\n]+)', html)
     if loc_m:
-        return loc_m.group(1).strip().rstrip(",")
-
-    # Pattern 2: from og:title (often has location city)
-    title_m = re.search(r'content="[^"]*(?:for sale|used)[^"]*in\s+([^"]+)"', html, re.IGNORECASE)
-    if title_m:
-        loc = title_m.group(1).strip().rstrip('"')
-        # Strip trailing " - YYYY" year suffix
-        loc = re.sub(r'\s*-\s*\d{4}\s*$', '', loc).strip()
-        if loc:
+        loc = loc_m.group(1).strip()
+        if len(loc) > 2:
             return loc
 
-    # Pattern 3: stripped text near "Location" label
+    # Pattern 2: from og:title — "for sale in City, Country - YYYY"
+    title_m = re.search(r'for (?:for )?[Ss]ale in\s+([^"]+?)(?:\s*-\s*\d{4})', html)
+    if title_m:
+        loc = title_m.group(1).strip().rstrip(",. ")
+        # Strip "Priced at..." suffix if present
+        loc = re.sub(r'\.\s*Priced.*$', '', loc).strip()
+        if len(loc) > 2:
+            return loc
+
+    # Pattern 3: stripped text near "Location" or "Lying" label
     text = re.sub(r'<[^>]+>', ' ', html)
-    loc_m2 = re.search(r'Location\s+([A-Z][\w\s,]+?)\s{2,}', text)
+    loc_m2 = re.search(r'(?:Location|Lying)[:\s]+([A-Z][\w\s,]+?)(?:\s{2,}|\n)', text)
     if loc_m2:
         loc = loc_m2.group(1).strip()
         if len(loc) > 3:
