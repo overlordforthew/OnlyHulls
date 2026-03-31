@@ -33,9 +33,11 @@ const BOAT_SELECT = `
   WHERE b.status = 'active'`;
 
 export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
-  // Trending = most viewed, with recently added as fallback for new boats
+  // Trending = most viewed, but only boats with 2+ images (no empty showcases)
   return query<BoatRow>(
-    `${BOAT_SELECT} ORDER BY b.view_count DESC, b.created_at DESC LIMIT $1`,
+    `${BOAT_SELECT}
+       AND (SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id) >= 2
+     ORDER BY b.view_count DESC, b.created_at DESC LIMIT $1`,
     [limit]
   );
 }
