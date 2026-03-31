@@ -53,6 +53,15 @@ interface ScrapedBoat {
   url?: string;
   images?: string[];
   id?: string;
+  currency?: string;
+  displacement?: string | number;
+  fuel_type?: string;
+  cabins?: string | number;
+  berths?: string | number;
+  heads?: string | number;
+  keel_type?: string;
+  water_capacity?: string | number;
+  fuel_capacity?: string | number;
 }
 
 function parsePrice(raw: string | number | undefined): number | null {
@@ -106,9 +115,14 @@ function parseMakeModel(name: string, year?: number): { make: string; model: str
   return { make, model: parts.slice(modelStart).join(" ") };
 }
 
-function detectCurrency(priceStr: string | undefined): string {
-  if (!priceStr) return "USD";
-  const s = String(priceStr);
+function detectCurrency(boat: ScrapedBoat): string {
+  // Prefer explicit currency code from scraper (e.g. TYM OG meta)
+  if (boat.currency) {
+    const c = boat.currency.toUpperCase();
+    if (USD_RATES[c]) return c;
+  }
+  // Fallback: detect from price string
+  const s = String(boat.price || "");
   if (s.includes("€") || s.includes("EUR")) return "EUR";
   if (s.includes("£") || s.includes("GBP")) return "GBP";
   return "USD";
@@ -214,7 +228,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         finalSlug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
       }
 
-      const currency = detectCurrency(String(b.price));
+      const currency = detectCurrency(b);
 
       // Insert with ON CONFLICT for bulletproof dedup:
       // - source_url unique index catches exact URL duplicates
@@ -261,20 +275,26 @@ async function importBoats(filePath: string, sourceSite: string) {
       if (rigType.toLowerCase().includes("cutter")) tags.push("bluewater");
       if (rigType.toLowerCase().includes("ketch")) tags.push("classic");
 
+      const specs: Record<string, unknown> = {
+        loa, beam, draft,
+        rig_type: rigType,
+        hull_material: hullMaterial,
+        engine,
+      };
+      // Extended specs from detail-page scrapers
+      if (b.displacement) specs.displacement = parseNumber(b.displacement);
+      if (b.fuel_type) specs.fuel_type = b.fuel_type;
+      if (b.cabins) specs.cabins = parseNumber(b.cabins);
+      if (b.berths) specs.berths = parseNumber(b.berths);
+      if (b.heads) specs.heads = parseNumber(b.heads);
+      if (b.keel_type) specs.keel_type = b.keel_type;
+      if (b.water_capacity) specs.water_capacity = parseNumber(b.water_capacity);
+      if (b.fuel_capacity) specs.fuel_capacity = parseNumber(b.fuel_capacity);
+
       await query(
         `INSERT INTO boat_dna (boat_id, specs, character_tags, ai_summary)
          VALUES ($1, $2, $3, $4)`,
-        [
-          boat.id,
-          JSON.stringify({
-            loa, beam, draft,
-            rig_type: rigType,
-            hull_material: hullMaterial,
-            engine,
-          }),
-          tags,
-          desc,
-        ]
+        [boat.id, JSON.stringify(specs), tags, desc]
       );
 
       // Insert images as boat_media
@@ -315,15 +335,117 @@ async function importBoats(filePath: string, sourceSite: string) {
   await pool.end();
 }
 
+async function updateBoats(filePath: string, sourceSite: string) {
+  const source = SOURCES[sourceSite];
+  if (!source) {
+    console.error(`Unknown source: ${sourceSite}`);
+    process.exit(1);
+  }
+
+  const raw = readFileSync(filePath, "utf-8");
+  const boats: ScrapedBoat[] = JSON.parse(raw);
+  console.log(`Update mode: ${boats.length} boats from ${filePath} (source: ${source.name})`);
+
+  let updated = 0;
+  let notFound = 0;
+  let errors = 0;
+
+  for (const b of boats) {
+    try {
+      if (!b.url) { notFound++; continue; }
+
+      // Find existing boat by source_url
+      const existing = await queryOne<{ id: string }>(
+        "SELECT id FROM boats WHERE source_url = $1",
+        [b.url]
+      );
+      if (!existing) { notFound++; continue; }
+
+      const boatId = existing.id;
+
+      // Build updated specs
+      const beam = parseNumber(b.beam);
+      const draft = parseNumber(b.draft);
+      const loa = parseNumber(b.length || b.loa);
+      const rigType = b.rigging || b.type || "";
+      const hullMaterial = b.hull || "";
+      const engine = b.engine || "";
+      const specs: Record<string, unknown> = {
+        loa, beam, draft,
+        rig_type: rigType,
+        hull_material: hullMaterial,
+        engine,
+      };
+      if (b.displacement) specs.displacement = parseNumber(b.displacement);
+      if (b.fuel_type) specs.fuel_type = b.fuel_type;
+      if (b.cabins) specs.cabins = parseNumber(b.cabins);
+      if (b.berths) specs.berths = parseNumber(b.berths);
+      if (b.heads) specs.heads = parseNumber(b.heads);
+      if (b.keel_type) specs.keel_type = b.keel_type;
+      if (b.water_capacity) specs.water_capacity = parseNumber(b.water_capacity);
+      if (b.fuel_capacity) specs.fuel_capacity = parseNumber(b.fuel_capacity);
+
+      let desc = (b.description || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/^["'\s]+/, "")
+        .replace(/\bcontent=.*$/i, "")
+        .trim();
+      if (desc.length < 20) desc = "";
+
+      // Upsert boat_dna
+      await query(
+        `INSERT INTO boat_dna (boat_id, specs, ai_summary)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (boat_id) DO UPDATE SET
+           specs = $2, ai_summary = CASE WHEN length($3) > 0 THEN $3 ELSE boat_dna.ai_summary END`,
+        [boatId, JSON.stringify(specs), desc]
+      );
+
+      // Replace images: delete old, insert new
+      const images = b.images || [];
+      if (images.length > 0) {
+        await query("DELETE FROM boat_media WHERE boat_id = $1", [boatId]);
+        for (let i = 0; i < images.length; i++) {
+          await query(
+            `INSERT INTO boat_media (boat_id, type, url, sort_order)
+             VALUES ($1, 'image', $2, $3)`,
+            [boatId, images[i], i]
+          );
+        }
+      }
+
+      updated++;
+      const name = b.name || "?";
+      const n_imgs = images.length;
+      const n_specs = [beam, draft, hullMaterial, engine, b.cabins, b.displacement]
+        .filter(Boolean).length;
+      if (updated % 50 === 0 || updated <= 3) {
+        console.log(`  [~] ${name} | ${n_imgs} imgs | ${n_specs}/6 specs`);
+      }
+    } catch (err) {
+      errors++;
+      console.error(`  [!] Error updating ${b.url}: ${err}`);
+    }
+  }
+
+  console.log(`\nUpdate complete: ${updated} updated, ${notFound} not found, ${errors} errors`);
+  await pool.end();
+}
+
 // CLI
 const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source>");
+const updateMode = args.includes("--update");
+const filteredArgs = args.filter(a => a !== "--update");
+
+if (filteredArgs.length < 2) {
+  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source> [--update]");
   console.log(`Sources: ${Object.keys(SOURCES).join(", ")}`);
   process.exit(1);
 }
 
-importBoats(args[0], args[1]).catch((err) => {
+const fn = updateMode ? updateBoats : importBoats;
+fn(filteredArgs[0], filteredArgs[1]).catch((err) => {
   console.error("Import failed:", err);
   process.exit(1);
 });

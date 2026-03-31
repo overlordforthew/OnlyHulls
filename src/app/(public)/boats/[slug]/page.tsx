@@ -190,8 +190,12 @@ export default async function BoatDetailPage({
                 {specs.rig_type ? <SpecRow label="Rig Type" value={String(specs.rig_type)} /> : null}
                 {specs.hull_material ? <SpecRow label="Hull" value={String(specs.hull_material)} /> : null}
                 {specs.engine ? <SpecRow label="Engine" value={String(specs.engine)} /> : null}
+                {specs.cabins ? <SpecRow label="Cabins" value={String(specs.cabins)} /> : null}
                 {specs.berths ? <SpecRow label="Berths" value={String(specs.berths)} /> : null}
                 {specs.heads ? <SpecRow label="Heads" value={String(specs.heads)} /> : null}
+                {specs.displacement ? <SpecRow label="Displacement" value={`${Number(specs.displacement).toLocaleString()} kg`} /> : null}
+                {specs.keel_type ? <SpecRow label="Keel" value={String(specs.keel_type)} /> : null}
+                {specs.fuel_type ? <SpecRow label="Fuel" value={String(specs.fuel_type)} /> : null}
               </div>
             </div>
 

@@ -188,7 +188,7 @@ def main():
             if (i + 1) % 50 == 0:
                 print(f"  [{i+1}/{len(urls)}] Failed to scrape {url}")
 
-    output_path = "/tmp/scraped_boats.json"
+    output_path = "/tmp/scraped_boats_bulk.json" if bulk else "/tmp/scraped_boats.json"
     with open(output_path, "w") as f:
         json.dump(boats, f, indent=2)
 

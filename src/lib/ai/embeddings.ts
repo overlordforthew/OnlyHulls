@@ -81,7 +81,11 @@ export function boatToEmbeddingText(boat: Record<string, unknown>): string {
     if (specs.beam) specParts.push(`beam ${specs.beam}ft`);
     if (specs.draft) specParts.push(`draft ${specs.draft}ft`);
     if (specs.rig_type) specParts.push(`${specs.rig_type} rig`);
+    if (specs.hull_material) specParts.push(`${specs.hull_material} hull`);
     if (specs.engine) specParts.push(`${specs.engine}`);
+    if (specs.cabins) specParts.push(`${specs.cabins} cabins`);
+    if (specs.displacement) specParts.push(`${specs.displacement}kg displacement`);
+    if (specs.keel_type) specParts.push(`${specs.keel_type} keel`);
     if (specParts.length) parts.push(`Specs: ${specParts.join(", ")}`);
   }
 
