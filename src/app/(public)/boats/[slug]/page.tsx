@@ -21,13 +21,14 @@ interface BoatDetail {
   character_tags: string[];
   condition_score: number | null;
   ai_summary: string | null;
+  asking_price_usd: number | null;
   source_url: string | null;
   source_site: string | null;
 }
 
 async function getBoat(slug: string): Promise<BoatDetail | null> {
   return queryOne<BoatDetail>(
-    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
+    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency, b.asking_price_usd,
             b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
             COALESCE(d.specs, '{}') as specs,
@@ -58,13 +59,13 @@ export async function generateMetadata({
   const boat = await getBoat(slug);
   if (!boat) return { title: "Boat Not Found" };
   return {
-    title: `${boat.year} ${boat.make} ${boat.model} — $${Math.round(boat.asking_price).toLocaleString("en-US")}`,
+    title: `${boat.year} ${boat.make} ${boat.model} — ${boat.asking_price_usd ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}` : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`}`,
     description:
       boat.ai_summary ||
-      `${boat.year} ${boat.make} ${boat.model} for sale at $${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}. ${boat.location_text || ""}`,
+      `${boat.year} ${boat.make} ${boat.model} for sale. ${boat.location_text || ""}`,
     openGraph: {
       title: `${boat.year} ${boat.make} ${boat.model}`,
-      description: `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency} — ${boat.location_text || "Location TBD"}`,
+      description: `${boat.asking_price_usd ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")} USD` : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`} — ${boat.location_text || "Location TBD"}`,
     },
   };
 }
@@ -154,9 +155,16 @@ export default async function BoatDetailPage({
                 </p>
               )}
               <p className="mt-3 text-3xl font-bold">
-                ${Math.round(boat.asking_price).toLocaleString("en-US")}
-                <span className="ml-2 text-sm font-normal text-text-secondary">{boat.currency}</span>
+                {formatPrice(boat.asking_price, boat.currency)}
+                {boat.currency !== "USD" && (
+                  <span className="ml-2 text-sm font-normal text-text-secondary">{boat.currency}</span>
+                )}
               </p>
+              {boat.asking_price_usd && boat.currency !== "USD" && (
+                <p className="mt-1 text-base text-text-secondary">
+                  ~{formatPrice(boat.asking_price_usd, "USD")} USD
+                </p>
+              )}
             </div>
 
             {/* AI Summary */}
@@ -222,9 +230,16 @@ export default async function BoatDetailPage({
               <div className="my-5 h-px bg-border" />
 
               <p className="text-2xl font-bold">
-                ${Math.round(boat.asking_price).toLocaleString("en-US")}
-                <span className="ml-1 text-sm font-normal text-text-secondary">{boat.currency}</span>
+                {formatPrice(boat.asking_price, boat.currency)}
+                {boat.currency !== "USD" && (
+                  <span className="ml-1 text-sm font-normal text-text-secondary">{boat.currency}</span>
+                )}
               </p>
+              {boat.asking_price_usd && boat.currency !== "USD" && (
+                <p className="mt-1 text-sm text-text-secondary">
+                  ~{formatPrice(boat.asking_price_usd, "USD")} USD
+                </p>
+              )}
 
               {boat.condition_score && (
                 <p className="mt-2 text-sm text-text-secondary">
@@ -245,6 +260,16 @@ export default async function BoatDetailPage({
       </div>
     </div>
   );
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", AUD: "A$", CAD: "C$", NZD: "NZ$",
+  SEK: "kr", DKK: "kr", NOK: "kr",
+};
+
+function formatPrice(amount: number, currency: string): string {
+  const sym = CURRENCY_SYMBOLS[currency] || "$";
+  return `${sym}${Math.round(amount).toLocaleString("en-US")}`;
 }
 
 const SOURCE_NAMES: Record<string, string> = {
