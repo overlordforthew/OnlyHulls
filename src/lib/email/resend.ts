@@ -37,6 +37,27 @@ export async function sendVerificationEmail(params: {
   });
 }
 
+export async function sendPasswordResetEmail(params: {
+  email: string;
+  resetUrl: string;
+}) {
+  return getResend().emails.send({
+    from: getFrom(),
+    to: params.email,
+    subject: "Reset your OnlyHulls password",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0369a1;">Reset Your Password</h2>
+        <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+        <div style="margin: 24px 0;">
+          <a href="${esc(params.resetUrl)}" style="background: #0369a1; color: white; padding: 12px 24px; border-radius: 24px; text-decoration: none; display: inline-block;">Reset Password</a>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px;">This link expires in 1 hour. If you didn't request a password reset, ignore this email.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendSellerNotification(params: {
   sellerEmail: string;
   sellerName: string;

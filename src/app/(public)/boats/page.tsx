@@ -58,8 +58,8 @@ function BoatsPageInner() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("price");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortField, setSortField] = useState<SortField>("newest");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [filters, setFilters] = useState({
     minPrice: "",
     maxPrice: "",
