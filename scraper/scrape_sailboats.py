@@ -75,6 +75,24 @@ def get_all_listing_urls(limit=200, bulk=False):
     return all_urls[:limit]
 
 
+def parse_feet_inches(raw):
+    """Convert feet/inches strings to decimal feet. '13'10\"' → '13.8' """
+    if not raw:
+        return raw
+    raw = str(raw).strip()
+    # Pattern: 13'10" or 13' 10" or 13.5'
+    m = re.match(r"(\d+)['\u2019]\s*(\d+)?[\"\u201d]?", raw)
+    if m:
+        feet = int(m.group(1))
+        inches = int(m.group(2)) if m.group(2) else 0
+        return f"{feet + inches / 12:.1f}'"
+    # Pattern: just a number with optional ' (e.g. "26'" or "32.5'")
+    m2 = re.match(r"([\d.]+)['\u2019]?$", raw)
+    if m2:
+        return f"{m2.group(1)}'"
+    return raw
+
+
 def extract_text(el):
     """Safely extract text from an element."""
     if el is None:
@@ -122,7 +140,9 @@ def scrape_boat(boat_id, url):
                             ym = re.match(r'^(\d{4})$', val_texts[j].strip())
                             if ym and 1950 <= int(ym.group(1)) <= 2030:
                                 boat["year"] = ym.group(1)
-                        elif key in ("length", "beam", "draft", "location", "price"):
+                        elif key in ("length", "beam", "draft"):
+                            boat[key] = parse_feet_inches(val_texts[j])
+                        elif key in ("location", "price"):
                             boat[key] = val_texts[j]
 
         if "Hull" in cell_texts and "Type" in cell_texts:

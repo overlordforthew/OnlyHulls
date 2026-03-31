@@ -74,8 +74,16 @@ function parsePrice(raw: string | number | undefined): number | null {
 
 function parseNumber(raw: string | number | undefined): number | null {
   if (!raw) return null;
-  const s = String(raw).replace(/[^0-9.]/g, "");
-  const n = parseFloat(s);
+  const s = String(raw);
+  // Handle feet-inches: 13'10" → 13.83, 26' → 26
+  const feetInches = s.match(/^(\d+)['\u2019]\s*(\d+)?[\"\u201d]?/);
+  if (feetInches) {
+    const feet = parseInt(feetInches[1]);
+    const inches = feetInches[2] ? parseInt(feetInches[2]) : 0;
+    return feet + inches / 12;
+  }
+  const cleaned = s.replace(/[^0-9.]/g, "");
+  const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 
@@ -207,16 +215,23 @@ async function importBoats(filePath: string, sourceSite: string) {
         continue;
       }
 
-      // Minimum 25ft — no dinghies, daysailers, or racing boats
+      // Minimum 25ft, maximum 300ft — no dinghies, no parse errors
       const loa = parseNumber(b.length || b.loa);
-      if (loa !== null && loa < 25) {
+      if (loa !== null && (loa < 25 || loa > 300)) {
         skipped++;
         continue;
       }
 
-      // Block known dinghy/accessory makes that slip through without LOA
-      const DINGHY_MAKES = /^(laser|optimist|sunfish|hobie|nacra|tohatsu|epropulsion|vanguard|bic|zim|rs sailing)$/i;
+      // Block known dinghy/accessory/small boat makes
+      const DINGHY_MAKES = /^(laser|optimist|sunfish|hobie|nacra|tohatsu|epropulsion|vanguard|bic|zim|rs sailing|mcl?aughli?n|dyer|west marine|windrider|fulcrum|winner|bluemagic|zoum|zhoum|ko sailing|o'?pen|open|club|trident|cobra)$/i;
       if (DINGHY_MAKES.test(make)) {
+        skipped++;
+        continue;
+
+      }
+      // Block dinghy/inflatable/accessory keywords in model
+      const DINGHY_MODELS = /\b(inflatable|dinghy|optimist|opti\b|sunfish|laser\b|kayak|canoe|paddleboard|sup\b|trolling|outboard motor)\b/i;
+      if (DINGHY_MODELS.test(model)) {
         skipped++;
         continue;
       }
