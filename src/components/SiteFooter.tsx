@@ -17,7 +17,7 @@ export default function SiteFooter() {
             <ul className="mt-4 space-y-3">
               <li><Link href="/boats" className="text-sm text-text-secondary hover:text-primary transition-colors">All Boats</Link></li>
               <li><Link href="/boats?tag=bluewater" className="text-sm text-text-secondary hover:text-primary transition-colors">Cruising</Link></li>
-              <li><Link href="/boats?tag=liveaboard" className="text-sm text-text-secondary hover:text-primary transition-colors">Liveaboard</Link></li>
+              <li><Link href="/boats?tag=liveaboard-ready" className="text-sm text-text-secondary hover:text-primary transition-colors">Liveaboard</Link></li>
               <li><Link href="/boats?tag=race-ready" className="text-sm text-text-secondary hover:text-primary transition-colors">Racing</Link></li>
               <li><Link href="/boats?tag=classic" className="text-sm text-text-secondary hover:text-primary transition-colors">Classic</Link></li>
             </ul>

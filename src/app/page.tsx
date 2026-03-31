@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 const CATEGORIES = [
   { label: "Cruising", Icon: Sailboat, tag: "bluewater" },
-  { label: "Liveaboard", Icon: HomeIcon, tag: "liveaboard" },
+  { label: "Liveaboard", Icon: HomeIcon, tag: "liveaboard-ready" },
   { label: "Racing", Icon: Flag, tag: "race-ready" },
   { label: "Family", Icon: Users, tag: "family-friendly" },
   { label: "Budget", Icon: DollarSign, tag: "budget-friendly" },
