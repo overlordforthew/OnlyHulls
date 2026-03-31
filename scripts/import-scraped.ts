@@ -17,6 +17,7 @@ import { pool, query, queryOne } from "../src/lib/db/index";
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
   boats_com: { name: "Boats.com", domain: "boats.com" },
+  boattrader: { name: "Boat Trader", domain: "boattrader.com" },
   sailboatlistings: { name: "Sailboat Listings", domain: "sailboatlistings.com" },
   yachtworld: { name: "YachtWorld", domain: "yachtworld.com" },
   theyachtmarket: { name: "TheYachtMarket", domain: "theyachtmarket.com" },
@@ -208,7 +209,14 @@ async function importBoats(filePath: string, sourceSite: string) {
 
       // Minimum 25ft — no dinghies, daysailers, or racing boats
       const loa = parseNumber(b.length || b.loa);
-      if (loa && loa < 25) {
+      if (loa !== null && loa < 25) {
+        skipped++;
+        continue;
+      }
+
+      // Block known dinghy/accessory makes that slip through without LOA
+      const DINGHY_MAKES = /^(laser|optimist|sunfish|hobie|nacra|tohatsu|epropulsion|vanguard|bic|zim|rs sailing)$/i;
+      if (DINGHY_MAKES.test(make)) {
         skipped++;
         continue;
       }
