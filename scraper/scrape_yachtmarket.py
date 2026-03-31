@@ -16,6 +16,7 @@ Output: /tmp/scraped_yachtmarket.json (daily/backfill)
 
 import json
 import re
+import subprocess
 import sys
 import time
 
@@ -25,6 +26,7 @@ BASE = "https://www.theyachtmarket.com"
 LIST_URL = f"{BASE}/en/boats-for-sale/type/sailing-boat/?condition=used"
 CDN_BASE = "https://cdnx.theyachtmarket.com/img"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+SSH_PROXY_HOST = "root@100.89.16.27"  # ElmoServer — fallback when Hetzner IP is blocked
 
 METERS_TO_FEET = 3.28084
 
@@ -49,6 +51,53 @@ SPEC_PATTERNS = {
 }
 
 fetcher = Fetcher()
+_use_ssh_proxy = False  # Auto-set to True if local fetch gets 503
+
+
+def ssh_fetch(url, timeout=20):
+    """Fetch a URL via SSH through ElmoServer. Returns (status, html)."""
+    try:
+        # Step 1: fetch to temp file, get status code
+        cmd = f"curl -sS -L -o /tmp/_tym_fetch.html -w '%{{http_code}}' --max-time {timeout} '{url}'"
+        r1 = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", SSH_PROXY_HOST, cmd],
+            capture_output=True, text=True, timeout=timeout + 15
+        )
+        status_str = r1.stdout.strip().strip("'")
+        status = int(status_str) if status_str.isdigit() else 0
+
+        if status != 200:
+            return status, ""
+
+        # Step 2: cat the file back
+        r2 = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", SSH_PROXY_HOST, "cat /tmp/_tym_fetch.html"],
+            capture_output=True, text=True, timeout=timeout + 10
+        )
+        return status, r2.stdout
+    except (subprocess.TimeoutExpired, ValueError, Exception) as e:
+        print(f"  SSH fetch error: {e}", flush=True)
+        return 0, ""
+
+
+def smart_fetch(url, timeout=20):
+    """Fetch URL, auto-routing through ElmoServer if Hetzner is blocked."""
+    global _use_ssh_proxy
+
+    if _use_ssh_proxy:
+        status, html = ssh_fetch(url, timeout)
+        return status, html
+
+    # Try local first
+    page = fetcher.get(url, timeout=timeout)
+    if page.status == 503:
+        # Hetzner might be blocked — try ElmoServer
+        print("  Local 503 — switching to ElmoServer proxy", flush=True)
+        status, html = ssh_fetch(url, timeout)
+        if status == 200:
+            _use_ssh_proxy = True  # Stick with proxy for rest of session
+            return status, html
+    return page.status, page.body.decode("utf-8", errors="replace") if page.status == 200 else ""
 
 
 class AdaptiveThrottle:
@@ -87,9 +136,9 @@ def collect_urls(limit, bulk=False):
         url = f"{LIST_URL}&page={page_num}" if page_num > 1 else LIST_URL
         print(f"  Index page {page_num}...", end=" ", flush=True)
 
-        page = fetcher.get(url, timeout=20)
-        if page.status != 200:
-            print(f"HTTP {page.status}")
+        status, html = smart_fetch(url, timeout=20)
+        if status != 200:
+            print(f"HTTP {status}")
             throttle.on_error()
             if throttle.should_long_pause():
                 print("  Too many errors, pausing 5 minutes...")
@@ -100,7 +149,6 @@ def collect_urls(limit, bulk=False):
             continue
 
         throttle.on_success()
-        html = page.body.decode("utf-8", errors="replace")
 
         # Extract detail page URLs: /en/boats-for-sale/{make}/{model}/id{number}/
         links = re.findall(r'/en/boats-for-sale/([^/]+)/([^/]+)/id(\d+)/', html)
@@ -343,7 +391,7 @@ def extract_location(html):
     # Pattern 1: Structured <strong>Location</strong><br />Value
     loc_m = re.search(r'<strong>Location</strong>\s*<br\s*/?\s*>\s*\n?\s*([^<\n]+)', html)
     if loc_m:
-        loc = loc_m.group(1).strip()
+        loc = loc_m.group(1).strip().rstrip(",. ")
         if len(loc) > 2:
             return loc
 
@@ -398,27 +446,22 @@ def parse_make_model(og_meta, gtm_data, url):
 
 def scrape_detail(bid, url, throttle):
     """Fetch and extract all data from a single detail page."""
-    page = fetcher.get(url, timeout=20)
+    status, html = smart_fetch(url, timeout=20)
 
-    if page.status == 503:
+    if status != 200:
         throttle.on_error()
         if throttle.should_long_pause():
-            print("\n  503 storm — pausing 5 minutes...", flush=True)
+            print("\n  Error storm — pausing 5 minutes...", flush=True)
             time.sleep(300)
             throttle.consecutive_errors = 0
         else:
             throttle.wait()
         # Retry once
-        page = fetcher.get(url, timeout=20)
-        if page.status != 200:
+        status, html = smart_fetch(url, timeout=20)
+        if status != 200:
             return None
 
-    if page.status != 200:
-        throttle.on_error()
-        return None
-
     throttle.on_success()
-    html = page.body.decode("utf-8", errors="replace")
 
     # Layer 1: Structured metadata
     og = extract_og_meta(html)
