@@ -22,8 +22,8 @@ export async function GET(req: Request) {
   const rigType = url.searchParams.get("rigType");
   const hullType = url.searchParams.get("hullType");
   const tag = url.searchParams.get("tag");
-  const sort = url.searchParams.get("sort") || "price";
-  const dir = url.searchParams.get("dir") || "asc";
+  const sort = url.searchParams.get("sort") || "newest";
+  const dir = url.searchParams.get("dir") || "desc";
 
   // Map sort params to SQL ORDER BY
   const SORT_MAP: Record<string, string> = {
@@ -32,9 +32,9 @@ export async function GET(req: Request) {
     year: "b.year",
     newest: "b.created_at",
   };
-  const sortCol = SORT_MAP[sort] || SORT_MAP.price;
+  const sortCol = SORT_MAP[sort] || SORT_MAP.newest;
   const sortDir = dir === "desc" ? "DESC" : "ASC";
-  const orderBy = `${sortCol} ${sortDir} NULLS LAST`;
+  const orderBy = `(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id)) DESC, ${sortCol} ${sortDir} NULLS LAST`;
 
   // If search query, use Meilisearch
   if (search) {
