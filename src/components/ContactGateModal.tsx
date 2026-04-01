@@ -25,6 +25,15 @@ function getSessionId(): string {
   return id;
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function logClick(boatId: string, clickType: "guest" | "save_and_continue") {
   const sessionId = getSessionId();
   fetch(`/api/boats/${boatId}/click`, {
@@ -69,7 +78,7 @@ export default function ContactGateModal({
   const handleSaveAndContinue = () => {
     if (session?.user) {
       logClick(boatId, "save_and_continue");
-      window.open(sourceUrl, "_blank");
+      if (isSafeUrl(sourceUrl)) window.open(sourceUrl, "_blank");
       onClose();
     } else {
       const callback = boatSlug ? `/boats/${boatSlug}` : `/boats`;
@@ -79,7 +88,7 @@ export default function ContactGateModal({
 
   const handleGuestContinue = () => {
     logClick(boatId, "guest");
-    window.open(sourceUrl, "_blank");
+    if (isSafeUrl(sourceUrl)) window.open(sourceUrl, "_blank");
     onClose();
   };
 
