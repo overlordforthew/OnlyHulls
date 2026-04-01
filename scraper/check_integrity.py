@@ -195,6 +195,12 @@ def check_boat(boat, idx):
         if DINGHY_MODELS.search(name):
             issues.append(Issue('REJECT', 'DINGHY_MODEL', f'Dinghy/accessory keyword in name: {name}'))
 
+    # Year duplicated in name (e.g., name="C&C 1978" with year=1978 → display "1978 C&C 1978")
+    if name and year:
+        yr_str = str(year)
+        if name.strip().endswith(yr_str) or name.strip().startswith(yr_str):
+            issues.append(Issue('WARN', 'YEAR_IN_NAME', f'Year {year} duplicated in name "{name}" — will display "{year} {name}"'))
+
     # ── WARN-level checks ──
 
     if not images or len(images) == 0:
