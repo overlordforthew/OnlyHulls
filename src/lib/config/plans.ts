@@ -41,7 +41,7 @@ export const PLANS: Record<string, PlanConfig> = {
       "Basic search filters",
       "View match scores",
     ],
-    limits: { savesPerDay: 10, connectsPerMonth: 0, photosPerListing: 0, activeListings: 0 },
+    limits: { savesPerDay: 10, connectsPerMonth: -1, photosPerListing: 0, activeListings: 0 },
     emailAlerts: "none",
     emailBlast: false,
     externalSearch: false,
