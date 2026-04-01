@@ -275,6 +275,10 @@ export default async function BoatDetailPage({
 
               <ContactOwnerCTA
                 sourceUrl={boat.source_url}
+                boatId={boat.id}
+                boatTitle={`${boat.year} ${boat.make} ${boat.model}`}
+                sourceName={boat.source_site ? formatSourceSite(boat.source_site) : null}
+                boatSlug={boat.slug || boat.id}
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">
