@@ -37,6 +37,7 @@ export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
   return query<BoatRow>(
     `${BOAT_SELECT}
        AND (SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id) >= 2
+       AND COALESCE(b.asking_price_usd, b.asking_price) >= 3000
      ORDER BY b.view_count DESC, b.created_at DESC LIMIT $1`,
     [limit]
   );

@@ -97,6 +97,7 @@ function parseMakeModel(name: string, year?: number): { make: string; model: str
   let cleaned = name.trim();
   // Strip leading year if present (e.g. "1979 catalina 30 sailboat" → "catalina 30 sailboat")
   if (year) cleaned = cleaned.replace(new RegExp(`^${year}\\s+`), "");
+  if (year) cleaned = cleaned.replace(new RegExp(`\\s+${year}$`), "").trim();
   // Strip trailing noise words
   cleaned = cleaned.replace(/\s+(sailboat|yacht|for sale|boat)$/i, "").trim();
   // Strip price bleed: anything starting with currency symbol (e.g. "Sadler 32 £24,000")
