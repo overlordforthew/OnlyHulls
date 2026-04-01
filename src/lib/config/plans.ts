@@ -1,7 +1,6 @@
 export type SubscriptionTier =
   | "free"
   | "plus"
-  | "pro"
   | "free-seller"
   | "standard"
   | "featured"
@@ -56,29 +55,12 @@ export const PLANS: Record<string, PlanConfig> = {
       "Unlimited saves & matching",
       "AI buyer profile",
       "Match score breakdowns",
-      "Saved searches & alerts",
+      "Saved searches & instant alerts",
       "Dreamboard",
-      "Weekly new listing digest",
-    ],
-    limits: { savesPerDay: -1, connectsPerMonth: 3, photosPerListing: 0, activeListings: 0 },
-    emailAlerts: "weekly",
-    emailBlast: false,
-    externalSearch: false,
-  },
-  pro: {
-    tier: "pro",
-    name: "Pro",
-    price: 30,
-    role: "buyer",
-    stripePriceId: process.env.STRIPE_PRICE_BUYER_PRO || "",
-    features: [
-      "Everything in Plus",
       "Priority in seller notifications",
-      "Direct messaging",
       "Search boats on other sites",
-      "Instant match alerts",
     ],
-    limits: { savesPerDay: -1, connectsPerMonth: 10, photosPerListing: 0, activeListings: 0 },
+    limits: { savesPerDay: -1, connectsPerMonth: -1, photosPerListing: 0, activeListings: 0 },
     emailAlerts: "instant",
     emailBlast: false,
     externalSearch: true,
@@ -168,7 +150,7 @@ export function getPlanByTier(tier: SubscriptionTier | string): PlanConfig {
 }
 
 export function getBuyerPlans(): PlanConfig[] {
-  return [PLANS.free, PLANS.plus, PLANS.pro];
+  return [PLANS.free, PLANS.plus];
 }
 
 export function getSellerPlans(): PlanConfig[] {

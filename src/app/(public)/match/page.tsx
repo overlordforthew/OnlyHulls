@@ -120,7 +120,7 @@ export default async function MatchPage() {
             {boats.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-6">
                 <p className="mb-5 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                  Preview — AI Match Results
+                  Preview — Example AI Match Results
                 </p>
                 <div className="flex flex-col gap-3">
                   {boats.map((boat, i) => (
@@ -152,7 +152,7 @@ export default async function MatchPage() {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-gradient-to-r from-success to-primary px-3 py-1 text-xs font-bold text-white">
-                        {MATCH_SCORES[i]}%
+                        {MATCH_SCORES[i]}% (example)
                       </span>
                     </div>
                   ))}

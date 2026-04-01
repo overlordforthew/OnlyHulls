@@ -1,18 +1,23 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const subtitle =
+    searchParams.get("role") === "seller"
+      ? "List your boat on OnlyHulls"
+      : "Join OnlyHulls and find your perfect boat";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,9 +65,7 @@ export default function SignUpPage() {
         <>
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Join OnlyHulls and find your perfect boat
-          </p>
+          <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

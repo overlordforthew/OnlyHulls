@@ -28,18 +28,6 @@ const buyerPlans = [
       "Dreamboard",
     ],
   },
-  {
-    tier: "pro",
-    name: "Pro",
-    price: 30,
-    features: [
-      "Everything in Plus",
-      "Priority in seller notifications",
-      "Advanced match filters",
-      "External boat aggregation",
-      "Direct messaging",
-    ],
-  },
 ];
 
 const sellerPlans = [
@@ -173,7 +161,7 @@ export function BuyerPricing() {
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
         Browse for free, or upgrade for unlimited AI matching.
       </p>
-      <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-2">
         {buyerPlans.map((plan) => (
           <PlanCard
             key={plan.tier}
