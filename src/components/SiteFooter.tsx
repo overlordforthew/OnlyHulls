@@ -47,7 +47,7 @@ export default function SiteFooter() {
             </ul>
           </div>
 
-          {/* Brand */}
+          {/* Brand & Legal */}
           <div>
             <div className="flex items-center gap-2">
               <Waves className="h-5 w-5 text-primary" strokeWidth={2.5} />
@@ -56,12 +56,14 @@ export default function SiteFooter() {
                 <span className="text-primary">Hulls</span>
               </span>
             </div>
-            <p className="mt-3 text-sm italic text-text-tertiary">
-              The OnlyFans of Boats
+            <p className="mt-3 text-sm text-text-tertiary">
+              AI-powered boat marketplace.
             </p>
-            <p className="mt-4 text-xs text-text-tertiary">
-              No catfishing. Real boats. Real hulls.
-            </p>
+            <ul className="mt-4 space-y-2">
+              <li><Link href="/about" className="text-xs text-text-tertiary hover:text-primary transition-colors">About</Link></li>
+              <li><Link href="/terms" className="text-xs text-text-tertiary hover:text-primary transition-colors">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="text-xs text-text-tertiary hover:text-primary transition-colors">Privacy Policy</Link></li>
+            </ul>
           </div>
         </div>
 
