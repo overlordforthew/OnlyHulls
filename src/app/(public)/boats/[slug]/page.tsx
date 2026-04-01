@@ -194,7 +194,7 @@ export default async function BoatDetailPage({
               <div className="rounded-xl border-l-4 border-primary bg-surface p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Sparkles className="h-4 w-4" />
-                  AI Analysis
+                  Listing Description
                 </div>
                 <p className="mt-3 whitespace-pre-wrap text-foreground/80 leading-relaxed">
                   {boat.ai_summary}
