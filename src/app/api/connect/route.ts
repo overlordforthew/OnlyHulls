@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { sendSellerNotification } from "@/lib/email/resend";
 import { getPlanByTier } from "@/lib/config/plans";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { z } from "zod";
@@ -17,7 +18,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const parsed = connectSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -107,20 +114,29 @@ export async function POST(req: Request) {
 
   // Send seller notification email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  await sendSellerNotification({
-    sellerEmail: match.seller_email,
-    sellerName: match.seller_name || "",
-    buyerSummary: `${user.display_name || "A buyer"} (${user.email}) is interested in your boat.`,
-    boatTitle: match.boat_title,
-    matchScore: match.score,
-    acceptUrl: `${appUrl}/api/introductions/${acceptToken}?action=accept`,
-    declineUrl: `${appUrl}/api/introductions/${declineToken}?action=decline`,
-  });
+  try {
+    await sendSellerNotification({
+      sellerEmail: match.seller_email,
+      sellerName: match.seller_name || "",
+      buyerSummary: `${user.display_name || "A buyer"} (${user.email}) is interested in your boat.`,
+      boatTitle: match.boat_title,
+      matchScore: match.score,
+      acceptUrl: `${appUrl}/api/introductions/${acceptToken}?action=accept`,
+      declineUrl: `${appUrl}/api/introductions/${declineToken}?action=decline`,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to send seller notification email");
+    // Continue — the introduction was created, email failure is non-fatal
+  }
 
-  // Update match
-  await query("UPDATE matches SET seller_notified = true WHERE id = $1", [
-    match.id,
-  ]);
+  // Update match (non-fatal if this fails — the introduction was already created)
+  try {
+    await query("UPDATE matches SET seller_notified = true WHERE id = $1", [
+      match.id,
+    ]);
+  } catch (err) {
+    logger.error({ err }, "Failed to update match notification flag");
+  }
 
   return NextResponse.json({ success: true });
 }

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,7 +18,14 @@ export async function POST(
   }
 
   const { id: matchId } = await params;
-  const body = await req.json();
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const parsed = actionSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -43,10 +51,18 @@ export async function POST(
     return NextResponse.json({ error: "Match not found" }, { status: 404 });
   }
 
-  await query(
-    "UPDATE matches SET buyer_action = $1, updated_at = NOW() WHERE id = $2",
-    [parsed.data.action, matchId]
-  );
+  try {
+    await query(
+      "UPDATE matches SET buyer_action = $1, updated_at = NOW() WHERE id = $2",
+      [parsed.data.action, matchId]
+    );
+  } catch (err) {
+    logger.error({ err, matchId }, "POST /api/matches/action error");
+    return NextResponse.json(
+      { error: "Failed to update match action. Please try again." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }

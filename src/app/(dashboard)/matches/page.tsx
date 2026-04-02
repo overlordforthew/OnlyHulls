@@ -25,6 +25,7 @@ interface Match {
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [needsProfile, setNeedsProfile] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -37,22 +38,34 @@ export default function MatchesPage() {
 
   async function fetchMatches() {
     setLoading(true);
-    const res = await fetch(`/api/matches?page=${page}&limit=20`);
-    const data = await res.json();
-    setMatches(data.matches || []);
-    setTotal(data.total || 0);
-    setNeedsProfile(data.needsProfile || false);
-    setLoading(false);
+    setError(null);
+    try {
+      const res = await fetch(`/api/matches?page=${page}&limit=20`);
+      if (!res.ok) throw new Error(`Server error (${res.status})`);
+      const data = await res.json();
+      setMatches(data.matches || []);
+      setTotal(data.total || 0);
+      setNeedsProfile(data.needsProfile || false);
+    } catch {
+      setError("Failed to load matches. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAction(matchId: string, action: string) {
-    await fetch(`/api/matches/${matchId}/action`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    if (action === "passed") {
-      setMatches((prev) => prev.filter((m) => m.match_id !== matchId));
+    try {
+      const res = await fetch(`/api/matches/${matchId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) throw new Error("Action failed");
+      if (action === "passed") {
+        setMatches((prev) => prev.filter((m) => m.match_id !== matchId));
+      }
+    } catch {
+      // Silently fail — the UI state is unchanged, user can retry
     }
   }
 
@@ -92,6 +105,18 @@ export default function MatchesPage() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+          <button
+            onClick={() => { setError(null); fetchMatches(); }}
+            className="ml-3 font-medium text-red-300 underline hover:text-red-200"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {matches.length === 0 ? (
         <div className="mt-16 text-center">

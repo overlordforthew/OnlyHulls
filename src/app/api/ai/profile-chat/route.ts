@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { BUYER_PROFILING_SYSTEM_PROMPT, extractProfileFromResponse } from "@/lib/ai/profiling";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -37,7 +38,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const parsed = chatSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
@@ -86,7 +92,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({ prompt: fullPrompt }),
     });
   } catch (err) {
-    console.error("Claude proxy unreachable:", err);
+    logger.error({ err }, "Claude proxy unreachable");
     return NextResponse.json(
       { error: "AI service unavailable. Please try again later." },
       { status: 503 }
@@ -129,7 +135,7 @@ export async function POST(req: Request) {
                 );
               }
               if (parsed.error) {
-                console.error("Claude proxy error:", parsed.error);
+                logger.error({ error: parsed.error }, "Claude proxy stream error");
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ text: "Sorry, I'm having trouble right now. Please try again." })}\n\n`)
                 );
@@ -215,7 +221,7 @@ export async function POST(req: Request) {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
-        console.error("Stream processing error:", err);
+        logger.error({ err }, "Stream processing error");
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ text: "\n\nSorry, something went wrong. Please try again." })}\n\n`)
         );

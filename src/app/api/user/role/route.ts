@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -13,7 +14,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const parsed = roleSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -40,10 +47,18 @@ export async function POST(req: Request) {
     );
   }
 
-  await query("UPDATE users SET role = $1 WHERE id = $2", [
-    targetRole,
-    session.user.id,
-  ]);
+  try {
+    await query("UPDATE users SET role = $1 WHERE id = $2", [
+      targetRole,
+      session.user.id,
+    ]);
+  } catch (err) {
+    logger.error({ err }, "POST /api/user/role error");
+    return NextResponse.json(
+      { error: "Failed to update role. Please try again." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true, role: targetRole });
 }

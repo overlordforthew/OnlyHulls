@@ -107,7 +107,13 @@ export async function POST(req: Request) {
     }
   }
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const parsed = listingSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -125,66 +131,75 @@ export async function POST(req: Request) {
       { status: 403 }
     );
   }
-  const slug = generateSlug(data.year, data.make, data.model, data.locationText);
 
-  // Create boat listing
-  const boat = await queryOne<{ id: string }>(
-    `INSERT INTO boats (seller_id, slug, hull_id, make, model, year, asking_price, currency,
-       status, location_text, location_lat, location_lng)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review', $9, $10, $11)
-     RETURNING id`,
-    [
-      user.id,
-      slug,
-      data.hullId || null,
-      data.make,
-      data.model,
-      data.year,
-      data.askingPrice,
-      data.currency,
-      data.locationText || null,
-      data.locationLat || null,
-      data.locationLng || null,
-    ]
-  );
+  try {
+    const slug = generateSlug(data.year, data.make, data.model, data.locationText);
 
-  if (!boat) {
+    // Create boat listing
+    const boat = await queryOne<{ id: string }>(
+      `INSERT INTO boats (seller_id, slug, hull_id, make, model, year, asking_price, currency,
+         status, location_text, location_lat, location_lng)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review', $9, $10, $11)
+       RETURNING id`,
+      [
+        user.id,
+        slug,
+        data.hullId || null,
+        data.make,
+        data.model,
+        data.year,
+        data.askingPrice,
+        data.currency,
+        data.locationText || null,
+        data.locationLat || null,
+        data.locationLng || null,
+      ]
+    );
+
+    if (!boat) {
+      return NextResponse.json(
+        { error: "Failed to create listing" },
+        { status: 500 }
+      );
+    }
+
+    // Create boat DNA
+    await query(
+      `INSERT INTO boat_dna (boat_id, specs, character_tags, condition_score, ai_summary)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        boat.id,
+        JSON.stringify(data.specs || {}),
+        data.characterTags || [],
+        data.conditionScore || null,
+        data.description || null,
+      ]
+    );
+
+    // Insert media
+    if (data.media?.length) {
+      for (const m of data.media) {
+        await query(
+          `INSERT INTO boat_media (boat_id, type, url, caption, sort_order)
+           VALUES ($1, 'image', $2, $3, $4)`,
+          [boat.id, m.url, m.caption || null, m.sortOrder]
+        );
+      }
+    }
+
+    // Generate embedding (async, don't block response)
+    generateBoatEmbedding(boat.id, data).catch((err) =>
+      logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
+    );
+
+    return NextResponse.json({ id: boat.id, slug });
+  } catch (err) {
+    logger.error({ err }, "POST /api/listings error");
     return NextResponse.json(
-      { error: "Failed to create listing" },
+      { error: "Failed to create listing. Please try again." },
       { status: 500 }
     );
   }
-
-  // Create boat DNA
-  await query(
-    `INSERT INTO boat_dna (boat_id, specs, character_tags, condition_score, ai_summary)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [
-      boat.id,
-      JSON.stringify(data.specs || {}),
-      data.characterTags || [],
-      data.conditionScore || null,
-      data.description || null,
-    ]
-  );
-
-  // Insert media
-  if (data.media?.length) {
-    for (const m of data.media) {
-      await query(
-        `INSERT INTO boat_media (boat_id, type, url, caption, sort_order)
-         VALUES ($1, 'image', $2, $3, $4)`,
-        [boat.id, m.url, m.caption || null, m.sortOrder]
-      );
-    }
-  }
-
-  // Generate embedding (async, don't block response)
-  generateBoatEmbedding(boat.id, data).catch((err) =>
-    logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
-  );
-
-  return NextResponse.json({ id: boat.id, slug });
 }
 
 async function generateBoatEmbedding(

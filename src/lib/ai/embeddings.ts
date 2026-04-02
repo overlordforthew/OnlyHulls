@@ -1,16 +1,22 @@
 import OpenAI from "openai";
+import { logger } from "@/lib/logger";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await getOpenAI().embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-    dimensions: 1536,
-  });
-  return response.data[0].embedding;
+  try {
+    const response = await getOpenAI().embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+      dimensions: 1536,
+    });
+    return response.data[0].embedding;
+  } catch (err) {
+    logger.error({ err, inputLength: text.length }, "OpenAI embedding generation failed");
+    throw new Error("Failed to generate embedding");
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

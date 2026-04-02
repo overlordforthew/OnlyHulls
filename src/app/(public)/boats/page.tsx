@@ -53,6 +53,7 @@ function BoatsPageInner() {
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialQ);
   const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
@@ -107,24 +108,40 @@ function BoatsPageInner() {
 
   async function fetchBoats(q?: string, tag?: string) {
     setLoading(true);
+    setError(null);
     setPage(1);
-    const params = buildParams(q, tag, 1);
-    const res = await fetch(`/api/boats?${params}`);
-    const data = await res.json();
-    setBoats(data.boats || []);
-    setTotal(data.total || 0);
-    setLoading(false);
+    try {
+      const params = buildParams(q, tag, 1);
+      const res = await fetch(`/api/boats?${params}`);
+      if (!res.ok) throw new Error(`Server error (${res.status})`);
+      const data = await res.json();
+      setBoats(data.boats || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      setError("Failed to load boats. Please try again.");
+      setBoats([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadMore() {
     const nextPage = page + 1;
     setLoadingMore(true);
-    const params = buildParams(undefined, undefined, nextPage);
-    const res = await fetch(`/api/boats?${params}`);
-    const data = await res.json();
-    setBoats((prev) => [...prev, ...(data.boats || [])]);
-    setPage(nextPage);
-    setLoadingMore(false);
+    try {
+      const params = buildParams(undefined, undefined, nextPage);
+      const res = await fetch(`/api/boats?${params}`);
+      if (!res.ok) throw new Error(`Server error (${res.status})`);
+      const data = await res.json();
+      setBoats((prev) => [...prev, ...(data.boats || [])]);
+      setPage(nextPage);
+    } catch {
+      // Keep existing boats on load-more failure — only show a subtle indicator
+      setError("Failed to load more boats. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   useEffect(() => {
@@ -297,6 +314,17 @@ function BoatsPageInner() {
 
       {/* Results */}
       <div className="mx-auto max-w-7xl px-5 pt-8">
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {error}
+            <button
+              onClick={() => { setError(null); fetchBoats(); }}
+              className="ml-3 font-medium text-red-300 underline hover:text-red-200"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (

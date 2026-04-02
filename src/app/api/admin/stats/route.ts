@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -9,19 +10,27 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [users, listings, pending, matches, intros] = await Promise.all([
-    queryOne<{ count: string }>("SELECT COUNT(*) FROM users"),
-    queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
-    queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'pending_review'"),
-    queryOne<{ count: string }>("SELECT COUNT(*) FROM matches"),
-    queryOne<{ count: string }>("SELECT COUNT(*) FROM introductions"),
-  ]);
+  try {
+    const [users, listings, pending, matches, intros] = await Promise.all([
+      queryOne<{ count: string }>("SELECT COUNT(*) FROM users"),
+      queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
+      queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'pending_review'"),
+      queryOne<{ count: string }>("SELECT COUNT(*) FROM matches"),
+      queryOne<{ count: string }>("SELECT COUNT(*) FROM introductions"),
+    ]);
 
-  return NextResponse.json({
-    totalUsers: parseInt(users?.count || "0"),
-    activeListings: parseInt(listings?.count || "0"),
-    pendingListings: parseInt(pending?.count || "0"),
-    totalMatches: parseInt(matches?.count || "0"),
-    totalIntroductions: parseInt(intros?.count || "0"),
-  });
+    return NextResponse.json({
+      totalUsers: parseInt(users?.count || "0"),
+      activeListings: parseInt(listings?.count || "0"),
+      pendingListings: parseInt(pending?.count || "0"),
+      totalMatches: parseInt(matches?.count || "0"),
+      totalIntroductions: parseInt(intros?.count || "0"),
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /api/admin/stats error");
+    return NextResponse.json(
+      { error: "Failed to load stats" },
+      { status: 500 }
+    );
+  }
 }

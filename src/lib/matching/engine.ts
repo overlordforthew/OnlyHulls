@@ -1,6 +1,7 @@
 import { query, queryOne } from "@/lib/db";
 import { findTopCandidates } from "./vector";
 import { computeMatchScore, type ScoreBreakdown } from "./rules";
+import { logger } from "@/lib/logger";
 
 const BATCH_SIZE = 10;
 
@@ -109,6 +110,8 @@ export async function computeMatchesForBuyer(
 export async function computeAllMatches(): Promise<void> {
   // Process buyers in batches to stay under memory limits
   let offset = 0;
+  let totalProcessed = 0;
+  let totalErrors = 0;
 
   while (true) {
     const buyers = await query<{ id: string }>(
@@ -122,9 +125,17 @@ export async function computeAllMatches(): Promise<void> {
     if (!buyers.length) break;
 
     for (const buyer of buyers) {
-      await computeMatchesForBuyer(buyer.id);
+      try {
+        await computeMatchesForBuyer(buyer.id);
+        totalProcessed++;
+      } catch (err) {
+        totalErrors++;
+        logger.error({ err, buyerId: buyer.id }, "Failed to compute matches for buyer");
+      }
     }
 
     offset += BATCH_SIZE;
   }
+
+  logger.info({ totalProcessed, totalErrors }, "Batch match computation complete");
 }

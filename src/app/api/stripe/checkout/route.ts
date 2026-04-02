@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { queryOne, query } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import {
   createCheckoutSession,
   getOrCreateCustomer,
@@ -18,7 +19,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
@@ -45,23 +52,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  let customerId = user.stripe_customer_id;
-  if (!customerId) {
-    customerId = await getOrCreateCustomer(user.email, user.display_name);
-    await query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [
+  try {
+    let customerId = user.stripe_customer_id;
+    if (!customerId) {
+      customerId = await getOrCreateCustomer(user.email, user.display_name);
+      await query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [
+        customerId,
+        user.id,
+      ]);
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const url = await createCheckoutSession(
       customerId,
+      plan.stripePriceId,
       user.id,
-    ]);
+      `${appUrl}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      `${appUrl}/sell#pricing`
+    );
+
+    return NextResponse.json({ url });
+  } catch (err) {
+    logger.error({ err }, "POST /api/stripe/checkout error");
+    return NextResponse.json(
+      { error: "Failed to start checkout. Please try again." },
+      { status: 500 }
+    );
   }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const url = await createCheckoutSession(
-    customerId,
-    plan.stripePriceId,
-    user.id,
-    `${appUrl}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-    `${appUrl}/sell#pricing`
-  );
-
-  return NextResponse.json({ url });
 }
