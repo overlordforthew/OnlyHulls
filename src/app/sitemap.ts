@@ -1,10 +1,11 @@
 import { query } from "@/lib/db";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import type { MetadataRoute } from "next";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://onlyhulls.com";
+  const appUrl = getPublicAppUrl();
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

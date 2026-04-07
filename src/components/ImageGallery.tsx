@@ -1,11 +1,14 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, PlayCircle } from "lucide-react";
+import { getExternalVideoMeta, type ListingMediaType } from "@/lib/media";
 
 interface MediaItem {
   id: string;
+  type?: ListingMediaType;
   url: string;
+  thumbnailUrl?: string | null;
   caption: string | null;
 }
 
@@ -39,16 +42,29 @@ export function ImageGallery({
 
   const prev = () => setCurrent((i) => (i > 0 ? i - 1 : media.length - 1));
   const next = () => setCurrent((i) => (i < media.length - 1 ? i + 1 : 0));
+  const currentItem = media[current];
+  const currentVideo = currentItem.type === "video" ? getExternalVideoMeta(currentItem.url) : null;
 
   return (
     <div className="space-y-2">
       {/* Hero image */}
       <div className="group relative overflow-hidden rounded-xl">
-        <img
-          src={media[current].url}
-          alt={media[current].caption || alt}
-          className="aspect-[16/9] w-full object-cover"
-        />
+        {currentVideo ? (
+          <iframe
+            src={currentVideo.embedUrl}
+            title={currentItem.caption || `${alt} video`}
+            className="aspect-[16/9] w-full border-0 bg-black"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        ) : (
+          <img
+            src={currentItem.url}
+            alt={currentItem.caption || alt}
+            className="aspect-[16/9] w-full object-cover"
+          />
+        )}
 
         {/* Nav arrows */}
         {media.length > 1 && (
@@ -78,27 +94,36 @@ export function ImageGallery({
       </div>
 
       {/* Thumbnail strip */}
-      {media.length > 1 && (
-        <div ref={thumbsRef} className="flex gap-2 overflow-x-auto">
-          {media.map((m, i) => (
-            <button
-              key={m.id}
+        {media.length > 1 && (
+          <div ref={thumbsRef} className="flex gap-2 overflow-x-auto">
+            {media.map((m, i) => (
+              <button
+                key={m.id}
               onClick={() => setCurrent(i)}
               className={`h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
                 i === current
                   ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                   : "opacity-70 hover:opacity-100"
               }`}
-            >
-              <img
-                src={m.url}
-                alt={m.caption || alt}
-                className="h-full w-full object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+              >
+                {m.type === "video" ? (
+                  <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
+                    <div className="flex flex-col items-center gap-1">
+                      <PlayCircle className="h-8 w-8" />
+                      <span className="text-xs font-medium">Video</span>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={m.url}
+                    alt={m.caption || alt}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
     </div>
   );
 }

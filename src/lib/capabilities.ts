@@ -1,3 +1,6 @@
+import { getStorageBackend } from "@/lib/storage";
+import { matchIntelligenceEnabled } from "@/lib/ai/provider";
+
 const PLACEHOLDER_MARKERS = [
   "placeholder",
   "changeme",
@@ -44,10 +47,13 @@ export function openAIEnabled(): boolean {
 }
 
 export function storageEnabled(): boolean {
-  return (
-    hasConfiguredValue(process.env.S3_ENDPOINT) &&
-    hasConfiguredValue(process.env.S3_BUCKET) &&
-    hasConfiguredValue(process.env.S3_ACCESS_KEY_ID) &&
-    hasConfiguredValue(process.env.S3_SECRET_ACCESS_KEY)
-  );
+  return getStorageBackend() !== "none";
+}
+
+export function mediaBackend(): string {
+  return getStorageBackend();
+}
+
+export function matchIntelligenceConfigured(): boolean {
+  return matchIntelligenceEnabled();
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/stripe";
 import { PLANS } from "@/lib/config/plans";
 import { paidPlanCheckoutEnabled } from "@/lib/capabilities";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getPublicAppUrl();
 
   try {
     if (parsed.data.tier === "free-seller") {

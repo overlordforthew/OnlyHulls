@@ -1,6 +1,7 @@
 import { queryOne } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendPasswordResetEmail } from "@/lib/email/resend";
+import { getAuthAppUrl } from "@/lib/config/urls";
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 
@@ -29,11 +30,10 @@ export async function POST(req: Request) {
       [token, expires, user.id]
     );
 
-    const baseUrl = process.env.NEXTAUTH_URL || "https://onlyhulls.com";
     try {
       await sendPasswordResetEmail({
         email: email.toLowerCase().trim(),
-        resetUrl: `${baseUrl}/reset-password?token=${token}`,
+        resetUrl: `${getAuthAppUrl()}/reset-password?token=${token}`,
       });
     } catch {
       // Intentionally ignore delivery failures to avoid leaking account state.

@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
+import {
+  billingEnabled,
+  emailEnabled,
+  mediaBackend,
+  matchIntelligenceConfigured,
+  openAIEnabled,
+  storageEnabled,
+} from "@/lib/capabilities";
 
 export async function GET() {
   return NextResponse.json({
@@ -7,5 +14,7 @@ export async function GET() {
     emailEnabled: emailEnabled(),
     openAIEnabled: openAIEnabled(),
     storageEnabled: storageEnabled(),
+    mediaBackend: mediaBackend(),
+    matchIntelligenceEnabled: matchIntelligenceConfigured(),
   });
 }

@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: https://*.your-objectstorage.com https://*.sailboatlistings.com https://ics.apolloduck.com https://*.theyachtmarket.com https://images.boatsgroup.com",
               "connect-src 'self' https://*.posthog.com",
               "font-src 'self'",
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
               "frame-ancestors 'none'",
             ].join("; "),
           },

@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
-import { getPresignedUploadUrl, generateMediaKey, getPublicUrl } from "@/lib/storage";
+import {
+  getPresignedUploadUrl,
+  generateMediaKey,
+  getPublicUrl,
+  getStorageBackend,
+  storeLocalUpload,
+} from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { storageEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
@@ -12,6 +18,7 @@ const ALLOWED_IMAGE_TYPES = [
   "image/webp",
   "image/gif",
 ] as const;
+const MAX_LOCAL_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 const uploadSchema = z.object({
   boatId: z.string().uuid(),
@@ -29,6 +36,54 @@ export async function POST(req: Request) {
       { error: "Media storage is not configured yet." },
       { status: 503 }
     );
+  }
+
+  const backend = getStorageBackend();
+
+  if (backend === "local") {
+    try {
+      const form = await req.formData();
+      const boatId = String(form.get("boatId") || "");
+      const file = form.get("file");
+
+      if (!boatId || !(file instanceof File)) {
+        return NextResponse.json({ error: "Invalid upload request" }, { status: 400 });
+      }
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number])) {
+        return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
+      }
+      if (file.size > MAX_LOCAL_UPLOAD_BYTES) {
+        return NextResponse.json(
+          { error: "Each image must be 8 MB or smaller." },
+          { status: 400 }
+        );
+      }
+
+      const boat = await queryOne<{ seller_id: string }>(
+        "SELECT seller_id FROM boats WHERE id = $1",
+        [boatId]
+      );
+      if (!boat || boat.seller_id !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const bytes = Buffer.from(await file.arrayBuffer());
+      const uploaded = await storeLocalUpload({
+        boatId,
+        filename: file.name,
+        contentType: file.type,
+        bytes,
+        type: "image",
+      });
+
+      return NextResponse.json({ key: uploaded.key, publicUrl: uploaded.publicUrl });
+    } catch (err) {
+      logger.error({ err }, "POST /api/upload local storage error");
+      return NextResponse.json(
+        { error: "Failed to upload image. Please try again." },
+        { status: 500 }
+      );
+    }
   }
 
   let body;

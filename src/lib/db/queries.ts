@@ -24,7 +24,7 @@ const BOAT_SELECT = `
          b.asking_price_usd,
          b.location_text, b.slug, b.is_sample,
          b.source_site, b.source_name, b.source_url,
-         (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,
+         (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
          COALESCE(d.specs, '{}') as specs,
          COALESCE(d.character_tags, '{}') as character_tags,
          d.condition_score
@@ -36,7 +36,7 @@ export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
   // Trending = most viewed, but only boats with 2+ images (no empty showcases)
   return query<BoatRow>(
     `${BOAT_SELECT}
-       AND (SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id) >= 2
+       AND (SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image') >= 2
        AND COALESCE(b.asking_price_usd, b.asking_price) >= 3000
      ORDER BY b.view_count DESC, b.created_at DESC LIMIT $1`,
     [limit]

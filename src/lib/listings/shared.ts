@@ -6,6 +6,13 @@ import {
   generateEmbedding,
 } from "@/lib/ai/embeddings";
 import { syncBoatSearchDocument } from "@/lib/search/boat-index";
+import {
+  getExternalVideoMeta,
+  isLocalMediaUrl,
+  isSupportedExternalVideoUrl,
+  MAX_EXTERNAL_VIDEOS,
+  type ListingMediaType,
+} from "@/lib/media";
 
 function getAllowedMediaHost(): string | null {
   if (!process.env.S3_ENDPOINT) return null;
@@ -17,22 +24,63 @@ function getAllowedMediaHost(): string | null {
   }
 }
 
-export const listingMediaSchema = z.object({
-  url: z.string().url().refine(
-    (u) => {
-      try {
-        const { hostname } = new URL(u);
-        const allowed = getAllowedMediaHost();
-        return allowed ? hostname.endsWith(allowed) : false;
-      } catch {
-        return false;
+function isAllowedImageUrl(url: string): boolean {
+  if (isLocalMediaUrl(url)) {
+    return true;
+  }
+
+  try {
+    const { hostname } = new URL(url);
+    const allowed = getAllowedMediaHost();
+    return allowed ? hostname.endsWith(allowed) : false;
+  } catch {
+    return false;
+  }
+}
+
+export const listingMediaSchema = z
+  .object({
+    type: z.enum(["image", "video"]).default("image"),
+    url: z.string().min(1),
+    thumbnailUrl: z.string().url().nullable().optional(),
+    caption: z.string().optional(),
+    sortOrder: z.number().int().min(0).default(0),
+  })
+  .superRefine((item, ctx) => {
+    if (item.type === "image") {
+      if (!isAllowedImageUrl(item.url)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["url"],
+          message: "Invalid image URL - must be from local media or configured storage",
+        });
       }
-    },
-    { message: "Invalid media URL - must be from configured object storage" }
-  ),
-  caption: z.string().optional(),
-  sortOrder: z.number().int().min(0).default(0),
-});
+      return;
+    }
+
+    if (!isSupportedExternalVideoUrl(item.url)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "Video links must be YouTube or Vimeo URLs",
+      });
+    }
+  })
+  .transform((item) => {
+    if (item.type === "video") {
+      const video = getExternalVideoMeta(item.url);
+      return {
+        ...item,
+        url: video?.canonicalUrl || item.url,
+        thumbnailUrl: item.thumbnailUrl || null,
+      };
+    }
+
+    return {
+      ...item,
+      thumbnailUrl: item.thumbnailUrl || null,
+    };
+  });
 
 export const listingSchema = z.object({
   make: z.string().min(1),
@@ -64,9 +112,26 @@ export const listingSchema = z.object({
   conditionScore: z.number().int().min(1).max(10).optional(),
   description: z.string().optional(),
   media: z.array(listingMediaSchema).optional(),
+}).superRefine((listing, ctx) => {
+  const media = listing.media || [];
+  const videos = media.filter((item) => item.type === "video");
+  if (videos.length > MAX_EXTERNAL_VIDEOS) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["media"],
+      message: `A listing can include up to ${MAX_EXTERNAL_VIDEOS} external videos.`,
+    });
+  }
 });
 
 export type ListingPayload = z.infer<typeof listingSchema>;
+export type ListingMediaPayload = {
+  type: ListingMediaType;
+  url: string;
+  thumbnailUrl?: string | null;
+  caption?: string;
+  sortOrder: number;
+};
 
 export function generateListingSlug(
   year: number,

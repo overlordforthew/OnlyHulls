@@ -3,6 +3,7 @@ import { queryOne } from "@/lib/db";
 import { createCustomerPortalSession } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
 import { billingEnabled } from "@/lib/capabilities";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -31,10 +32,9 @@ export async function POST() {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const url = await createCustomerPortalSession(
       user.stripe_customer_id,
-      `${appUrl}/sell#pricing`
+      `${getPublicAppUrl()}/sell#pricing`
     );
 
     return NextResponse.json({ url });

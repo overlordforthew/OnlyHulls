@@ -8,6 +8,11 @@ interface Match {
   match_id: string;
   score: number;
   buyer_action: string;
+  explanation_summary?: string | null;
+  explanation_strengths?: string[] | null;
+  explanation_risks?: string[] | null;
+  explanation_confidence?: number | null;
+  explanation_provider?: string | null;
   boat_id: string;
   make: string;
   model: string;
@@ -128,30 +133,46 @@ export default function MatchesPage() {
         <>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {matches.map((m) => (
-              <BoatCard
-                key={m.match_id}
-                boat={{
-                  id: m.boat_id,
-                  make: m.make,
-                  model: m.model,
-                  year: m.year,
-                  asking_price: m.asking_price,
-                  currency: m.currency,
-                  location_text: m.location_text,
-                  slug: m.slug,
-                  is_sample: m.is_sample,
-                  hero_url: m.hero_url,
-                  specs: m.specs,
-                  character_tags: m.character_tags,
-                }}
-                matchScore={m.score}
-                showActions
-                onSave={() => handleAction(m.match_id, "interested")}
-                onDismiss={() => handleAction(m.match_id, "passed")}
-                onConnect={() =>
-                  router.push(`/boats/${m.slug || m.boat_id}?connect=true&matchId=${m.match_id}`)
-                }
-              />
+              <div key={m.match_id} className="space-y-3">
+                <BoatCard
+                  boat={{
+                    id: m.boat_id,
+                    make: m.make,
+                    model: m.model,
+                    year: m.year,
+                    asking_price: m.asking_price,
+                    currency: m.currency,
+                    location_text: m.location_text,
+                    slug: m.slug,
+                    is_sample: m.is_sample,
+                    hero_url: m.hero_url,
+                    specs: m.specs,
+                    character_tags: m.character_tags,
+                  }}
+                  matchScore={m.score}
+                  showActions
+                  onSave={() => handleAction(m.match_id, "interested")}
+                  onDismiss={() => handleAction(m.match_id, "passed")}
+                  onConnect={() =>
+                    router.push(`/boats/${m.slug || m.boat_id}?connect=true&matchId=${m.match_id}`)
+                  }
+                />
+                {m.explanation_summary && (
+                  <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm">
+                    <p className="font-medium text-foreground/90">{m.explanation_summary}</p>
+                    {m.explanation_strengths && m.explanation_strengths.length > 0 && (
+                      <p className="mt-2 text-foreground/65">
+                        Strengths: {m.explanation_strengths.join(" ")}
+                      </p>
+                    )}
+                    {m.explanation_risks && m.explanation_risks.length > 0 && (
+                      <p className="mt-2 text-foreground/55">
+                        Watchouts: {m.explanation_risks.join(" ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 

@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     b.asking_price_usd, b.location_text, b.slug, b.is_sample,
     b.source_site, b.source_name, b.source_url,
-    (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url,
+    (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
     COALESCE(d.specs, '{}') as specs,
     COALESCE(d.character_tags, '{}') as character_tags,
     d.condition_score`;
@@ -149,7 +149,7 @@ function buildOrderBy(sort: string, dir: string) {
   const sortCol = SORT_MAP[sort] || SORT_MAP.newest;
   const sortDir = dir === "desc" ? "DESC" : "ASC";
 
-  return `(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id)) DESC, ${sortCol} ${sortDir} NULLS LAST`;
+  return `(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${sortCol} ${sortDir} NULLS LAST`;
 }
 
 function buildWhereClause(filters: BoatSearchParams) {

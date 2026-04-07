@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getExternalVideoMeta, type ListingMediaType } from "@/lib/media";
 
 type Step = "basics" | "specs" | "details" | "location" | "photos" | "review";
 
@@ -12,13 +13,15 @@ const STEP_LABELS: Record<Step, string> = {
   specs: "Specifications",
   details: "Details",
   location: "Location & Price",
-  photos: "Photos",
+  photos: "Media",
   review: "Review",
 };
 
 interface ListingMedia {
   id?: string;
+  type: ListingMediaType;
   url: string;
+  thumbnailUrl?: string | null;
   caption: string;
   sortOrder: number;
 }
@@ -60,6 +63,7 @@ interface ListingResponse extends ListingData {
 
 interface CapabilityResponse {
   storageEnabled?: boolean;
+  mediaBackend?: string;
 }
 
 const DEFAULT_DATA: ListingData = {
@@ -90,7 +94,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
   const [status, setStatus] = useState<string>(editMode ? "pending_review" : "draft");
   const [slug, setSlug] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
+  const [mediaBackend, setMediaBackend] = useState("none");
   const [canResubmit, setCanResubmit] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
   const [data, setData] = useState<ListingData>(DEFAULT_DATA);
 
   const currentIdx = STEPS.indexOf(step);
@@ -116,6 +122,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
       .then((res) => res.json())
       .then((capabilities: CapabilityResponse) => {
         setStorageReady(Boolean(capabilities.storageEnabled));
+        setMediaBackend(String(capabilities.mediaBackend || "none"));
       })
       .catch(() => {});
   }, []);
@@ -154,7 +161,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
           description: listing.description || "",
           media: (listing.media || []).map((item, index) => ({
             id: item.id,
+            type: item.type || "image",
             url: item.url,
+            thumbnailUrl: item.thumbnailUrl || null,
             caption: item.caption || "",
             sortOrder: item.sortOrder ?? index,
           })),
@@ -163,6 +172,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
         setSlug(listing.slug);
         setCanResubmit(Boolean(listing.canResubmit));
         setStorageReady(Boolean(listing.storageEnabled));
+        setMediaBackend(String((listing as ListingResponse & { mediaBackend?: string }).mediaBackend || "none"));
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Failed to load listing");
@@ -214,7 +224,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
     const payload = {
       ...data,
       media: data.media.map((item, index) => ({
+        type: item.type,
         url: item.url,
+        thumbnailUrl: item.thumbnailUrl,
         caption: item.caption,
         sortOrder: index,
       })),
@@ -279,6 +291,30 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
       const uploaded: ListingMedia[] = [];
 
       for (const file of files) {
+        if (mediaBackend === "local") {
+          const form = new FormData();
+          form.set("boatId", listingId);
+          form.set("file", file);
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: form,
+          });
+          const uploadPayload = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok) {
+            throw new Error(uploadPayload.error || `Failed to upload ${file.name}`);
+          }
+
+          uploaded.push({
+            type: "image",
+            url: uploadPayload.publicUrl,
+            thumbnailUrl: null,
+            caption: "",
+            sortOrder: 0,
+          });
+          continue;
+        }
+
         const presignRes = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -304,7 +340,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
         }
 
         uploaded.push({
+          type: "image",
           url: presignPayload.publicUrl,
+          thumbnailUrl: null,
           caption: "",
           sortOrder: 0,
         });
@@ -326,6 +364,31 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
     }
   }
 
+  function addVideoLink() {
+    const meta = getExternalVideoMeta(videoUrl);
+    if (!meta) {
+      setError("Video links must be YouTube or Vimeo URLs.");
+      return;
+    }
+
+    setError(null);
+    setMessage("External video added.");
+    setData((prev) => ({
+      ...prev,
+      media: [
+        ...prev.media,
+        {
+          type: "video",
+          url: meta.canonicalUrl,
+          thumbnailUrl: null,
+          caption: "",
+          sortOrder: prev.media.length,
+        },
+      ],
+    }));
+    setVideoUrl("");
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -343,8 +406,8 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
           </h1>
           <p className="mt-1 text-sm text-foreground/60">
             {editMode
-              ? "Refine details, manage photos, and keep the listing ready for buyers."
-              : "Create your listing, then polish it with photos and final details."}
+              ? "Refine details, manage photos, add videos, and keep the listing ready for buyers."
+              : "Create your listing, then polish it with photos, videos, and final details."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -574,14 +637,14 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
           <div className="space-y-4">
             {!editMode ? (
               <div className="rounded-xl border border-border bg-surface p-4 text-sm text-foreground/70">
-                Create the listing first, then return here to upload and manage photos.
+                Create the listing first, then return here to upload photos and add video links.
                 The editor will reopen automatically after submission.
               </div>
             ) : storageReady ? (
               <div className="rounded-xl border border-border bg-surface p-4">
                 <label className="block text-sm font-medium">Upload Photos</label>
                 <p className="mt-1 text-xs text-foreground/50">
-                  JPG, PNG, WebP, or GIF. Uploads go directly to object storage.
+                  JPG, PNG, WebP, or GIF. Videos are link-only.
                 </p>
                 <input
                   type="file"
@@ -597,27 +660,55 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
               </div>
             ) : (
               <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-sm text-accent">
-                Media storage is not configured on this environment yet. Listing details
-                can still be saved, and photo uploads will unlock as soon as S3 credentials
-                are added.
+                Media uploads are not configured on this environment yet. Listing details
+                can still be saved, and external video links still work.
               </div>
             )}
 
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <label className="block text-sm font-medium">Add Video Link</label>
+              <p className="mt-1 text-xs text-foreground/50">
+                YouTube and Vimeo only. Videos are embedded from the original provider and are not uploaded directly.
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(event) => setVideoUrl(event.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+                <button
+                  onClick={addVideoLink}
+                  type="button"
+                  className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary/10"
+                >
+                  Add Video
+                </button>
+              </div>
+            </div>
+
             {data.media.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-foreground/45">
-                No photos added yet.
+                No media added yet.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {data.media.map((item, index) => (
                   <div key={item.id || `${item.url}-${index}`} className="rounded-xl border border-border bg-surface p-4">
                     <div className="overflow-hidden rounded-lg bg-background">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.caption || `${data.make} ${data.model} photo ${index + 1}`}
-                        className="aspect-[4/3] w-full object-cover"
-                      />
+                      {item.type === "video" ? (
+                        <div className="flex aspect-[4/3] items-center justify-center bg-surface-elevated px-4 text-center text-sm text-foreground/60">
+                          External video link
+                        </div>
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={item.url}
+                          alt={item.caption || `${data.make} ${data.model} photo ${index + 1}`}
+                          className="aspect-[4/3] w-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="mt-3">
                       <label className="block text-sm font-medium">Caption</label>
@@ -630,7 +721,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
                       />
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-foreground/50">
-                      <span>Photo {index + 1}</span>
+                      <span>{item.type === "video" ? `Video ${index + 1}` : `Photo ${index + 1}`}</span>
                       <button
                         onClick={() => removeMedia(index)}
                         className="rounded-full border border-border px-3 py-1 text-red-300 transition-all hover:border-red-400"
@@ -660,7 +751,12 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
               {data.locationText && <p className="mt-1">{data.locationText}</p>}
               {data.specs.loa && <p className="mt-1">LOA: {data.specs.loa}ft</p>}
               {data.specs.rig_type && <p>Rig: {data.specs.rig_type}</p>}
-              {data.media.length > 0 && <p>Photos: {data.media.length}</p>}
+              {data.media.filter((item) => item.type === "image").length > 0 && (
+                <p>Photos: {data.media.filter((item) => item.type === "image").length}</p>
+              )}
+              {data.media.filter((item) => item.type === "video").length > 0 && (
+                <p>Videos: {data.media.filter((item) => item.type === "video").length}</p>
+              )}
               {data.characterTags.length > 0 && (
                 <p className="mt-1">Tags: {data.characterTags.join(", ")}</p>
               )}

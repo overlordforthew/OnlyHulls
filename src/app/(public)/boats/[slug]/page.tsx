@@ -38,7 +38,7 @@ async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
@@ -60,7 +60,7 @@ async function getBoatForViewer(
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
@@ -84,8 +84,11 @@ async function getBoatForViewer(
 }
 
 async function getBoatMedia(boatId: string) {
-  return query<{ id: string; url: string; caption: string | null }>(
-    `SELECT id, url, caption FROM boat_media WHERE boat_id = $1 ORDER BY sort_order`,
+  return query<{ id: string; type: "image" | "video"; url: string; thumbnail_url: string | null; caption: string | null }>(
+    `SELECT id, type, url, thumbnail_url, caption
+     FROM boat_media
+     WHERE boat_id = $1
+     ORDER BY sort_order`,
     [boatId]
   );
 }
@@ -160,7 +163,12 @@ export default async function BoatDetailPage({
             "@type": "Product",
             name: `${boat.year} ${boat.make} ${boat.model}`,
             description: boat.ai_summary || `${boat.year} ${boat.make} ${boat.model} for sale`,
-            ...(media.length > 0 && { image: media.slice(0, 5).map((m: { url: string }) => m.url) }),
+            ...(media.length > 0 && {
+              image: media
+                .filter((m: { type: string }) => m.type === "image")
+                .slice(0, 5)
+                .map((m: { url: string }) => m.url),
+            }),
             brand: { "@type": "Brand", name: boat.make },
             offers: {
               "@type": "Offer",

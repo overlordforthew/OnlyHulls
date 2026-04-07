@@ -268,7 +268,7 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
       : null;
 
   const orderByParts = [
-    "(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id)) DESC",
+    "(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC",
   ];
   if (budgetMid) {
     orderByParts.push(`ABS(COALESCE(b.asking_price_usd, b.asking_price) - $${paramIdx++}) ASC NULLS LAST`);

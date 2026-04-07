@@ -1,12 +1,11 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { BUYER_PROFILING_SYSTEM_PROMPT, extractProfileFromResponse } from "@/lib/ai/profiling";
+import { getClaudeProxyUrl } from "@/lib/config/urls";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
-
-const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://host.docker.internal:3099";
 
 const chatSchema = z.object({
   messages: z.array(z.object({
@@ -49,6 +48,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
   const { messages, conversationId } = parsed.data;
+  const claudeProxyUrl = getClaudeProxyUrl();
+
+  if (!claudeProxyUrl) {
+    return NextResponse.json(
+      { error: "AI chat is not configured." },
+      { status: 503 }
+    );
+  }
 
   // Get or create conversation
   let convId = conversationId;
@@ -86,7 +93,7 @@ export async function POST(req: Request) {
   // Call Claude proxy running on the host
   let proxyRes: Response;
   try {
-    proxyRes = await fetch(`${CLAUDE_PROXY_URL}/chat`, {
+    proxyRes = await fetch(`${claudeProxyUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: fullPrompt }),

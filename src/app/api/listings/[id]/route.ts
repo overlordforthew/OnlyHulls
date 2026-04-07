@@ -9,7 +9,8 @@ import {
   syncListingSearch,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
-import { storageEnabled } from "@/lib/capabilities";
+import { mediaBackend, storageEnabled } from "@/lib/capabilities";
+import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -70,11 +71,13 @@ export async function GET(
 
     const media = await pool.query<{
       id: string;
+      type: "image" | "video";
       url: string;
+      thumbnail_url: string | null;
       caption: string | null;
       sort_order: number;
     }>(
-      `SELECT id, url, caption, sort_order
+      `SELECT id, type, url, thumbnail_url, caption, sort_order
        FROM boat_media
        WHERE boat_id = $1
        ORDER BY sort_order, id`,
@@ -100,12 +103,15 @@ export async function GET(
       description: listing.ai_summary || "",
       media: media.rows.map((item) => ({
         id: item.id,
+        type: item.type,
         url: item.url,
+        thumbnailUrl: item.thumbnail_url,
         caption: item.caption || "",
         sortOrder: item.sort_order,
       })),
       canResubmit: listing.status === "rejected" || listing.status === "draft",
       storageEnabled: storageEnabled(),
+      mediaBackend: mediaBackend(),
     });
   } catch (err) {
     logger.error({ err }, "GET /api/listings/[id] error");
@@ -168,11 +174,20 @@ export async function PATCH(
     sortOrder: index,
   }));
 
-  if (normalizedMedia && normalizedMedia.length > plan.limits.photosPerListing) {
+  const imageCount = (normalizedMedia || []).filter((item) => item.type === "image").length;
+  const videoCount = (normalizedMedia || []).filter((item) => item.type === "video").length;
+
+  if (imageCount > plan.limits.photosPerListing) {
     return NextResponse.json(
       {
-        error: `Your ${plan.name} plan allows ${plan.limits.photosPerListing} photos per listing. You sent ${normalizedMedia.length}.`,
+        error: `Your ${plan.name} plan allows ${plan.limits.photosPerListing} photos per listing. You sent ${imageCount}.`,
       },
+      { status: 403 }
+    );
+  }
+  if (videoCount > MAX_EXTERNAL_VIDEOS) {
+    return NextResponse.json(
+      { error: `A listing can include up to ${MAX_EXTERNAL_VIDEOS} external videos.` },
       { status: 403 }
     );
   }
@@ -240,9 +255,16 @@ export async function PATCH(
         await client.query("DELETE FROM boat_media WHERE boat_id = $1", [listing.id]);
         for (const media of normalizedMedia) {
           await client.query(
-            `INSERT INTO boat_media (boat_id, type, url, caption, sort_order)
-             VALUES ($1, 'image', $2, $3, $4)`,
-            [listing.id, media.url, media.caption || null, media.sortOrder]
+            `INSERT INTO boat_media (boat_id, type, url, thumbnail_url, caption, sort_order)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              listing.id,
+              media.type,
+              media.url,
+              media.thumbnailUrl || null,
+              media.caption || null,
+              media.sortOrder,
+            ]
           );
         }
       }

@@ -1,6 +1,7 @@
 import { queryOne } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendVerificationEmail } from "@/lib/email/resend";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -62,11 +63,10 @@ export async function POST(req: Request) {
   let requiresVerification = true;
 
   if (newUser) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://onlyhulls.com";
     try {
       await sendVerificationEmail({
         email,
-        verifyUrl: `${appUrl}/api/auth/verify?token=${verifyToken}`,
+        verifyUrl: `${getPublicAppUrl()}/api/auth/verify?token=${verifyToken}`,
       });
     } catch {
       // Email failed — mark user as verified so they aren't stranded

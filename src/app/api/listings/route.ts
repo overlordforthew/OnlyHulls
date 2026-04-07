@@ -8,6 +8,7 @@ import {
   listingSchema,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
+import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -63,11 +64,20 @@ export async function POST(req: Request) {
 
   const data = parsed.data;
 
-  if (data.media && data.media.length > plan.limits.photosPerListing) {
+  const imageCount = (data.media || []).filter((item) => item.type === "image").length;
+  const videoCount = (data.media || []).filter((item) => item.type === "video").length;
+
+  if (imageCount > plan.limits.photosPerListing) {
     return NextResponse.json(
       {
-        error: `Your ${plan.name} plan allows ${plan.limits.photosPerListing} photos per listing. You sent ${data.media.length}.`,
+        error: `Your ${plan.name} plan allows ${plan.limits.photosPerListing} photos per listing. You sent ${imageCount}.`,
       },
+      { status: 403 }
+    );
+  }
+  if (videoCount > MAX_EXTERNAL_VIDEOS) {
+    return NextResponse.json(
+      { error: `A listing can include up to ${MAX_EXTERNAL_VIDEOS} external videos.` },
       { status: 403 }
     );
   }
@@ -116,9 +126,16 @@ export async function POST(req: Request) {
     if (data.media?.length) {
       for (const media of data.media) {
         await query(
-          `INSERT INTO boat_media (boat_id, type, url, caption, sort_order)
-           VALUES ($1, 'image', $2, $3, $4)`,
-          [boat.id, media.url, media.caption || null, media.sortOrder]
+          `INSERT INTO boat_media (boat_id, type, url, thumbnail_url, caption, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            boat.id,
+            media.type,
+            media.url,
+            media.thumbnailUrl || null,
+            media.caption || null,
+            media.sortOrder,
+          ]
         );
       }
     }
