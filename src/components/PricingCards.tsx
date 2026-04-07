@@ -62,7 +62,7 @@ const sellerPlans = [
     price: 50,
     features: [
       "Everything in Creator",
-      "Video upload + AI analysis",
+      "External video embeds (YouTube/Vimeo)",
       "Boosted placement in feed",
       "Featured in buyer email blasts",
       "Analytics dashboard",

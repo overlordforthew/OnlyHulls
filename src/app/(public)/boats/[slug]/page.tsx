@@ -20,6 +20,7 @@ interface BoatDetail {
   slug: string | null;
   is_sample: boolean;
   seller_name: string | null;
+  seller_subscription_tier: string | null;
   specs: Record<string, unknown>;
   character_tags: string[];
   condition_score: number | null;
@@ -35,6 +36,7 @@ async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
     `SELECT b.id, b.seller_id, b.make, b.model, b.year, b.asking_price, b.currency, b.status, b.asking_price_usd,
             b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
+            COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
@@ -57,6 +59,7 @@ async function getBoatForViewer(
     `SELECT b.id, b.seller_id, b.make, b.model, b.year, b.asking_price, b.currency, b.status, b.asking_price_usd,
             b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
+            COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
@@ -312,7 +315,7 @@ export default async function BoatDetailPage({
                 </div>
                 <div>
                   <p className="font-semibold">{boat.source_url ? formatSourceSite(boat.source_site) : boat.seller_name || "Seller"}</p>
-                  <p className="text-xs text-text-secondary">{boat.source_url ? "Original Listing" : "Boat Owner"}</p>
+                  <p className="text-xs text-text-secondary">{getSellerSubtitle(boat)}</p>
                 </div>
               </div>
 
@@ -384,6 +387,18 @@ const SOURCE_NAMES: Record<string, string> = {
 function formatSourceSite(source: string | null): string {
   if (!source) return "External Listing";
   return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getSellerSubtitle(boat: Pick<BoatDetail, "source_url" | "seller_subscription_tier">) {
+  if (boat.source_url) {
+    return "Original Listing";
+  }
+
+  if (boat.seller_subscription_tier === "featured" || boat.seller_subscription_tier === "broker") {
+    return "Featured Seller";
+  }
+
+  return "Direct Listing";
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {

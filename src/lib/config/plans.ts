@@ -111,7 +111,7 @@ export const PLANS: Record<string, PlanConfig> = {
     stripePriceId: process.env.STRIPE_PRICE_SELLER_FEATURED || "",
     features: [
       "Everything in Creator",
-      "Video upload + AI analysis",
+      "External video embeds (YouTube/Vimeo)",
       "Boosted placement in feed",
       "Featured in buyer email blasts",
       "Analytics dashboard",

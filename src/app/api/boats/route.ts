@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     b.asking_price_usd, b.location_text, b.slug, b.is_sample,
     b.source_site, b.source_name, b.source_url,
+    COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
     (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
     COALESCE(d.specs, '{}') as specs,
     COALESCE(d.character_tags, '{}') as character_tags,
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
         const meiliResults = await runMeiliSearch(filters);
         if (meiliResults.hits.length) {
           const ids = meiliResults.hits.map((hit) => String(hit.id));
-          const boats = await fetchBoats(ids, orderBy);
+          const boats = await fetchBoats(ids, true, orderBy);
 
           if (boats.length === ids.length) {
             return NextResponse.json({
@@ -116,6 +117,7 @@ async function runDatabaseSearch(filters: BoatSearchParams, orderBy: string) {
   const boats = await query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
      FROM boats b
+     LEFT JOIN users u ON u.id = b.seller_id
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE ${where}
      ORDER BY ${orderBy}
@@ -126,6 +128,7 @@ async function runDatabaseSearch(filters: BoatSearchParams, orderBy: string) {
   const countResult = await queryOne<{ count: string }>(
     `SELECT COUNT(*)
      FROM boats b
+     LEFT JOIN users u ON u.id = b.seller_id
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE ${where}`,
     params
@@ -149,7 +152,16 @@ function buildOrderBy(sort: string, dir: string) {
   const sortCol = SORT_MAP[sort] || SORT_MAP.newest;
   const sortDir = dir === "desc" ? "DESC" : "ASC";
 
-  return `(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${sortCol} ${sortDir} NULLS LAST`;
+  const listingBoost =
+    sort === "newest"
+      ? `CASE
+           WHEN b.source_url IS NULL AND COALESCE(u.subscription_tier::text, '') IN ('featured', 'broker') THEN 2
+           WHEN b.source_url IS NULL THEN 1
+           ELSE 0
+         END DESC, `
+      : "";
+
+  return `${listingBoost}(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${sortCol} ${sortDir} NULLS LAST`;
 }
 
 function buildWhereClause(filters: BoatSearchParams) {
@@ -209,10 +221,24 @@ function buildWhereClause(filters: BoatSearchParams) {
   };
 }
 
-async function fetchBoats(ids: string[], orderBy: string) {
+async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: string) {
+  if (preserveHitOrder) {
+    return query<Record<string, unknown>>(
+      `SELECT ${BOAT_FIELDS}
+       FROM boats b
+       LEFT JOIN users u ON u.id = b.seller_id
+       LEFT JOIN boat_dna d ON d.boat_id = b.id
+       WHERE b.id::text = ANY($1)
+         AND b.status = 'active'
+       ORDER BY array_position($1::text[], b.id::text) ASC`,
+      [ids]
+    );
+  }
+
   return query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
      FROM boats b
+     LEFT JOIN users u ON u.id = b.seller_id
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.id = ANY($1)
        AND b.status = 'active'

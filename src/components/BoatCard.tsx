@@ -21,6 +21,7 @@ interface BoatCardProps {
     source_name?: string | null;
     source_url?: string | null;
     asking_price_usd?: number | null;
+    seller_subscription_tier?: string | null;
   };
   matchScore?: number;
   showActions?: boolean;
@@ -49,6 +50,7 @@ export default function BoatCard({
   onConnect,
 }: BoatCardProps) {
   const href = `/boats/${boat.slug || boat.id}`;
+  const listingBadge = getListingBadge(boat);
 
   return (
     <div className="group card-hover overflow-hidden rounded-xl border border-border bg-surface">
@@ -78,13 +80,11 @@ export default function BoatCard({
           )}
 
           {/* Source badge */}
-          {boat.source_name ? (
-            <span className="absolute left-3 top-3 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-              via {boat.source_name}
-            </span>
-          ) : boat.is_sample ? (
-            <span className="absolute left-3 top-3 rounded-full bg-accent-btn/90 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-              Sample
+          {listingBadge ? (
+            <span
+              className={`absolute left-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm ${listingBadge.className}`}
+            >
+              {listingBadge.label}
             </span>
           ) : null}
 
@@ -194,4 +194,32 @@ export default function BoatCard({
       </div>
     </div>
   );
+}
+
+function getListingBadge(boat: BoatCardProps["boat"]) {
+  if (boat.source_name) {
+    return {
+      label: `via ${boat.source_name}`,
+      className: "bg-white/20",
+    };
+  }
+
+  if (boat.is_sample) {
+    return {
+      label: "Sample",
+      className: "bg-accent-btn/90",
+    };
+  }
+
+  if (boat.seller_subscription_tier === "featured" || boat.seller_subscription_tier === "broker") {
+    return {
+      label: "Featured Seller",
+      className: "bg-accent-btn/90",
+    };
+  }
+
+  return {
+    label: "Direct Listing",
+    className: "bg-primary-btn/85",
+  };
 }
