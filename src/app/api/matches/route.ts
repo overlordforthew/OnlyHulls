@@ -61,6 +61,9 @@ export async function GET(req: Request) {
       explanation_confidence: number | null;
       explanation_provider: string | null;
       explanation_model: string | null;
+      ai_score: number | null;
+      ai_verdict: string | null;
+      ai_provider: string | null;
       boat_id: string;
       make: string;
       model: string;
@@ -81,6 +84,9 @@ export async function GET(req: Request) {
               me.confidence as explanation_confidence,
               me.provider as explanation_provider,
               me.model as explanation_model,
+              mas.ai_score,
+              mas.verdict as ai_verdict,
+              mas.provider as ai_provider,
               b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.currency,
               b.location_text, b.slug, b.is_sample,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
@@ -90,6 +96,7 @@ export async function GET(req: Request) {
        JOIN boats b ON b.id = m.boat_id
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        LEFT JOIN match_explanations me ON me.match_id = m.id
+       LEFT JOIN match_ai_signals mas ON mas.match_id = m.id
        WHERE m.buyer_id = $1
          AND m.buyer_action != 'passed'
          AND b.status = 'active'
@@ -115,6 +122,9 @@ export async function GET(req: Request) {
       explanation_confidence: number | null;
       explanation_provider: string | null;
       explanation_model: string | null;
+      ai_score: number | null;
+      ai_verdict: string | null;
+      ai_provider: string | null;
       boat_id: string;
       make: string;
       model: string;
@@ -135,6 +145,9 @@ export async function GET(req: Request) {
               me.confidence as explanation_confidence,
               me.provider as explanation_provider,
               me.model as explanation_model,
+              mas.ai_score,
+              mas.verdict as ai_verdict,
+              mas.provider as ai_provider,
               b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.currency,
               b.location_text, b.slug, b.is_sample,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
@@ -144,6 +157,7 @@ export async function GET(req: Request) {
        JOIN boats b ON b.id = m.boat_id
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        LEFT JOIN match_explanations me ON me.match_id = m.id
+       LEFT JOIN match_ai_signals mas ON mas.match_id = m.id
        WHERE m.buyer_id = $1
          AND m.buyer_action != 'passed'
          AND b.status = 'active'

@@ -46,24 +46,30 @@ function buildFallbackExplanation(context: MatchContext): MatchExplanationRecord
   const strengths: string[] = [];
   const risks: string[] = [];
 
-  if ((breakdown.budget_fit || 0) >= 0.7) {
+  if ((breakdown.price_fit || 0) >= 0.7) {
     strengths.push("Budget alignment looks strong.");
-  } else if ((breakdown.budget_fit || 0) <= 0.35) {
+  } else if ((breakdown.price_fit || 0) <= 0.35) {
     risks.push("Price fit looks weaker than the rest of the profile.");
   }
 
-  if ((breakdown.boat_type_fit || 0) >= 0.7) {
-    strengths.push("Boat type preferences line up well.");
+  if ((breakdown.vector_sim || 0) >= 0.7) {
+    strengths.push("Boat type and use-case signals line up well.");
   }
 
-  if ((breakdown.spec_fit || 0) >= 0.7) {
+  if ((breakdown.spec_match || 0) >= 0.7) {
     strengths.push("Core size and spec signals are aligned.");
-  } else if ((breakdown.spec_fit || 0) <= 0.35) {
+  } else if ((breakdown.spec_match || 0) <= 0.35) {
     risks.push("Some spec preferences are only partially met.");
   }
 
-  if ((breakdown.location_fit || 0) >= 0.7) {
+  if ((breakdown.location || 0) >= 0.7) {
     strengths.push("Location is a good fit for the buyer profile.");
+  } else if ((breakdown.location || 0) <= 0.35) {
+    risks.push("Location may create more repositioning effort than ideal.");
+  }
+
+  if ((breakdown.condition || 0) <= 0.35) {
+    risks.push("Condition or refit tolerance may need a closer look.");
   }
 
   if (!strengths.length) {

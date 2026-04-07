@@ -13,6 +13,9 @@ interface Match {
   explanation_risks?: string[] | null;
   explanation_confidence?: number | null;
   explanation_provider?: string | null;
+  ai_score?: number | null;
+  ai_verdict?: string | null;
+  ai_provider?: string | null;
   boat_id: string;
   make: string;
   model: string;
@@ -157,6 +160,16 @@ export default function MatchesPage() {
                     router.push(`/boats/${m.slug || m.boat_id}?connect=true&matchId=${m.match_id}`)
                   }
                 />
+                {m.ai_verdict && m.ai_provider && (
+                  <div className="flex flex-wrap items-center gap-2 px-1 text-xs text-foreground/60">
+                    <span className="rounded-full bg-foreground/5 px-2.5 py-1 font-medium text-foreground/75">
+                      AI {m.ai_verdict.replace(/_/g, " ")}
+                    </span>
+                    {typeof m.ai_score === "number" && (
+                      <span>LLM fit {Math.round(m.ai_score * 100)}%</span>
+                    )}
+                  </div>
+                )}
                 {m.explanation_summary && (
                   <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm">
                     <p className="font-medium text-foreground/90">{m.explanation_summary}</p>

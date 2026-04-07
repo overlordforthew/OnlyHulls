@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { resolveLocalMediaPath, getStorageBackend } from "@/lib/storage";
+import { logger } from "@/lib/logger";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -8,6 +9,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".gif": "image/gif",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 function getContentType(pathname: string): string {
@@ -15,17 +17,19 @@ function getContentType(pathname: string): string {
   return CONTENT_TYPES[extension] || "application/octet-stream";
 }
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ path: string[] }> }
-) {
+export async function GET(req: Request) {
   if (getStorageBackend() !== "local") {
     return NextResponse.json({ error: "Local media is not enabled." }, { status: 404 });
   }
 
   try {
-    const { path } = await params;
-    const relativePath = path.join("/");
+    const pathname = new URL(req.url).pathname;
+    const relativePath = decodeURIComponent(
+      pathname.replace(/^\/media\/?/, "").replace(/^\/+/, "")
+    );
+    if (!relativePath) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
     const filePath = resolveLocalMediaPath(relativePath);
     const file = await readFile(filePath);
 
@@ -35,7 +39,8 @@ export async function GET(
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
-  } catch {
+  } catch (err) {
+    logger.warn({ err, url: req.url }, "Local media read failed");
     return NextResponse.json({ error: "Media not found" }, { status: 404 });
   }
 }

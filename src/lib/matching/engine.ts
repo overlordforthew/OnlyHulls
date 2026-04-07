@@ -6,6 +6,7 @@ import {
   type BoatForMatching,
   type BuyerProfileForMatching,
 } from "./heuristic";
+import { rerankMatchesForBuyer } from "@/lib/ai/match-intelligence";
 import { logger } from "@/lib/logger";
 
 const BATCH_SIZE = 10;
@@ -112,6 +113,12 @@ export async function computeMatchesForBuyer(
         JSON.stringify(match.breakdown),
       ]
     );
+  }
+
+  try {
+    await rerankMatchesForBuyer(buyerProfileId);
+  } catch (err) {
+    logger.warn({ err, buyerProfileId }, "Match intelligence rerank failed");
   }
 
   return results;

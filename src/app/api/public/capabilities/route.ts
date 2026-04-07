@@ -4,6 +4,7 @@ import {
   emailEnabled,
   mediaBackend,
   matchIntelligenceConfigured,
+  matchIntelligenceProvider,
   openAIEnabled,
   storageEnabled,
 } from "@/lib/capabilities";
@@ -16,5 +17,6 @@ export async function GET() {
     storageEnabled: storageEnabled(),
     mediaBackend: mediaBackend(),
     matchIntelligenceEnabled: matchIntelligenceConfigured(),
+    matchIntelligenceProvider: matchIntelligenceProvider(),
   });
 }

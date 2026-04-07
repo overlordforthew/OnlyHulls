@@ -1,5 +1,5 @@
 import { getStorageBackend } from "@/lib/storage";
-import { matchIntelligenceEnabled } from "@/lib/ai/provider";
+import { getMatchIntelligenceProvider, matchIntelligenceEnabled } from "@/lib/ai/provider";
 
 const PLACEHOLDER_MARKERS = [
   "placeholder",
@@ -56,4 +56,8 @@ export function mediaBackend(): string {
 
 export function matchIntelligenceConfigured(): boolean {
   return matchIntelligenceEnabled();
+}
+
+export function matchIntelligenceProvider(): string {
+  return getMatchIntelligenceProvider();
 }

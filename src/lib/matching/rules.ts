@@ -23,6 +23,9 @@ export interface ScoreBreakdown {
   location: number;
   condition: number;
   total: number;
+  base_total?: number;
+  ai_fit?: number;
+  final_total?: number;
 }
 
 // Weights from spec
