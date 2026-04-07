@@ -11,6 +11,7 @@
     "db:seed": "npx tsx scripts/seed.ts",
     "db:import": "npx tsx scripts/import-scraped.ts",
     "db:backfill-embeddings": "npx tsx scripts/backfill-embeddings.ts",
+    "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",
     "admin:promote": "npx tsx scripts/promote-admin.ts"
   },
   "dependencies": {
