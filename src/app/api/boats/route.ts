@@ -1,6 +1,12 @@
 import { query, queryOne } from "@/lib/db";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { logger } from "@/lib/logger";
+import {
+  buildOrderBy,
+  buildWhereClause,
+  filtersFromSearchParams,
+  type BoatSearchFilters,
+} from "@/lib/search/boat-search";
 import { NextResponse } from "next/server";
 
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
@@ -12,38 +18,10 @@ const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     COALESCE(d.character_tags, '{}') as character_tags,
     d.condition_score`;
 
-type BoatSearchParams = {
-  search: string;
-  page: number;
-  limit: number;
-  minPrice: string | null;
-  maxPrice: string | null;
-  minYear: string | null;
-  maxYear: string | null;
-  rigType: string | null;
-  hullType: string | null;
-  tag: string | null;
-  sort: string;
-  dir: string;
-};
-
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const filters: BoatSearchParams = {
-      search: url.searchParams.get("q") || "",
-      page: parseInt(url.searchParams.get("page") || "1", 10),
-      limit: Math.min(parseInt(url.searchParams.get("limit") || "30", 10), 100),
-      minPrice: url.searchParams.get("minPrice"),
-      maxPrice: url.searchParams.get("maxPrice"),
-      minYear: url.searchParams.get("minYear"),
-      maxYear: url.searchParams.get("maxYear"),
-      rigType: url.searchParams.get("rigType"),
-      hullType: url.searchParams.get("hullType"),
-      tag: url.searchParams.get("tag"),
-      sort: url.searchParams.get("sort") || "newest",
-      dir: url.searchParams.get("dir") || "desc",
-    };
+    const filters = filtersFromSearchParams(url.searchParams);
 
     const orderBy = buildOrderBy(filters.sort, filters.dir);
     const shouldUseMeili =
@@ -93,7 +71,7 @@ export async function GET(req: Request) {
   }
 }
 
-async function runMeiliSearch(filters: BoatSearchParams) {
+async function runMeiliSearch(filters: BoatSearchFilters) {
   const filter: string[] = ["status = 'active'"];
   const minPriceNum = filters.minPrice ? parseFloat(filters.minPrice) : NaN;
   const maxPriceNum = filters.maxPrice ? parseFloat(filters.maxPrice) : NaN;
@@ -112,7 +90,7 @@ async function runMeiliSearch(filters: BoatSearchParams) {
   });
 }
 
-async function runDatabaseSearch(filters: BoatSearchParams, orderBy: string) {
+async function runDatabaseSearch(filters: BoatSearchFilters, orderBy: string) {
   const { where, params } = buildWhereClause(filters);
   const boats = await query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
@@ -139,85 +117,6 @@ async function runDatabaseSearch(filters: BoatSearchParams, orderBy: string) {
     total: parseInt(countResult?.count || "0", 10),
     page: filters.page,
     limit: filters.limit,
-  };
-}
-
-function buildOrderBy(sort: string, dir: string) {
-  const SORT_MAP: Record<string, string> = {
-    price: "COALESCE(b.asking_price_usd, b.asking_price)",
-    size: "CAST(NULLIF(REGEXP_REPLACE(d.specs->>'loa', '[^0-9.]', '', 'g'), '') AS float)",
-    year: "b.year",
-    newest: "b.created_at",
-  };
-  const sortCol = SORT_MAP[sort] || SORT_MAP.newest;
-  const sortDir = dir === "desc" ? "DESC" : "ASC";
-
-  const listingBoost =
-    sort === "newest"
-      ? `CASE
-           WHEN b.source_url IS NULL AND COALESCE(u.subscription_tier::text, '') IN ('featured', 'broker') THEN 2
-           WHEN b.source_url IS NULL THEN 1
-           ELSE 0
-         END DESC, `
-      : "";
-
-  return `${listingBoost}(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${sortCol} ${sortDir} NULLS LAST`;
-}
-
-function buildWhereClause(filters: BoatSearchParams) {
-  const conditions: string[] = ["b.status = 'active'"];
-  const params: unknown[] = [];
-  let paramIdx = 1;
-
-  if (filters.search) {
-    conditions.push(
-      `LOWER(CONCAT_WS(' ',
-        b.make,
-        b.model,
-        COALESCE(d.ai_summary, ''),
-        COALESCE(b.location_text, ''),
-        COALESCE(b.source_name, ''),
-        COALESCE(b.source_site, ''),
-        array_to_string(COALESCE(d.character_tags, '{}'), ' '),
-        COALESCE(d.specs->>'rig_type', ''),
-        COALESCE(d.specs->>'hull_material', '')
-      )) LIKE $${paramIdx++}`
-    );
-    params.push(`%${filters.search.trim().toLowerCase()}%`);
-  }
-
-  if (filters.minPrice) {
-    conditions.push(`b.asking_price >= $${paramIdx++}`);
-    params.push(parseFloat(filters.minPrice));
-  }
-  if (filters.maxPrice) {
-    conditions.push(`b.asking_price <= $${paramIdx++}`);
-    params.push(parseFloat(filters.maxPrice));
-  }
-  if (filters.minYear) {
-    conditions.push(`b.year >= $${paramIdx++}`);
-    params.push(parseInt(filters.minYear, 10));
-  }
-  if (filters.maxYear) {
-    conditions.push(`b.year <= $${paramIdx++}`);
-    params.push(parseInt(filters.maxYear, 10));
-  }
-  if (filters.rigType) {
-    conditions.push(`LOWER(COALESCE(d.specs->>'rig_type', '')) = LOWER($${paramIdx++})`);
-    params.push(filters.rigType);
-  }
-  if (filters.hullType) {
-    conditions.push(`LOWER(COALESCE(d.specs->>'hull_material', '')) = LOWER($${paramIdx++})`);
-    params.push(filters.hullType);
-  }
-  if (filters.tag) {
-    conditions.push(`$${paramIdx++} = ANY(COALESCE(d.character_tags, '{}'))`);
-    params.push(filters.tag);
-  }
-
-  return {
-    where: conditions.join(" AND "),
-    params,
   };
 }
 

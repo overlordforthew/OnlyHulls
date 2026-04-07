@@ -2,7 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { Crown, CreditCard, Mail, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Crown, CreditCard, Mail, ExternalLink, Bell } from "lucide-react";
 
 interface UserProfile {
   subscription_tier: string;
@@ -11,6 +12,12 @@ interface UserProfile {
   role: string;
   billing_enabled: boolean;
   email_enabled: boolean;
+}
+
+interface SavedSearchSummary {
+  savedSearchCount: number;
+  searchesWithUpdates: number;
+  totalNewResults: number;
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -31,6 +38,7 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [billingMessage, setBillingMessage] = useState<string | null>(null);
+  const [savedSearchSummary, setSavedSearchSummary] = useState<SavedSearchSummary | null>(null);
 
   useEffect(() => {
     fetch("/api/user/account")
@@ -41,6 +49,13 @@ export default function AccountPage() {
           setEmailAlerts(data.email_alerts || "none");
           setNewsletter(data.newsletter_opt_in ?? true);
         }
+      })
+      .catch(() => {});
+
+    fetch("/api/saved-searches/summary")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) setSavedSearchSummary(data);
       })
       .catch(() => {});
   }, []);
@@ -141,6 +156,41 @@ export default function AccountPage() {
         {billingMessage && (
           <p className="mt-3 text-sm text-accent">{billingMessage}</p>
         )}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-center gap-3">
+          <Bell className="h-6 w-6 text-primary" />
+          <div>
+            <h2 className="text-lg font-bold">Saved Searches</h2>
+            <p className="text-sm text-text-secondary">
+              Keep track of new boats from your favorite browse views.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Saved</p>
+            <p className="mt-2 text-2xl font-bold">{savedSearchSummary?.savedSearchCount ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">With Updates</p>
+            <p className="mt-2 text-2xl font-bold">{savedSearchSummary?.searchesWithUpdates ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">New Boats</p>
+            <p className="mt-2 text-2xl font-bold">{savedSearchSummary?.totalNewResults ?? 0}</p>
+          </div>
+        </div>
+
+        <Link
+          href="/saved-searches"
+          className="mt-6 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+        >
+          Manage Saved Searches
+          <ExternalLink className="h-3 w-3" />
+        </Link>
       </div>
 
       {/* Email Preferences */}

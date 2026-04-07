@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Waves, Menu, X, User, LogOut } from "lucide-react";
+import { Waves, Menu, X, User, LogOut, Bell } from "lucide-react";
 
 export default function SiteNav() {
   const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchesWithUpdates, setSearchesWithUpdates] = useState(0);
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
 
@@ -31,6 +32,32 @@ export default function SiteNav() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [profileOpen]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const loadSummary = async () => {
+      try {
+        const res = await fetch("/api/saved-searches/summary");
+        if (!res.ok) return;
+        const data = await res.json();
+        setSearchesWithUpdates(data.searchesWithUpdates || 0);
+      } catch {
+        // Ignore nav badge failures.
+      }
+    };
+
+    const refresh = () => { void loadSummary(); };
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("saved-searches:updated", refresh as EventListener);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("saved-searches:updated", refresh as EventListener);
+    };
+  }, [isLoggedIn]);
+
+  const visibleSearchesWithUpdates = isLoggedIn ? searchesWithUpdates : 0;
 
   return (
     <>
@@ -70,8 +97,13 @@ export default function SiteNav() {
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
-                  className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:border-primary"
+                  className="relative flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:border-primary"
                 >
+                  {visibleSearchesWithUpdates > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                      {visibleSearchesWithUpdates > 9 ? "9+" : visibleSearchesWithUpdates}
+                    </span>
+                  )}
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                     {session.user.name?.[0]?.toUpperCase() || <User className="h-3.5 w-3.5" />}
                   </div>
@@ -99,6 +131,21 @@ export default function SiteNav() {
                       onClick={() => setProfileOpen(false)}
                     >
                       List a Boat
+                    </Link>
+                    <Link
+                      href="/saved-searches"
+                      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Bell className="h-3.5 w-3.5" />
+                        Saved Searches
+                      </span>
+                      {visibleSearchesWithUpdates > 0 && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          {visibleSearchesWithUpdates} new
+                        </span>
+                      )}
                     </Link>
                     <Link
                       href="/onboarding/profile"
@@ -178,6 +225,9 @@ export default function SiteNav() {
                   </Link>
                   <Link href="/listings/new" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
                     List a Boat
+                  </Link>
+                  <Link href="/saved-searches" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
+                    Saved Searches{visibleSearchesWithUpdates > 0 ? ` (${visibleSearchesWithUpdates} new)` : ""}
                   </Link>
                   <button
                     onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }}

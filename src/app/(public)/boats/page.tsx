@@ -1,9 +1,20 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import BoatCard from "@/components/BoatCard";
-import { Search, SlidersHorizontal, X, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { buildBoatSearchParams } from "@/lib/search/boat-search";
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Bell,
+  BookmarkPlus,
+} from "lucide-react";
 
 type SortField = "price" | "size" | "year" | "newest";
 type SortDir = "asc" | "desc";
@@ -46,7 +57,10 @@ export default function BoatsPage() {
 }
 
 function BoatsPageInner() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { status } = useSession();
   const initialQ = searchParams.get("q") || "";
   const initialTag = searchParams.get("tag") || "";
 
@@ -61,6 +75,8 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>("newest");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     minPrice: "",
     maxPrice: "",
@@ -70,6 +86,7 @@ function BoatsPageInner() {
   });
 
   const BATCH_SIZE = 30;
+  const isLoggedIn = status === "authenticated";
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -117,7 +134,7 @@ function BoatsPageInner() {
       const data = await res.json();
       setBoats(data.boats || []);
       setTotal(data.total || 0);
-    } catch (err) {
+    } catch {
       setError("Failed to load boats. Please try again.");
       setBoats([]);
       setTotal(0);
@@ -165,9 +182,55 @@ function BoatsPageInner() {
   }
 
   const hasMore = boats.length < total;
+  const currentSearchFilters = {
+    search,
+    tag: activeTag,
+    minPrice: filters.minPrice || null,
+    maxPrice: filters.maxPrice || null,
+    minYear: filters.minYear || null,
+    maxYear: filters.maxYear || null,
+    rigType: filters.rigType || null,
+    sort: sortField,
+    dir: sortDir,
+  };
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
+
+  async function saveSearch() {
+    setSaveMessage(null);
+
+    if (!isLoggedIn) {
+      const callbackParams = buildBoatSearchParams(currentSearchFilters);
+      const callbackUrl = `${pathname}${callbackParams.toString() ? `?${callbackParams}` : ""}`;
+      router.push(`/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      return;
+    }
+
+    setSaveLoading(true);
+    try {
+      const res = await fetch("/api/saved-searches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentSearchFilters),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Unable to save search.");
+      }
+
+      window.dispatchEvent(new CustomEvent("saved-searches:updated"));
+      setSaveMessage(
+        data.duplicate
+          ? "This search is already saved."
+          : "Search saved. New matching boats will show up in your alerts."
+      );
+    } catch (err) {
+      setSaveMessage(err instanceof Error ? err.message : "Unable to save search right now.");
+    } finally {
+      setSaveLoading(false);
+    }
+  }
 
   return (
     <div className="pb-16">
@@ -177,9 +240,29 @@ function BoatsPageInner() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-2xl font-bold">Browse Boats</h1>
-              {!loading && (
-                <p className="mt-1 text-sm text-text-secondary">
-                  {total} boats
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                {!loading && (
+                  <p className="text-sm text-text-secondary">
+                    {total} boats
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={saveSearch}
+                  disabled={saveLoading}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary disabled:opacity-50"
+                >
+                  {isLoggedIn ? <BookmarkPlus className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                  {saveLoading
+                    ? "Saving..."
+                    : isLoggedIn
+                      ? "Save Search"
+                      : "Sign In to Save"}
+                </button>
+              </div>
+              {saveMessage && (
+                <p className="mt-2 text-sm text-primary">
+                  {saveMessage}
                 </p>
               )}
             </div>
