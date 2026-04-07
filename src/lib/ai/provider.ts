@@ -31,6 +31,39 @@ export interface LLMGenerationResult {
   tokensOut?: number;
 }
 
+interface OpenRouterChoiceMessage {
+  content?: unknown;
+  reasoning?: unknown;
+  reasoning_details?: Array<{ text?: unknown }>;
+}
+
+interface OpenRouterChoice {
+  message?: OpenRouterChoiceMessage;
+  text?: unknown;
+}
+
+interface OpenRouterPayload {
+  choices?: OpenRouterChoice[];
+}
+
+function extractOpenRouterOutput(payload: OpenRouterPayload): string {
+  const message = payload?.choices?.[0]?.message || {};
+  const reasoningDetails = Array.isArray(message.reasoning_details)
+    ? message.reasoning_details
+        .map((detail: { text?: unknown }) => String(detail?.text || "").trim())
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
+  return String(
+    message.content ||
+      message.reasoning ||
+      reasoningDetails ||
+      payload?.choices?.[0]?.text ||
+      ""
+  ).trim();
+}
+
 function resolvePreferredProvider(): "ollama" | "openai" | "openrouter" | "none" {
   const requested = (process.env.AI_PROVIDER || "").trim().toLowerCase();
   if (requested === "openrouter" || requested === "openai" || requested === "ollama") {
@@ -196,7 +229,7 @@ async function askOpenRouter(
     }
 
     const payload = await response.json();
-    const output = String(payload.choices?.[0]?.message?.content || "").trim();
+    const output = extractOpenRouterOutput(payload);
     if (!output) {
       lastError = new Error("OpenRouter returned an empty response");
       continue;
