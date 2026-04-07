@@ -2,12 +2,20 @@ import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
 import { createCustomerPortalSession } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
+import { billingEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
 
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!billingEnabled()) {
+    return NextResponse.json(
+      { error: "Billing is not configured yet." },
+      { status: 503 }
+    );
   }
 
   try {

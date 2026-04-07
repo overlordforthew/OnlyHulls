@@ -1,14 +1,16 @@
 import Stripe from "stripe";
 import { logger } from "@/lib/logger";
+import { billingEnabled } from "@/lib/capabilities";
 
 let _stripe: Stripe | null = null;
 
 export function getStripe(): Stripe {
   if (!_stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      logger.warn("STRIPE_SECRET_KEY not set — Stripe operations will fail");
+    if (!billingEnabled()) {
+      logger.warn("Stripe billing is not configured");
+      throw new Error("Billing is not configured");
     }
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: "2026-02-25.clover",
     });
   }

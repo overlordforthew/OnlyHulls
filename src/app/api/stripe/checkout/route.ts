@@ -6,6 +6,7 @@ import {
   getOrCreateCustomer,
 } from "@/lib/stripe";
 import { PLANS } from "@/lib/config/plans";
+import { paidPlanCheckoutEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -63,10 +64,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ url: `${appUrl}/onboarding?role=seller` });
     }
 
-    if (!plan.stripePriceId) {
+    if (!paidPlanCheckoutEnabled(plan.stripePriceId)) {
       return NextResponse.json(
-        { error: "Plan not configured" },
-        { status: 400 }
+        { error: "Billing is not configured yet for paid plans." },
+        { status: 503 }
       );
     }
 

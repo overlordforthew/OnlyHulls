@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import { logger } from "@/lib/logger";
+import { openAIEnabled } from "@/lib/capabilities";
 
 export function embeddingsEnabled(): boolean {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  return Boolean(apiKey && !apiKey.includes("placeholder"));
+  return openAIEnabled();
 }
 
 function getOpenAI() {

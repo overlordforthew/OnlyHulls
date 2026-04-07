@@ -1,7 +1,11 @@
 import { Resend } from "resend";
+import { emailEnabled } from "@/lib/capabilities";
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+  if (!emailEnabled()) {
+    throw new Error("Email delivery is not configured");
+  }
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
 function getFrom() {

@@ -2,13 +2,15 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { Crown, CreditCard, Mail, Bell, ExternalLink } from "lucide-react";
+import { Crown, CreditCard, Mail, ExternalLink } from "lucide-react";
 
 interface UserProfile {
   subscription_tier: string;
   email_alerts: string;
   newsletter_opt_in: boolean;
   role: string;
+  billing_enabled: boolean;
+  email_enabled: boolean;
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -28,6 +30,7 @@ export default function AccountPage() {
   const [newsletter, setNewsletter] = useState(true);
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingMessage, setBillingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/user/account")
@@ -54,17 +57,26 @@ export default function AccountPage() {
 
   async function openPortal() {
     setPortalLoading(true);
+    setBillingMessage(null);
     try {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBillingMessage(data.error || "Unable to open billing right now.");
+        return;
+      }
       if (data.url) window.location.href = data.url;
     } catch {
+      setBillingMessage("Unable to open billing right now.");
+    } finally {
       setPortalLoading(false);
     }
   }
 
   const tier = profile?.subscription_tier || "free";
   const isPaid = !tier.startsWith("free");
+  const billingEnabled = profile?.billing_enabled ?? false;
+  const emailEnabled = profile?.email_enabled ?? false;
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-10">
@@ -86,7 +98,7 @@ export default function AccountPage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          {isPaid ? (
+          {isPaid && billingEnabled ? (
             <button
               onClick={openPortal}
               disabled={portalLoading}
@@ -100,19 +112,35 @@ export default function AccountPage() {
             <>
               <a
                 href="/match#pricing"
-                className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
+                  billingEnabled
+                    ? "bg-primary-btn text-white hover:bg-primary-light"
+                    : "bg-muted text-text-secondary"
+                }`}
               >
-                Upgrade Buyer Plan
+                {billingEnabled ? "Upgrade Buyer Plan" : "Billing Setup In Progress"}
               </a>
               <a
                 href="/sell#pricing"
-                className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+                className={`rounded-full border px-5 py-2 text-sm font-medium transition-all ${
+                  billingEnabled
+                    ? "border-border text-foreground hover:border-primary hover:text-primary"
+                    : "border-border text-text-secondary"
+                }`}
               >
-                Upgrade Seller Plan
+                {billingEnabled ? "Upgrade Seller Plan" : "Paid Seller Billing Coming Soon"}
               </a>
             </>
           )}
         </div>
+        {!billingEnabled && (
+          <p className="mt-4 text-sm text-accent">
+            Paid billing is not configured on this environment yet. Free buyer and seller flows still work.
+          </p>
+        )}
+        {billingMessage && (
+          <p className="mt-3 text-sm text-accent">{billingMessage}</p>
+        )}
       </div>
 
       {/* Email Preferences */}
@@ -181,6 +209,11 @@ export default function AccountPage() {
         >
           {saving ? "Saving..." : "Save Preferences"}
         </button>
+        {!emailEnabled && (
+          <p className="mt-4 text-sm text-accent">
+            Transactional email is not configured yet, so alerts and newsletters will not be delivered.
+          </p>
+        )}
       </div>
     </div>
   );

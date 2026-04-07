@@ -15,8 +15,8 @@ export async function GET(req: Request) {
     const status = url.searchParams.get("status") || "pending_review";
 
     const listings = await query<Record<string, unknown>>(
-      `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
-              b.location_text, b.status, b.created_at,
+      `SELECT b.id, b.slug, b.make, b.model, b.year, b.asking_price, b.currency,
+              b.location_text, b.status, b.created_at, b.listing_source,
               u.email as seller_email
        FROM boats b
        JOIN users u ON u.id = b.seller_id

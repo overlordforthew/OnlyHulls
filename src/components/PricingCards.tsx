@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Star } from "lucide-react";
 
 const buyerPlans = [
@@ -129,10 +129,28 @@ function PlanCard({
 
 function useCheckout() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [billingEnabled, setBillingEnabled] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/public/capabilities")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.billingEnabled === "boolean") {
+          setBillingEnabled(data.billingEnabled);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSelect(tier: string) {
+    setError(null);
     if (tier === "free") {
       window.location.href = "/sign-up";
+      return;
+    }
+    if (!billingEnabled && tier !== "free-seller") {
+      setError("Paid billing is still being configured. Free plans are available now.");
       return;
     }
     setLoading(true);
@@ -147,17 +165,21 @@ function useCheckout() {
         window.location.href = "/sign-up?role=seller";
         return;
       }
+      if (!res.ok) {
+        setError(data.error || "Unable to continue right now.");
+        return;
+      }
       if (data.url) window.location.href = data.url;
     } finally {
       setLoading(false);
     }
   }
 
-  return { loading, handleSelect };
+  return { loading, handleSelect, error, billingEnabled };
 }
 
 export function BuyerPricing() {
-  const { loading, handleSelect } = useCheckout();
+  const { loading, handleSelect, error, billingEnabled } = useCheckout();
 
   return (
     <div>
@@ -171,16 +193,24 @@ export function BuyerPricing() {
             key={plan.tier}
             plan={plan}
             onSelect={handleSelect}
-            loading={loading}
+            loading={loading || (plan.price > 0 && !billingEnabled)}
           />
         ))}
       </div>
+      {error && (
+        <p className="mt-4 text-center text-sm text-accent">{error}</p>
+      )}
+      {!billingEnabled && (
+        <p className="mt-2 text-center text-sm text-text-secondary">
+          Paid billing is not live yet on this environment. Free browsing still works.
+        </p>
+      )}
     </div>
   );
 }
 
 export function SellerPricing() {
-  const { loading, handleSelect } = useCheckout();
+  const { loading, handleSelect, error, billingEnabled } = useCheckout();
 
   return (
     <div>
@@ -194,10 +224,18 @@ export function SellerPricing() {
             key={plan.tier}
             plan={plan}
             onSelect={handleSelect}
-            loading={loading}
+            loading={loading || (plan.price > 0 && !billingEnabled)}
           />
         ))}
       </div>
+      {error && (
+        <p className="mt-4 text-center text-sm text-accent">{error}</p>
+      )}
+      {!billingEnabled && (
+        <p className="mt-2 text-center text-sm text-text-secondary">
+          Free seller onboarding is live. Paid seller billing will unlock once Stripe is configured.
+        </p>
+      )}
     </div>
   );
 }

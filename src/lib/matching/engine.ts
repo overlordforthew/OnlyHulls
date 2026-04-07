@@ -16,6 +16,46 @@ interface MatchResult {
   breakdown: ScoreBreakdown;
 }
 
+export interface BatchMatchResult {
+  totalProcessed: number;
+  totalSkipped: number;
+  totalErrors: number;
+}
+
+function buyerProfileHasSignals(
+  buyer: Pick<
+    BuyerProfileForMatching,
+    "use_case" | "budget_range" | "boat_type_prefs" | "spec_preferences" | "location_prefs"
+  >
+): boolean {
+  const budget = buyer.budget_range || {};
+  const boatTypePrefs = buyer.boat_type_prefs || {};
+  const specPreferences = buyer.spec_preferences || {};
+  const locationPreferences = buyer.location_prefs || {};
+
+  const hasBudget =
+    (typeof budget.min === "number" && Number.isFinite(budget.min)) ||
+    (typeof budget.max === "number" && Number.isFinite(budget.max));
+  const hasBoatTypeSignals =
+    (Array.isArray(boatTypePrefs.types) &&
+      boatTypePrefs.types.some((value) => value && value !== "no-preference")) ||
+    (Array.isArray(boatTypePrefs.rig_prefs) && boatTypePrefs.rig_prefs.some(Boolean)) ||
+    (Array.isArray(boatTypePrefs.hull_prefs) && boatTypePrefs.hull_prefs.some(Boolean));
+  const hasSpecSignals = Object.keys(specPreferences).length > 0;
+  const hasLocationSignals =
+    (Array.isArray(locationPreferences.regions) &&
+      locationPreferences.regions.some(Boolean)) ||
+    Boolean(locationPreferences.home_port);
+
+  return (
+    (Array.isArray(buyer.use_case) && buyer.use_case.some(Boolean)) ||
+    hasBudget ||
+    hasBoatTypeSignals ||
+    hasSpecSignals ||
+    hasLocationSignals
+  );
+}
+
 export async function computeMatchesForBuyer(
   buyerProfileId: string
 ): Promise<MatchResult[]> {
@@ -36,6 +76,10 @@ export async function computeMatchesForBuyer(
   );
 
   if (!buyer) return [];
+  if (!buyerProfileHasSignals(buyer)) {
+    await query("DELETE FROM matches WHERE buyer_id = $1", [buyerProfileId]);
+    return [];
+  }
 
   let results: MatchResult[] = [];
 
@@ -247,16 +291,16 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   };
 }
 
-export async function computeAllMatches(): Promise<void> {
+export async function computeAllMatches(): Promise<BatchMatchResult> {
   // Process buyers in batches to stay under memory limits
   let offset = 0;
   let totalProcessed = 0;
+  let totalSkipped = 0;
   let totalErrors = 0;
 
   while (true) {
     const buyers = await query<{ id: string }>(
       `SELECT id FROM buyer_profiles
-       WHERE dna_embedding IS NOT NULL
        ORDER BY id
        LIMIT $1 OFFSET $2`,
       [BATCH_SIZE, offset]
@@ -266,8 +310,12 @@ export async function computeAllMatches(): Promise<void> {
 
     for (const buyer of buyers) {
       try {
-        await computeMatchesForBuyer(buyer.id);
-        totalProcessed++;
+        const matches = await computeMatchesForBuyer(buyer.id);
+        if (matches.length > 0) {
+          totalProcessed++;
+        } else {
+          totalSkipped++;
+        }
       } catch (err) {
         totalErrors++;
         logger.error({ err, buyerId: buyer.id }, "Failed to compute matches for buyer");
@@ -277,5 +325,6 @@ export async function computeAllMatches(): Promise<void> {
     offset += BATCH_SIZE;
   }
 
-  logger.info({ totalProcessed, totalErrors }, "Batch match computation complete");
+  logger.info({ totalProcessed, totalSkipped, totalErrors }, "Batch match computation complete");
+  return { totalProcessed, totalSkipped, totalErrors };
 }
