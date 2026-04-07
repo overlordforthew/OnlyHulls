@@ -1,11 +1,11 @@
-import { pool } from "../src/lib/db/index";
-import { emailEnabled } from "../src/lib/script-support/capabilities/index";
+import { pool } from "../src/lib/db/index.ts";
+import { emailEnabled } from "../src/lib/capabilities.ts";
 import {
   listSavedSearchAlertCandidates,
   markSavedSearchAlertSent,
   type SavedSearchAlertCandidate,
-} from "../src/lib/script-support/saved-searches/index";
-import { sendSavedSearchAlertEmail } from "../src/lib/script-support/email/index";
+} from "../src/lib/saved-searches.ts";
+import { sendSavedSearchAlertEmail } from "../src/lib/email/resend.ts";
 
 interface AlertGroup {
   email: string;
