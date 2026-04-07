@@ -13,6 +13,11 @@
 
 import { readFileSync } from "fs";
 import { pool, query, queryOne } from "../src/lib/db/index";
+import {
+  boatToEmbeddingText,
+  embeddingsEnabled,
+  generateEmbeddings,
+} from "../src/lib/ai/embeddings";
 
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
@@ -64,6 +69,13 @@ interface ScrapedBoat {
   water_capacity?: string | number;
   fuel_capacity?: string | number;
 }
+
+interface PendingEmbedding {
+  id: string;
+  text: string;
+}
+
+const EMBEDDING_BATCH_SIZE = 24;
 
 function parsePrice(raw: string | number | undefined): number | null {
   if (!raw) return null;
@@ -197,6 +209,7 @@ async function importBoats(filePath: string, sourceSite: string) {
   let imported = 0;
   let skipped = 0;
   let errors = 0;
+  const pendingEmbeddings: PendingEmbedding[] = [];
 
   for (const b of boats) {
     try {
@@ -321,6 +334,23 @@ async function importBoats(filePath: string, sourceSite: string) {
         [boat.id, JSON.stringify(specs), tags, desc]
       );
 
+      if (embeddingsEnabled()) {
+        pendingEmbeddings.push({
+          id: boat.id,
+          text: boatToEmbeddingText({
+            make,
+            model,
+            year,
+            asking_price: price,
+            currency,
+            location_text: location,
+            specs,
+            character_tags: tags,
+            ai_summary: desc,
+          }),
+        });
+      }
+
       // Insert images as boat_media
       const images = b.images || [];
       for (let i = 0; i < images.length; i++) {
@@ -353,6 +383,27 @@ async function importBoats(filePath: string, sourceSite: string) {
       [sourceUrls]
     );
     console.log(`Freshness: bumped last_seen_at for ${updated.length} listings`);
+  }
+
+  if (embeddingsEnabled() && pendingEmbeddings.length > 0) {
+    let embedded = 0;
+    for (let index = 0; index < pendingEmbeddings.length; index += EMBEDDING_BATCH_SIZE) {
+      const batch = pendingEmbeddings.slice(index, index + EMBEDDING_BATCH_SIZE);
+      const embeddings = await generateEmbeddings(batch.map((item) => item.text));
+
+      for (let batchIndex = 0; batchIndex < batch.length; batchIndex++) {
+        const embedding = embeddings[batchIndex];
+        if (!embedding?.length) continue;
+
+        await query("UPDATE boats SET dna_embedding = $1 WHERE id = $2", [
+          `[${embedding.join(",")}]`,
+          batch[batchIndex].id,
+        ]);
+        embedded++;
+      }
+    }
+
+    console.log(`Embeddings: generated ${embedded} boat vectors`);
   }
 
   console.log(`\nImport complete: ${imported} imported, ${skipped} skipped, ${errors} errors`);

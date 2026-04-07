@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { logger } from "@/lib/logger";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
@@ -105,29 +104,57 @@ export function getMatchIntelligenceProvider(): "ollama" | "openai" | "openroute
 
 async function askOpenAI(systemPrompt: string, userPrompt: string): Promise<LLMGenerationResult> {
   const model = process.env.OPENAI_CHAT_MODEL || "gpt-4.1-mini";
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const startedAt = Date.now();
-  const response = await client.responses.create({
-    model,
-    input: [
-      {
-        role: "system",
-        content: [{ type: "input_text", text: systemPrompt }],
-      },
-      {
-        role: "user",
-        content: [{ type: "input_text", text: userPrompt }],
-      },
-    ],
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY || ""}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: systemPrompt }],
+        },
+        {
+          role: "user",
+          content: [{ type: "input_text", text: userPrompt }],
+        },
+      ],
+    }),
   });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenAI HTTP ${response.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+  }
+
+  const payload = await response.json();
+  const output =
+    String(payload.output_text || "").trim() ||
+    String(
+      Array.isArray(payload.output)
+        ? payload.output
+            .flatMap((item: { content?: Array<{ text?: string }> }) =>
+              Array.isArray(item?.content) ? item.content.map((part) => part?.text || "") : []
+            )
+            .join("\n")
+        : ""
+    ).trim();
+
+  if (!output) {
+    throw new Error("OpenAI returned an empty response");
+  }
 
   return {
     provider: "openai",
     model,
-    output: response.output_text.trim(),
+    output,
     latencyMs: Date.now() - startedAt,
-    tokensIn: response.usage?.input_tokens,
-    tokensOut: response.usage?.output_tokens,
+    tokensIn: payload.usage?.input_tokens,
+    tokensOut: payload.usage?.output_tokens,
   };
 }
 
@@ -185,7 +212,7 @@ async function askOpenRouter(
   userPrompt: string
 ): Promise<LLMGenerationResult> {
   const models = (process.env.OPENROUTER_CHAT_MODEL ||
-    "qwen/qwen3.6-plus:free,google/gemma-3-27b-it:free")
+    "openai/gpt-4.1-mini,openrouter/free")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);

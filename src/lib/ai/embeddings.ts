@@ -1,30 +1,98 @@
-import OpenAI from "openai";
 import { logger } from "@/lib/logger";
-import { openAIEnabled } from "@/lib/capabilities";
+import { getPublicAppUrl } from "@/lib/config/urls";
+import { hasConfiguredValue } from "@/lib/capabilities";
 
 export function embeddingsEnabled(): boolean {
-  return openAIEnabled();
+  return hasEmbeddingProvider();
 }
 
-function getOpenAI() {
-  if (!embeddingsEnabled()) {
-    throw new Error("OpenAI embeddings are not configured");
+export function getEmbeddingProvider(): "openai" | "openrouter" | "none" {
+  if (hasConfiguredValue(process.env.OPENAI_API_KEY)) {
+    return "openai";
   }
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (hasConfiguredValue(process.env.OPENROUTER_KEY)) {
+    return "openrouter";
+  }
+  return "none";
+}
+
+export function hasEmbeddingProvider(): boolean {
+  return getEmbeddingProvider() !== "none";
+}
+
+function getEmbeddingModel(): string {
+  const provider = getEmbeddingProvider();
+  if (provider === "openrouter") {
+    return process.env.OPENROUTER_EMBEDDING_MODEL || "openai/text-embedding-3-small";
+  }
+
+  return process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+}
+
+async function requestEmbeddings(texts: string[]): Promise<number[][]> {
+  const provider = getEmbeddingProvider();
+  if (provider === "none") {
+    throw new Error("Embeddings are not configured");
+  }
+
+  const url =
+    provider === "openrouter"
+      ? "https://openrouter.ai/api/v1/embeddings"
+      : "https://api.openai.com/v1/embeddings";
+  const apiKey =
+    provider === "openrouter" ? process.env.OPENROUTER_KEY || "" : process.env.OPENAI_API_KEY || "";
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+
+  if (provider === "openrouter") {
+    headers["HTTP-Referer"] = getPublicAppUrl();
+    headers["X-Title"] = "OnlyHulls";
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: getEmbeddingModel(),
+      input: texts.length === 1 ? texts[0] : texts,
+      dimensions: 1536,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `${provider} embeddings HTTP ${response.status}${body ? `: ${body.slice(0, 200)}` : ""}`
+    );
+  }
+
+  const payload = await response.json();
+  const data = Array.isArray(payload.data) ? payload.data : [];
+  return data
+    .sort(
+      (
+        a: { index?: number },
+        b: { index?: number }
+      ) => Number(a.index ?? 0) - Number(b.index ?? 0)
+    )
+    .map((item: { embedding?: number[] }) => item.embedding || []);
+}
+
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  try {
+    return await requestEmbeddings(texts);
+  } catch (err) {
+    logger.error({ err, inputCount: texts.length }, "Embedding generation failed");
+    throw new Error("Failed to generate embeddings");
+  }
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const response = await getOpenAI().embeddings.create({
-      model: "text-embedding-3-small",
-      input: text,
-      dimensions: 1536,
-    });
-    return response.data[0].embedding;
-  } catch (err) {
-    logger.error({ err, inputLength: text.length }, "OpenAI embedding generation failed");
-    throw new Error("Failed to generate embedding");
-  }
+  const embeddings = await generateEmbeddings([text]);
+  return embeddings[0] || [];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

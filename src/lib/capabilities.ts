@@ -1,5 +1,6 @@
 import { getStorageBackend } from "@/lib/storage";
 import { getMatchIntelligenceProvider, matchIntelligenceEnabled } from "@/lib/ai/provider";
+import { getEmbeddingProvider, hasEmbeddingProvider } from "@/lib/ai/embeddings";
 
 const PLACEHOLDER_MARKERS = [
   "placeholder",
@@ -44,6 +45,14 @@ export function emailEnabled(): boolean {
 
 export function openAIEnabled(): boolean {
   return hasConfiguredValue(process.env.OPENAI_API_KEY);
+}
+
+export function semanticMatchingEnabled(): boolean {
+  return hasEmbeddingProvider();
+}
+
+export function embeddingProvider(): string {
+  return getEmbeddingProvider();
 }
 
 export function storageEnabled(): boolean {
