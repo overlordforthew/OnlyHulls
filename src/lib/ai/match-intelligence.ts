@@ -43,8 +43,14 @@ interface RankedCandidate {
   confidence: number;
 }
 
+interface RankedCandidateWithMeta {
+  ranked: RankedCandidate;
+  provider: string;
+  model: string;
+}
+
 const MAX_RERANKED_MATCHES = 12;
-const RERANK_BATCH_SIZE = 6;
+const RERANK_BATCH_SIZE = 3;
 const VERDICT_BIAS: Record<MatchVerdict, number> = {
   strong_fit: 0.04,
   workable_fit: 0.0,
@@ -65,15 +71,24 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-function extractJsonObject(raw: string): Record<string, unknown> | null {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+function extractJsonPayload(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim();
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [
+    fencedMatch?.[1]?.trim(),
+    trimmed,
+    raw.match(/\{[\s\S]*\}/)?.[0],
+  ].filter(Boolean) as string[];
 
-  try {
-    return JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    return null;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
   }
+
+  return null;
 }
 
 function normalizeVerdict(value: unknown): MatchVerdict {
@@ -128,6 +143,17 @@ function buildSystemPrompt(): string {
   ].join(" ");
 }
 
+function buildSingleSystemPrompt(): string {
+  return [
+    "You are evaluating one sailboat listing for one buyer profile.",
+    "Use practical brokerage judgment, not marketing copy.",
+    "Return strict JSON only.",
+    'JSON shape: {"fitScore":0.1-0.95,"verdict":"strong_fit|workable_fit|weak_fit|reject","summary":"short paragraph","strengths":["..."],"risks":["..."],"confidence":0.1-0.95}',
+    "strengths must have 1 to 3 items. risks must have 0 to 2 items.",
+    "Be strict about budget mismatch, type mismatch, condition/refit mismatch, and location friction.",
+  ].join(" ");
+}
+
 function buildUserPrompt(buyer: BuyerContext, candidates: CandidateContext[]): string {
   return JSON.stringify(
     {
@@ -155,6 +181,39 @@ function buildUserPrompt(buyer: BuyerContext, candidates: CandidateContext[]): s
           ai_summary: candidate.ai_summary,
         },
       })),
+    },
+    null,
+    2
+  );
+}
+
+function buildSingleUserPrompt(buyer: BuyerContext, candidate: CandidateContext): string {
+  return JSON.stringify(
+    {
+      buyer: {
+        use_case: buyer.use_case,
+        budget_range: buyer.budget_range,
+        boat_type_prefs: buyer.boat_type_prefs,
+        spec_preferences: buyer.spec_preferences,
+        location_prefs: buyer.location_prefs,
+        refit_tolerance: buyer.refit_tolerance,
+      },
+      candidate: {
+        boatId: candidate.boat_id,
+        baseScore: candidate.score,
+        scoreBreakdown: candidate.score_breakdown,
+        boat: {
+          year: candidate.year,
+          make: candidate.make,
+          model: candidate.model,
+          asking_price: candidate.asking_price,
+          currency: candidate.currency,
+          location_text: candidate.location_text,
+          specs: candidate.specs,
+          character_tags: candidate.character_tags,
+          ai_summary: candidate.ai_summary,
+        },
+      },
     },
     null,
     2
@@ -196,6 +255,25 @@ function normalizeRankings(
       } satisfies RankedCandidate;
     })
     .filter((item): item is RankedCandidate => Boolean(item));
+}
+
+function normalizeSingleRanking(
+  raw: Record<string, unknown>,
+  candidate: CandidateContext
+): RankedCandidate {
+  const fitScore = clampScore(Number(raw.fitScore || 0.55), 0.1, 0.95);
+  const verdict = normalizeVerdict(raw.verdict);
+  const confidence = clampScore(Number(raw.confidence || fitScore), 0.1, 0.95);
+
+  return {
+    boatId: candidate.boat_id,
+    fitScore,
+    verdict,
+    summary: normalizeSummary(raw.summary, buildFallbackSummary(candidate)),
+    strengths: normalizeStringArray(raw.strengths, 3),
+    risks: normalizeStringArray(raw.risks, 2),
+    confidence,
+  };
 }
 
 async function fetchBuyerContext(buyerProfileId: string): Promise<BuyerContext | null> {
@@ -283,6 +361,57 @@ async function persistRankedCandidate(
   );
 }
 
+async function rerankSingleCandidate(
+  buyer: BuyerContext,
+  buyerProfileId: string,
+  candidate: CandidateContext
+): Promise<RankedCandidateWithMeta | null> {
+  const systemPrompt = buildSingleSystemPrompt();
+  const userPrompt = buildSingleUserPrompt(buyer, candidate);
+  const promptHash = createHash("sha256")
+    .update(systemPrompt)
+    .update(userPrompt)
+    .digest("hex")
+    .slice(0, 32);
+
+  try {
+    const result = await generateText(systemPrompt, userPrompt);
+
+    await logLLMResponse({
+      scopeType: "buyer_profile",
+      scopeId: buyerProfileId,
+      taskType: "match_rerank",
+      provider: result.provider,
+      model: result.model,
+      promptHash,
+      inputSummary: `Fallback rerank for ${candidate.year} ${candidate.make} ${candidate.model}`,
+      response: result.output,
+      latencyMs: result.latencyMs,
+      tokensIn: result.tokensIn,
+      tokensOut: result.tokensOut,
+      wasSelected: true,
+      selectionReason: "single_candidate_fallback",
+    });
+
+    const parsed = extractJsonPayload(result.output);
+    if (!parsed) {
+      throw new Error("LLM did not return valid single-candidate rerank JSON");
+    }
+
+    return {
+      ranked: normalizeSingleRanking(parsed, candidate),
+      provider: result.provider,
+      model: result.model,
+    };
+  } catch (err) {
+    logger.warn(
+      { err, buyerProfileId, boatId: candidate.boat_id, provider: getMatchIntelligenceProvider() },
+      "Single-candidate rerank failed"
+    );
+    return null;
+  }
+}
+
 export async function rerankMatchesForBuyer(buyerProfileId: string): Promise<number> {
   if (!matchIntelligenceEnabled()) {
     return 0;
@@ -328,7 +457,7 @@ export async function rerankMatchesForBuyer(buyerProfileId: string): Promise<num
         selectionReason: "single_provider",
       });
 
-      const parsed = extractJsonObject(result.output);
+      const parsed = extractJsonPayload(result.output);
       if (!parsed) {
         throw new Error("LLM did not return valid rerank JSON");
       }
@@ -366,6 +495,33 @@ export async function rerankMatchesForBuyer(buyerProfileId: string): Promise<num
         { err, buyerProfileId, provider: getMatchIntelligenceProvider() },
         "Match rerank batch failed"
       );
+
+      for (const candidate of batch) {
+        const fallbackResult = await rerankSingleCandidate(buyer, buyerProfileId, candidate);
+        if (!fallbackResult) {
+          continue;
+        }
+        const ranked = fallbackResult.ranked;
+
+        const finalScore = combineMatchScore(candidate.score, ranked.fitScore, ranked.verdict);
+        const nextBreakdown: ScoreBreakdown = {
+          ...candidate.score_breakdown,
+          base_total: candidate.score,
+          ai_fit: ranked.fitScore,
+          final_total: finalScore,
+          total: finalScore,
+        };
+
+        await persistRankedCandidate(
+          candidate.match_id,
+          nextBreakdown,
+          ranked,
+          fallbackResult.provider,
+          fallbackResult.model,
+          finalScore
+        );
+        updatedCount++;
+      }
     }
   }
 
