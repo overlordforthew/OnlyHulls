@@ -26,7 +26,7 @@ load_runtime_env() {
         return
     fi
 
-    for var in DATABASE_URL RESEND_API_KEY RESEND_FROM_EMAIL NEXT_PUBLIC_APP_URL NEXTAUTH_URL; do
+    for var in DATABASE_URL RESEND_API_KEY RESEND_FROM_EMAIL SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM NEXT_PUBLIC_APP_URL NEXTAUTH_URL; do
         local value
         value=$(docker exec "$container" printenv "$var" 2>/dev/null || true)
         if [ -n "$value" ]; then

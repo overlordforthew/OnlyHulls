@@ -1,17 +1,102 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import { emailEnabled } from "@/lib/capabilities";
 import type { SavedSearchAlertCandidate } from "@/lib/saved-searches";
 import { getPublicAppUrl } from "@/lib/config/urls";
+
+let smtpTransporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null = null;
+let resendClient: Resend | null = null;
+
+function hasConfiguredValue(value?: string | null) {
+  return Boolean(value?.trim());
+}
+
+function smtpEnabled() {
+  return (
+    hasConfiguredValue(process.env.SMTP_HOST) &&
+    hasConfiguredValue(process.env.SMTP_PORT) &&
+    hasConfiguredValue(process.env.SMTP_FROM)
+  );
+}
+
+function resendEnabled() {
+  return (
+    hasConfiguredValue(process.env.RESEND_API_KEY) &&
+    hasConfiguredValue(process.env.RESEND_FROM_EMAIL)
+  );
+}
 
 function getResend() {
   if (!emailEnabled()) {
     throw new Error("Email delivery is not configured");
   }
-  return new Resend(process.env.RESEND_API_KEY);
+  if (!resendEnabled()) {
+    throw new Error("Resend is not configured");
+  }
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
+
+function getSmtpTransport() {
+  if (!emailEnabled()) {
+    throw new Error("Email delivery is not configured");
+  }
+  if (!smtpEnabled()) {
+    throw new Error("SMTP is not configured");
+  }
+
+  if (!smtpTransporter) {
+    const secure = (process.env.SMTP_SECURE || "").toLowerCase() === "true";
+    const auth =
+      hasConfiguredValue(process.env.SMTP_USER) && hasConfiguredValue(process.env.SMTP_PASS)
+        ? {
+            user: process.env.SMTP_USER!,
+            pass: process.env.SMTP_PASS!,
+          }
+        : undefined;
+
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST!,
+      port: Number.parseInt(process.env.SMTP_PORT || "25", 10),
+      secure,
+      auth,
+    });
+  }
+
+  return smtpTransporter;
 }
 
 function getFrom() {
-  return process.env.RESEND_FROM_EMAIL || "OnlyHulls <hello@onlyhulls.com>";
+  return (
+    process.env.SMTP_FROM ||
+    process.env.RESEND_FROM_EMAIL ||
+    "OnlyHulls <hello@onlyhulls.com>"
+  );
+}
+
+async function sendEmail(params: {
+  to: string | string[];
+  subject: string;
+  html: string;
+}) {
+  if (smtpEnabled()) {
+    return getSmtpTransport().sendMail({
+      from: getFrom(),
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+  }
+
+  return getResend().emails.send({
+    from: getFrom(),
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
 }
 
 function esc(str: string): string {
@@ -43,8 +128,7 @@ export async function sendVerificationEmail(params: {
   email: string;
   verifyUrl: string;
 }) {
-  return getResend().emails.send({
-    from: getFrom(),
+  return sendEmail({
     to: params.email,
     subject: "Verify your OnlyHulls email",
     html: `
@@ -64,8 +148,7 @@ export async function sendPasswordResetEmail(params: {
   email: string;
   resetUrl: string;
 }) {
-  return getResend().emails.send({
-    from: getFrom(),
+  return sendEmail({
     to: params.email,
     subject: "Reset your OnlyHulls password",
     html: `
@@ -90,8 +173,7 @@ export async function sendSellerNotification(params: {
   acceptUrl: string;
   declineUrl: string;
 }) {
-  return getResend().emails.send({
-    from: getFrom(),
+  return sendEmail({
     to: params.sellerEmail,
     subject: `New Match: Someone is interested in your ${params.boatTitle}`,
     html: `
@@ -124,8 +206,7 @@ export async function sendIntroductionEmail(params: {
 }) {
   const emails = [params.buyerEmail, params.sellerEmail];
 
-  return getResend().emails.send({
-    from: getFrom(),
+  return sendEmail({
     to: emails,
     subject: `OnlyHulls Introduction: ${params.boatTitle}`,
     html: `
@@ -195,8 +276,7 @@ export async function sendSavedSearchAlertEmail(params: {
     })
     .join("");
 
-  return getResend().emails.send({
-    from: getFrom(),
+  return sendEmail({
     to: params.email,
     subject: `${totalNewResults} new boat${totalNewResults === 1 ? "" : "s"} match your OnlyHulls alerts`,
     html: `

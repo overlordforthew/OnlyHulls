@@ -1,4 +1,5 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import { pool, query, queryOne } from "../src/lib/db/index";
 
 interface SavedSearchEmailRow {
@@ -71,17 +72,38 @@ function hasConfiguredValue(value?: string | null): boolean {
 
 function emailEnabled() {
   return (
-    hasConfiguredValue(process.env.RESEND_API_KEY) &&
-    hasConfiguredValue(process.env.RESEND_FROM_EMAIL)
+    hasConfiguredValue(process.env.SMTP_HOST) &&
+    hasConfiguredValue(process.env.SMTP_PORT) &&
+    hasConfiguredValue(process.env.SMTP_FROM)
   );
 }
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
+let smtpTransporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null = null;
+
+function getTransport() {
+  if (!smtpTransporter) {
+    const secure = (process.env.SMTP_SECURE || "").toLowerCase() === "true";
+    const auth =
+      hasConfiguredValue(process.env.SMTP_USER) && hasConfiguredValue(process.env.SMTP_PASS)
+        ? {
+            user: process.env.SMTP_USER!,
+            pass: process.env.SMTP_PASS!,
+          }
+        : undefined;
+
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "127.0.0.1",
+      port: Number.parseInt(process.env.SMTP_PORT || "25", 10),
+      secure,
+      auth,
+    });
+  }
+
+  return smtpTransporter;
 }
 
 function getFrom() {
-  return process.env.RESEND_FROM_EMAIL || "OnlyHulls <hello@onlyhulls.com>";
+  return process.env.SMTP_FROM || "OnlyHulls <overlord.gil.ai@gmail.com>";
 }
 
 function getAppUrl() {
@@ -316,7 +338,7 @@ async function sendSavedSearchAlertEmail(group: AlertGroup) {
     })
     .join("");
 
-  return getResend().emails.send({
+  return getTransport().sendMail({
     from: getFrom(),
     to: group.email,
     subject: `${totalNewResults} new boat${totalNewResults === 1 ? "" : "s"} match your OnlyHulls alerts`,

@@ -37,10 +37,16 @@ export function paidPlanCheckoutEnabled(priceId?: string | null): boolean {
 }
 
 export function emailEnabled(): boolean {
-  return (
+  const smtpConfigured =
+    hasConfiguredValue(process.env.SMTP_HOST) &&
+    hasConfiguredValue(process.env.SMTP_PORT) &&
+    hasConfiguredValue(process.env.SMTP_FROM);
+
+  const resendConfigured =
     hasConfiguredValue(process.env.RESEND_API_KEY) &&
-    hasConfiguredValue(process.env.RESEND_FROM_EMAIL)
-  );
+    hasConfiguredValue(process.env.RESEND_FROM_EMAIL);
+
+  return smtpConfigured || resendConfigured;
 }
 
 export function openAIEnabled(): boolean {
