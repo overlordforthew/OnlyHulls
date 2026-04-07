@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ContactGateModal from "./ContactGateModal";
 
 export function MatchCTAPrimary({ className = "" }: { className?: string }) {
   const router = useRouter();
   return (
-    <button onClick={() => router.push("/onboarding/profile")} className={`cursor-pointer ${className}`}>
-      Get Matched — It&apos;s Free
+    <button
+      onClick={() => router.push("/onboarding/profile")}
+      className={`cursor-pointer ${className}`}
+    >
+      Get Matched - It&apos;s Free
     </button>
   );
 }
@@ -16,8 +20,11 @@ export function MatchCTAPrimary({ className = "" }: { className?: string }) {
 export function MatchCTASecondary({ className = "" }: { className?: string }) {
   const router = useRouter();
   return (
-    <button onClick={() => router.push("/onboarding/profile")} className={`cursor-pointer ${className}`}>
-      Get Matched — Free
+    <button
+      onClick={() => router.push("/onboarding/profile")}
+      className={`cursor-pointer ${className}`}
+    >
+      Get Matched - Free
     </button>
   );
 }
@@ -38,13 +45,73 @@ export function ContactOwnerCTA({
   boatSlug?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [gateOpen, setGateOpen] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
+  const [sellerContact, setSellerContact] = useState<{
+    email: string;
+    name: string | null;
+  } | null>(null);
 
-  // Scraped listing with soft gate
+  const connectIntent = searchParams.get("connect") === "true";
+  const matchId = searchParams.get("matchId");
+
+  async function handleNativeConnect() {
+    if (!boatId) return;
+
+    const callbackUrl = boatSlug
+      ? `/boats/${boatSlug}?connect=true${matchId ? `&matchId=${matchId}` : ""}`
+      : "/boats";
+
+    if (!session?.user) {
+      router.push(`/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      return;
+    }
+
+    setConnecting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(matchId ? { matchId } : { boatId }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setAlreadyRequested(Boolean(data.alreadyRequested));
+        setSellerContact(data.sellerContact ?? null);
+        return;
+      }
+
+      if (data.requiresProfile || res.status === 409) {
+        router.push(
+          `/onboarding/profile?callbackUrl=${encodeURIComponent(
+            `${boatSlug ? `/boats/${boatSlug}` : "/boats"}?connect=true${matchId ? `&matchId=${matchId}` : ""}`
+          )}`
+        );
+        return;
+      }
+
+      setError(data.error || "Failed to contact the seller. Please try again.");
+    } catch {
+      setError("Failed to contact the seller. Please try again.");
+    } finally {
+      setConnecting(false);
+    }
+  }
+
   if (sourceUrl && boatId) {
     return (
       <>
-        <button onClick={() => setGateOpen(true)} className={`cursor-pointer ${className}`}>
+        <button
+          onClick={() => setGateOpen(true)}
+          className={`cursor-pointer ${className}`}
+        >
           Contact Owner
         </button>
         <ContactGateModal
@@ -60,7 +127,6 @@ export function ContactOwnerCTA({
     );
   }
 
-  // Scraped listing without gate (legacy fallback)
   if (sourceUrl) {
     return (
       <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
@@ -69,18 +135,67 @@ export function ContactOwnerCTA({
     );
   }
 
-  // Native listing
+  if (sellerContact) {
+    return (
+      <div>
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left">
+          <p className="text-sm font-semibold text-primary">
+            {alreadyRequested ? "Request already sent" : "Seller contact unlocked"}
+          </p>
+          <p className="mt-1 text-sm text-foreground/75">
+            Reach out to {sellerContact.name || "the seller"} at{" "}
+            <a
+              href={`mailto:${sellerContact.email}`}
+              className="font-medium text-primary underline"
+            >
+              {sellerContact.email}
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <button onClick={() => router.push("/onboarding/profile")} className={`cursor-pointer ${className}`}>
-      Contact Owner
-    </button>
+    <div>
+      <button
+        onClick={handleNativeConnect}
+        disabled={connecting}
+        className={`cursor-pointer disabled:opacity-60 ${className}`}
+      >
+        {connecting
+          ? "Sending Intro..."
+          : connectIntent
+            ? "Send Intro Request"
+            : "Contact Owner"}
+      </button>
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+    </div>
   );
 }
 
-export function ListBoatCTA({ className = "", children = "List Your Boat — Free" }: { className?: string; children?: React.ReactNode }) {
+export function ListBoatCTA({
+  className = "",
+  children = "List Your Boat - Free",
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
   const router = useRouter();
+  const { data: session } = useSession();
+
+  function handleClick() {
+    if (session?.user) {
+      router.push("/onboarding?role=seller");
+      return;
+    }
+
+    router.push("/sign-up?role=seller");
+  }
+
   return (
-    <button onClick={() => router.push("/listings/new")} className={`cursor-pointer ${className}`}>
+    <button onClick={handleClick} className={`cursor-pointer ${className}`}>
       {children}
     </button>
   );

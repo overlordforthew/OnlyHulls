@@ -36,11 +36,18 @@ export async function POST(req: Request) {
   }
 
   const targetRole = parsed.data.role;
-
-  // Buyer → buyer is always allowed (no-op)
-  // Seller/both requires a seller-tier subscription (free-seller, standard, featured, broker)
   const sellerTiers = ["free-seller", "standard", "featured", "broker"];
-  if ((targetRole === "seller" || targetRole === "both") && !sellerTiers.includes(user.subscription_tier)) {
+  const nextTier =
+    (targetRole === "seller" || targetRole === "both") &&
+    user.subscription_tier === "free"
+      ? "free-seller"
+      : user.subscription_tier;
+
+  if (
+    (targetRole === "seller" || targetRole === "both") &&
+    !sellerTiers.includes(user.subscription_tier) &&
+    user.subscription_tier !== "free"
+  ) {
     return NextResponse.json(
       { error: "A seller plan is required to list boats. Visit /pricing to get started." },
       { status: 403 }
@@ -48,8 +55,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    await query("UPDATE users SET role = $1 WHERE id = $2", [
+    await query("UPDATE users SET role = $1, subscription_tier = $2 WHERE id = $3", [
       targetRole,
+      nextTier,
       session.user.id,
     ]);
   } catch (err) {
@@ -60,5 +68,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, role: targetRole });
+  return NextResponse.json({ success: true, role: targetRole, subscriptionTier: nextTier });
 }

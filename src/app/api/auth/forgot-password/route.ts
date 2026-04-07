@@ -30,10 +30,14 @@ export async function POST(req: Request) {
     );
 
     const baseUrl = process.env.NEXTAUTH_URL || "https://onlyhulls.com";
-    await sendPasswordResetEmail({
-      email: email.toLowerCase().trim(),
-      resetUrl: `${baseUrl}/reset-password?token=${token}`,
-    });
+    try {
+      await sendPasswordResetEmail({
+        email: email.toLowerCase().trim(),
+        resetUrl: `${baseUrl}/reset-password?token=${token}`,
+      });
+    } catch {
+      // Intentionally ignore delivery failures to avoid leaking account state.
+    }
   }
 
   // Always return success to prevent email enumeration

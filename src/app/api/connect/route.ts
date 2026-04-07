@@ -2,15 +2,21 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { sendSellerNotification } from "@/lib/email/resend";
 import { getPlanByTier } from "@/lib/config/plans";
+import { scoreBoatForBuyer } from "@/lib/matching/heuristic";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 
-const connectSchema = z.object({
-  matchId: z.string().uuid(),
-  message: z.string().optional(),
-});
+const connectSchema = z
+  .object({
+    matchId: z.string().uuid().optional(),
+    boatId: z.string().uuid().optional(),
+    message: z.string().optional(),
+  })
+  .refine((value) => Boolean(value.matchId || value.boatId), {
+    message: "Either matchId or boatId is required",
+  });
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -35,16 +41,20 @@ export async function POST(req: Request) {
     email: string;
     display_name: string | null;
     subscription_tier: string;
+    role: string;
   }>(
-    "SELECT id, email, display_name, subscription_tier FROM users WHERE id = $1",
+    "SELECT id, email, display_name, subscription_tier, role FROM users WHERE id = $1",
     [session.user.id]
   );
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Check tier limits
-  const plan = getPlanByTier(user.subscription_tier as Parameters<typeof getPlanByTier>[0]);
+  const effectiveTier =
+    user.subscription_tier === "free-seller" && user.role === "both"
+      ? "free"
+      : user.subscription_tier;
+  const plan = getPlanByTier(effectiveTier as Parameters<typeof getPlanByTier>[0]);
   if (plan.limits.connectsPerMonth === 0) {
     return NextResponse.json(
       { error: "Upgrade to Plus or Pro to connect with sellers" },
@@ -52,39 +62,77 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get match details
-  const match = await queryOne<{
-    id: string;
-    score: number;
-    boat_id: string;
-    boat_title: string;
-    seller_id: string;
-    seller_email: string;
-    seller_name: string | null;
-  }>(
-    `SELECT m.id, m.score, m.boat_id,
-            CONCAT(b.year, ' ', b.make, ' ', b.model) as boat_title,
-            b.seller_id,
-            u.email as seller_email,
-            u.display_name as seller_name
-     FROM matches m
-     JOIN boats b ON b.id = m.boat_id
-     JOIN users u ON u.id = b.seller_id
-     JOIN buyer_profiles bp ON bp.id = m.buyer_id
-     WHERE m.id = $1 AND bp.user_id = $2`,
-    [parsed.data.matchId, user.id]
-  );
+  const match = parsed.data.matchId
+    ? await queryOne<{
+        id: string;
+        score: number;
+        boat_id: string;
+        boat_title: string;
+        seller_id: string;
+        seller_email: string;
+        seller_name: string | null;
+      }>(
+        `SELECT m.id, m.score, m.boat_id,
+                CONCAT(b.year, ' ', b.make, ' ', b.model) as boat_title,
+                b.seller_id,
+                u.email as seller_email,
+                u.display_name as seller_name
+         FROM matches m
+         JOIN boats b ON b.id = m.boat_id
+         JOIN users u ON u.id = b.seller_id
+         JOIN buyer_profiles bp ON bp.id = m.buyer_id
+         WHERE m.id = $1 AND bp.user_id = $2`,
+        [parsed.data.matchId, user.id]
+      )
+    : await getOrCreateMatchForBoat(user.id, parsed.data.boatId!);
 
   if (!match) {
-    return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error: parsed.data.matchId
+          ? "Match not found"
+          : "Complete your buyer profile before contacting sellers.",
+        requiresProfile: !parsed.data.matchId,
+      },
+      { status: parsed.data.matchId ? 404 : 409 }
+    );
   }
 
-  // Generate accept/decline tokens
+  if (match.seller_id === user.id) {
+    return NextResponse.json(
+      { error: "You cannot contact your own listing." },
+      { status: 400 }
+    );
+  }
+
+  const existingIntroduction = await queryOne<{
+    id: string;
+    status: string;
+  }>(
+    `SELECT id, status
+     FROM introductions
+     WHERE match_id = $1
+       AND buyer_id = $2
+       AND status IN ('pending', 'accepted')
+     ORDER BY sent_at DESC
+     LIMIT 1`,
+    [match.id, user.id]
+  );
+
+  if (existingIntroduction) {
+    return NextResponse.json({
+      success: true,
+      alreadyRequested: true,
+      sellerContact: {
+        email: match.seller_email,
+        name: match.seller_name,
+      },
+    });
+  }
+
   const acceptToken = randomBytes(32).toString("hex");
   const declineToken = randomBytes(32).toString("hex");
 
-  // Atomically check monthly limit and insert in a single statement to prevent TOCTOU races.
-  // If connectsPerMonth is unlimited (-1) we skip the count check.
   const limitClause =
     plan.limits.connectsPerMonth > 0
       ? `AND (SELECT COUNT(*) FROM introductions WHERE buyer_id = $2 AND sent_at > NOW() - INTERVAL '30 days') < ${plan.limits.connectsPerMonth}`
@@ -112,7 +160,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Send seller notification email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   try {
     await sendSellerNotification({
@@ -126,10 +173,8 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     logger.error({ err }, "Failed to send seller notification email");
-    // Continue — the introduction was created, email failure is non-fatal
   }
 
-  // Update match (non-fatal if this fails — the introduction was already created)
   try {
     await query("UPDATE matches SET seller_notified = true WHERE id = $1", [
       match.id,
@@ -138,5 +183,94 @@ export async function POST(req: Request) {
     logger.error({ err }, "Failed to update match notification flag");
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    sellerContact: {
+      email: match.seller_email,
+      name: match.seller_name,
+    },
+  });
+}
+
+async function getOrCreateMatchForBoat(userId: string, boatId: string) {
+  const buyer = await queryOne<{
+    id: string;
+    use_case: string[];
+    budget_range: Record<string, unknown>;
+    boat_type_prefs: Record<string, unknown>;
+    spec_preferences: Record<string, unknown>;
+    location_prefs: Record<string, unknown>;
+    refit_tolerance: string;
+  }>(
+    `SELECT id, use_case, budget_range, boat_type_prefs, spec_preferences,
+            location_prefs, refit_tolerance
+     FROM buyer_profiles
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  if (!buyer) {
+    return null;
+  }
+
+  const boat = await queryOne<{
+    id: string;
+    make: string;
+    model: string;
+    year: number;
+    asking_price: number;
+    currency: string;
+    location_text: string | null;
+    seller_id: string;
+    seller_email: string;
+    seller_name: string | null;
+    specs: Record<string, unknown>;
+    condition_score: number | null;
+    character_tags: string[];
+    ai_summary: string | null;
+  }>(
+    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency, b.location_text,
+            b.seller_id,
+            u.email as seller_email,
+            u.display_name as seller_name,
+            COALESCE(d.specs, '{}') as specs,
+            d.condition_score,
+            COALESCE(d.character_tags, '{}') as character_tags,
+            d.ai_summary
+     FROM boats b
+     JOIN users u ON u.id = b.seller_id
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE b.id = $1
+       AND b.status = 'active'
+       AND b.source_url IS NULL`,
+    [boatId]
+  );
+
+  if (!boat) {
+    return null;
+  }
+
+  const scored = scoreBoatForBuyer(buyer, boat);
+  const match = await queryOne<{ id: string }>(
+    `INSERT INTO matches (buyer_id, boat_id, score, score_breakdown)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (buyer_id, boat_id)
+     DO UPDATE SET score = $3, score_breakdown = $4, updated_at = NOW()
+     RETURNING id`,
+    [buyer.id, boat.id, scored.score, JSON.stringify(scored.breakdown)]
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    id: match.id,
+    score: scored.score,
+    boat_id: boat.id,
+    boat_title: `${boat.year} ${boat.make} ${boat.model}`,
+    seller_id: boat.seller_id,
+    seller_email: boat.seller_email,
+    seller_name: boat.seller_name,
+  };
 }

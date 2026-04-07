@@ -1,0 +1,147 @@
+import { computeMatchScore, type ScoreBreakdown } from "./rules";
+
+type JsonObject = Record<string, unknown>;
+
+export interface BuyerProfileForMatching {
+  use_case: string[];
+  budget_range: JsonObject;
+  boat_type_prefs: JsonObject;
+  spec_preferences: JsonObject;
+  location_prefs: JsonObject;
+  refit_tolerance: string;
+}
+
+export interface BoatForMatching {
+  id: string;
+  make: string;
+  model: string;
+  asking_price: number;
+  currency: string;
+  year: number;
+  location_text: string | null;
+  specs: Record<string, unknown>;
+  condition_score: number | null;
+  character_tags: string[];
+  ai_summary?: string | null;
+}
+
+const USE_CASE_TAGS: Record<string, string[]> = {
+  charter: ["family-friendly", "liveaboard-ready", "turnkey"],
+  cruising: ["bluewater", "coastal-cruiser", "family-friendly"],
+  fishing: ["sportfisher", "fishing"],
+  liveaboard: ["liveaboard-ready", "turnkey", "family-friendly"],
+  racing: ["race-ready", "performance"],
+  weekender: ["weekender", "coastal-cruiser", "budget-friendly"],
+};
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+function normalizedHaystack(boat: BoatForMatching): string {
+  return [
+    boat.make,
+    boat.model,
+    boat.ai_summary || "",
+    boat.location_text || "",
+    boat.specs.rig_type,
+    boat.specs.hull_material,
+    ...boat.character_tags,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function clamp(value: number, min = 0, max = 1): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function computeHeuristicVectorSimilarity(
+  buyer: BuyerProfileForMatching,
+  boat: BoatForMatching
+): number {
+  const haystack = normalizedHaystack(boat);
+  const desiredTypes = toStringArray(buyer.boat_type_prefs?.types).filter(
+    (value) => value !== "no-preference"
+  );
+  const rigPrefs = toStringArray(buyer.boat_type_prefs?.rig_prefs).filter(
+    (value) => value !== "no-preference"
+  );
+  const hullPrefs = toStringArray(buyer.boat_type_prefs?.hull_prefs).filter(
+    (value) => value !== "no-preference"
+  );
+  const useCases = toStringArray(buyer.use_case);
+
+  let score = 0.45;
+  let signals = 0;
+
+  if (desiredTypes.length) {
+    signals++;
+    const typeMatch = desiredTypes.some((type) => {
+      if (type === "monohull") {
+        return Boolean(boat.specs.rig_type) && !/catamaran|trimaran|powerboat/.test(haystack);
+      }
+
+      return haystack.includes(type.replace(/-/g, " "));
+    });
+    score += typeMatch ? 0.18 : -0.08;
+  }
+
+  if (rigPrefs.length && boat.specs.rig_type) {
+    signals++;
+    score += rigPrefs.includes(String(boat.specs.rig_type).toLowerCase()) ? 0.15 : -0.05;
+  }
+
+  if (hullPrefs.length && boat.specs.hull_material) {
+    signals++;
+    score += hullPrefs.includes(String(boat.specs.hull_material).toLowerCase()) ? 0.1 : -0.03;
+  }
+
+  if (useCases.length) {
+    signals++;
+    const desiredTags = useCases.flatMap((useCase) => USE_CASE_TAGS[useCase] || []);
+    const overlap = desiredTags.filter((tag) => boat.character_tags.includes(tag)).length;
+    if (overlap > 0) {
+      score += Math.min(0.22, overlap * 0.08);
+    } else {
+      score -= 0.04;
+    }
+  }
+
+  if (!signals) {
+    return 0.5;
+  }
+
+  return clamp(score, 0.08, 0.95);
+}
+
+export function scoreBoatForBuyer(
+  buyer: BuyerProfileForMatching,
+  boat: BoatForMatching
+): { score: number; breakdown: ScoreBreakdown } {
+  const vectorSimilarity = computeHeuristicVectorSimilarity(buyer, boat);
+  const breakdown = computeMatchScore(
+    vectorSimilarity,
+    buyer as unknown as Parameters<typeof computeMatchScore>[1],
+    {
+      asking_price: boat.asking_price,
+      currency: boat.currency,
+      year: boat.year,
+      location_text: boat.location_text,
+      specs: {
+        loa: boat.specs.loa as number | undefined,
+        draft: boat.specs.draft as number | undefined,
+        rig_type: boat.specs.rig_type as string | undefined,
+        hull_material: boat.specs.hull_material as string | undefined,
+      },
+      condition_score: boat.condition_score,
+      character_tags: boat.character_tags,
+    }
+  );
+
+  return {
+    score: breakdown.total,
+    breakdown,
+  };
+}

@@ -82,14 +82,14 @@ export default function MatchesPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <h1 className="text-3xl font-bold">Build Your Profile First</h1>
         <p className="mt-3 text-foreground/60">
-          Chat with our AI to create your buyer profile, then we&apos;ll match
-          you with boats.
+          Answer a few questions about your budget, boat type, and cruising plans
+          so we can match you with boats.
         </p>
         <button
           onClick={() => router.push("/onboarding/profile")}
           className="mt-8 rounded-full bg-primary-btn px-8 py-3 text-lg font-medium text-white hover:bg-primary-dark"
         >
-          Start AI Profile Chat
+          Build Buyer Profile
         </button>
       </div>
     );
@@ -149,7 +149,7 @@ export default function MatchesPage() {
                 onSave={() => handleAction(m.match_id, "interested")}
                 onDismiss={() => handleAction(m.match_id, "passed")}
                 onConnect={() =>
-                  router.push(`/boats/${m.slug || m.boat_id}?connect=true`)
+                  router.push(`/boats/${m.slug || m.boat_id}?connect=true&matchId=${m.match_id}`)
                 }
               />
             ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -58,12 +59,12 @@ export default function HomeSearch() {
     <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl">
       <div className="flex items-baseline justify-between">
         <h2 className="text-lg font-bold">Boats for Sale</h2>
-        <a
+        <Link
           href="/boats"
           className="text-sm font-medium text-primary hover:text-primary-light"
         >
           View All
-        </a>
+        </Link>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -136,12 +137,12 @@ export default function HomeSearch() {
         Search
       </button>
       <div className="mt-2 text-center">
-        <a
+        <Link
           href="/boats"
           className="text-xs text-primary/70 hover:text-primary"
         >
           Advanced Search
-        </a>
+        </Link>
       </div>
     </form>
   );

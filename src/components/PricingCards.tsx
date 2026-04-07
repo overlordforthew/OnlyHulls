@@ -142,7 +142,11 @@ function useCheckout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tier }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && tier === "free-seller") {
+        window.location.href = "/sign-up?role=seller";
+        return;
+      }
       if (data.url) window.location.href = data.url;
     } finally {
       setLoading(false);

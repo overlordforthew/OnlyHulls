@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { computeMatchesForBuyer } from "@/lib/matching/engine";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -29,6 +30,23 @@ export async function GET(req: Request) {
     );
     if (!buyerProfile) {
       return NextResponse.json({ matches: [], total: 0, needsProfile: true });
+    }
+
+    let countResult = await queryOne<{ count: string }>(
+      `SELECT COUNT(*) FROM matches m
+       JOIN boats b ON b.id = m.boat_id
+       WHERE m.buyer_id = $1 AND m.buyer_action != 'passed' AND b.status = 'active'`,
+      [buyerProfile.id]
+    );
+
+    if (parseInt(countResult?.count || "0", 10) === 0) {
+      await computeMatchesForBuyer(buyerProfile.id);
+      countResult = await queryOne<{ count: string }>(
+        `SELECT COUNT(*) FROM matches m
+         JOIN boats b ON b.id = m.boat_id
+         WHERE m.buyer_id = $1 AND m.buyer_action != 'passed' AND b.status = 'active'`,
+        [buyerProfile.id]
+      );
     }
 
     const matches = await query<{
@@ -66,16 +84,9 @@ export async function GET(req: Request) {
       [buyerProfile.id, limit, offset]
     );
 
-    const countResult = await queryOne<{ count: string }>(
-      `SELECT COUNT(*) FROM matches m
-       JOIN boats b ON b.id = m.boat_id
-       WHERE m.buyer_id = $1 AND m.buyer_action != 'passed' AND b.status = 'active'`,
-      [buyerProfile.id]
-    );
-
     return NextResponse.json({
       matches,
-      total: parseInt(countResult?.count || "0"),
+      total: parseInt(countResult?.count || "0", 10),
       page,
       limit,
     });

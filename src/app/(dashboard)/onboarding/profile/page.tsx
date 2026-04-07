@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sailboat, Home, Flag, Fish, Anchor, Globe,
   ArrowRight, ArrowLeft, Check, Sparkles,
@@ -69,6 +69,7 @@ const TIMELINES = [
 
 export default function ProfileQuestionnaire() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -133,6 +134,8 @@ export default function ProfileQuestionnaire() {
       timeline,
       refit_tolerance: "minor",
     };
+    const rawCallback = searchParams.get("callbackUrl") || "";
+    const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "";
 
     try {
       const res = await fetch("/api/user/profile", {
@@ -141,13 +144,13 @@ export default function ProfileQuestionnaire() {
         body: JSON.stringify(profile),
       });
       if (res.ok) {
-        router.push("/matches");
+        router.push(callbackUrl || "/matches");
       } else {
         // Fallback — save worked but redirect to browse
-        router.push("/boats");
+        router.push(callbackUrl || "/boats");
       }
     } catch {
-      router.push("/boats");
+      router.push(callbackUrl || "/boats");
     }
   }
 

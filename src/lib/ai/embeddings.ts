@@ -1,7 +1,15 @@
 import OpenAI from "openai";
 import { logger } from "@/lib/logger";
 
+export function embeddingsEnabled(): boolean {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  return Boolean(apiKey && !apiKey.includes("placeholder"));
+}
+
 function getOpenAI() {
+  if (!embeddingsEnabled()) {
+    throw new Error("OpenAI embeddings are not configured");
+  }
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 

@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 
 export default function ThemeSwitcher() {
-  const [isLight, setIsLight] = useState(false);
+  const [isLight, setIsLight] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("oh-theme") === "light";
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem("oh-theme");
-    if (saved === "light") {
-      setIsLight(true);
-      document.documentElement.classList.add("light");
-    }
-  }, []);
+    document.documentElement.classList.toggle("light", isLight);
+  }, [isLight]);
 
   function toggle() {
     const next = !isLight;

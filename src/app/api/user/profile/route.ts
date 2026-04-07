@@ -1,5 +1,11 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import {
+  embeddingsEnabled,
+  generateEmbedding,
+  profileToEmbeddingText,
+} from "@/lib/ai/embeddings";
+import { computeMatchesForBuyer } from "@/lib/matching/engine";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -38,6 +44,8 @@ export async function POST(req: Request) {
     profile.refit_tolerance || "minor",
   ];
 
+  let buyerProfileId = existing?.id ?? null;
+
   try {
     if (existing) {
       await query(
@@ -50,13 +58,15 @@ export async function POST(req: Request) {
         [...fields, session.user.id]
       );
     } else {
-      await query(
+      const inserted = await queryOne<{ id: string }>(
         `INSERT INTO buyer_profiles
           (user_id, use_case, budget_range, boat_type_prefs, spec_preferences,
-           location_prefs, experience_level, deal_breakers, timeline, refit_tolerance)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            location_prefs, experience_level, deal_breakers, timeline, refit_tolerance)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id`,
         [session.user.id, ...fields]
       );
+      buyerProfileId = inserted?.id ?? null;
     }
   } catch (err) {
     logger.error({ err }, "POST /api/user/profile error");
@@ -66,5 +76,37 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  if (!buyerProfileId) {
+    return NextResponse.json(
+      { error: "Profile was saved but could not be finalized." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    if (embeddingsEnabled()) {
+      const embedding = await generateEmbedding(profileToEmbeddingText(profile));
+      await query("UPDATE buyer_profiles SET dna_embedding = $1 WHERE id = $2", [
+        `[${embedding.join(",")}]`,
+        buyerProfileId,
+      ]);
+    } else {
+      await query("UPDATE buyer_profiles SET dna_embedding = NULL WHERE id = $1", [
+        buyerProfileId,
+      ]);
+    }
+  } catch (err) {
+    logger.warn({ err, buyerProfileId }, "Failed to refresh buyer embedding");
+    await query("UPDATE buyer_profiles SET dna_embedding = NULL WHERE id = $1", [
+      buyerProfileId,
+    ]);
+  }
+
+  try {
+    const matches = await computeMatchesForBuyer(buyerProfileId);
+    return NextResponse.json({ ok: true, matches: matches.length });
+  } catch (err) {
+    logger.error({ err, buyerProfileId }, "Failed to compute matches after profile save");
+    return NextResponse.json({ ok: true, matches: 0 });
+  }
 }

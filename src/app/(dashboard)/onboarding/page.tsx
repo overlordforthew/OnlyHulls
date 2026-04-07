@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Role = "buyer" | "seller" | "both";
 
 export default function OnboardingPage() {
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const searchParams = useSearchParams();
+  const defaultRole = searchParams.get("role");
+  const [selectedRole, setSelectedRole] = useState<Role | null>(
+    defaultRole === "buyer" || defaultRole === "seller" || defaultRole === "both"
+      ? defaultRole
+      : null
+  );
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 

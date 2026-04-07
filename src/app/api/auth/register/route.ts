@@ -59,6 +59,8 @@ export async function POST(req: Request) {
     [email, passwordHash, displayName || null, verifyToken, expiresAt.toISOString()]
   );
 
+  let requiresVerification = true;
+
   if (newUser) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://onlyhulls.com";
     try {
@@ -72,8 +74,13 @@ export async function POST(req: Request) {
         "UPDATE users SET email_verified = true, email_verify_token = NULL WHERE id = $1",
         [newUser.id]
       );
+      requiresVerification = false;
     }
   }
 
-  return NextResponse.json({ success: true, requiresVerification: true });
+  return NextResponse.json({
+    success: true,
+    requiresVerification,
+    autoVerified: !requiresVerification,
+  });
 }

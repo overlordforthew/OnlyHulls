@@ -1,7 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import Link from "next/link";
 
@@ -14,7 +13,6 @@ export default function SignUpPage() {
 }
 
 function SignUpForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +20,7 @@ function SignUpForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [autoVerified, setAutoVerified] = useState(false);
   const subtitle =
     searchParams.get("role") === "seller"
       ? "List your boat on OnlyHulls"
@@ -37,15 +36,16 @@ function SignUpForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, displayName: displayName || undefined }),
     });
+    const data = await res.json().catch(() => ({}));
 
     setLoading(false);
 
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error || "Registration failed");
       return;
     }
 
+    setAutoVerified(Boolean(data.autoVerified));
     setVerificationSent(true);
   }
 
@@ -58,9 +58,21 @@ function SignUpForm() {
         {verificationSent ? (
           <div className="text-center space-y-4 py-4">
             <div className="text-4xl">&#9993;</div>
-            <h1 className="text-2xl font-bold">Check your email</h1>
+            <h1 className="text-2xl font-bold">
+              {autoVerified ? "Account ready" : "Check your email"}
+            </h1>
             <p className="text-text-secondary">
-              We sent a verification link to <strong>{email}</strong>. Click the link to activate your account, then sign in.
+              {autoVerified ? (
+                <>
+                  We created your account for <strong>{email}</strong>. Email verification
+                  is not configured right now, so you can sign in immediately.
+                </>
+              ) : (
+                <>
+                  We sent a verification link to <strong>{email}</strong>. Click the link to
+                  activate your account, then sign in.
+                </>
+              )}
             </p>
             <Link
               href="/sign-in"

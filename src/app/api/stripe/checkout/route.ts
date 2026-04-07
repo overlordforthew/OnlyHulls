@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
-  tier: z.enum(["plus", "standard", "featured", "broker"]),
+  tier: z.enum(["plus", "free-seller", "standard", "featured", "broker"]),
 });
 
 export async function POST(req: Request) {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   }
 
   const plan = PLANS[parsed.data.tier];
-  if (!plan || !plan.stripePriceId) {
+  if (!plan) {
     return NextResponse.json(
       { error: "Plan not configured" },
       { status: 400 }
@@ -52,7 +52,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   try {
+    if (parsed.data.tier === "free-seller") {
+      await query("UPDATE users SET subscription_tier = 'free-seller' WHERE id = $1", [
+        user.id,
+      ]);
+
+      return NextResponse.json({ url: `${appUrl}/onboarding?role=seller` });
+    }
+
+    if (!plan.stripePriceId) {
+      return NextResponse.json(
+        { error: "Plan not configured" },
+        { status: 400 }
+      );
+    }
+
     let customerId = user.stripe_customer_id;
     if (!customerId) {
       customerId = await getOrCreateCustomer(user.email, user.display_name);
@@ -62,7 +79,6 @@ export async function POST(req: Request) {
       ]);
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const url = await createCheckoutSession(
       customerId,
       plan.stripePriceId,
