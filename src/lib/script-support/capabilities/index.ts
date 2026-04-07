@@ -1,1 +1,0 @@
-export { emailEnabled } from "../../capabilities";
