@@ -168,8 +168,10 @@ async function askOpenRouter(
       temperature: 0.2,
       max_tokens: 900,
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        {
+          role: "user",
+          content: `${systemPrompt}\n\nMATCH RERANK INPUT:\n${userPrompt}`,
+        },
       ],
     }),
     signal: AbortSignal.timeout(timeoutMs),
