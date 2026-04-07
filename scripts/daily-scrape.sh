@@ -17,9 +17,34 @@ SCRAPER_DIR="$PROJECT_DIR/scraper"
 SCRIPTS_DIR="$PROJECT_DIR/scripts"
 LOG_FILE="/tmp/onlyhulls-scrape.log"
 LIMIT="${1:-100}"
+APP_CONTAINER_PREFIX="qkggs84cs88o0gww4wc80gwo-"
 
-# Load DATABASE_URL from .env
-export $(grep DATABASE_URL "$PROJECT_DIR/.env" | head -1 | xargs)
+load_runtime_env() {
+    local container
+    container=$(docker ps --format '{{.Names}}' | grep "^${APP_CONTAINER_PREFIX}" | head -1 || true)
+    if [ -z "$container" ]; then
+        return
+    fi
+
+    for var in DATABASE_URL RESEND_API_KEY RESEND_FROM_EMAIL NEXT_PUBLIC_APP_URL NEXTAUTH_URL; do
+        local value
+        value=$(docker exec "$container" printenv "$var" 2>/dev/null || true)
+        if [ -n "$value" ]; then
+            printf -v "$var" '%s' "$value"
+            export "$var"
+        fi
+    done
+}
+
+load_fallback_env() {
+    if [ -n "${DATABASE_URL:-}" ]; then
+        return
+    fi
+    export $(grep DATABASE_URL "$PROJECT_DIR/.env" | head -1 | xargs)
+}
+
+load_runtime_env
+load_fallback_env
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
