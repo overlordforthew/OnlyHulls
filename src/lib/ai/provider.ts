@@ -151,51 +151,68 @@ async function askOpenRouter(
   systemPrompt: string,
   userPrompt: string
 ): Promise<LLMGenerationResult> {
-  const model = process.env.OPENROUTER_CHAT_MODEL || "google/gemma-3-27b-it:free";
+  const models = (process.env.OPENROUTER_CHAT_MODEL ||
+    "qwen/qwen3.6-plus:free,google/gemma-3-27b-it:free")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
   const timeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 30000);
-  const startedAt = Date.now();
+  let lastError: Error | null = null;
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_KEY || ""}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": getPublicAppUrl(),
-      "X-Title": "OnlyHulls",
-    },
-    body: JSON.stringify({
+  for (const model of models) {
+    const startedAt = Date.now();
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_KEY || ""}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": getPublicAppUrl(),
+        "X-Title": "OnlyHulls",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        max_tokens: 900,
+        messages: [
+          {
+            role: "user",
+            content: `${systemPrompt}\n\nMATCH RERANK INPUT:\n${userPrompt}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      lastError = new Error(
+        `OpenRouter HTTP ${response.status}${body ? `: ${body.slice(0, 200)}` : ""}`
+      );
+
+      if ([400, 429, 500, 502, 503, 504].includes(response.status)) {
+        continue;
+      }
+      throw lastError;
+    }
+
+    const payload = await response.json();
+    const output = String(payload.choices?.[0]?.message?.content || "").trim();
+    if (!output) {
+      lastError = new Error("OpenRouter returned an empty response");
+      continue;
+    }
+
+    return {
+      provider: "openrouter",
       model,
-      temperature: 0.2,
-      max_tokens: 900,
-      messages: [
-        {
-          role: "user",
-          content: `${systemPrompt}\n\nMATCH RERANK INPUT:\n${userPrompt}`,
-        },
-      ],
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`OpenRouter HTTP ${response.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+      output,
+      latencyMs: Date.now() - startedAt,
+      tokensIn: payload.usage?.prompt_tokens,
+      tokensOut: payload.usage?.completion_tokens,
+    };
   }
 
-  const payload = await response.json();
-  const output = String(payload.choices?.[0]?.message?.content || "").trim();
-  if (!output) {
-    throw new Error("OpenRouter returned an empty response");
-  }
-
-  return {
-    provider: "openrouter",
-    model,
-    output,
-    latencyMs: Date.now() - startedAt,
-    tokensIn: payload.usage?.prompt_tokens,
-    tokensOut: payload.usage?.completion_tokens,
-  };
+  throw lastError || new Error("OpenRouter did not return a usable response");
 }
 
 export async function generateText(
