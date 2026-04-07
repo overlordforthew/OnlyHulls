@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
-import { billingEnabled, emailEnabled, openAIEnabled } from "@/lib/capabilities";
+import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -37,6 +37,7 @@ export async function GET() {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),
         openAIEnabled: openAIEnabled(),
+        storageEnabled: storageEnabled(),
         meiliDocuments: meiliStats?.numberOfDocuments || 0,
       },
     });

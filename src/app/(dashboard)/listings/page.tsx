@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { emailEnabled } from "@/lib/capabilities";
+import { emailEnabled, storageEnabled } from "@/lib/capabilities";
 import {
   getSellerDashboardData,
   respondToSellerIntroduction,
@@ -50,9 +50,10 @@ export default async function ListingsDashboardPage({
     );
   }
 
-  const [{ stats, listings, leads }, canEmail] = await Promise.all([
+  const [{ stats, listings, leads }, canEmail, canUploadMedia] = await Promise.all([
     getSellerDashboardData(user.id),
     emailEnabled(),
+    storageEnabled(),
   ]);
 
   async function updateLeadStatus(formData: FormData) {
@@ -128,6 +129,11 @@ export default async function ListingsDashboardPage({
           Accepted leads: {stats.acceptedLeads}. Reply directly to interested buyers using
           the email address shown below.
         </p>
+        <p className="mt-2 text-sm text-text-secondary">
+          {canUploadMedia
+            ? "Media uploads are enabled. Use Manage Listing to add or replace listing photos."
+            : "Media uploads are still blocked by missing S3 storage credentials. Listing edit and resubmission are live now."}
+        </p>
       </div>
 
       <section className="mt-10">
@@ -152,7 +158,7 @@ export default async function ListingsDashboardPage({
         ) : (
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <ListingCard key={listing.id} listing={listing} canUploadMedia={canUploadMedia} />
             ))}
           </div>
         )}
@@ -204,7 +210,13 @@ function MetricCard({
   );
 }
 
-function ListingCard({ listing }: { listing: SellerListing }) {
+function ListingCard({
+  listing,
+  canUploadMedia,
+}: {
+  listing: SellerListing;
+  canUploadMedia: boolean;
+}) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
@@ -242,6 +254,12 @@ function ListingCard({ listing }: { listing: SellerListing }) {
 
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
+          href={`/listings/${listing.id}`}
+          className="rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+        >
+          Manage Listing
+        </Link>
+        <Link
           href={getBoatHref(listing)}
           className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
         >
@@ -254,6 +272,11 @@ function ListingCard({ listing }: { listing: SellerListing }) {
           Add Another Listing
         </Link>
       </div>
+      <p className="mt-3 text-xs text-text-secondary">
+        {canUploadMedia
+          ? "Photos, captions, and listing details can be managed from the listing workspace."
+          : "Listing editing is live. Photo uploads unlock automatically once object storage is configured."}
+      </p>
     </div>
   );
 }

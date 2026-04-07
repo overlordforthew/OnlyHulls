@@ -42,3 +42,12 @@ export function emailEnabled(): boolean {
 export function openAIEnabled(): boolean {
   return hasConfiguredValue(process.env.OPENAI_API_KEY);
 }
+
+export function storageEnabled(): boolean {
+  return (
+    hasConfiguredValue(process.env.S3_ENDPOINT) &&
+    hasConfiguredValue(process.env.S3_BUCKET) &&
+    hasConfiguredValue(process.env.S3_ACCESS_KEY_ID) &&
+    hasConfiguredValue(process.env.S3_SECRET_ACCESS_KEY)
+  );
+}

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { billingEnabled, emailEnabled } from "@/lib/capabilities";
+import { billingEnabled, emailEnabled, storageEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -29,6 +29,7 @@ export async function GET() {
       ...user,
       billing_enabled: billingEnabled(),
       email_enabled: emailEnabled(),
+      storage_enabled: storageEnabled(),
     });
   } catch (err) {
     logger.error({ err }, "GET /api/user/account error");

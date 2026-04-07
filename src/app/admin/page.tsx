@@ -14,6 +14,7 @@ interface Stats {
     billingEnabled: boolean;
     emailEnabled: boolean;
     openAIEnabled: boolean;
+    storageEnabled: boolean;
     meiliDocuments: number;
   };
 }
@@ -181,7 +182,7 @@ export default function AdminPage() {
             <StatCard label="Introductions" value={stats.totalIntroductions} />
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <HealthCard
               label="Billing"
               value={stats.serviceStatus.billingEnabled ? "Configured" : "Missing"}
@@ -196,6 +197,11 @@ export default function AdminPage() {
               label="OpenAI"
               value={stats.serviceStatus.openAIEnabled ? "Configured" : "Fallback Only"}
               healthy={stats.serviceStatus.openAIEnabled}
+            />
+            <HealthCard
+              label="Storage"
+              value={stats.serviceStatus.storageEnabled ? "Configured" : "Missing"}
+              healthy={stats.serviceStatus.storageEnabled}
             />
             <HealthCard
               label="Search Docs"

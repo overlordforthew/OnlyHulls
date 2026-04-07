@@ -2,16 +2,22 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import ListingEditor from "@/components/listings/ListingEditor";
 
-export default async function NewListingPage() {
+export default async function EditListingPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/sign-in?callbackUrl=%2Flistings%2Fnew");
+    const { id } = await params;
+    redirect(`/sign-in?callbackUrl=${encodeURIComponent(`/listings/${id}`)}`);
   }
 
   if (!["seller", "both", "admin"].includes(user.role)) {
     redirect("/onboarding?role=seller");
   }
 
-  return <ListingEditor />;
+  const { id } = await params;
+  return <ListingEditor listingId={id} />;
 }

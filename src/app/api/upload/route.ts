@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
-import { getPresignedUploadUrl, generateMediaKey } from "@/lib/storage";
+import { getPresignedUploadUrl, generateMediaKey, getPublicUrl } from "@/lib/storage";
 import { logger } from "@/lib/logger";
+import { storageEnabled } from "@/lib/capabilities";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -22,6 +23,12 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!storageEnabled()) {
+    return NextResponse.json(
+      { error: "Media storage is not configured yet." },
+      { status: 503 }
+    );
   }
 
   let body;
@@ -50,8 +57,9 @@ export async function POST(req: Request) {
 
     const key = generateMediaKey(boatId, filename);
     const uploadUrl = await getPresignedUploadUrl(key, contentType);
+    const publicUrl = getPublicUrl(key);
 
-    return NextResponse.json({ uploadUrl, key });
+    return NextResponse.json({ uploadUrl, key, publicUrl });
   } catch (err) {
     logger.error({ err }, "POST /api/upload error");
     return NextResponse.json(
