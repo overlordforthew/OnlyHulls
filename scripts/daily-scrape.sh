@@ -138,6 +138,14 @@ log "Expiring stale listings..."
 EXPIRE_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/expire-stale.ts" 2>&1)
 log "  $EXPIRE_RESULT"
 
+# --- Saved search email alerts ---
+log "Sending saved search alerts..."
+if ALERT_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/send-saved-search-alerts.ts" 2>&1 | tail -1); then
+    log "  $ALERT_RESULT"
+else
+    log "  FAILED: saved search alerts"
+fi
+
 # --- Summary ---
 TOTAL_BOATS=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT count(*) FROM boats WHERE status='active'" 2>/dev/null | tr -d ' ')
 SOURCE_BREAKDOWN=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT COALESCE(source_name, 'Platform') as src, count(*) as cnt FROM boats WHERE status='active' GROUP BY source_name ORDER BY cnt DESC" 2>/dev/null)

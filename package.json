@@ -12,6 +12,7 @@
     "db:import": "npx tsx scripts/import-scraped.ts",
     "db:backfill-embeddings": "npx tsx scripts/backfill-embeddings.ts",
     "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",
+    "alerts:saved-searches": "npx tsx scripts/send-saved-search-alerts.ts",
     "admin:promote": "npx tsx scripts/promote-admin.ts"
   },
   "dependencies": {

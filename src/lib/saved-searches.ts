@@ -26,6 +26,25 @@ interface SavedSearchRow {
   updated_at: string;
 }
 
+interface SavedSearchEmailRow extends SavedSearchRow {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  email_alerts: "instant" | "weekly";
+}
+
+interface SavedSearchBoatRow {
+  id: string;
+  slug: string | null;
+  year: number;
+  make: string;
+  model: string;
+  asking_price: number;
+  currency: string;
+  location_text: string | null;
+  hero_url: string | null;
+}
+
 export interface SavedSearchSummary {
   savedSearchCount: number;
   searchesWithUpdates: number;
@@ -42,6 +61,29 @@ export interface SavedSearchRecord {
   createdAt: string;
   updatedAt: string;
   lastCheckedAt: string;
+}
+
+export interface SavedSearchAlertBoat {
+  id: string;
+  slug: string | null;
+  title: string;
+  price: number;
+  currency: string;
+  locationText: string | null;
+  heroUrl: string | null;
+}
+
+export interface SavedSearchAlertCandidate {
+  savedSearchId: string;
+  userId: string;
+  email: string;
+  displayName: string | null;
+  emailAlerts: "instant" | "weekly";
+  name: string;
+  browseUrl: string;
+  newResults: number;
+  lastCheckedAt: string;
+  boats: SavedSearchAlertBoat[];
 }
 
 function rowToFilters(row: SavedSearchRow): BoatSearchFilters {
@@ -79,6 +121,49 @@ async function countResults(filters: BoatSearchFilters, since?: string) {
   );
 
   return parseInt(result?.count || "0", 10);
+}
+
+async function listMatchingBoats(
+  filters: BoatSearchFilters,
+  since: string | undefined,
+  limit: number
+): Promise<SavedSearchAlertBoat[]> {
+  const { where, params } = buildWhereClause(filters);
+  const conditions = [where];
+  const queryParams = [...params];
+
+  if (since) {
+    queryParams.push(since);
+    conditions.push(`b.created_at > $${queryParams.length}`);
+  }
+
+  queryParams.push(limit);
+
+  const rows = await query<SavedSearchBoatRow>(
+    `SELECT b.id, b.slug, b.year, b.make, b.model, b.asking_price, b.currency, b.location_text,
+            (SELECT url
+             FROM boat_media bm
+             WHERE bm.boat_id = b.id AND bm.type = 'image'
+             ORDER BY sort_order
+             LIMIT 1) as hero_url
+     FROM boats b
+     LEFT JOIN users u ON u.id = b.seller_id
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE ${conditions.join(" AND ")}
+     ORDER BY b.created_at DESC, b.id DESC
+     LIMIT $${queryParams.length}`,
+    queryParams
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: `${row.year} ${row.make} ${row.model}`,
+    price: Number(row.asking_price),
+    currency: row.currency,
+    locationText: row.location_text,
+    heroUrl: row.hero_url,
+  }));
 }
 
 async function hydrateSavedSearch(row: SavedSearchRow): Promise<SavedSearchRecord> {
@@ -122,6 +207,51 @@ export async function getSavedSearchSummary(userId: string): Promise<SavedSearch
     searchesWithUpdates: searches.filter((search) => search.newResults > 0).length,
     totalNewResults: searches.reduce((sum, search) => sum + search.newResults, 0),
   };
+}
+
+export async function listSavedSearchAlertCandidates(limitPerSearch = 5) {
+  const rows = await query<SavedSearchEmailRow>(
+    `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.tag, ss.min_price, ss.max_price,
+            ss.min_year, ss.max_year, ss.rig_type, ss.hull_type, ss.sort, ss.dir,
+            ss.last_checked_at, ss.created_at, ss.updated_at,
+            u.email, u.display_name, u.email_alerts
+     FROM saved_searches ss
+     JOIN users u ON u.id = ss.user_id
+     WHERE u.email_verified = true
+       AND u.email_alerts IN ('instant', 'weekly')
+       AND (
+         u.email_alerts = 'instant'
+         OR ss.last_checked_at <= NOW() - INTERVAL '7 days'
+       )
+     ORDER BY ss.last_checked_at ASC, ss.created_at ASC`
+  );
+
+  const alerts: SavedSearchAlertCandidate[] = [];
+
+  for (const row of rows) {
+    const filters = rowToFilters(row);
+    const newResults = await countResults(filters, row.last_checked_at);
+    if (newResults < 1) {
+      continue;
+    }
+
+    const boats = await listMatchingBoats(filters, row.last_checked_at, limitPerSearch);
+
+    alerts.push({
+      savedSearchId: row.id,
+      userId: row.user_id,
+      email: row.email,
+      displayName: row.display_name,
+      emailAlerts: row.email_alerts,
+      name: row.name,
+      browseUrl: buildBoatSearchUrl(filters),
+      newResults,
+      lastCheckedAt: row.last_checked_at,
+      boats,
+    });
+  }
+
+  return alerts;
 }
 
 export async function createSavedSearch(userId: string, input: Partial<BoatSearchFilters>) {
@@ -209,4 +339,16 @@ export async function deleteSavedSearch(userId: string, savedSearchId: string) {
   );
 
   return deleted?.id ?? null;
+}
+
+export async function markSavedSearchAlertSent(savedSearchId: string, lastCheckedAt: string) {
+  const updated = await queryOne<{ id: string }>(
+    `UPDATE saved_searches
+     SET last_checked_at = NOW(), updated_at = NOW()
+     WHERE id = $1 AND last_checked_at = $2
+     RETURNING id`,
+    [savedSearchId, lastCheckedAt]
+  );
+
+  return Boolean(updated);
 }
