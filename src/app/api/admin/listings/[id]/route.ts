@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { syncBoatSearchDocument } from "@/lib/search/boat-index";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -38,11 +39,15 @@ export async function PATCH(
       "SELECT status, make, model FROM boats WHERE id = $1",
       [id]
     );
+    if (!boat) {
+      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    }
 
     await query("UPDATE boats SET status = $1, updated_at = NOW() WHERE id = $2", [
       parsed.data.status,
       id,
     ]);
+    await syncBoatSearchDocument(id);
 
     logger.info(
       {
@@ -57,7 +62,7 @@ export async function PATCH(
       "Admin changed listing status"
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, status: parsed.data.status });
   } catch (err) {
     logger.error({ err, listingId: id }, "PATCH /api/admin/listings error");
     return NextResponse.json(

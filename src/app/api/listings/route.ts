@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { generateEmbedding, boatToEmbeddingText } from "@/lib/ai/embeddings";
-import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { logger } from "@/lib/logger";
 import { getPlanByTier } from "@/lib/config/plans";
 import { NextResponse } from "next/server";
@@ -133,7 +132,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const slug = generateSlug(data.year, data.make, data.model, data.locationText);
+    const slug = await ensureUniqueSlug(
+      generateSlug(data.year, data.make, data.model, data.locationText)
+    );
 
     // Create boat listing
     const boat = await queryOne<{ id: string }>(
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
       logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
     );
 
-    return NextResponse.json({ id: boat.id, slug });
+    return NextResponse.json({ id: boat.id, slug, status: "pending_review" });
   } catch (err) {
     logger.error({ err }, "POST /api/listings error");
     return NextResponse.json(
@@ -225,24 +226,23 @@ async function generateBoatEmbedding(
     embeddingStr,
     boatId,
   ]);
+}
 
-  // Index in Meilisearch
-  try {
-    await getMeili().index(BOATS_INDEX).addDocuments([
-      {
-        id: boatId,
-        make: data.make,
-        model: data.model,
-        year: data.year,
-        askingPrice: data.askingPrice,
-        currency: data.currency,
-        locationText: data.locationText,
-        specs: data.specs,
-        characterTags: data.characterTags,
-        description: data.description,
-      },
-    ]);
-  } catch (err) {
-    logger.error({ err, boatId }, "Meilisearch indexing failed");
+async function ensureUniqueSlug(baseSlug: string) {
+  const seed = baseSlug || `boat-${Date.now()}`;
+  let candidate = seed;
+  let suffix = 2;
+
+  while (true) {
+    const existing = await queryOne<{ id: string }>(
+      "SELECT id FROM boats WHERE slug = $1 LIMIT 1",
+      [candidate]
+    );
+
+    if (!existing) {
+      return candidate;
+    }
+
+    candidate = `${seed}-${suffix++}`;
   }
 }

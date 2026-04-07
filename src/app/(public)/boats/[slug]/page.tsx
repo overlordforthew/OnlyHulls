@@ -1,4 +1,5 @@
 import { query, queryOne } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import Link from "next/link";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
 import { ImageGallery } from "@/components/ImageGallery";
@@ -8,11 +9,13 @@ import { MapPin, Sparkles, User, ArrowLeft } from "lucide-react";
 
 interface BoatDetail {
   id: string;
+  seller_id: string;
   make: string;
   model: string;
   year: number;
   asking_price: number;
   currency: string;
+  status: string;
   location_text: string | null;
   slug: string | null;
   is_sample: boolean;
@@ -27,9 +30,9 @@ interface BoatDetail {
   hero_url: string | null;
 }
 
-async function getBoat(slug: string): Promise<BoatDetail | null> {
+async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
   return queryOne<BoatDetail>(
-    `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency, b.asking_price_usd,
+    `SELECT b.id, b.seller_id, b.make, b.model, b.year, b.asking_price, b.currency, b.status, b.asking_price_usd,
             b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
             COALESCE(d.specs, '{}') as specs,
@@ -45,6 +48,41 @@ async function getBoat(slug: string): Promise<BoatDetail | null> {
   );
 }
 
+async function getBoatForViewer(
+  slug: string,
+  viewerId: string | null,
+  viewerRole: string | null
+): Promise<BoatDetail | null> {
+  const boat = await queryOne<BoatDetail>(
+    `SELECT b.id, b.seller_id, b.make, b.model, b.year, b.asking_price, b.currency, b.status, b.asking_price_usd,
+            b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
+            u.display_name as seller_name,
+            COALESCE(d.specs, '{}') as specs,
+            COALESCE(d.character_tags, '{}') as character_tags,
+            d.condition_score, d.ai_summary,
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id ORDER BY sort_order LIMIT 1) as hero_url
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     LEFT JOIN users u ON u.id = b.seller_id
+     WHERE (b.slug = $1 OR b.id::text = $1)`,
+    [slug]
+  );
+
+  if (!boat) {
+    return null;
+  }
+
+  if (boat.status === "active") {
+    return boat;
+  }
+
+  if (viewerRole === "admin" || boat.seller_id === viewerId) {
+    return boat;
+  }
+
+  return null;
+}
+
 async function getBoatMedia(boatId: string) {
   return query<{ id: string; url: string; caption: string | null }>(
     `SELECT id, url, caption FROM boat_media WHERE boat_id = $1 ORDER BY sort_order`,
@@ -58,7 +96,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const boat = await getBoat(slug);
+  const boat = await getPublicBoat(slug);
   if (!boat) return { title: "Boat Not Found" };
 
   const heroImage = boat.hero_url || undefined;
@@ -95,14 +133,17 @@ export default async function BoatDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const boat = await getBoat(slug);
+  const viewer = await getCurrentUser();
+  const boat = await getBoatForViewer(slug, viewer?.id ?? null, viewer?.role ?? null);
   if (!boat) notFound();
 
-  // Increment view count (fire-and-forget, don't block render)
-  query(
-    `UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`,
-    [boat.id]
-  ).catch(() => {});
+  if (boat.status === "active") {
+    // Increment public view count without blocking render.
+    query(
+      `UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`,
+      [boat.id]
+    ).catch(() => {});
+  }
 
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
@@ -154,6 +195,20 @@ export default async function BoatDetailPage({
       <div className="mx-auto max-w-6xl px-5 pt-6">
         {/* Gallery */}
         <ImageGallery media={media} alt={`${boat.make} ${boat.model}`} />
+
+        {boat.status !== "active" && (
+          <div
+            className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+              boat.status === "pending_review"
+                ? "border-accent/20 bg-accent/10 text-accent"
+                : "border-red-500/20 bg-red-500/10 text-red-300"
+            }`}
+          >
+            {boat.status === "pending_review"
+              ? "Preview mode: this listing is pending review and is only visible to the seller and admins."
+              : "Preview mode: this listing is not live to buyers right now."}
+          </div>
+        )}
 
         {boat.is_sample && (
           <div className="mt-4 rounded-lg bg-accent/10 border border-accent/20 px-4 py-2 text-sm text-accent">

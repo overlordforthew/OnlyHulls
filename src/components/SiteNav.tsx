@@ -87,6 +87,13 @@ export default function SiteNav() {
                       My Matches
                     </Link>
                     <Link
+                      href="/listings"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      My Listings
+                    </Link>
+                    <Link
                       href="/listings/new"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
@@ -165,6 +172,9 @@ export default function SiteNav() {
                 <>
                   <Link href="/matches" className="text-lg text-primary transition-colors hover:text-primary-light" onClick={() => setMenuOpen(false)}>
                     My Matches
+                  </Link>
+                  <Link href="/listings" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
+                    My Listings
                   </Link>
                   <Link href="/listings/new" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
                     List a Boat

@@ -42,6 +42,7 @@ interface ListingData {
 export default function NewListingPage() {
   const [step, setStep] = useState<Step>("basics");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const [data, setData] = useState<ListingData>({
@@ -73,16 +74,20 @@ export default function NewListingPage() {
 
   async function handleSubmit() {
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create listing");
-      const result = await res.json();
-      router.push(`/boats/${result.slug || result.id}`);
-    } catch {
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to create listing");
+      }
+      router.push("/listings?created=1");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create listing");
       setSubmitting(false);
     }
   }
@@ -111,6 +116,12 @@ export default function NewListingPage() {
       </div>
 
       <div className="mt-8 space-y-6">
+        {error && (
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
         {step === "basics" && (
           <>
             <Field label="Make" value={data.make} onChange={(v) => update({ make: v })} placeholder="e.g. Beneteau" />
@@ -230,7 +241,8 @@ export default function NewListingPage() {
               )}
             </div>
             <p className="text-sm text-foreground/60">
-              Your listing will be reviewed by an admin before going live.
+              Your listing will be reviewed by an admin before going live. You can
+              track status and buyer leads from your seller dashboard.
             </p>
           </div>
         )}

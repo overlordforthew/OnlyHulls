@@ -286,7 +286,7 @@ export default function AdminPage() {
                     {new Date(listing.created_at).toLocaleDateString()}
                   </p>
                   <Link
-                    href={`/boats/${listing.slug}`}
+                    href={`/boats/${listing.slug || listing.id}`}
                     className="mt-2 inline-block text-xs text-primary hover:text-primary-light"
                   >
                     Open Listing

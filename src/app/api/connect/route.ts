@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { sendSellerNotification } from "@/lib/email/resend";
 import { getPlanByTier } from "@/lib/config/plans";
+import { emailEnabled } from "@/lib/capabilities";
 import { scoreBoatForBuyer } from "@/lib/matching/heuristic";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
@@ -160,19 +161,33 @@ export async function POST(req: Request) {
     );
   }
 
+  const canSendEmail = emailEnabled();
+  if (!canSendEmail) {
+    await query(
+      `UPDATE introductions
+       SET status = 'accepted',
+           responded_at = NOW(),
+           intro_sent_at = COALESCE(intro_sent_at, NOW())
+       WHERE id = $1`,
+      [intro.id]
+    );
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  try {
-    await sendSellerNotification({
-      sellerEmail: match.seller_email,
-      sellerName: match.seller_name || "",
-      buyerSummary: `${user.display_name || "A buyer"} (${user.email}) is interested in your boat.`,
-      boatTitle: match.boat_title,
-      matchScore: match.score,
-      acceptUrl: `${appUrl}/api/introductions/${acceptToken}?action=accept`,
-      declineUrl: `${appUrl}/api/introductions/${declineToken}?action=decline`,
-    });
-  } catch (err) {
-    logger.error({ err }, "Failed to send seller notification email");
+  if (canSendEmail) {
+    try {
+      await sendSellerNotification({
+        sellerEmail: match.seller_email,
+        sellerName: match.seller_name || "",
+        buyerSummary: `${user.display_name || "A buyer"} (${user.email}) is interested in your boat.`,
+        boatTitle: match.boat_title,
+        matchScore: match.score,
+        acceptUrl: `${appUrl}/api/introductions/${acceptToken}?action=accept`,
+        declineUrl: `${appUrl}/api/introductions/${declineToken}?action=decline`,
+      });
+    } catch (err) {
+      logger.error({ err }, "Failed to send seller notification email");
+    }
   }
 
   try {
