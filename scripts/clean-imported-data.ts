@@ -19,6 +19,7 @@ type CleanupRow = {
   year: number;
   make: string;
   model: string;
+  source_site: string | null;
   asking_price: number;
   currency: string;
   asking_price_usd: number | null;
@@ -155,7 +156,7 @@ async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string)
 
 async function fetchCandidates(limit: number) {
   return query<CleanupRow>(
-    `SELECT b.id, b.slug, b.year, b.make, b.model, b.asking_price, b.currency, b.asking_price_usd,
+    `SELECT b.id, b.slug, b.year, b.make, b.model, b.source_site, b.asking_price, b.currency, b.asking_price_usd,
             b.location_text, b.source_name, b.source_url, b.view_count,
             COALESCE(d.specs, '{}') AS specs,
             COALESCE(d.character_tags, '{}') AS character_tags,
@@ -217,6 +218,7 @@ async function main() {
       make: row.make,
       model: row.model,
       slug: row.slug,
+      sourceSite: row.source_site,
     });
     const normalizedTags = buildImportedCharacterTags({
       priceUsd: row.asking_price_usd,

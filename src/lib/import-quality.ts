@@ -4,6 +4,8 @@ export const MIN_GOOD_SUMMARY_LENGTH = 40;
 
 const TITLE_CASE_EXACT: Record<string, string> = {
   "o'day": "O'Day",
+  oday: "O'Day",
+  "o-day": "O'Day",
   macgregor: "MacGregor",
   "x-yachts": "X-Yachts",
   "j-boats": "J/Boats",
@@ -195,6 +197,62 @@ export function normalizeImportedSummary(value?: string | null) {
   return normalized.length >= 20 ? normalized : "";
 }
 
+function canonicalizeMakeName(make: string) {
+  const normalized = normalizeSpacing(make);
+  if (/^o\s+day$/i.test(normalized)) return "O'Day";
+  if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
+  if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
+  return normalized;
+}
+
+function normalizeRomanSuffixes(value: string) {
+  return value
+    .replace(/\bMk Ii\b/gi, "Mk II")
+    .replace(/\bMk Iii\b/gi, "Mk III")
+    .replace(/\bMk Iv\b/gi, "Mk IV");
+}
+
+function dedupeAdjacentModelTokens(value: string) {
+  const tokens = value.split(/\s+/).filter(Boolean);
+  const deduped: string[] = [];
+  for (const token of tokens) {
+    if (deduped[deduped.length - 1]?.toLowerCase() === token.toLowerCase()) {
+      continue;
+    }
+    deduped.push(token);
+  }
+  return deduped.join(" ");
+}
+
+function stripRepeatedMakeFromModel(make: string, model: string) {
+  const makeTokens = make.toLowerCase().split(/\s+/).filter(Boolean);
+  const modelTokens = model.split(/\s+/).filter(Boolean);
+  while (
+    makeTokens.length > 0 &&
+    modelTokens.length >= makeTokens.length &&
+    makeTokens.every((token, index) => modelTokens[index]?.toLowerCase() === token)
+  ) {
+    modelTokens.splice(0, makeTokens.length);
+  }
+  return modelTokens.join(" ");
+}
+
+function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: string, model: string) {
+  let cleaned = model;
+
+  if (sourceSite === "sailboatlistings") {
+    cleaned = cleaned.replace(
+      /^(Robertson And Caine|Robertson And Cane|Robertson Caine)\s+/i,
+      ""
+    );
+    if (/^Leopard$/i.test(make)) {
+      cleaned = cleaned.replace(/^South Africa\s+/i, "");
+    }
+  }
+
+  return cleaned.trim();
+}
+
 function inferModelFromSlug(slug?: string | null, make?: string | null) {
   const tokens = String(slug || "")
     .split("-")
@@ -237,6 +295,7 @@ export function normalizeImportedMakeModel(input: {
   make?: string | null;
   model?: string | null;
   slug?: string | null;
+  sourceSite?: string | null;
 }) {
   let make = normalizeSpacing(input.make);
   let model = normalizeSpacing(input.model);
@@ -250,11 +309,16 @@ export function normalizeImportedMakeModel(input: {
     .map(titleCaseToken)
     .filter(Boolean)
     .join(" ");
+  make = canonicalizeMakeName(make);
   model = model
     .split(/\s+/)
     .map(titleCaseToken)
     .filter(Boolean)
     .join(" ");
+  model = stripSourceSpecificNoise(input.sourceSite, make, model);
+  model = stripRepeatedMakeFromModel(make, model);
+  model = dedupeAdjacentModelTokens(model);
+  model = normalizeRomanSuffixes(model);
 
   if (GENERIC_MODEL_TOKENS.has(model.toLowerCase())) {
     model = "";

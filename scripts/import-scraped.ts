@@ -308,6 +308,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         make: parsedName.make,
         model: parsedName.model,
         slug: preNormalizedSlug,
+        sourceSite,
       });
 
       // Minimum 25ft, maximum 300ft — no dinghies, no parse errors
@@ -511,6 +512,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
         make: parsedName.make,
         model: parsedName.model,
         slug: preNormalizedSlug,
+        sourceSite,
       });
       const currency = detectCurrency(b);
 
