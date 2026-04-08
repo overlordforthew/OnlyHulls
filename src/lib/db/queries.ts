@@ -1,4 +1,5 @@
 import { query, queryOne } from "@/lib/db";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 
 interface BoatRow {
   id: string;
@@ -30,7 +31,8 @@ const BOAT_SELECT = `
          d.condition_score
   FROM boats b
   LEFT JOIN boat_dna d ON d.boat_id = b.id
-  WHERE b.status = 'active'`;
+  WHERE b.status = 'active'
+    AND ${buildVisibleImportQualitySql("b")}`;
 
 export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
   // Trending = most viewed, but only boats with 2+ images (no empty showcases)
@@ -61,7 +63,7 @@ export async function getRecentBoats(
 
 export async function getBoatCount(): Promise<number> {
   const result = await queryOne<{ count: string }>(
-    `SELECT COUNT(*) FROM boats WHERE status = 'active'`
+    `SELECT COUNT(*) FROM boats b WHERE b.status = 'active' AND ${buildVisibleImportQualitySql("b")}`
   );
   return parseInt(result?.count || "0");
 }

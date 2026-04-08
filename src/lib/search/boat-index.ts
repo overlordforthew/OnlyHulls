@@ -1,5 +1,6 @@
 import { query, queryOne } from "@/lib/db";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 
 export type BoatSearchDocument = {
   id: string;
@@ -55,6 +56,7 @@ export async function getActiveBoatSearchDocuments(): Promise<BoatSearchDocument
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}
      ORDER BY b.created_at DESC, b.id`
   );
 
@@ -73,7 +75,8 @@ export async function syncBoatSearchDocument(boatId: string) {
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.id = $1
-       AND b.status = 'active'`,
+       AND b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}`,
     [boatId]
   );
 

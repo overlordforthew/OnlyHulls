@@ -1,3 +1,5 @@
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+
 export type BoatSortField = "price" | "size" | "year" | "newest";
 export type BoatSortDir = "asc" | "desc";
 
@@ -131,7 +133,7 @@ export function buildOrderBy(sort: string, dir: string) {
 }
 
 export function buildWhereClause(filters: BoatSearchFilters) {
-  const conditions: string[] = ["b.status = 'active'"];
+  const conditions: string[] = ["b.status = 'active'", buildVisibleImportQualitySql("b")];
   const params: unknown[] = [];
   let paramIdx = 1;
 

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { ensureMatchExplanation } from "@/lib/ai/match-explanations";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { computeMatchesForBuyer } from "@/lib/matching/engine";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
@@ -36,7 +37,10 @@ export async function GET(req: Request) {
     let countResult = await queryOne<{ count: string }>(
       `SELECT COUNT(*) FROM matches m
        JOIN boats b ON b.id = m.boat_id
-       WHERE m.buyer_id = $1 AND m.buyer_action != 'passed' AND b.status = 'active'`,
+       WHERE m.buyer_id = $1
+         AND m.buyer_action != 'passed'
+         AND b.status = 'active'
+         AND ${buildVisibleImportQualitySql("b")}`,
       [buyerProfile.id]
     );
 
@@ -45,7 +49,10 @@ export async function GET(req: Request) {
       countResult = await queryOne<{ count: string }>(
         `SELECT COUNT(*) FROM matches m
          JOIN boats b ON b.id = m.boat_id
-         WHERE m.buyer_id = $1 AND m.buyer_action != 'passed' AND b.status = 'active'`,
+         WHERE m.buyer_id = $1
+           AND m.buyer_action != 'passed'
+           AND b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}`,
         [buyerProfile.id]
       );
     }
@@ -100,6 +107,7 @@ export async function GET(req: Request) {
        WHERE m.buyer_id = $1
          AND m.buyer_action != 'passed'
          AND b.status = 'active'
+         AND ${buildVisibleImportQualitySql("b")}
        ORDER BY m.score DESC
        LIMIT $2 OFFSET $3`,
       [buyerProfile.id, limit, offset]
@@ -161,6 +169,7 @@ export async function GET(req: Request) {
        WHERE m.buyer_id = $1
          AND m.buyer_action != 'passed'
          AND b.status = 'active'
+         AND ${buildVisibleImportQualitySql("b")}
        ORDER BY m.score DESC
        LIMIT $2 OFFSET $3`,
       [buyerProfile.id, limit, offset]

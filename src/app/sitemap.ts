@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getPublicAppUrl } from "@/lib/config/urls";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import type { MetadataRoute } from "next";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // ALL boat listing pages — no limit
   try {
     const boats = await query<{ slug: string; updated_at: string }>(
-      "SELECT slug, updated_at FROM boats WHERE status = 'active' AND slug IS NOT NULL ORDER BY updated_at DESC"
+      `SELECT slug, updated_at
+       FROM boats b
+       WHERE b.status = 'active'
+         AND b.slug IS NOT NULL
+         AND ${buildVisibleImportQualitySql("b")}
+       ORDER BY b.updated_at DESC`
     );
 
     const boatPages: MetadataRoute.Sitemap = boats.map((boat) => ({

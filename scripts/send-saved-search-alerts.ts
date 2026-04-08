@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import { pool, query, queryOne } from "../src/lib/db/index";
+import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 
 interface SavedSearchEmailRow {
   id: string;
@@ -154,7 +155,7 @@ function buildBrowseUrl(row: SavedSearchEmailRow) {
 }
 
 function buildConditions(row: SavedSearchEmailRow, includeSince: boolean) {
-  const conditions: string[] = ["b.status = 'active'"];
+  const conditions: string[] = ["b.status = 'active'", buildVisibleImportQualitySql("b")];
   const params: unknown[] = [];
   let paramIdx = 1;
 

@@ -18,6 +18,15 @@ import {
   embeddingsEnabled,
   generateEmbeddings,
 } from "../src/lib/ai/embeddings";
+import {
+  buildImportDocumentationStatus,
+  buildImportedCharacterTags,
+  buildImportedSummary,
+  buildImportQualityFlags,
+  calculateImportQualityScore,
+  normalizeImportedMakeModel,
+  normalizeImportedSummary,
+} from "../src/lib/import-quality";
 
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
@@ -174,6 +183,69 @@ function generateSlug(year: number, make: string, model: string, location: strin
     .join("-");
 }
 
+function buildSpecsAndSummary(input: {
+  boat: ScrapedBoat;
+  year: number;
+  make: string;
+  model: string;
+  price: number;
+  currency: string;
+  location: string;
+  sourceName: string;
+}) {
+  const loa = parseNumber(input.boat.length || input.boat.loa);
+  const beam = parseNumber(input.boat.beam);
+  const draft = parseNumber(input.boat.draft);
+  const rigType = input.boat.rigging || input.boat.type || "";
+  const hullMaterial = input.boat.hull || "";
+  const engine = input.boat.engine || "";
+
+  const specs: Record<string, unknown> = {
+    loa,
+    beam,
+    draft,
+    rig_type: rigType,
+    hull_material: hullMaterial,
+    engine,
+  };
+
+  if (input.boat.displacement) specs.displacement = parseNumber(input.boat.displacement);
+  if (input.boat.fuel_type) specs.fuel_type = input.boat.fuel_type;
+  if (input.boat.cabins) specs.cabins = parseNumber(input.boat.cabins);
+  if (input.boat.berths) specs.berths = parseNumber(input.boat.berths);
+  if (input.boat.heads) specs.heads = parseNumber(input.boat.heads);
+  if (input.boat.keel_type) specs.keel_type = input.boat.keel_type;
+  if (input.boat.water_capacity) specs.water_capacity = parseNumber(input.boat.water_capacity);
+  if (input.boat.fuel_capacity) specs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
+
+  const sourceSummary = normalizeImportedSummary(input.boat.description);
+  const summary =
+    sourceSummary ||
+    buildImportedSummary({
+      year: input.year,
+      make: input.make,
+      model: input.model,
+      locationText: input.location,
+      price: input.price,
+      currency: input.currency,
+      loa,
+      rigType,
+      hullMaterial,
+      berths: typeof specs.berths === "number" ? specs.berths : null,
+      heads: typeof specs.heads === "number" ? specs.heads : null,
+      sourceName: input.sourceName,
+    });
+  const summarySource: "source" | "deterministic" = sourceSummary ? "source" : "deterministic";
+  const tags = buildImportedCharacterTags({
+    priceUsd: toUsd(input.price, input.currency),
+    loa,
+    rigType,
+    existingTags: [],
+  });
+
+  return { loa, beam, draft, rigType, hullMaterial, engine, specs, summary, summarySource, tags };
+}
+
 async function ensureSystemSeller(): Promise<string> {
   let seller = await queryOne<{ id: string }>(
     "SELECT id FROM users WHERE email = 'system@onlyhulls.com'"
@@ -221,13 +293,22 @@ async function importBoats(filePath: string, sourceSite: string) {
 
       const year = parseYear(b.year);
       const price = parsePrice(b.price);
-      const { make, model } = parseMakeModel(b.name, year ?? undefined);
+      const parsedName = parseMakeModel(b.name, year ?? undefined);
 
       // Skip if missing critical fields or suspiciously low price
       if (!year || !price || price < 500) {
         skipped++;
         continue;
       }
+
+      const location = b.location || "";
+      const sourceUrl = b.url || "";
+      const preNormalizedSlug = generateSlug(year, parsedName.make, parsedName.model, location);
+      const { make, model } = normalizeImportedMakeModel({
+        make: parsedName.make,
+        model: parsedName.model,
+        slug: preNormalizedSlug,
+      });
 
       // Minimum 25ft, maximum 300ft — no dinghies, no parse errors
       const loa = parseNumber(b.length || b.loa);
@@ -249,9 +330,6 @@ async function importBoats(filePath: string, sourceSite: string) {
         skipped++;
         continue;
       }
-
-      const location = b.location || "";
-      const sourceUrl = b.url || "";
 
       const slug = generateSlug(year, make, model, location);
 
@@ -288,50 +366,38 @@ async function importBoats(filePath: string, sourceSite: string) {
         continue;
       }
 
-      // Insert boat_dna
-      const beam = parseNumber(b.beam);
-      const draft = parseNumber(b.draft);
-      const rigType = b.rigging || b.type || "";
-      const hullMaterial = b.hull || "";
-      const engine = b.engine || "";
-      // Clean up descriptions with HTML artifacts
-      let desc = (b.description || "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .replace(/^["'\s]+/, "")
-        .replace(/\bcontent=.*$/i, "")
-        .trim();
-      if (desc.length < 20) desc = "";
-
-      // Auto-tag based on available data
-      const tags: string[] = [];
-      if (price < 50000) tags.push("budget-friendly");
-      if (price >= 200000) tags.push("premium");
-      if (loa && loa >= 40) tags.push("bluewater");
-      if (loa && loa < 30) tags.push("weekender");
-      if (rigType.toLowerCase().includes("cutter")) tags.push("bluewater");
-      if (rigType.toLowerCase().includes("ketch")) tags.push("classic");
-
-      const specs: Record<string, unknown> = {
-        loa, beam, draft,
-        rig_type: rigType,
-        hull_material: hullMaterial,
-        engine,
-      };
-      // Extended specs from detail-page scrapers
-      if (b.displacement) specs.displacement = parseNumber(b.displacement);
-      if (b.fuel_type) specs.fuel_type = b.fuel_type;
-      if (b.cabins) specs.cabins = parseNumber(b.cabins);
-      if (b.berths) specs.berths = parseNumber(b.berths);
-      if (b.heads) specs.heads = parseNumber(b.heads);
-      if (b.keel_type) specs.keel_type = b.keel_type;
-      if (b.water_capacity) specs.water_capacity = parseNumber(b.water_capacity);
-      if (b.fuel_capacity) specs.fuel_capacity = parseNumber(b.fuel_capacity);
+      const { specs, summary, summarySource, tags } = buildSpecsAndSummary({
+        boat: b,
+        year,
+        make,
+        model,
+        price,
+        currency,
+        location,
+        sourceName: source.name,
+      });
+      const images = b.images || [];
+      const priceUsd = toUsd(price, currency);
+      const qualityFlags = buildImportQualityFlags({
+        model,
+        imageCount: images.length,
+        priceUsd,
+        summary,
+      });
+      const qualityScore = calculateImportQualityScore(qualityFlags);
+      const documentationStatus = buildImportDocumentationStatus({
+        flags: qualityFlags,
+        score: qualityScore,
+        summarySource,
+        sourceName: source.name,
+        imageCount: images.length,
+        priceUsd,
+      });
 
       await query(
-        `INSERT INTO boat_dna (boat_id, specs, character_tags, ai_summary)
-         VALUES ($1, $2, $3, $4)`,
-        [boat.id, JSON.stringify(specs), tags, desc]
+        `INSERT INTO boat_dna (boat_id, specs, character_tags, ai_summary, documentation_status)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [boat.id, JSON.stringify(specs), tags, summary, JSON.stringify(documentationStatus)]
       );
 
       if (embeddingsEnabled()) {
@@ -346,13 +412,12 @@ async function importBoats(filePath: string, sourceSite: string) {
             location_text: location,
             specs,
             character_tags: tags,
-            ai_summary: desc,
+            ai_summary: summary,
           }),
         });
       }
 
       // Insert images as boat_media
-      const images = b.images || [];
       for (let i = 0; i < images.length; i++) {
         await query(
           `INSERT INTO boat_media (boat_id, type, url, sort_order)
@@ -437,48 +502,74 @@ async function updateBoats(filePath: string, sourceSite: string) {
       if (!existing) { notFound++; continue; }
 
       const boatId = existing.id;
+      const year = parseYear(b.year);
+      const price = parsePrice(b.price);
+      const location = b.location || "";
+      const parsedName = b.name ? parseMakeModel(b.name, year ?? undefined) : { make: "", model: "" };
+      const preNormalizedSlug = generateSlug(year || 0, parsedName.make, parsedName.model, location);
+      const { make, model } = normalizeImportedMakeModel({
+        make: parsedName.make,
+        model: parsedName.model,
+        slug: preNormalizedSlug,
+      });
+      const currency = detectCurrency(b);
 
-      // Build updated specs
-      const beam = parseNumber(b.beam);
-      const draft = parseNumber(b.draft);
-      const loa = parseNumber(b.length || b.loa);
-      const rigType = b.rigging || b.type || "";
-      const hullMaterial = b.hull || "";
-      const engine = b.engine || "";
-      const specs: Record<string, unknown> = {
-        loa, beam, draft,
-        rig_type: rigType,
-        hull_material: hullMaterial,
-        engine,
-      };
-      if (b.displacement) specs.displacement = parseNumber(b.displacement);
-      if (b.fuel_type) specs.fuel_type = b.fuel_type;
-      if (b.cabins) specs.cabins = parseNumber(b.cabins);
-      if (b.berths) specs.berths = parseNumber(b.berths);
-      if (b.heads) specs.heads = parseNumber(b.heads);
-      if (b.keel_type) specs.keel_type = b.keel_type;
-      if (b.water_capacity) specs.water_capacity = parseNumber(b.water_capacity);
-      if (b.fuel_capacity) specs.fuel_capacity = parseNumber(b.fuel_capacity);
-
-      let desc = (b.description || "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .replace(/^["'\s]+/, "")
-        .replace(/\bcontent=.*$/i, "")
-        .trim();
-      if (desc.length < 20) desc = "";
+      const { beam, draft, hullMaterial, engine, specs, summary, summarySource } = buildSpecsAndSummary({
+        boat: b,
+        year: year || new Date().getUTCFullYear(),
+        make,
+        model,
+        price: price || 0,
+        currency,
+        location,
+        sourceName: source.name,
+      });
 
       // Upsert boat_dna
+      const images = b.images || [];
+      const priceUsd = price ? toUsd(price, currency) : null;
+      const qualityFlags = buildImportQualityFlags({
+        model,
+        imageCount: images.length,
+        priceUsd,
+        summary,
+      });
+      const qualityScore = calculateImportQualityScore(qualityFlags);
+      const documentationStatus = buildImportDocumentationStatus({
+        flags: qualityFlags,
+        score: qualityScore,
+        summarySource,
+        sourceName: source.name,
+        imageCount: images.length,
+        priceUsd,
+      });
+
       await query(
-        `INSERT INTO boat_dna (boat_id, specs, ai_summary)
-         VALUES ($1, $2, $3)
+        `UPDATE boats
+         SET make = CASE WHEN NULLIF($2, '') IS NOT NULL THEN $2 ELSE make END,
+             model = CASE WHEN NULLIF($3, '') IS NOT NULL THEN $3 ELSE model END,
+             year = COALESCE($4, year),
+             asking_price = COALESCE($5, asking_price),
+             currency = COALESCE(NULLIF($6, ''), currency),
+             asking_price_usd = COALESCE($7, asking_price_usd),
+             location_text = COALESCE(NULLIF($8, ''), location_text),
+             last_seen_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [boatId, make, model, year, price, currency, priceUsd, location]
+      );
+
+      await query(
+        `INSERT INTO boat_dna (boat_id, specs, ai_summary, documentation_status)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (boat_id) DO UPDATE SET
-           specs = $2, ai_summary = CASE WHEN length($3) > 0 THEN $3 ELSE boat_dna.ai_summary END`,
-        [boatId, JSON.stringify(specs), desc]
+           specs = $2,
+           ai_summary = CASE WHEN length($3) > 0 THEN $3 ELSE boat_dna.ai_summary END,
+           documentation_status = $4`,
+        [boatId, JSON.stringify(specs), summary, JSON.stringify(documentationStatus)]
       );
 
       // Replace images: delete old, insert new
-      const images = b.images || [];
       if (images.length > 0) {
         await query("DELETE FROM boat_media WHERE boat_id = $1", [boatId]);
         for (let i = 0; i < images.length; i++) {

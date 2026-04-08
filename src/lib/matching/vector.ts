@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { logger } from "@/lib/logger";
 
 interface VectorCandidate {
@@ -15,6 +16,7 @@ export async function findTopCandidates(
       `SELECT b.id, 1 - (b.dna_embedding <=> $1::vector) AS similarity
        FROM boats b
        WHERE b.status = 'active'
+         AND ${buildVisibleImportQualitySql("b")}
          AND b.dna_embedding IS NOT NULL
        ORDER BY b.dna_embedding <=> $1::vector
        LIMIT $2`,

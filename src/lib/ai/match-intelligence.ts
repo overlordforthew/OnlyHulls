@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { query, queryOne } from "@/lib/db";
 import { generateText, getMatchIntelligenceProvider, matchIntelligenceEnabled } from "@/lib/ai/provider";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { logLLMResponse } from "@/lib/ai/logging";
 import type { ScoreBreakdown } from "@/lib/matching/rules";
 import { logger } from "@/lib/logger";
@@ -298,6 +299,7 @@ async function fetchCandidateContext(buyerProfileId: string): Promise<CandidateC
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE m.buyer_id = $1
        AND b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}
        AND m.buyer_action != 'passed'
      ORDER BY m.score DESC
      LIMIT $2`,

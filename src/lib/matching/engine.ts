@@ -7,6 +7,7 @@ import {
   type BuyerProfileForMatching,
 } from "./heuristic";
 import { rerankMatchesForBuyer } from "@/lib/ai/match-intelligence";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { logger } from "@/lib/logger";
 
 const BATCH_SIZE = 10;
@@ -147,7 +148,8 @@ async function computeVectorMatches(
             COALESCE(d.character_tags, '{}') as character_tags
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
-     WHERE b.id = ANY($1)`,
+     WHERE b.id = ANY($1)
+       AND ${buildVisibleImportQualitySql("b")}`,
     [boatIds]
   );
 
@@ -211,7 +213,7 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   text: string;
   params: unknown[];
 } {
-  const conditions = ["b.status = 'active'"];
+  const conditions = ["b.status = 'active'", buildVisibleImportQualitySql("b")];
   const params: unknown[] = [];
   let paramIdx = 1;
 

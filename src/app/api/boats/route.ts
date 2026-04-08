@@ -7,6 +7,7 @@ import {
   filtersFromSearchParams,
   type BoatSearchFilters,
 } from "@/lib/search/boat-search";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { NextResponse } from "next/server";
 
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
@@ -129,6 +130,7 @@ async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: str
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        WHERE b.id::text = ANY($1)
          AND b.status = 'active'
+         AND ${buildVisibleImportQualitySql("b")}
        ORDER BY array_position($1::text[], b.id::text) ASC`,
       [ids]
     );
@@ -141,6 +143,7 @@ async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: str
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.id = ANY($1)
        AND b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}
      ORDER BY ${orderBy}`,
     [ids]
   );

@@ -1,5 +1,6 @@
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import Link from "next/link";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
 import { ImageGallery } from "@/components/ImageGallery";
@@ -45,7 +46,8 @@ async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
      WHERE (b.slug = $1 OR b.id::text = $1)
-       AND b.status = 'active'`,
+       AND b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}`,
     [slug]
   );
 }
@@ -76,6 +78,12 @@ async function getBoatForViewer(
   }
 
   if (boat.status === "active") {
+    if (
+      boat.source_url &&
+      (!boat.hero_url || !boat.model.trim() || Number(boat.asking_price_usd || boat.asking_price) < 3000)
+    ) {
+      return null;
+    }
     return boat;
   }
 
