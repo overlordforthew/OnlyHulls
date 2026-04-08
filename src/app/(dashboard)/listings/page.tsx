@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { emailEnabled, storageEnabled } from "@/lib/capabilities";
 import {
   getSellerDashboardData,
+  getListingAgeDays,
+  getListingAttentionReasons,
+  getListingFreshness,
+  getListingHealthScore,
   respondToSellerIntroduction,
   type SellerLead,
   type SellerListing,
@@ -55,6 +60,11 @@ export default async function ListingsDashboardPage({
     emailEnabled(),
     storageEnabled(),
   ]);
+  const listingsNeedingAttention = listings.filter(
+    (listing) => getListingAttentionReasons(listing).length > 0
+  );
+  const pendingLeads = leads.filter((lead) => lead.status === "pending");
+  const hotLeads = pendingLeads.filter((lead) => getLeadAgeHours(lead) >= 24);
 
   async function updateLeadStatus(formData: FormData) {
     "use server";
@@ -118,6 +128,30 @@ export default async function ListingsDashboardPage({
         <MetricCard label="Pending Leads" value={stats.pendingLeads} />
       </div>
 
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Response Rate"
+          value={formatPercent(stats.responseRate)}
+          hint={`${stats.respondedLeads} of ${stats.totalLeads} leads answered`}
+        />
+        <MetricCard
+          label="Avg. Response"
+          value={stats.avgResponseHours === null ? "No responses yet" : formatHours(stats.avgResponseHours)}
+          hint="Time from buyer request to seller response"
+        />
+        <MetricCard
+          label="Listings With Photos"
+          value={`${stats.listingsWithPhotos}/${stats.totalListings}`}
+          hint={`${stats.listingsWithVideo} also include video`}
+        />
+        <MetricCard
+          label="Needs Attention"
+          value={stats.listingsNeedingAttention}
+          hint={`${stats.staleListings} stale, ${hotLeads.length} hot leads`}
+          highlight={stats.listingsNeedingAttention > 0 || hotLeads.length > 0}
+        />
+      </div>
+
       <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
         <h2 className="text-lg font-semibold">Lead Handling</h2>
         <p className="mt-2 text-sm text-text-secondary">
@@ -132,9 +166,38 @@ export default async function ListingsDashboardPage({
         <p className="mt-2 text-sm text-text-secondary">
           {canUploadMedia
             ? "Media uploads are enabled. Use Manage Listing to add or replace listing photos."
-            : "Media uploads are still blocked by missing S3 storage credentials. Listing edit and resubmission are live now."}
+            : "Media uploads are still blocked by missing storage configuration. Listing edit and resubmission are live now."}
         </p>
       </div>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-3">
+        <ActionCard
+          title="Respond to buyers"
+          count={pendingLeads.length}
+          tone={pendingLeads.length > 0 ? "accent" : "neutral"}
+          description={
+            hotLeads.length > 0
+              ? `${hotLeads.length} lead${hotLeads.length === 1 ? "" : "s"} waiting 24h+`
+              : "No overdue buyer replies right now."
+          }
+        />
+        <ActionCard
+          title="Fix listings"
+          count={listingsNeedingAttention.length}
+          tone={listingsNeedingAttention.length > 0 ? "danger" : "neutral"}
+          description={
+            stats.listingsNeedingAttention > 0
+              ? "Photos, description, freshness, or moderation status need work."
+              : "Your listing quality baseline is in good shape."
+          }
+        />
+        <ActionCard
+          title="Upgrade candidates"
+          count={listings.filter((listing) => getListingHealthScore(listing) >= 75).length}
+          tone="success"
+          description="Listings with strong media and details are ready for featured placement."
+        />
+      </section>
 
       <section className="mt-10">
         <div className="flex items-center justify-between gap-4">
@@ -193,10 +256,12 @@ function MetricCard({
   label,
   value,
   highlight,
+  hint,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   highlight?: boolean;
+  hint?: string;
 }) {
   return (
     <div
@@ -204,8 +269,11 @@ function MetricCard({
         highlight ? "border-accent/40 bg-accent/10" : "border-border bg-surface"
       }`}
     >
-      <p className="text-2xl font-bold">{value.toLocaleString("en-US")}</p>
+      <p className="text-2xl font-bold">
+        {typeof value === "number" ? value.toLocaleString("en-US") : value}
+      </p>
       <p className="mt-1 text-sm text-text-secondary">{label}</p>
+      {hint && <p className="mt-2 text-xs text-text-secondary">{hint}</p>}
     </div>
   );
 }
@@ -217,6 +285,13 @@ function ListingCard({
   listing: SellerListing;
   canUploadMedia: boolean;
 }) {
+  const attentionReasons = getListingAttentionReasons(listing);
+  const freshness = getListingFreshness(listing);
+  const ageDays = getListingAgeDays(listing);
+  const healthScore = getListingHealthScore(listing);
+  const responseRate =
+    listing.lead_count > 0 ? listing.responded_lead_count / listing.lead_count : 0;
+
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
@@ -232,14 +307,56 @@ function ListingCard({
         <StatusPill status={listing.status} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+      <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
         <ListingStat label="Views" value={listing.view_count} />
         <ListingStat label="Leads" value={listing.lead_count} />
         <ListingStat label="Accepted" value={listing.accepted_lead_count} />
+        <ListingStat label="Response" value={formatPercent(responseRate)} />
+      </div>
+
+      <div className="mt-4 rounded-xl bg-background px-4 py-3">
+        <div className="flex items-center justify-between gap-4 text-sm">
+          <span className="font-medium">Listing Health</span>
+          <span className="text-text-secondary">{healthScore}/100</span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-surface">
+          <div
+            className={`h-full rounded-full ${
+              healthScore >= 75
+                ? "bg-green-500"
+                : healthScore >= 50
+                  ? "bg-accent"
+                  : "bg-red-400"
+            }`}
+            style={{ width: `${healthScore}%` }}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <InlineBadge
+            tone={freshness === "fresh" ? "success" : freshness === "aging" ? "warning" : "danger"}
+          >
+            {freshness === "fresh"
+              ? "Fresh"
+              : freshness === "aging"
+                ? `Aging (${ageDays}d)`
+                : `Stale (${ageDays}d)`}
+          </InlineBadge>
+          <InlineBadge tone={listing.image_count >= 3 ? "success" : "warning"}>
+            {listing.image_count} photo{listing.image_count === 1 ? "" : "s"}
+          </InlineBadge>
+          {listing.video_count > 0 && (
+            <InlineBadge tone="neutral">
+              {listing.video_count} video{listing.video_count === 1 ? "" : "s"}
+            </InlineBadge>
+          )}
+          <InlineBadge tone={listing.has_description ? "success" : "warning"}>
+            {listing.has_description ? "Description ready" : "Description missing"}
+          </InlineBadge>
+        </div>
       </div>
 
       <p className="mt-4 text-sm text-text-secondary">
-        Created {formatDate(listing.created_at)}
+        Created {formatDate(listing.created_at)}. Updated {formatRelativeDays(ageDays)}.
       </p>
       {listing.status === "pending_review" && (
         <p className="mt-2 text-sm text-accent">
@@ -250,6 +367,15 @@ function ListingCard({
         <p className="mt-2 text-sm text-red-400">
           This listing is not live. Update it and resubmit through admin review.
         </p>
+      )}
+      {attentionReasons.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {attentionReasons.map((reason) => (
+            <InlineBadge key={reason} tone="warning">
+              {reason}
+            </InlineBadge>
+          ))}
+        </div>
       )}
 
       <div className="mt-5 flex flex-wrap gap-3">
@@ -275,16 +401,18 @@ function ListingCard({
       <p className="mt-3 text-xs text-text-secondary">
         {canUploadMedia
           ? "Photos, captions, and listing details can be managed from the listing workspace."
-          : "Listing editing is live. Photo uploads unlock automatically once object storage is configured."}
+          : "Listing editing is live. Photo uploads unlock automatically once storage is configured."}
       </p>
     </div>
   );
 }
 
-function ListingStat({ label, value }: { label: string; value: number }) {
+function ListingStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl bg-background px-3 py-2">
-      <p className="text-lg font-semibold">{value.toLocaleString("en-US")}</p>
+      <p className="text-lg font-semibold">
+        {typeof value === "number" ? value.toLocaleString("en-US") : value}
+      </p>
       <p className="text-xs text-text-secondary">{label}</p>
     </div>
   );
@@ -297,6 +425,15 @@ function LeadCard({
   lead: SellerLead;
   updateLeadStatus: (formData: FormData) => Promise<void>;
 }) {
+  const ageHours = getLeadAgeHours(lead);
+  const pendingTooLong = lead.status === "pending" && ageHours >= 24;
+  const responseLabel = lead.responded_at
+    ? `Responded in ${formatHours(
+        (new Date(lead.responded_at).getTime() - new Date(lead.sent_at).getTime()) /
+          (1000 * 60 * 60)
+      )}`
+    : null;
+
   return (
     <div className="rounded-2xl border border-border bg-surface p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -304,6 +441,7 @@ function LeadCard({
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-lg font-semibold">{lead.boat_title}</p>
             <StatusPill status={lead.status} />
+            {pendingTooLong && <InlineBadge tone="danger">Waiting 24h+</InlineBadge>}
           </div>
           <p className="mt-2 text-sm text-text-secondary">
             Buyer: {lead.buyer_name || "Interested buyer"}{" "}
@@ -313,6 +451,11 @@ function LeadCard({
           </p>
           <p className="mt-1 text-sm text-text-secondary">
             Match score: {Math.round(lead.match_score * 100)}% - Requested {formatDateTime(lead.sent_at)}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {lead.status === "pending"
+              ? `Awaiting seller response for ${formatRelativeHours(ageHours)}.`
+              : responseLabel || "Seller responded."}
           </p>
           {lead.buyer_message && (
             <div className="mt-4 rounded-xl bg-background px-4 py-3 text-sm text-foreground/85">
@@ -393,6 +536,54 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+function ActionCard({
+  title,
+  count,
+  description,
+  tone,
+}: {
+  title: string;
+  count: number;
+  description: string;
+  tone: "neutral" | "accent" | "danger" | "success";
+}) {
+  const tones: Record<"neutral" | "accent" | "danger" | "success", string> = {
+    neutral: "border-border bg-surface",
+    accent: "border-accent/30 bg-accent/10",
+    danger: "border-red-500/30 bg-red-500/10",
+    success: "border-green-500/30 bg-green-500/10",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-5 ${tones[tone]}`}>
+      <p className="text-sm font-medium text-text-secondary">{title}</p>
+      <p className="mt-2 text-3xl font-bold">{count.toLocaleString("en-US")}</p>
+      <p className="mt-2 text-sm text-text-secondary">{description}</p>
+    </div>
+  );
+}
+
+function InlineBadge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "neutral" | "success" | "warning" | "danger";
+}) {
+  const styles: Record<"neutral" | "success" | "warning" | "danger", string> = {
+    neutral: "border-border bg-background text-text-secondary",
+    success: "border-green-500/30 bg-green-500/10 text-green-300",
+    warning: "border-accent/30 bg-accent/10 text-accent",
+    danger: "border-red-500/30 bg-red-500/10 text-red-300",
+  };
+
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1 ${styles[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
 function getBoatHref(listing: SellerListing) {
   return listing.slug ? `/boats/${listing.slug}` : `/boats/${listing.id}`;
 }
@@ -418,4 +609,40 @@ function formatDateTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatHours(value: number) {
+  if (value < 1) {
+    return `${Math.max(1, Math.round(value * 60))}m`;
+  }
+  if (value < 24) {
+    return `${Math.round(value * 10) / 10}h`;
+  }
+  return `${Math.round((value / 24) * 10) / 10}d`;
+}
+
+function formatRelativeDays(days: number) {
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
+function getLeadAgeHours(lead: Pick<SellerLead, "sent_at">) {
+  const sentAt = new Date(lead.sent_at);
+  if (Number.isNaN(sentAt.getTime())) {
+    return 0;
+  }
+
+  return Math.max(0, (Date.now() - sentAt.getTime()) / (1000 * 60 * 60));
+}
+
+function formatRelativeHours(hours: number) {
+  if (hours < 1) return "less than 1 hour";
+  if (hours < 24) return `${Math.floor(hours)} hour${hours >= 2 ? "s" : ""}`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days >= 2 ? "s" : ""}`;
 }

@@ -98,6 +98,10 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
   const [canResubmit, setCanResubmit] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [data, setData] = useState<ListingData>(DEFAULT_DATA);
+  const reviewChecklist = buildReviewChecklist(data);
+  const readinessScore = getReadinessScore(reviewChecklist);
+  const photoCount = data.media.filter((item) => item.type === "image").length;
+  const videoCount = data.media.filter((item) => item.type === "video").length;
 
   const currentIdx = STEPS.indexOf(step);
   const canNext = currentIdx < STEPS.length - 1;
@@ -439,6 +443,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
             Media storage not configured
           </span>
         )}
+        <span className="rounded-full border border-border bg-background px-3 py-1 text-text-secondary">
+          Readiness {readinessScore}/100
+        </span>
       </div>
 
       {message && (
@@ -751,18 +758,56 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
               {data.locationText && <p className="mt-1">{data.locationText}</p>}
               {data.specs.loa && <p className="mt-1">LOA: {data.specs.loa}ft</p>}
               {data.specs.rig_type && <p>Rig: {data.specs.rig_type}</p>}
-              {data.media.filter((item) => item.type === "image").length > 0 && (
-                <p>Photos: {data.media.filter((item) => item.type === "image").length}</p>
-              )}
-              {data.media.filter((item) => item.type === "video").length > 0 && (
-                <p>Videos: {data.media.filter((item) => item.type === "video").length}</p>
-              )}
+              {photoCount > 0 && <p>Photos: {photoCount}</p>}
+              {videoCount > 0 && <p>Videos: {videoCount}</p>}
               {data.characterTags.length > 0 && (
                 <p className="mt-1">Tags: {data.characterTags.join(", ")}</p>
               )}
               {data.description && (
                 <p className="mt-2 text-foreground/60">{data.description}</p>
               )}
+            </div>
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-sm font-semibold">Approval Readiness</h3>
+                <span className="text-sm font-medium text-text-secondary">
+                  {readinessScore}/100
+                </span>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full ${
+                    readinessScore >= 75
+                      ? "bg-green-500"
+                      : readinessScore >= 50
+                        ? "bg-accent"
+                        : "bg-red-400"
+                  }`}
+                  style={{ width: `${readinessScore}%` }}
+                />
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {reviewChecklist.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-lg bg-background px-3 py-3 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium">{item.label}</span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          item.passed
+                            ? "bg-green-500/10 text-green-300"
+                            : "bg-accent/10 text-accent"
+                        }`}
+                      >
+                        {item.passed ? "Ready" : "Improve"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-foreground/60">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground/70">
               {editMode ? (
@@ -787,6 +832,9 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
                   this editor becomes your workspace for photos and updates.
                 </p>
               )}
+              <p className="mt-3 text-xs text-foreground/50">
+                Best results: 6+ photos, a clear description, location, and core specs.
+              </p>
             </div>
           </div>
         )}
@@ -934,4 +982,63 @@ function Select({
       </select>
     </div>
   );
+}
+
+function buildReviewChecklist(data: ListingData) {
+  const photoCount = data.media.filter((item) => item.type === "image").length;
+  const specCount = [
+    data.specs.loa,
+    data.specs.beam,
+    data.specs.draft,
+    data.specs.rig_type,
+    data.specs.hull_material,
+    data.specs.engine,
+    data.specs.berths,
+    data.specs.heads,
+  ].filter(Boolean).length;
+
+  return [
+    {
+      label: "Core details",
+      passed: Boolean(data.make && data.model && data.year && data.askingPrice),
+      detail: "Make, model, year, and asking price should all be set.",
+      weight: 20,
+    },
+    {
+      label: "Location",
+      passed: Boolean(data.locationText.trim()),
+      detail: "Give buyers a real location so the listing feels credible and searchable.",
+      weight: 10,
+    },
+    {
+      label: "Description",
+      passed: data.description.trim().length >= 120,
+      detail: "A fuller description improves approval odds and buyer conversion.",
+      weight: 20,
+    },
+    {
+      label: "Photos",
+      passed: photoCount >= 3,
+      detail: `Add at least 3 photos. ${photoCount} currently attached.`,
+      weight: 25,
+    },
+    {
+      label: "Specs",
+      passed: specCount >= 3,
+      detail: `Add core specs like LOA, rig, hull, engine, berths, or heads. ${specCount} filled now.`,
+      weight: 15,
+    },
+    {
+      label: "Condition",
+      passed: Number.isFinite(data.conditionScore) && data.conditionScore > 0,
+      detail: "Condition helps buyers qualify the boat quickly.",
+      weight: 10,
+    },
+  ];
+}
+
+function getReadinessScore(
+  checklist: Array<{ passed: boolean; weight: number }>
+) {
+  return checklist.reduce((total, item) => total + (item.passed ? item.weight : 0), 0);
 }
