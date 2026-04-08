@@ -28,6 +28,6 @@ test.describe("seller auth flow", () => {
     await expect(manageButton).toBeVisible();
     await manageButton.click();
     await expect(page.getByRole("heading", { name: "Manage Listing", exact: false })).toBeVisible();
-    await expect(page.getByText("Approval Readiness", { exact: false })).toBeVisible();
+    await expect(page.getByText("Readiness", { exact: false })).toBeVisible();
   });
 });
