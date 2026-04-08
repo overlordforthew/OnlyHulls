@@ -113,7 +113,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
     const resubmitted = searchParams.get("resubmitted");
 
     if (created === "1") {
-      setMessage("Listing created. You can refine the details and manage photos here.");
+      setMessage("Draft created. Add the missing details, photos, and then submit it for review.");
     } else if (resubmitted === "1") {
       setMessage("Listing updated and resubmitted for review.");
     } else if (saved === "1") {
@@ -411,7 +411,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
           <p className="mt-1 text-sm text-foreground/60">
             {editMode
               ? "Refine details, manage photos, add videos, and keep the listing ready for buyers."
-              : "Create your listing, then polish it with photos, videos, and final details."}
+              : "Create your draft, then polish it with photos, videos, and final details before review."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -645,7 +645,7 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
             {!editMode ? (
               <div className="rounded-xl border border-border bg-surface p-4 text-sm text-foreground/70">
                 Create the listing first, then return here to upload photos and add video links.
-                The editor will reopen automatically after submission.
+                The editor will reopen automatically after the draft is created.
               </div>
             ) : storageReady ? (
               <div className="rounded-xl border border-border bg-surface p-4">
@@ -828,8 +828,8 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
                 </>
               ) : (
                 <p>
-                  Your listing will be reviewed by an admin before going live. After creation,
-                  this editor becomes your workspace for photos and updates.
+                  Creating the listing saves it as a draft first. Use this workspace to finish the
+                  details, then submit it for admin review when the readiness score is strong.
                 </p>
               )}
               <p className="mt-3 text-xs text-foreground/50">

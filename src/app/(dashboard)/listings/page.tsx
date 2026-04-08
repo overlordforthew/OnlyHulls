@@ -368,6 +368,11 @@ function ListingCard({
           This listing is not live. Update it and resubmit through admin review.
         </p>
       )}
+      {listing.status === "draft" && (
+        <p className="mt-2 text-sm text-text-secondary">
+          This listing is still a draft. Finish the details and submit it for review when ready.
+        </p>
+      )}
       {attentionReasons.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {attentionReasons.map((reason) => (

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     const boat = await queryOne<{ id: string }>(
       `INSERT INTO boats (seller_id, slug, hull_id, make, model, year, asking_price, currency,
          status, location_text, location_lat, location_lng)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review', $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9, $10, $11)
        RETURNING id`,
       [
         user.id,
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
     );
 
-    return NextResponse.json({ id: boat.id, slug, status: "pending_review" });
+    return NextResponse.json({ id: boat.id, slug, status: "draft" });
   } catch (err) {
     logger.error({ err }, "POST /api/listings error");
     return NextResponse.json(

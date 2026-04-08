@@ -241,6 +241,9 @@ export function getListingAttentionReasons(listing: SellerListing) {
   if (listing.status === "rejected") {
     reasons.push("Needs edits");
   }
+  if (listing.status === "draft") {
+    reasons.push("Submit for review");
+  }
   if (listing.image_count === 0) {
     reasons.push("Missing photos");
   } else if (listing.image_count < 3) {
