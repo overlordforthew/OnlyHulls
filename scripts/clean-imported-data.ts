@@ -184,9 +184,11 @@ async function reindexVisibleBoats() {
 async function main() {
   const dryRun = parseArgFlag("--dry-run");
   const reindex = parseArgFlag("--reindex");
+  const skipEmbeddings = parseArgFlag("--skip-embeddings");
   const limit = parseArgValue("--limit", DEFAULT_LIMIT);
   const llmLimit = parseArgValue("--llm-limit", DEFAULT_LLM_LIMIT);
   const modelConfig = configureCleanupModel();
+  const shouldRefreshEmbeddings = !skipEmbeddings && !dryRun && embeddingsEnabled();
 
   const rows = await fetchCandidates(limit);
   if (rows.length === 0) {
@@ -280,7 +282,7 @@ async function main() {
       character_tags: normalizedTags,
       ai_summary: summary,
     });
-    const embedding = !dryRun && embeddingsEnabled() ? await generateEmbedding(embeddingText) : [];
+    const embedding = shouldRefreshEmbeddings ? await generateEmbedding(embeddingText) : [];
 
     if (!dryRun) {
       await query(
