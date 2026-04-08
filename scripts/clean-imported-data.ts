@@ -53,7 +53,7 @@ function parseArgValue(name: string, fallback: number) {
   if (index === -1) return fallback;
   const raw = process.argv[index + 1];
   const value = Number.parseInt(raw || "", 10);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 function configureCleanupModel() {
