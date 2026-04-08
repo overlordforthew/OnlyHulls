@@ -33,6 +33,11 @@ type CleanupRow = {
   image_count: number;
 };
 
+type DatabaseLikeError = {
+  code?: string;
+  cause?: { code?: string };
+};
+
 const DEFAULT_LIMIT = Number.MAX_SAFE_INTEGER;
 const DEFAULT_LLM_LIMIT = 250;
 const SUMMARY_SYSTEM_PROMPT = [
@@ -105,6 +110,11 @@ function shouldUseLlm(row: CleanupRow, llmRemaining: number) {
   const summarySource = String(row.documentation_status?.summary_source || "");
   if (summarySource === "llm") return false;
   return !row.ai_summary || row.ai_summary.trim().length < 100;
+}
+
+function isDuplicateConflict(err: unknown) {
+  const candidate = err as DatabaseLikeError | undefined;
+  return candidate?.code === "23505" || candidate?.cause?.code === "23505";
 }
 
 async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string) {
@@ -285,14 +295,28 @@ async function main() {
     const embedding = shouldRefreshEmbeddings ? await generateEmbedding(embeddingText) : [];
 
     if (!dryRun) {
-      await query(
-        `UPDATE boats
-         SET make = $2,
-             model = $3,
-             updated_at = NOW()
-         WHERE id = $1`,
-        [row.id, normalized.make, normalized.model]
-      );
+      try {
+        await query(
+          `UPDATE boats
+           SET make = $2,
+               model = $3,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [row.id, normalized.make, normalized.model]
+        );
+      } catch (err) {
+        if (isDuplicateConflict(err)) {
+          documentationStatus.import_quality_flags = Array.from(
+            new Set([...(documentationStatus.import_quality_flags as string[] || []), "normalization_conflict"])
+          );
+          documentationStatus.import_quality_score = calculateImportQualityScore(
+            documentationStatus.import_quality_flags as string[]
+          );
+          documentationStatus.import_quality_visible = false;
+        } else {
+          throw err;
+        }
+      }
 
       await query(
         `INSERT INTO boat_dna (boat_id, specs, character_tags, ai_summary, documentation_status)
