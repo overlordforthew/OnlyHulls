@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:browser": "playwright test",
+    "test:browser:headed": "playwright test --headed",
     "db:migrate": "npx tsx src/lib/db/migrate.ts",
     "db:seed": "npx tsx scripts/seed.ts",
     "db:import": "npx tsx scripts/import-scraped.ts",
@@ -39,6 +41,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
