@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
 
@@ -57,11 +58,12 @@ export default function BoatCard({
       <Link href={href} className="block">
         <div className="relative aspect-[4/3] bg-muted overflow-hidden">
           {boat.hero_url ? (
-            <img
+            <Image
               src={boat.hero_url}
               alt={`${boat.year} ${boat.make} ${boat.model}`}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 33vw"
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated">

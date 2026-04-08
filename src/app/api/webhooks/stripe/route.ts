@@ -38,7 +38,6 @@ export async function POST(req: Request) {
         const session = event.data.object;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
-        const email = session.customer_details?.email;
 
         logger.info({ customerId, subscriptionId }, "Checkout completed");
 

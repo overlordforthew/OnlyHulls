@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Camera, ChevronLeft, ChevronRight, PlayCircle } from "lucide-react";
 import { getExternalVideoMeta, type ListingMediaType } from "@/lib/media";
@@ -59,11 +60,15 @@ export function ImageGallery({
             allowFullScreen
           />
         ) : (
-          <img
-            src={currentItem.url}
-            alt={currentItem.caption || alt}
-            className="aspect-[16/9] w-full object-cover"
-          />
+          <div className="relative aspect-[16/9] w-full">
+            <Image
+              src={currentItem.url}
+              alt={currentItem.caption || alt}
+              fill
+              className="object-cover"
+              sizes="100vw"
+            />
+          </div>
         )}
 
         {/* Nav arrows */}
@@ -99,12 +104,12 @@ export function ImageGallery({
             {media.map((m, i) => (
               <button
                 key={m.id}
-              onClick={() => setCurrent(i)}
-              className={`h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
-                i === current
-                  ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                  : "opacity-70 hover:opacity-100"
-              }`}
+                onClick={() => setCurrent(i)}
+                className={`relative h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
+                  i === current
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                    : "opacity-70 hover:opacity-100"
+                }`}
               >
                 {m.type === "video" ? (
                   <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
@@ -114,10 +119,12 @@ export function ImageGallery({
                     </div>
                   </div>
                 ) : (
-                  <img
+                  <Image
                     src={m.url}
                     alt={m.caption || alt}
-                    className="h-full w-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 9rem, 11rem"
                   />
                 )}
               </button>
