@@ -18,6 +18,10 @@ export type SellerDashboardStats = {
   listingsWithVideo: number;
   staleListings: number;
   listingsNeedingAttention: number;
+  contactedLeads: number;
+  qualifiedLeads: number;
+  negotiatingLeads: number;
+  wonLeads: number;
 };
 
 export type SellerListing = {
@@ -47,9 +51,18 @@ export type SellerListing = {
 export type SellerLead = {
   id: string;
   status: "pending" | "accepted" | "declined";
+  seller_stage:
+    | "new"
+    | "contacted"
+    | "qualified"
+    | "negotiating"
+    | "closed_won"
+    | "closed_lost";
   sent_at: string;
   responded_at: string | null;
   intro_sent_at: string | null;
+  seller_notes: string | null;
+  seller_last_contacted_at: string | null;
   buyer_message: string | null;
   buyer_name: string | null;
   buyer_email: string;
@@ -84,13 +97,21 @@ export async function getSellerDashboardData(userId: string) {
       declined_leads: string;
       responded_leads: string;
       avg_response_hours: string | null;
+      contacted_leads: string;
+      qualified_leads: string;
+      negotiating_leads: string;
+      won_leads: string;
     }>(
       `SELECT COUNT(*)::text as total_leads,
               COUNT(*) FILTER (WHERE status = 'pending')::text as pending_leads,
               COUNT(*) FILTER (WHERE status = 'accepted')::text as accepted_leads,
               COUNT(*) FILTER (WHERE status = 'declined')::text as declined_leads,
               COUNT(*) FILTER (WHERE responded_at IS NOT NULL)::text as responded_leads,
-              AVG(EXTRACT(EPOCH FROM (responded_at - sent_at)) / 3600)::text as avg_response_hours
+              AVG(EXTRACT(EPOCH FROM (responded_at - sent_at)) / 3600)::text as avg_response_hours,
+              COUNT(*) FILTER (WHERE seller_stage = 'contacted')::text as contacted_leads,
+              COUNT(*) FILTER (WHERE seller_stage = 'qualified')::text as qualified_leads,
+              COUNT(*) FILTER (WHERE seller_stage = 'negotiating')::text as negotiating_leads,
+              COUNT(*) FILTER (WHERE seller_stage = 'closed_won')::text as won_leads
        FROM introductions
        WHERE seller_id = $1`,
       [userId]
@@ -132,7 +153,8 @@ export async function getSellerDashboardData(userId: string) {
       [userId]
     ),
     query<SellerLead>(
-      `SELECT i.id, i.status, i.sent_at, i.responded_at, i.intro_sent_at, i.buyer_message,
+      `SELECT i.id, i.status, i.seller_stage, i.sent_at, i.responded_at, i.intro_sent_at,
+              i.seller_notes, i.seller_last_contacted_at, i.buyer_message,
               buyer.display_name as buyer_name,
               buyer.email as buyer_email,
               b.id as boat_id,
@@ -168,6 +190,10 @@ export async function getSellerDashboardData(userId: string) {
     listingsWithVideo: 0,
     staleListings: 0,
     listingsNeedingAttention: 0,
+    contactedLeads: parseInt(leadStats?.contacted_leads || "0", 10),
+    qualifiedLeads: parseInt(leadStats?.qualified_leads || "0", 10),
+    negotiatingLeads: parseInt(leadStats?.negotiating_leads || "0", 10),
+    wonLeads: parseInt(leadStats?.won_leads || "0", 10),
   };
 
   const respondedLeads = stats.respondedLeads;
@@ -198,6 +224,10 @@ export async function respondToSellerIntroduction(
     `UPDATE introductions
      SET status = $1,
          responded_at = NOW(),
+         seller_stage = CASE
+           WHEN $1 = 'declined' THEN 'closed_lost'
+           ELSE seller_stage
+         END,
          intro_sent_at = CASE
            WHEN $1 = 'accepted' THEN COALESCE(intro_sent_at, NOW())
            ELSE intro_sent_at
@@ -207,6 +237,36 @@ export async function respondToSellerIntroduction(
        AND status = 'pending'
      RETURNING id`,
     [status, introductionId, sellerId]
+  );
+}
+
+export async function updateSellerLeadCrm(
+  sellerId: string,
+  introductionId: string,
+  input: {
+    stage:
+      | "new"
+      | "contacted"
+      | "qualified"
+      | "negotiating"
+      | "closed_won"
+      | "closed_lost";
+    notes: string | null;
+    markContactedNow?: boolean;
+  }
+) {
+  return queryOne<{ id: string }>(
+    `UPDATE introductions
+     SET seller_stage = $1,
+         seller_notes = $2,
+         seller_last_contacted_at = CASE
+           WHEN $3::boolean THEN NOW()
+           ELSE seller_last_contacted_at
+         END
+     WHERE id = $4
+       AND seller_id = $5
+     RETURNING id`,
+    [input.stage, input.notes, Boolean(input.markContactedNow), introductionId, sellerId]
   );
 }
 

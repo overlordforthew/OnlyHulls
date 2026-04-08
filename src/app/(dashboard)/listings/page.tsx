@@ -11,6 +11,7 @@ import {
   getListingFreshness,
   getListingHealthScore,
   respondToSellerIntroduction,
+  updateSellerLeadCrm,
   type SellerLead,
   type SellerListing,
 } from "@/lib/seller/dashboard";
@@ -82,6 +83,36 @@ export default async function ListingsDashboardPage({
     }
 
     await respondToSellerIntroduction(currentUser.id, introductionId, action);
+    revalidatePath("/listings");
+  }
+
+  async function updateLeadCrm(formData: FormData) {
+    "use server";
+
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["seller", "both", "admin"].includes(currentUser.role)) {
+      redirect("/sign-in?callbackUrl=%2Flistings");
+    }
+
+    const introductionId = String(formData.get("introductionId") || "");
+    const stage = String(formData.get("stage") || "new");
+    const notes = String(formData.get("notes") || "").trim();
+    const markContactedNow = String(formData.get("markContactedNow") || "") === "1";
+
+    if (
+      !introductionId ||
+      !["new", "contacted", "qualified", "negotiating", "closed_won", "closed_lost"].includes(
+        stage
+      )
+    ) {
+      return;
+    }
+
+    await updateSellerLeadCrm(currentUser.id, introductionId, {
+      stage: stage as SellerLead["seller_stage"],
+      notes: notes || null,
+      markContactedNow,
+    });
     revalidatePath("/listings");
   }
 
@@ -199,6 +230,17 @@ export default async function ListingsDashboardPage({
         />
       </section>
 
+      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Contacted" value={stats.contactedLeads} hint="Seller reached out" />
+        <MetricCard label="Qualified" value={stats.qualifiedLeads} hint="Worth active follow-up" />
+        <MetricCard
+          label="Negotiating"
+          value={stats.negotiatingLeads}
+          hint="In active deal discussion"
+        />
+        <MetricCard label="Closed Won" value={stats.wonLeads} hint="Deals marked as won" />
+      </section>
+
       <section className="mt-10">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold">Your Listings</h2>
@@ -243,7 +285,12 @@ export default async function ListingsDashboardPage({
         ) : (
           <div className="mt-4 space-y-4">
             {leads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} updateLeadStatus={updateLeadStatus} />
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                updateLeadStatus={updateLeadStatus}
+                updateLeadCrm={updateLeadCrm}
+              />
             ))}
           </div>
         )}
@@ -426,9 +473,11 @@ function ListingStat({ label, value }: { label: string; value: number | string }
 function LeadCard({
   lead,
   updateLeadStatus,
+  updateLeadCrm,
 }: {
   lead: SellerLead;
   updateLeadStatus: (formData: FormData) => Promise<void>;
+  updateLeadCrm: (formData: FormData) => Promise<void>;
 }) {
   const ageHours = getLeadAgeHours(lead);
   const pendingTooLong = lead.status === "pending" && ageHours >= 24;
@@ -446,6 +495,7 @@ function LeadCard({
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-lg font-semibold">{lead.boat_title}</p>
             <StatusPill status={lead.status} />
+            <PipelinePill stage={lead.seller_stage} />
             {pendingTooLong && <InlineBadge tone="danger">Waiting 24h+</InlineBadge>}
           </div>
           <p className="mt-2 text-sm text-text-secondary">
@@ -462,11 +512,62 @@ function LeadCard({
               ? `Awaiting seller response for ${formatRelativeHours(ageHours)}.`
               : responseLabel || "Seller responded."}
           </p>
+          {lead.seller_last_contacted_at && (
+            <p className="mt-1 text-sm text-text-secondary">
+              Last contacted {formatDateTime(lead.seller_last_contacted_at)}
+            </p>
+          )}
           {lead.buyer_message && (
             <div className="mt-4 rounded-xl bg-background px-4 py-3 text-sm text-foreground/85">
               {lead.buyer_message}
             </div>
           )}
+          <form action={updateLeadCrm} className="mt-4 rounded-xl bg-background px-4 py-4">
+            <input type="hidden" name="introductionId" value={lead.id} />
+            <div className="grid gap-3 lg:grid-cols-[180px,1fr]">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  CRM stage
+                </label>
+                <select
+                  name="stage"
+                  defaultValue={lead.seller_stage}
+                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="negotiating">Negotiating</option>
+                  <option value="closed_won">Closed Won</option>
+                  <option value="closed_lost">Closed Lost</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  Seller notes
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  defaultValue={lead.seller_notes || ""}
+                  placeholder="Capture what happened with this lead, next steps, or deal context."
+                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-xs text-text-secondary">
+                <input type="checkbox" name="markContactedNow" value="1" />
+                Update last-contacted timestamp now
+              </label>
+              <button
+                type="submit"
+                className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+              >
+                Save CRM
+              </button>
+            </div>
+          </form>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href={lead.boat_slug ? `/boats/${lead.boat_slug}` : `/boats/${lead.boat_id}`}
@@ -512,6 +613,23 @@ function LeadCard({
         )}
       </div>
     </div>
+  );
+}
+
+function PipelinePill({ stage }: { stage: SellerLead["seller_stage"] }) {
+  const styles: Record<SellerLead["seller_stage"], string> = {
+    new: "border-border bg-background text-text-secondary",
+    contacted: "border-blue-500/30 bg-blue-500/10 text-blue-300",
+    qualified: "border-primary/30 bg-primary/10 text-primary",
+    negotiating: "border-accent/30 bg-accent/10 text-accent",
+    closed_won: "border-green-500/30 bg-green-500/10 text-green-300",
+    closed_lost: "border-red-500/30 bg-red-500/10 text-red-300",
+  };
+
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles[stage]}`}>
+      {stage.replace(/_/g, " ")}
+    </span>
   );
 }
 

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
+    "test:browser:seller:prepare": "npx tsx scripts/ensure-browser-test-user.ts",
     "db:migrate": "npx tsx src/lib/db/migrate.ts",
     "db:seed": "npx tsx scripts/seed.ts",
     "db:import": "npx tsx scripts/import-scraped.ts",
