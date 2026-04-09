@@ -347,14 +347,14 @@ function BoatsPageInner() {
                 placeholder="Min year"
                 value={filters.minYear}
                 onChange={(e) => setFilters((f) => ({ ...f, minYear: e.target.value }))}
-                className={`${inputClass} w-24`}
+                className={`${inputClass} w-28 min-w-[7rem]`}
               />
               <input
                 type="number"
                 placeholder="Max year"
                 value={filters.maxYear}
                 onChange={(e) => setFilters((f) => ({ ...f, maxYear: e.target.value }))}
-                className={`${inputClass} w-24`}
+                className={`${inputClass} w-28 min-w-[7rem]`}
               />
               <select
                 value={filters.rigType}
