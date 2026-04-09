@@ -21,6 +21,39 @@ LIST_URL = f"{BASE}/cgi-bin/saildata/db.cgi?db=default&uid=default&view_records=
 fetcher = Fetcher()
 
 
+def normalize_location(raw):
+    location = re.sub(r"\s+", " ", str(raw or "")).strip(" ,")
+    if not location:
+        return ""
+
+    location = re.sub(r"\bOutside United States\b", "", location, flags=re.I)
+    location = re.sub(r"\bUnited States\b", "USA", location, flags=re.I)
+    location = re.sub(r"\bPuerto Rico\b", "Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bSan Juan Puerto Rico\b", "San Juan, Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\s+,", ",", location)
+    location = re.sub(r",\s*,+", ", ", location)
+    location = re.sub(r"\s{2,}", " ", location).strip(" ,")
+    return location
+
+
+def extract_best_location(html):
+    patterns = [
+        r'Location:\s*([^<\n]+)',
+        r'content="[^"]*for sale in ([^"]+)"',
+        r'<meta name="Description" content="[^"]* in ([^"]+?)">',
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, html, re.I)
+        if not match:
+            continue
+        location = normalize_location(match.group(1))
+        if location and location.lower() not in {"outside usa", "outside united states"}:
+            return location
+
+    return ""
+
+
 def get_listing_urls_from_page(url, limit=200):
     """Extract unique boat listing URLs from one index page."""
     page = fetcher.get(url, timeout=15)
@@ -109,6 +142,7 @@ def scrape_boat(boat_id, url):
 
     boat = {"id": boat_id, "url": url}
     html = page.body.decode("utf-8", errors="replace")
+    rich_location = extract_best_location(html)
 
     # Name from title — clean up patterns like "1979 catalina 30 sailboat"
     title_m = re.search(r"<title>([^<]+)</title>", html)
@@ -143,7 +177,9 @@ def scrape_boat(boat_id, url):
                         elif key in ("length", "beam", "draft"):
                             boat[key] = parse_feet_inches(val_texts[j])
                         elif key in ("location", "price"):
-                            boat[key] = val_texts[j]
+                            boat[key] = (
+                                rich_location if key == "location" and rich_location else val_texts[j]
+                            )
 
         if "Hull" in cell_texts and "Type" in cell_texts:
             if i + 1 < len(rows):
@@ -166,6 +202,9 @@ def scrape_boat(boat_id, url):
         desc = re.sub(r"\s+", " ", desc).strip()[:500]
         if len(desc) > 20:
             boat["description"] = desc
+
+    if rich_location:
+        boat["location"] = rich_location
 
     # Extract images
     imgs = page.css("img[src*='/sailimg/']")
