@@ -15,6 +15,7 @@
     "db:import": "npx tsx scripts/import-scraped.ts",
     "db:clean-imports": "npx tsx scripts/clean-imported-data.ts",
     "db:claude-haiku-copy": "npx tsx scripts/claude-haiku-copy-pass.ts",
+    "db:resolve-import-duplicates": "npx tsx scripts/resolve-import-duplicates.ts",
     "db:backfill-embeddings": "npx tsx scripts/backfill-embeddings.ts",
     "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",
     "alerts:saved-searches": "npx tsx scripts/send-saved-search-alerts.ts",

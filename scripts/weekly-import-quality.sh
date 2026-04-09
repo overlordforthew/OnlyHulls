@@ -42,6 +42,12 @@ done
 
 log "=== OnlyHulls weekly quality pass ==="
 log "Using app container: $APP_CONTAINER"
+log "Resolving imported duplicate listings..."
+(
+  cd "$PROJECT_DIR"
+  npm run db:resolve-import-duplicates -- --limit "$IMPORT_LIMIT"
+) | tee -a "$LOG_FILE"
+
 log "Running deterministic cleanup and reindex..."
 (
   cd "$PROJECT_DIR"
