@@ -290,21 +290,6 @@ export default function MatchesPage() {
                       )}
                     </div>
                   )}
-                  {match.explanation_summary && (
-                    <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm">
-                      <p className="font-medium text-foreground/90">{match.explanation_summary}</p>
-                      {match.explanation_strengths && match.explanation_strengths.length > 0 && (
-                        <p className="mt-2 text-foreground/65">
-                          Strengths: {match.explanation_strengths.join(" ")}
-                        </p>
-                      )}
-                      {match.explanation_risks && match.explanation_risks.length > 0 && (
-                        <p className="mt-2 text-foreground/55">
-                          Watchouts: {match.explanation_risks.join(" ")}
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
