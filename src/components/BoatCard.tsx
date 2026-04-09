@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
+import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
 
 interface BoatCardProps {
   boat: {
@@ -24,6 +25,7 @@ interface BoatCardProps {
     asking_price_usd?: number | null;
     seller_subscription_tier?: string | null;
   };
+  displayCurrency?: SupportedCurrency;
   matchScore?: number;
   showActions?: boolean;
   onSave?: () => void;
@@ -31,19 +33,9 @@ interface BoatCardProps {
   onConnect?: () => void;
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", AUD: "A$", CAD: "C$", NZD: "NZ$",
-  SEK: "kr", DKK: "kr", NOK: "kr",
-};
-
-function formatPrice(amount: number | string, currency: string): string {
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  const sym = CURRENCY_SYMBOLS[currency] || "$";
-  return `${sym}${Math.round(num).toLocaleString("en-US")}`;
-}
-
 export default function BoatCard({
   boat,
+  displayCurrency,
   matchScore,
   showActions,
   onSave,
@@ -52,11 +44,17 @@ export default function BoatCard({
 }: BoatCardProps) {
   const href = `/boats/${boat.slug || boat.id}`;
   const listingBadge = getListingBadge(boat);
+  const displayedPrice = getDisplayedPrice({
+    amount: boat.asking_price,
+    nativeCurrency: boat.currency,
+    amountUsd: boat.asking_price_usd,
+    preferredCurrency: displayCurrency,
+  });
 
   return (
     <div className="group card-hover overflow-hidden rounded-xl border border-border bg-surface">
       <Link href={href} className="block">
-        <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {boat.hero_url ? (
             <Image
               src={boat.hero_url}
@@ -71,17 +69,14 @@ export default function BoatCard({
             </div>
           )}
 
-          {/* Bottom gradient overlay for text readability */}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
 
-          {/* Match score badge */}
           {matchScore !== undefined && (
             <span className="absolute right-3 top-3 rounded-full bg-gradient-to-r from-success to-primary px-3 py-1 text-xs font-bold text-white shadow-lg">
               {Math.round(matchScore * 100)}% Match
             </span>
           )}
 
-          {/* Source badge */}
           {listingBadge ? (
             <span
               className={`absolute left-3 top-3 rounded-full px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm ${listingBadge.className}`}
@@ -90,17 +85,13 @@ export default function BoatCard({
             </span>
           ) : null}
 
-          {/* Price overlay on image */}
           <div className="absolute bottom-3 left-3">
             <p className="text-lg font-bold text-white drop-shadow-lg">
-              {formatPrice(boat.asking_price, boat.currency)}
-              {boat.currency !== "USD" && (
-                <span className="ml-1 text-xs font-normal text-white/70">{boat.currency}</span>
-              )}
+              {displayedPrice.primary}
             </p>
-            {boat.asking_price_usd && boat.currency !== "USD" && (
+            {displayedPrice.secondary && (
               <p className="text-xs text-white/60 drop-shadow-lg">
-                ~{formatPrice(boat.asking_price_usd, "USD")}
+                {displayedPrice.secondary}
               </p>
             )}
           </div>
@@ -151,7 +142,7 @@ export default function BoatCard({
                 href={boat.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 font-medium text-text-secondary hover:text-primary transition-colors"
+                className="inline-flex items-center gap-0.5 font-medium text-text-secondary transition-colors hover:text-primary"
               >
                 {boat.source_name}
                 <ExternalLink className="h-3 w-3" />

@@ -6,6 +6,36 @@ import { computeMatchesForBuyer } from "@/lib/matching/engine";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
+type MatchSort = "match" | "price" | "year" | "size" | "newest";
+type SortDir = "asc" | "desc";
+
+function parseSort(value: string | null): MatchSort {
+  return value === "price" || value === "year" || value === "size" || value === "newest"
+    ? value
+    : "match";
+}
+
+function parseDir(value: string | null, sort: MatchSort): SortDir {
+  if (value === "asc" || value === "desc") return value;
+  return sort === "price" || sort === "size" ? "asc" : "desc";
+}
+
+function buildOrderBy(sort: MatchSort, dir: SortDir) {
+  switch (sort) {
+    case "price":
+      return `COALESCE(b.asking_price_usd, b.asking_price) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
+    case "year":
+      return `b.year ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
+    case "size":
+      return `COALESCE((d.specs->>'loa')::numeric, 0) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
+    case "newest":
+      return `COALESCE(b.listing_date, DATE(b.created_at)) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
+    case "match":
+    default:
+      return `m.score ${dir.toUpperCase()} NULLS LAST`;
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -17,6 +47,9 @@ export async function GET(req: Request) {
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
     const offset = (page - 1) * limit;
+    const sort = parseSort(url.searchParams.get("sort"));
+    const dir = parseDir(url.searchParams.get("dir"), sort);
+    const orderBy = buildOrderBy(sort, dir);
 
     const user = await queryOne<{ id: string }>(
       "SELECT id FROM users WHERE id = $1",
@@ -76,6 +109,7 @@ export async function GET(req: Request) {
       model: string;
       year: number;
       asking_price: number;
+      asking_price_usd: number | null;
       currency: string;
       location_text: string | null;
       slug: string | null;
@@ -94,7 +128,7 @@ export async function GET(req: Request) {
               mas.ai_score,
               mas.verdict as ai_verdict,
               mas.provider as ai_provider,
-              b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.currency,
+              b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.asking_price_usd, b.currency,
               b.location_text, b.slug, b.is_sample,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
               COALESCE(d.specs, '{}') as specs,
@@ -108,7 +142,7 @@ export async function GET(req: Request) {
          AND m.buyer_action != 'passed'
          AND b.status = 'active'
          AND ${buildVisibleImportQualitySql("b")}
-       ORDER BY m.score DESC
+       ORDER BY ${orderBy}
        LIMIT $2 OFFSET $3`,
       [buyerProfile.id, limit, offset]
     );
@@ -138,6 +172,7 @@ export async function GET(req: Request) {
       model: string;
       year: number;
       asking_price: number;
+      asking_price_usd: number | null;
       currency: string;
       location_text: string | null;
       slug: string | null;
@@ -156,7 +191,7 @@ export async function GET(req: Request) {
               mas.ai_score,
               mas.verdict as ai_verdict,
               mas.provider as ai_provider,
-              b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.currency,
+              b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.asking_price_usd, b.currency,
               b.location_text, b.slug, b.is_sample,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
               COALESCE(d.specs, '{}') as specs,
@@ -170,7 +205,7 @@ export async function GET(req: Request) {
          AND m.buyer_action != 'passed'
          AND b.status = 'active'
          AND ${buildVisibleImportQualitySql("b")}
-       ORDER BY m.score DESC
+       ORDER BY ${orderBy}
        LIMIT $2 OFFSET $3`,
       [buyerProfile.id, limit, offset]
     );
@@ -180,6 +215,8 @@ export async function GET(req: Request) {
       total: parseInt(countResult?.count || "0", 10),
       page,
       limit,
+      sort,
+      dir,
     });
   } catch (err) {
     logger.error({ err }, "GET /api/matches error");

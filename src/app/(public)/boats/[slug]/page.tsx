@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { ArrowLeft, MapPin, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
-import Link from "next/link";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
+import CurrencySelector from "@/components/CurrencySelector";
 import { ImageGallery } from "@/components/ImageGallery";
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-import { MapPin, Sparkles, User, ArrowLeft } from "lucide-react";
+import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
 
 interface BoatDetail {
   id: string;
@@ -95,7 +98,13 @@ async function getBoatForViewer(
 }
 
 async function getBoatMedia(boatId: string) {
-  return query<{ id: string; type: "image" | "video"; url: string; thumbnail_url: string | null; caption: string | null }>(
+  return query<{
+    id: string;
+    type: "image" | "video";
+    url: string;
+    thumbnail_url: string | null;
+    caption: string | null;
+  }>(
     `SELECT id, type, url, thumbnail_url, caption
      FROM boat_media
      WHERE boat_id = $1
@@ -121,21 +130,21 @@ export async function generateMetadata({
   const desc = boat.ai_summary || `${boatTitle} for sale. ${boat.location_text || ""}`;
 
   return {
-    title: `${boatTitle} — ${priceStr}`,
+    title: `${boatTitle} - ${priceStr}`,
     description: desc,
     alternates: {
       canonical: `https://onlyhulls.com/boats/${slug}`,
     },
     openGraph: {
       title: boatTitle,
-      description: `${priceStr} — ${boat.location_text || "Location TBD"}`,
+      description: `${priceStr} - ${boat.location_text || "Location TBD"}`,
       url: `https://onlyhulls.com/boats/${slug}`,
       ...(heroImage && { images: [{ url: heroImage, alt: boatTitle }] }),
     },
     twitter: {
       card: "summary_large_image",
       title: boatTitle,
-      description: `${priceStr} — ${boat.location_text || ""}`,
+      description: `${priceStr} - ${boat.location_text || ""}`,
       ...(heroImage && { images: [heroImage] }),
     },
   };
@@ -147,25 +156,32 @@ export default async function BoatDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const cookieStore = await cookies();
+  const preferredCurrency = normalizeSupportedCurrency(
+    cookieStore.get("preferred_currency")?.value
+  );
   const viewer = await getCurrentUser();
   const boat = await getBoatForViewer(slug, viewer?.id ?? null, viewer?.role ?? null);
   if (!boat) notFound();
 
   if (boat.status === "active") {
-    // Increment public view count without blocking render.
-    query(
-      `UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`,
-      [boat.id]
-    ).catch(() => {});
+    query(`UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`, [
+      boat.id,
+    ]).catch(() => {});
   }
 
   const media = await getBoatMedia(boat.id);
   const specs = boat.specs as Record<string, unknown>;
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
+  const displayedPrice = getDisplayedPrice({
+    amount: boat.asking_price,
+    nativeCurrency: boat.currency,
+    amountUsd: boat.asking_price_usd,
+    preferredCurrency,
+  });
 
   return (
     <div className="pb-16">
-      {/* JSON-LD Structured Data — replace </ to prevent script breakout */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -176,9 +192,9 @@ export default async function BoatDetailPage({
             description: boat.ai_summary || `${boat.year} ${boat.make} ${boat.model} for sale`,
             ...(media.length > 0 && {
               image: media
-                .filter((m: { type: string }) => m.type === "image")
+                .filter((mediaItem) => mediaItem.type === "image")
                 .slice(0, 5)
-                .map((m: { url: string }) => m.url),
+                .map((mediaItem) => mediaItem.url),
             }),
             brand: { "@type": "Brand", name: boat.make },
             offers: {
@@ -198,7 +214,6 @@ export default async function BoatDetailPage({
         }}
       />
 
-      {/* Back link */}
       <div className="border-b border-border bg-surface/50">
         <div className="mx-auto max-w-6xl px-5 py-3">
           <Link
@@ -212,7 +227,6 @@ export default async function BoatDetailPage({
       </div>
 
       <div className="mx-auto max-w-6xl px-5 pt-6">
-        {/* Gallery */}
         <ImageGallery media={media} alt={`${boat.make} ${boat.model}`} />
 
         {boat.status !== "active" && (
@@ -230,53 +244,46 @@ export default async function BoatDetailPage({
         )}
 
         {boat.is_sample && (
-          <div className="mt-4 rounded-lg bg-accent/10 border border-accent/20 px-4 py-2 text-sm text-accent">
+          <div className="mt-4 rounded-lg border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-accent">
             This is a sample listing for demonstration purposes.
           </div>
         )}
 
-        {/* Content grid */}
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Title + Price */}
+          <div className="space-y-8 lg:col-span-2">
             <div>
-              <h1 className="text-3xl font-bold">
-                {`${boat.year} ${boat.make} ${boat.model}`}
-              </h1>
+              <h1 className="text-3xl font-bold">{`${boat.year} ${boat.make} ${boat.model}`}</h1>
               {boat.location_text && (
                 <p className="mt-2 flex items-center gap-1.5 text-text-secondary">
                   <MapPin className="h-4 w-4" />
                   {boat.location_text}
                 </p>
               )}
-              <p className="mt-3 text-3xl font-bold">
-                {formatPrice(boat.asking_price, boat.currency)}
-                {boat.currency !== "USD" && (
-                  <span className="ml-2 text-sm font-normal text-text-secondary">{boat.currency}</span>
-                )}
-              </p>
-              {boat.asking_price_usd && boat.currency !== "USD" && (
-                <p className="mt-1 text-base text-text-secondary">
-                  ~{formatPrice(boat.asking_price_usd, "USD")} USD
-                </p>
+              <div className="mt-3">
+                <CurrencySelector
+                  id="boat-detail-currency"
+                  value={preferredCurrency}
+                  refreshOnChange
+                />
+              </div>
+              <p className="mt-3 text-3xl font-bold">{displayedPrice.primary}</p>
+              {displayedPrice.secondary && (
+                <p className="mt-1 text-base text-text-secondary">{displayedPrice.secondary}</p>
               )}
             </div>
 
-            {/* AI Summary */}
             {boat.ai_summary && (
               <div className="rounded-xl border-l-4 border-primary bg-surface p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Sparkles className="h-4 w-4" />
                   Listing Description
                 </div>
-                <p className="mt-3 whitespace-pre-wrap text-foreground/80 leading-relaxed">
+                <p className="mt-3 whitespace-pre-wrap leading-relaxed text-foreground/80">
                   {boat.ai_summary}
                 </p>
               </div>
             )}
 
-            {/* Specifications */}
             <div>
               <h2 className="text-xl font-bold">Specifications</h2>
               <div className="mt-4 grid grid-cols-2 gap-1">
@@ -289,13 +296,17 @@ export default async function BoatDetailPage({
                 {specs.cabins ? <SpecRow label="Cabins" value={String(specs.cabins)} /> : null}
                 {specs.berths ? <SpecRow label="Berths" value={String(specs.berths)} /> : null}
                 {specs.heads ? <SpecRow label="Heads" value={String(specs.heads)} /> : null}
-                {specs.displacement ? <SpecRow label="Displacement" value={`${Number(specs.displacement).toLocaleString()} kg`} /> : null}
+                {specs.displacement ? (
+                  <SpecRow
+                    label="Displacement"
+                    value={`${Number(specs.displacement).toLocaleString()} kg`}
+                  />
+                ) : null}
                 {specs.keel_type ? <SpecRow label="Keel" value={String(specs.keel_type)} /> : null}
                 {specs.fuel_type ? <SpecRow label="Fuel" value={String(specs.fuel_type)} /> : null}
               </div>
             </div>
 
-            {/* Character Tags */}
             {boat.character_tags.length > 0 && (
               <div>
                 <h3 className="font-semibold">Character</h3>
@@ -313,32 +324,31 @@ export default async function BoatDetailPage({
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Seller Card */}
             <div className="rounded-xl border border-border bg-surface p-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                  {boat.source_url ? <Sparkles className="h-5 w-5" /> : boat.seller_name ? sellerInitial : <User className="h-5 w-5" />}
+                  {boat.source_url ? (
+                    <Sparkles className="h-5 w-5" />
+                  ) : boat.seller_name ? (
+                    sellerInitial
+                  ) : (
+                    <User className="h-5 w-5" />
+                  )}
                 </div>
                 <div>
-                  <p className="font-semibold">{boat.source_url ? formatSourceSite(boat.source_site) : boat.seller_name || "Seller"}</p>
+                  <p className="font-semibold">
+                    {boat.source_url ? formatSourceSite(boat.source_site) : boat.seller_name || "Seller"}
+                  </p>
                   <p className="text-xs text-text-secondary">{getSellerSubtitle(boat)}</p>
                 </div>
               </div>
 
               <div className="my-5 h-px bg-border" />
 
-              <p className="text-2xl font-bold">
-                {formatPrice(boat.asking_price, boat.currency)}
-                {boat.currency !== "USD" && (
-                  <span className="ml-1 text-sm font-normal text-text-secondary">{boat.currency}</span>
-                )}
-              </p>
-              {boat.asking_price_usd && boat.currency !== "USD" && (
-                <p className="mt-1 text-sm text-text-secondary">
-                  ~{formatPrice(boat.asking_price_usd, "USD")} USD
-                </p>
+              <p className="text-2xl font-bold">{displayedPrice.primary}</p>
+              {displayedPrice.secondary && (
+                <p className="mt-1 text-sm text-text-secondary">{displayedPrice.secondary}</p>
               )}
 
               {boat.condition_score && (
@@ -355,25 +365,13 @@ export default async function BoatDetailPage({
                 boatSlug={boat.slug || boat.id}
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
-              <p className="mt-3 text-center text-xs text-text-tertiary">
-                Free to message sellers.
-              </p>
+              <p className="mt-3 text-center text-xs text-text-tertiary">Free to message sellers.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", AUD: "A$", CAD: "C$", NZD: "NZ$",
-  SEK: "kr", DKK: "kr", NOK: "kr",
-};
-
-function formatPrice(amount: number, currency: string): string {
-  const sym = CURRENCY_SYMBOLS[currency] || "$";
-  return `${sym}${Math.round(amount).toLocaleString("en-US")}`;
 }
 
 const SOURCE_NAMES: Record<string, string> = {
@@ -394,7 +392,7 @@ const SOURCE_NAMES: Record<string, string> = {
 
 function formatSourceSite(source: string | null): string {
   if (!source) return "External Listing";
-  return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getSellerSubtitle(boat: Pick<BoatDetail, "source_url" | "seller_subscription_tier">) {

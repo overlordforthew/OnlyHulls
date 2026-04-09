@@ -1,3 +1,5 @@
+import { getBudgetRangeUsd } from "@/lib/currency";
+
 interface BuyerProfile {
   budget_range: { min: number; max: number; currency: string; refit_budget: number };
   spec_preferences: { loa_min?: number; loa_max?: number; draft_max?: number; year_min?: number };
@@ -8,6 +10,7 @@ interface BuyerProfile {
 
 interface BoatData {
   asking_price: number;
+  asking_price_usd?: number | null;
   currency: string;
   year: number;
   location_text: string | null;
@@ -65,13 +68,26 @@ export function computeMatchScore(
 }
 
 function scorePriceFit(buyer: BuyerProfile, boat: BoatData): number {
-  const { min, max } = buyer.budget_range;
-  const price = boat.asking_price;
-  // TODO: currency conversion
-  if (price >= min && price <= max) return 1.0;
-  if (price < min) return Math.max(0, 1 - (min - price) / min);
+  const { min, max } = getBudgetRangeUsd(buyer.budget_range);
+  const comparablePrice =
+    typeof boat.asking_price_usd === "number" && Number.isFinite(boat.asking_price_usd)
+      ? boat.asking_price_usd
+      : boat.asking_price;
+  const effectiveMin = min ?? 0;
+  const effectiveMax = max ?? Number.POSITIVE_INFINITY;
+
+  if (!Number.isFinite(effectiveMax) && effectiveMin <= 0) return 0.5;
+  if (!Number.isFinite(effectiveMax)) {
+    return comparablePrice >= effectiveMin
+      ? 1
+      : Math.max(0, 1 - (effectiveMin - comparablePrice) / effectiveMin);
+  }
+  if (comparablePrice >= effectiveMin && comparablePrice <= effectiveMax) return 1.0;
+  if (comparablePrice < effectiveMin) {
+    return Math.max(0, 1 - (effectiveMin - comparablePrice) / Math.max(effectiveMin, 1));
+  }
   // Over budget: penalize more
-  const overRatio = (price - max) / max;
+  const overRatio = (comparablePrice - effectiveMax) / Math.max(effectiveMax, 1);
   return Math.max(0, 1 - overRatio * 2);
 }
 

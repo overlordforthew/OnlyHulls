@@ -9,6 +9,7 @@ import {
 import { rerankMatchesForBuyer } from "@/lib/ai/match-intelligence";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { logger } from "@/lib/logger";
+import { getBudgetRangeUsd } from "@/lib/currency";
 
 const BATCH_SIZE = 10;
 
@@ -135,6 +136,7 @@ async function computeVectorMatches(
   const boats = await query<{
     id: string;
     asking_price: number;
+    asking_price_usd: number | null;
     currency: string;
     year: number;
     location_text: string | null;
@@ -142,7 +144,7 @@ async function computeVectorMatches(
     condition_score: number | null;
     character_tags: string[];
   }>(
-    `SELECT b.id, b.asking_price, b.currency, b.year, b.location_text,
+    `SELECT b.id, b.asking_price, b.asking_price_usd, b.currency, b.year, b.location_text,
             COALESCE(d.specs, '{}') as specs,
             d.condition_score,
             COALESCE(d.character_tags, '{}') as character_tags
@@ -165,6 +167,7 @@ async function computeVectorMatches(
       buyer as unknown as Parameters<typeof computeMatchScore>[1],
       {
         asking_price: boat.asking_price,
+        asking_price_usd: boat.asking_price_usd,
         currency: boat.currency,
         year: boat.year,
         location_text: boat.location_text,
@@ -218,12 +221,12 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   let paramIdx = 1;
 
   const budget = buyer.budget_range || {};
+  const budgetUsd = getBudgetRangeUsd(budget);
   const specPreferences = buyer.spec_preferences || {};
   const boatTypePrefs = buyer.boat_type_prefs || {};
   const locationPrefs = buyer.location_prefs || {};
 
-  const maxBudget =
-    typeof budget.max === "number" && Number.isFinite(budget.max) ? budget.max : null;
+  const maxBudget = budgetUsd.max;
   if (maxBudget && maxBudget > 0) {
     conditions.push(`COALESCE(b.asking_price_usd, b.asking_price) <= $${paramIdx++}`);
     params.push(maxBudget * 1.5);
@@ -269,11 +272,11 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   }
 
   const budgetMid =
-    typeof budget.min === "number" &&
-    Number.isFinite(budget.min) &&
-    maxBudget &&
+    typeof budgetUsd.min === "number" &&
+    Number.isFinite(budgetUsd.min) &&
+    typeof maxBudget === "number" &&
     Number.isFinite(maxBudget)
-      ? (budget.min + maxBudget) / 2
+      ? (budgetUsd.min + maxBudget) / 2
       : null;
 
   const orderByParts = [
@@ -286,7 +289,7 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   orderByParts.push("b.created_at DESC");
 
   return {
-    text: `SELECT b.id, b.make, b.model, b.asking_price, b.currency, b.year, b.location_text,
+    text: `SELECT b.id, b.make, b.model, b.asking_price, b.asking_price_usd, b.currency, b.year, b.location_text,
                   COALESCE(d.specs, '{}') as specs,
                   d.condition_score,
                   COALESCE(d.character_tags, '{}') as character_tags,

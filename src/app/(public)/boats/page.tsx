@@ -4,7 +4,12 @@ import { Suspense, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import BoatCard from "@/components/BoatCard";
+import CurrencySelector from "@/components/CurrencySelector";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
+import {
+  readPreferredCurrencyFromBrowser,
+  type SupportedCurrency,
+} from "@/lib/currency";
 import {
   Search,
   SlidersHorizontal,
@@ -75,6 +80,9 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>("newest");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
+    readPreferredCurrencyFromBrowser()
+  );
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({
@@ -103,7 +111,7 @@ function BoatsPageInner() {
   useEffect(() => {
     fetchBoats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortField, sortDir]);
+  }, [sortField, sortDir, displayCurrency]);
 
   const buildParams = useCallback((q?: string, tag?: string, pageNum?: number) => {
     const params = new URLSearchParams();
@@ -118,10 +126,11 @@ function BoatsPageInner() {
     if (filters.minYear) params.set("minYear", filters.minYear);
     if (filters.maxYear) params.set("maxYear", filters.maxYear);
     if (filters.rigType) params.set("rigType", filters.rigType);
+    if (displayCurrency !== "USD") params.set("currency", displayCurrency);
     params.set("sort", sortField);
     params.set("dir", sortDir);
     return params;
-  }, [search, activeTag, page, filters, sortField, sortDir]);
+  }, [search, activeTag, page, filters, displayCurrency, sortField, sortDir]);
 
   async function fetchBoats(q?: string, tag?: string) {
     setLoading(true);
@@ -190,6 +199,7 @@ function BoatsPageInner() {
     minYear: filters.minYear || null,
     maxYear: filters.maxYear || null,
     rigType: filters.rigType || null,
+    currency: displayCurrency,
     sort: sortField,
     dir: sortDir,
   };
@@ -246,6 +256,11 @@ function BoatsPageInner() {
                     {total} boats
                   </p>
                 )}
+                <CurrencySelector
+                  id="boats-currency"
+                  value={displayCurrency}
+                  onChange={setDisplayCurrency}
+                />
                 <button
                   type="button"
                   onClick={saveSearch}
@@ -432,7 +447,7 @@ function BoatsPageInner() {
           <>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {boats.map((boat) => (
-                <BoatCard key={boat.id} boat={boat} />
+                <BoatCard key={boat.id} boat={boat} displayCurrency={displayCurrency} />
               ))}
             </div>
 

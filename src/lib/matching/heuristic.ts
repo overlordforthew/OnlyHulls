@@ -16,6 +16,7 @@ export interface BoatForMatching {
   make: string;
   model: string;
   asking_price: number;
+  asking_price_usd?: number | null;
   currency: string;
   year: number;
   location_text: string | null;
@@ -126,6 +127,7 @@ export function scoreBoatForBuyer(
     buyer as unknown as Parameters<typeof computeMatchScore>[1],
     {
       asking_price: boat.asking_price,
+      asking_price_usd: boat.asking_price_usd,
       currency: boat.currency,
       year: boat.year,
       location_text: boat.location_text,

@@ -1,4 +1,5 @@
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { convertCurrencyToUsd, normalizeSupportedCurrency, type SupportedCurrency } from "@/lib/currency";
 
 export type BoatSortField = "price" | "size" | "year" | "newest";
 export type BoatSortDir = "asc" | "desc";
@@ -14,12 +15,17 @@ export interface BoatSearchFilters {
   rigType: string | null;
   hullType: string | null;
   tag: string | null;
+  currency: SupportedCurrency;
   sort: BoatSortField;
   dir: BoatSortDir;
 }
 
 const VALID_SORTS = new Set<BoatSortField>(["price", "size", "year", "newest"]);
 const VALID_DIRS = new Set<BoatSortDir>(["asc", "desc"]);
+
+interface BoatSearchFilterInput extends Omit<Partial<BoatSearchFilters>, "currency"> {
+  currency?: string;
+}
 
 function normalizeText(value?: string | null) {
   const trimmed = value?.trim();
@@ -43,7 +49,7 @@ function clampPositiveInt(value: number, fallback: number, max: number) {
   return Math.min(Math.floor(value), max);
 }
 
-export function normalizeBoatSearchFilters(input: Partial<BoatSearchFilters>): BoatSearchFilters {
+export function normalizeBoatSearchFilters(input: BoatSearchFilterInput): BoatSearchFilters {
   const sort = VALID_SORTS.has(input.sort as BoatSortField)
     ? (input.sort as BoatSortField)
     : "newest";
@@ -64,6 +70,7 @@ export function normalizeBoatSearchFilters(input: Partial<BoatSearchFilters>): B
     rigType: normalizeText(input.rigType),
     hullType: normalizeText(input.hullType),
     tag: normalizeText(input.tag),
+    currency: normalizeSupportedCurrency(input.currency),
     sort,
     dir,
   };
@@ -81,6 +88,7 @@ export function filtersFromSearchParams(searchParams: URLSearchParams): BoatSear
     rigType: searchParams.get("rigType"),
     hullType: searchParams.get("hullType"),
     tag: searchParams.get("tag"),
+    currency: searchParams.get("currency") || undefined,
     sort: (searchParams.get("sort") as BoatSortField | null) || "newest",
     dir: (searchParams.get("dir") as BoatSortDir | null) || "desc",
   });
@@ -98,6 +106,7 @@ export function buildBoatSearchParams(filters: Partial<BoatSearchFilters>) {
   if (normalized.maxYear) params.set("maxYear", normalized.maxYear);
   if (normalized.rigType) params.set("rigType", normalized.rigType);
   if (normalized.hullType) params.set("hullType", normalized.hullType);
+  if (normalized.currency !== "USD") params.set("currency", normalized.currency);
   params.set("sort", normalized.sort);
   params.set("dir", normalized.dir);
 
@@ -155,12 +164,12 @@ export function buildWhereClause(filters: BoatSearchFilters) {
   }
 
   if (filters.minPrice) {
-    conditions.push(`b.asking_price >= $${paramIdx++}`);
-    params.push(parseFloat(filters.minPrice));
+    conditions.push(`COALESCE(b.asking_price_usd, b.asking_price) >= $${paramIdx++}`);
+    params.push(convertCurrencyToUsd(parseFloat(filters.minPrice), filters.currency));
   }
   if (filters.maxPrice) {
-    conditions.push(`b.asking_price <= $${paramIdx++}`);
-    params.push(parseFloat(filters.maxPrice));
+    conditions.push(`COALESCE(b.asking_price_usd, b.asking_price) <= $${paramIdx++}`);
+    params.push(convertCurrencyToUsd(parseFloat(filters.maxPrice), filters.currency));
   }
   if (filters.minYear) {
     conditions.push(`b.year >= $${paramIdx++}`);
@@ -260,6 +269,7 @@ export function buildSavedSearchSignature(filters: Partial<BoatSearchFilters>) {
   return JSON.stringify({
     search: normalized.search,
     tag: normalized.tag,
+    currency: normalized.currency,
     minPrice: normalized.minPrice,
     maxPrice: normalized.maxPrice,
     minYear: normalized.minYear,
