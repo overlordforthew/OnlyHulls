@@ -10,24 +10,41 @@ export default function OnboardingPage() {
   const defaultRole = searchParams.get("role");
   const rawCallback = searchParams.get("callbackUrl") || "";
   const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "";
+  const currentPath = `/onboarding${defaultRole ? `?role=${encodeURIComponent(defaultRole)}${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}` : callbackUrl ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`;
   const [selectedRole, setSelectedRole] = useState<Role | null>(
     defaultRole === "buyer" || defaultRole === "seller" || defaultRole === "both"
       ? defaultRole
       : null
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit() {
     if (!selectedRole) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/user/role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: selectedRole }),
       });
-      if (!res.ok) throw new Error("Failed to set role");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push(`/sign-in?callbackUrl=${encodeURIComponent(currentPath)}`);
+          return;
+        }
+        if (res.status === 403 && typeof data?.error === "string") {
+          setError(data.error);
+          if (selectedRole === "seller" || selectedRole === "both") {
+            router.push("/sell#pricing");
+            return;
+          }
+        }
+        throw new Error(typeof data?.error === "string" ? data.error : "Failed to set role");
+      }
 
       if (selectedRole === "buyer" || selectedRole === "both") {
         router.push(
@@ -38,7 +55,8 @@ export default function OnboardingPage() {
       } else {
         router.push("/listings/new");
       }
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to continue onboarding.");
       setLoading(false);
     }
   }
@@ -70,6 +88,12 @@ export default function OnboardingPage() {
       <p className="mt-2 text-foreground/60">
         How would you like to use the platform?
       </p>
+
+      {error && (
+        <div className="mt-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       <div className="mt-8 space-y-4">
         {roles.map((role) => (

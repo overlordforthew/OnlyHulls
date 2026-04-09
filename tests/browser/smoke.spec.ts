@@ -43,6 +43,12 @@ test("match CTA preserves auth callback for guests", async ({ page }) => {
   expect(callbackUrl).toBe("/onboarding/profile?callbackUrl=%2Fmatches");
 });
 
+test("seller onboarding route redirects guests to sign in", async ({ page }) => {
+  await page.goto("/onboarding?role=seller");
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: false })).toBeVisible();
+});
+
 test("capabilities endpoint reports live systems", async ({ request }) => {
   const response = await request.get("/api/public/capabilities");
   expect(response.ok()).toBeTruthy();
