@@ -2,6 +2,7 @@ import { query, queryOne } from "@/lib/db";
 import { findTopCandidates } from "./vector";
 import { computeMatchScore, type ScoreBreakdown } from "./rules";
 import {
+  boatMatchesDesiredTypes,
   scoreBoatForBuyer,
   type BoatForMatching,
   type BuyerProfileForMatching,
@@ -101,6 +102,18 @@ export async function computeMatchesForBuyer(
   // Sort by total score descending
   results.sort((a, b) => b.score - a.score);
 
+  const matchedBoatIds = results.map((match) => match.boatId);
+  if (matchedBoatIds.length > 0) {
+    await query(
+      `DELETE FROM matches
+       WHERE buyer_id = $1
+         AND boat_id <> ALL($2)`,
+      [buyerProfileId, matchedBoatIds]
+    );
+  } else {
+    await query("DELETE FROM matches WHERE buyer_id = $1", [buyerProfileId]);
+  }
+
   // Upsert matches to database
   for (const match of results) {
     await query(
@@ -161,6 +174,7 @@ async function computeVectorMatches(
   for (const candidate of candidates) {
     const boat = boatMap.get(candidate.boat_id);
     if (!boat) continue;
+    if (!boatMatchesDesiredTypes(buyer, boat as unknown as BoatForMatching)) continue;
 
     const breakdown = computeMatchScore(
       candidate.similarity,
@@ -252,11 +266,44 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   const desiredTypes = Array.isArray(boatTypePrefs.types)
     ? boatTypePrefs.types.filter((value) => value && value !== "no-preference")
     : [];
-  for (const desiredType of desiredTypes.slice(0, 2)) {
-    conditions.push(
-      `LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++}`
-    );
-    params.push(`%${String(desiredType).toLowerCase()}%`);
+  if (desiredTypes.length) {
+    const typeClauses: string[] = [];
+    for (const desiredType of desiredTypes.slice(0, 2)) {
+      const normalizedType = String(desiredType).toLowerCase();
+      if (normalizedType === "catamaran") {
+        typeClauses.push(
+          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++})`
+        );
+        params.push("%catamaran%");
+        continue;
+      }
+      if (normalizedType === "trimaran") {
+        typeClauses.push(
+          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++})`
+        );
+        params.push("%trimaran%");
+        continue;
+      }
+      if (normalizedType === "powerboat") {
+        typeClauses.push(
+          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++}
+            OR LOWER(COALESCE(d.specs->>'rig_type', '')) IN ('motor', 'power', 'powerboat'))`
+        );
+        params.push("%powerboat%");
+        continue;
+      }
+      if (normalizedType === "monohull") {
+        typeClauses.push(
+          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++}
+            AND LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++}
+            AND LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++})`
+        );
+        params.push("%catamaran%", "%trimaran%", "%powerboat%");
+      }
+    }
+    if (typeClauses.length) {
+      conditions.push(`(${typeClauses.join(" OR ")})`);
+    }
   }
 
   const regions = Array.isArray(locationPrefs.regions)

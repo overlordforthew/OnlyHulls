@@ -54,6 +54,46 @@ function normalizedHaystack(boat: BoatForMatching): string {
     .toLowerCase();
 }
 
+function normalizeDesiredTypes(value: unknown): string[] {
+  return toStringArray(value)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item && item !== "no-preference");
+}
+
+export function inferBoatTypes(boat: BoatForMatching): string[] {
+  const haystack = normalizedHaystack(boat);
+  const detected = new Set<string>();
+
+  if (/\bcatamaran\b|\bcat boat\b|\bcatboat\b/.test(haystack)) {
+    detected.add("catamaran");
+  }
+  if (/\btrimaran\b/.test(haystack)) {
+    detected.add("trimaran");
+  }
+  if (/\bpowerboat\b|\bmotor yacht\b|\bmotoryacht\b|\btrawler\b|\bpower cat\b|\bpowercat\b/.test(haystack)) {
+    detected.add("powerboat");
+  }
+
+  if (!detected.size) {
+    detected.add("monohull");
+  }
+
+  return Array.from(detected);
+}
+
+export function boatMatchesDesiredTypes(
+  buyer: Pick<BuyerProfileForMatching, "boat_type_prefs">,
+  boat: BoatForMatching
+): boolean {
+  const desiredTypes = normalizeDesiredTypes(buyer.boat_type_prefs?.types);
+  if (!desiredTypes.length) {
+    return true;
+  }
+
+  const inferredTypes = inferBoatTypes(boat);
+  return desiredTypes.some((type) => inferredTypes.includes(type));
+}
+
 function clamp(value: number, min = 0, max = 1): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -62,10 +102,7 @@ export function computeHeuristicVectorSimilarity(
   buyer: BuyerProfileForMatching,
   boat: BoatForMatching
 ): number {
-  const haystack = normalizedHaystack(boat);
-  const desiredTypes = toStringArray(buyer.boat_type_prefs?.types).filter(
-    (value) => value !== "no-preference"
-  );
+  const desiredTypes = normalizeDesiredTypes(buyer.boat_type_prefs?.types);
   const rigPrefs = toStringArray(buyer.boat_type_prefs?.rig_prefs).filter(
     (value) => value !== "no-preference"
   );
@@ -79,13 +116,7 @@ export function computeHeuristicVectorSimilarity(
 
   if (desiredTypes.length) {
     signals++;
-    const typeMatch = desiredTypes.some((type) => {
-      if (type === "monohull") {
-        return Boolean(boat.specs.rig_type) && !/catamaran|trimaran|powerboat/.test(haystack);
-      }
-
-      return haystack.includes(type.replace(/-/g, " "));
-    });
+    const typeMatch = boatMatchesDesiredTypes(buyer, boat);
     score += typeMatch ? 0.18 : -0.08;
   }
 
@@ -121,6 +152,20 @@ export function scoreBoatForBuyer(
   buyer: BuyerProfileForMatching,
   boat: BoatForMatching
 ): { score: number; breakdown: ScoreBreakdown } {
+  if (!boatMatchesDesiredTypes(buyer, boat)) {
+    return {
+      score: 0,
+      breakdown: {
+        vector_sim: 0,
+        price_fit: 0,
+        spec_match: 0,
+        location: 0,
+        condition: 0,
+        total: 0,
+      },
+    };
+  }
+
   const vectorSimilarity = computeHeuristicVectorSimilarity(buyer, boat);
   const breakdown = computeMatchScore(
     vectorSimilarity,
