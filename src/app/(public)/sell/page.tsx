@@ -33,7 +33,7 @@ const STEPS = [
   {
     Icon: Zap,
     title: "AI Does the Work",
-    desc: "Our AI analyzes your listing, tags it with character traits (bluewater, liveaboard, race-ready), and matches it with qualified buyers.",
+    desc: "Our AI analyzes your listing, tags it with character traits (bluewater, liveaboard, race-ready), and matches it with qualified buyers. Featured and Broker plans also get AI help cleaning up listing copy, structure, and presentation.",
   },
   {
     Icon: Users,
@@ -135,6 +135,9 @@ export default function SellPage() {
               </div>
             ))}
           </div>
+          <p className="mt-5 text-center text-sm text-text-secondary">
+            AI-assisted listing polish and presentation cleanup are included on higher-tier seller plans.
+          </p>
         </div>
       </section>
 
