@@ -404,7 +404,7 @@ function getSellerSubtitle(boat: Pick<BoatDetail, "source_url" | "seller_subscri
     return "Featured Seller";
   }
 
-  return "Direct Listing";
+  return "Exclusive to OnlyHulls";
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {

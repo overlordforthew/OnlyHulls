@@ -190,9 +190,9 @@ export default function BoatCard({
 }
 
 function getListingBadge(boat: BoatCardProps["boat"]) {
-  if (boat.source_name) {
+  if (boat.source_name || boat.source_site || boat.source_url) {
     return {
-      label: `via ${boat.source_name}`,
+      label: `via ${boat.source_name || boat.source_site || "partner listing"}`,
       className: "bg-white/20",
     };
   }
@@ -212,7 +212,7 @@ function getListingBadge(boat: BoatCardProps["boat"]) {
   }
 
   return {
-    label: "Direct Listing",
+    label: "Exclusive to OnlyHulls",
     className: "bg-primary-btn/85",
   };
 }

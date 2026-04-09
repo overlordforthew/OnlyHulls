@@ -31,6 +31,10 @@ interface Match {
   location_text: string | null;
   slug: string | null;
   is_sample: boolean;
+  source_site?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  seller_subscription_tier?: string | null;
   hero_url: string | null;
   specs: { loa?: number; rig_type?: string };
   character_tags: string[];
@@ -195,6 +199,10 @@ export default function MatchesPage() {
                     location_text: match.location_text,
                     slug: match.slug,
                     is_sample: match.is_sample,
+                    source_site: match.source_site,
+                    source_name: match.source_name,
+                    source_url: match.source_url,
+                    seller_subscription_tier: match.seller_subscription_tier,
                     hero_url: match.hero_url,
                     specs: match.specs,
                     character_tags: match.character_tags,

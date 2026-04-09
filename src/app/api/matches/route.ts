@@ -114,6 +114,10 @@ export async function GET(req: Request) {
       location_text: string | null;
       slug: string | null;
       is_sample: boolean;
+      source_site: string | null;
+      source_name: string | null;
+      source_url: string | null;
+      seller_subscription_tier: string | null;
       hero_url: string | null;
       specs: Record<string, unknown>;
       character_tags: string[];
@@ -129,12 +133,14 @@ export async function GET(req: Request) {
               mas.verdict as ai_verdict,
               mas.provider as ai_provider,
               b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.asking_price_usd, b.currency,
-              b.location_text, b.slug, b.is_sample,
+              b.location_text, b.slug, b.is_sample, b.source_site, b.source_name, b.source_url,
+              COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
               COALESCE(d.specs, '{}') as specs,
               COALESCE(d.character_tags, '{}') as character_tags
        FROM matches m
        JOIN boats b ON b.id = m.boat_id
+       LEFT JOIN users u ON u.id = b.seller_id
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        LEFT JOIN match_explanations me ON me.match_id = m.id
        LEFT JOIN match_ai_signals mas ON mas.match_id = m.id
@@ -177,6 +183,10 @@ export async function GET(req: Request) {
       location_text: string | null;
       slug: string | null;
       is_sample: boolean;
+      source_site: string | null;
+      source_name: string | null;
+      source_url: string | null;
+      seller_subscription_tier: string | null;
       hero_url: string | null;
       specs: Record<string, unknown>;
       character_tags: string[];
@@ -192,12 +202,14 @@ export async function GET(req: Request) {
               mas.verdict as ai_verdict,
               mas.provider as ai_provider,
               b.id as boat_id, b.make, b.model, b.year, b.asking_price, b.asking_price_usd, b.currency,
-              b.location_text, b.slug, b.is_sample,
+              b.location_text, b.slug, b.is_sample, b.source_site, b.source_name, b.source_url,
+              COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
               (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
               COALESCE(d.specs, '{}') as specs,
               COALESCE(d.character_tags, '{}') as character_tags
        FROM matches m
        JOIN boats b ON b.id = m.boat_id
+       LEFT JOIN users u ON u.id = b.seller_id
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        LEFT JOIN match_explanations me ON me.match_id = m.id
        LEFT JOIN match_ai_signals mas ON mas.match_id = m.id
