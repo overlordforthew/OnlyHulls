@@ -8,6 +8,8 @@ const buyerPlans = [
     tier: "free",
     name: "Free",
     price: 0,
+    billingLabel: "",
+    priceNote: "",
     features: [
       "Browse all listings",
       "10 saves/day",
@@ -19,6 +21,8 @@ const buyerPlans = [
     tier: "plus",
     name: "Plus",
     price: 10,
+    billingLabel: "/month",
+    priceNote: "",
     popular: true,
     features: [
       "Unlimited saves & matching",
@@ -35,6 +39,8 @@ const sellerPlans = [
     tier: "free-seller",
     name: "Free",
     price: 0,
+    billingLabel: "",
+    priceNote: "",
     features: [
       "1 active listing",
       "Manual text-based entry",
@@ -47,6 +53,8 @@ const sellerPlans = [
     tier: "standard",
     name: "Creator",
     price: 30,
+    billingLabel: "every 90 days",
+    priceNote: "Works out to about $10/month.",
     popular: true,
     features: [
       "Unlimited active listings",
@@ -59,7 +67,9 @@ const sellerPlans = [
   {
     tier: "featured",
     name: "Featured Creator",
-    price: 50,
+    price: 60,
+    billingLabel: "every 90 days",
+    priceNote: "Works out to about $20/month.",
     features: [
       "Everything in Creator",
       "External video embeds (YouTube/Vimeo)",
@@ -72,7 +82,15 @@ const sellerPlans = [
   },
 ];
 
-type Plan = (typeof buyerPlans)[0];
+type Plan = {
+  tier: string;
+  name: string;
+  price: number;
+  billingLabel?: string;
+  priceNote?: string;
+  popular?: boolean;
+  features: string[];
+};
 
 function PlanCard({
   plan,
@@ -100,10 +118,13 @@ function PlanCard({
       <h3 className="text-xl font-bold">{plan.name}</h3>
       <p className="mt-3">
         <span className="text-4xl font-bold">${plan.price}</span>
-        {plan.price > 0 && (
-          <span className="text-text-secondary">/month</span>
+        {plan.price > 0 && plan.billingLabel && (
+          <span className="text-text-secondary"> {plan.billingLabel}</span>
         )}
       </p>
+      {plan.price > 0 && plan.priceNote && (
+        <p className="mt-1 text-sm text-text-secondary">{plan.priceNote}</p>
+      )}
       <ul className="mt-6 space-y-3">
         {plan.features.map((f) => (
           <li key={f} className="flex items-start gap-2.5 text-sm">
@@ -216,7 +237,7 @@ export function SellerPricing() {
     <div>
       <h2 className="text-center text-2xl font-bold">Seller Plans</h2>
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
-        No commissions, no hidden fees — just flat monthly pricing.
+        No commissions, no hidden fees — just simple 90-day pricing.
       </p>
       <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
         {sellerPlans.map((plan) => (

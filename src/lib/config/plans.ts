@@ -11,7 +11,7 @@ export type UserRole = "buyer" | "seller" | "both" | "broker" | "admin";
 export interface PlanConfig {
   tier: SubscriptionTier;
   name: string;
-  price: number; // monthly USD
+  price: number; // USD billed amount
   role: "buyer" | "seller" | "broker";
   stripePriceId: string;
   features: string[];
@@ -106,7 +106,7 @@ export const PLANS: Record<string, PlanConfig> = {
   featured: {
     tier: "featured",
     name: "Featured Creator",
-    price: 50,
+    price: 60,
     role: "seller",
     stripePriceId: process.env.STRIPE_PRICE_SELLER_FEATURED || "",
     features: [
