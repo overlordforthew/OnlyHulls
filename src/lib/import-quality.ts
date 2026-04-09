@@ -380,6 +380,7 @@ export function buildImportedSummary(input: {
 
 export function buildImportQualityFlags(input: {
   model?: string | null;
+  locationText?: string | null;
   imageCount: number;
   priceUsd: number | null;
   summary?: string | null;
@@ -387,6 +388,7 @@ export function buildImportQualityFlags(input: {
   const flags: string[] = [];
 
   if (!normalizeSpacing(input.model)) flags.push("missing_model");
+  if (!normalizeSpacing(input.locationText)) flags.push("missing_location");
   if (input.imageCount < MIN_VISIBLE_IMPORTED_IMAGES) flags.push("missing_image");
   if (input.priceUsd !== null && input.priceUsd < MIN_VISIBLE_IMPORTED_PRICE_USD) {
     flags.push("low_price");
@@ -402,6 +404,7 @@ export function calculateImportQualityScore(flags: string[]) {
   let score = 100;
   for (const flag of flags) {
     if (flag === "missing_model") score -= 35;
+    else if (flag === "missing_location") score -= 30;
     else if (flag === "missing_image") score -= 35;
     else if (flag === "thin_summary") score -= 10;
     else if (flag === "low_price") score -= 10;
@@ -436,6 +439,7 @@ export function buildVisibleImportQualitySql(alias = "b") {
   OR (
     COALESCE(NULLIF(TRIM(${alias}.make), ''), '') <> ''
     AND COALESCE(NULLIF(TRIM(${alias}.model), ''), '') <> ''
+    AND COALESCE(NULLIF(TRIM(${alias}.location_text), ''), '') <> ''
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (
       SELECT 1

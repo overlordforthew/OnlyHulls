@@ -265,6 +265,7 @@ async function main() {
 
     const qualityFlags = buildImportQualityFlags({
       model: normalized.model,
+      locationText: row.location_text,
       imageCount: row.image_count,
       priceUsd: row.asking_price_usd,
       summary,

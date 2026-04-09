@@ -381,6 +381,7 @@ async function importBoats(filePath: string, sourceSite: string) {
       const priceUsd = toUsd(price, currency);
       const qualityFlags = buildImportQualityFlags({
         model,
+        locationText: location,
         imageCount: images.length,
         priceUsd,
         summary,
@@ -532,6 +533,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const priceUsd = price ? toUsd(price, currency) : null;
       const qualityFlags = buildImportQualityFlags({
         model,
+        locationText: location,
         imageCount: images.length,
         priceUsd,
         summary,
