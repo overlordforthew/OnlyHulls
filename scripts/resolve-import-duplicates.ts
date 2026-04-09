@@ -95,6 +95,7 @@ async function fetchImportCandidates(limit: number) {
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.listing_source = 'imported'
+       AND b.status = 'active'
        AND b.source_url IS NOT NULL
      ORDER BY b.updated_at DESC, b.id
      LIMIT $1`,
