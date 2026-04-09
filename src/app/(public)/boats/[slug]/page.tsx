@@ -83,7 +83,12 @@ async function getBoatForViewer(
   if (boat.status === "active") {
     if (
       boat.source_url &&
-      (!boat.hero_url || !boat.model.trim() || Number(boat.asking_price_usd || boat.asking_price) < 3000)
+      (
+        !boat.hero_url ||
+        !boat.model.trim() ||
+        !boat.location_text?.trim() ||
+        Number(boat.asking_price_usd || boat.asking_price) < 3000
+      )
     ) {
       return null;
     }
