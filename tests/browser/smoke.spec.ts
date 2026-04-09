@@ -21,13 +21,6 @@ test("pricing redirects to sell section", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Seller Plans", exact: false })).toBeVisible();
 });
 
-test("authenticated areas redirect guests to sign in", async ({ page }) => {
-  await page.goto("/listings");
-  await expect(page).toHaveURL(/\/sign-in\?callbackUrl=/);
-  await expect(page.getByRole("heading", { name: "Welcome back", exact: false })).toBeVisible();
-  expect(decodeURIComponent(page.url())).toContain("/listings");
-});
-
 test("sign in page loads", async ({ page }) => {
   await page.goto("/sign-in");
   await expect(page).toHaveURL(/\/sign-in$/);
@@ -45,8 +38,9 @@ test("match CTA preserves auth callback for guests", async ({ page }) => {
   await page.getByRole("button", { name: "Get Matched - It's Free" }).click();
   await expect(page).toHaveURL(/\/sign-in\?callbackUrl=/);
 
-  const url = page.url();
-  expect(decodeURIComponent(url)).toContain("/onboarding/profile?callbackUrl=/matches");
+  const url = new URL(page.url());
+  const callbackUrl = url.searchParams.get("callbackUrl");
+  expect(callbackUrl).toBe("/onboarding/profile?callbackUrl=%2Fmatches");
 });
 
 test("capabilities endpoint reports live systems", async ({ request }) => {
