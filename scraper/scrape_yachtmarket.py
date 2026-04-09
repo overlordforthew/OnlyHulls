@@ -218,22 +218,49 @@ def extract_gtm_data(html):
     }
 
 
+def normalize_gallery_image_url(img_url):
+    if img_url.startswith("//"):
+        img_url = "https:" + img_url
+    return re.sub(r"/img/(\d+)/\d+/", r"/img/\1/2/", img_url)
+
+
 def extract_images(html):
-    """Extract all gallery images from inline JS and DOM."""
+    """Extract only the primary boat gallery images."""
     images = []
     seen = set()
 
-    # Method 1: Find all CDN image URLs in page (inline JS + img tags)
-    for m in re.finditer(r'((?:https?:)?//cdnx\.theyachtmarket\.com/img/(\d+)/\d+/[^"\'>\s]+\.jpg)', html):
-        img_url = m.group(1)
-        img_id = m.group(2)
-        if img_url.startswith("//"):
-            img_url = "https:" + img_url
-        # Normalize to size /2/ (1000px) for quality
-        normalized = re.sub(r'/img/(\d+)/\d+/', r'/img/\1/2/', img_url)
+    def add(url):
+        if not url:
+            return
+        normalized = normalize_gallery_image_url(url)
         if normalized not in seen:
             seen.add(normalized)
             images.append(normalized)
+
+    main_img = re.search(
+        r'id="ContentPlaceHolder1_ContentPlaceHolder1_imgMainBoat"[^>]+src="([^"]+)"',
+        html,
+        re.S,
+    )
+    if main_img:
+        add(main_img.group(1))
+
+    for match in re.finditer(
+        r'<span id="thumb\d+" class="darken gallery smallThumbCLS">\s*<img[^>]+src="([^"]+)"',
+        html,
+        re.S,
+    ):
+        add(match.group(1))
+
+    if images:
+        return images
+
+    # Fallback for template variants without the standard gallery markup.
+    for match in re.finditer(
+        r'((?:https?:)?//cdnx\.theyachtmarket\.com/img/(\d+)/\d+/[^"\'>\s]+\.jpg)',
+        html,
+    ):
+        add(match.group(1))
 
     return images
 

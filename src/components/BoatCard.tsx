@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
+import { isLocalMediaUrl } from "@/lib/media";
 
 interface BoatCardProps {
   boat: {
@@ -62,6 +63,8 @@ export default function BoatCard({
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, 33vw"
+              unoptimized={!isLocalMediaUrl(boat.hero_url)}
+              quality={isLocalMediaUrl(boat.hero_url) ? 82 : undefined}
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated">

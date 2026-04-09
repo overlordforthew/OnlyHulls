@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Camera, ChevronLeft, ChevronRight, PlayCircle } from "lucide-react";
-import { getExternalVideoMeta, type ListingMediaType } from "@/lib/media";
+import { getExternalVideoMeta, isLocalMediaUrl, type ListingMediaType } from "@/lib/media";
 
 interface MediaItem {
   id: string;
@@ -45,6 +45,7 @@ export function ImageGallery({
   const next = () => setCurrent((i) => (i < media.length - 1 ? i + 1 : 0));
   const currentItem = media[current];
   const currentVideo = currentItem.type === "video" ? getExternalVideoMeta(currentItem.url) : null;
+  const currentImageIsLocal = isLocalMediaUrl(currentItem.url);
 
   return (
     <div className="space-y-2">
@@ -67,6 +68,8 @@ export function ImageGallery({
               fill
               className="object-cover"
               sizes="100vw"
+              unoptimized={!currentImageIsLocal}
+              quality={currentImageIsLocal ? 90 : undefined}
             />
           </div>
         )}
@@ -125,6 +128,8 @@ export function ImageGallery({
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 9rem, 11rem"
+                    unoptimized={!isLocalMediaUrl(m.url)}
+                    quality={isLocalMediaUrl(m.url) ? 80 : undefined}
                   />
                 )}
               </button>
