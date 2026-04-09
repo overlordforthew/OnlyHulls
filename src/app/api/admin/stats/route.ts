@@ -13,8 +13,14 @@ export async function GET() {
   }
 
   try {
+    const liveUserWhere = `
+      email <> 'system@onlyhulls.com'
+      AND email NOT LIKE '%@onlyhulls.test'
+      AND email NOT LIKE 'browser-%'
+    `;
+
     const [users, admins, listings, pending, matches, intros, meiliStats] = await Promise.all([
-      queryOne<{ count: string }>("SELECT COUNT(*) FROM users"),
+      queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'pending_review'"),

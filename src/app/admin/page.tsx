@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Info } from "lucide-react";
 
 interface Stats {
   totalUsers: number;
@@ -128,8 +129,13 @@ export default function AdminPage() {
     actionKey: string,
     url: string,
     body: Record<string, unknown>,
-    formatter: (data: Record<string, unknown>) => string
+    formatter: (data: Record<string, unknown>) => string,
+    confirmMessage?: string
   ) {
+    if (confirmMessage && !window.confirm(confirmMessage)) {
+      return;
+    }
+
     setActionLoading(actionKey);
     setMessage(null);
     try {
@@ -174,7 +180,11 @@ export default function AdminPage() {
       {stats && (
         <>
           <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <StatCard label="Total Users" value={stats.totalUsers} />
+            <StatCard
+              label="Live Users"
+              value={stats.totalUsers}
+              info="Excludes system, browser, and internal test accounts so this reflects actual marketplace users."
+            />
             <StatCard label="Admins" value={stats.adminUsers} />
             <StatCard label="Active Listings" value={stats.activeListings} />
             <StatCard label="Pending Review" value={stats.pendingListings} highlight />
@@ -215,56 +225,67 @@ export default function AdminPage() {
       <div className="mt-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="text-lg font-semibold">Maintenance</h2>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            onClick={() =>
-              runMaintenanceAction(
-                "approve-all",
-                "/api/admin/listings/bulk",
-                { status: "active" },
-                (data) => `Approved ${data.updated || 0} pending listings.`
-              )
-            }
-            disabled={actionLoading === "approve-all" || pending.length === 0}
-            className="rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          <ActionWithInfo
+            info="Publishes every listing still waiting for review. Use only after the entire queue has been manually checked."
           >
-            {actionLoading === "approve-all" ? "Approving..." : "Approve All Pending"}
-          </button>
-          <button
-            onClick={() =>
-              runMaintenanceAction(
-                "reindex-search",
-                "/api/admin/maintenance/reindex-search",
-                {},
-                (data) => `Reindexed ${data.indexed || 0} active boats into search.`
-              )
-            }
-            disabled={actionLoading === "reindex-search"}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-          >
-            {actionLoading === "reindex-search" ? "Reindexing..." : "Rebuild Search Index"}
-          </button>
-          <button
-            onClick={() =>
-              runMaintenanceAction(
-                "backfill-matches",
-                "/api/admin/maintenance/backfill-matches",
-                {},
-                (data) =>
-                  `Processed ${data.totalProcessed || 0} buyer profiles, skipped ${data.totalSkipped || 0}, total matches ${data.totalMatches || 0}.`
-              )
-            }
-            disabled={actionLoading === "backfill-matches"}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-          >
-            {actionLoading === "backfill-matches" ? "Backfilling..." : "Backfill Matches"}
-          </button>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-          >
-            Refresh
-          </button>
+            <button
+              onClick={() =>
+                runMaintenanceAction(
+                  "approve-all",
+                  "/api/admin/listings/bulk",
+                  { status: "active" },
+                  (data) => `Approved ${data.updated || 0} pending listings.`,
+                  `Approve all ${pending.length} pending listings and publish them live?`
+                )
+              }
+              disabled={actionLoading === "approve-all" || pending.length === 0}
+              className="rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {actionLoading === "approve-all" ? "Approving..." : "Approve All Pending"}
+            </button>
+          </ActionWithInfo>
+          <ActionWithInfo info="Rebuilds the Meilisearch boat index from the current active inventory. Use after large imports, cleanup, or moderation changes.">
+            <button
+              onClick={() =>
+                runMaintenanceAction(
+                  "reindex-search",
+                  "/api/admin/maintenance/reindex-search",
+                  {},
+                  (data) => `Reindexed ${data.indexed || 0} active boats into search.`
+                )
+              }
+              disabled={actionLoading === "reindex-search"}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+            >
+              {actionLoading === "reindex-search" ? "Reindexing..." : "Rebuild Search Index"}
+            </button>
+          </ActionWithInfo>
+          <ActionWithInfo info="Recomputes saved buyer matches against the current inventory and matching rules. Use after major profile, inventory, or matching logic changes.">
+            <button
+              onClick={() =>
+                runMaintenanceAction(
+                  "backfill-matches",
+                  "/api/admin/maintenance/backfill-matches",
+                  {},
+                  (data) =>
+                    `Processed ${data.totalProcessed || 0} buyer profiles, skipped ${data.totalSkipped || 0}, total matches ${data.totalMatches || 0}.`
+                )
+              }
+              disabled={actionLoading === "backfill-matches"}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+            >
+              {actionLoading === "backfill-matches" ? "Backfilling..." : "Backfill Matches"}
+            </button>
+          </ActionWithInfo>
+          <ActionWithInfo info="Reloads the dashboard stats and moderation queue without changing any data.">
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+            >
+              Refresh
+            </button>
+          </ActionWithInfo>
         </div>
       </div>
 
@@ -327,10 +348,12 @@ function StatCard({
   label,
   value,
   highlight,
+  info,
 }: {
   label: string;
   value: number;
   highlight?: boolean;
+  info?: string;
 }) {
   return (
     <div
@@ -339,7 +362,10 @@ function StatCard({
       }`}
     >
       <p className="text-2xl font-bold">{value}</p>
-      <p className="text-sm text-foreground/60">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <p className="text-sm text-foreground/60">{label}</p>
+        {info && <InfoBubble text={info} />}
+      </div>
     </div>
   );
 }
@@ -359,6 +385,38 @@ function HealthCard({
       <p className={`mt-1 text-lg font-semibold ${healthy ? "text-green-600" : "text-accent"}`}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function ActionWithInfo({
+  children,
+  info,
+}: {
+  children: ReactNode;
+  info: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {children}
+      <InfoBubble text={info} />
+    </div>
+  );
+}
+
+function InfoBubble({ text }: { text: string }) {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        aria-label="More information"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-foreground/55 transition-colors hover:border-primary hover:text-primary"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-64 -translate-x-1/2 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground/75 shadow-xl group-hover:block">
+        {text}
+      </div>
     </div>
   );
 }
