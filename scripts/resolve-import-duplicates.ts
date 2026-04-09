@@ -4,6 +4,7 @@ import { normalizeImportedMakeModel } from "../src/lib/import-quality";
 type ImportCandidate = {
   id: string;
   slug: string | null;
+  status: string;
   year: number;
   make: string;
   model: string;
@@ -57,7 +58,7 @@ function buildNormalizedKey(row: ImportCandidate) {
       normalized.make.toLowerCase(),
       normalized.model.toLowerCase(),
       String(row.year),
-      String(row.location_text || "").trim().toLowerCase(),
+      String(row.location_text || ""),
     ].join("|"),
   };
 }
@@ -66,6 +67,7 @@ function scoreCandidate(row: ImportCandidate, normalizedModel: string) {
   const qualityScore = Number(row.documentation_status?.import_quality_score || 0);
   const visibleBonus = normalizedModel && row.image_count > 0 && Number(row.asking_price_usd || row.asking_price) >= 3000 ? 120 : 0;
   const sourceBonus = SOURCE_QUALITY_BONUS[row.source_site || ""] || 0;
+  const statusBonus = row.status === "active" ? 250 : row.status === "pending_review" ? 60 : 0;
   const imageScore = Math.min(row.image_count, 20) * 20;
   const summaryScore = Math.min(row.summary_length, 220);
   const priceScore = Number(row.asking_price_usd || row.asking_price) >= 3000 ? 25 : -40;
@@ -75,12 +77,12 @@ function scoreCandidate(row: ImportCandidate, normalizedModel: string) {
     30 - Math.floor((Date.now() - new Date(row.updated_at).getTime()) / (1000 * 60 * 60 * 24))
   );
 
-  return qualityScore + visibleBonus + sourceBonus + imageScore + summaryScore + priceScore + viewScore + freshnessScore;
+  return qualityScore + visibleBonus + sourceBonus + statusBonus + imageScore + summaryScore + priceScore + viewScore + freshnessScore;
 }
 
 async function fetchImportCandidates(limit: number) {
   return query<ImportCandidate>(
-    `SELECT b.id, b.slug, b.year, b.make, b.model, b.source_site, b.source_name, b.source_url,
+    `SELECT b.id, b.slug, b.status, b.year, b.make, b.model, b.source_site, b.source_name, b.source_url,
             b.location_text, b.asking_price, b.asking_price_usd, b.view_count, b.updated_at,
             COALESCE((
               SELECT COUNT(*)
@@ -92,7 +94,7 @@ async function fetchImportCandidates(limit: number) {
             COALESCE(d.documentation_status, '{}') AS documentation_status
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
-     WHERE b.status = 'active'
+     WHERE b.listing_source = 'imported'
        AND b.source_url IS NOT NULL
      ORDER BY b.updated_at DESC, b.id
      LIMIT $1`,
@@ -126,6 +128,7 @@ async function main() {
 
   let duplicateGroups = 0;
   let expired = 0;
+  let activeWinnerGroups = 0;
 
   for (const entries of groups.values()) {
     if (entries.length < 2) continue;
@@ -133,14 +136,16 @@ async function main() {
     entries.sort((a, b) => b.rankScore - a.rankScore || b.image_count - a.image_count || b.summary_length - a.summary_length || b.view_count - a.view_count);
     const winner = entries[0];
     const losers = entries.slice(1);
+    if (winner.status === "active") activeWinnerGroups++;
 
     if (!dryRun) {
+      const loserIds = losers.map((row) => row.id);
       await query(
         `UPDATE boats
-         SET status = 'expired',
+         SET status = CASE WHEN status = 'active' THEN 'expired' ELSE status END,
              updated_at = NOW()
          WHERE id = ANY($1::uuid[])`,
-        [losers.map((row) => row.id)]
+        [loserIds]
       );
 
       for (const loser of losers) {
@@ -156,6 +161,8 @@ async function main() {
               duplicate_key: `${winner.normalizedMake}|${winner.normalizedModel}|${winner.year}|${winner.location_text || ""}`,
               duplicate_resolved_at: new Date().toISOString(),
               duplicate_resolution: "expired_weaker_import",
+              duplicate_status_before: loser.status,
+              duplicate_scope: "import_index_exact_key",
             }),
           ]
         );
@@ -172,12 +179,13 @@ async function main() {
 
   console.log(
     JSON.stringify(
-      {
-        scanned: rows.length,
-        duplicateGroups,
-        expired,
-        dryRun,
-      },
+        {
+          scanned: rows.length,
+          duplicateGroups,
+          expired,
+          activeWinnerGroups,
+          dryRun,
+        },
       null,
       2
     )

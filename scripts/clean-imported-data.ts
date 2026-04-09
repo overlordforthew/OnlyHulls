@@ -298,7 +298,7 @@ async function main() {
 
     if (!dryRun) {
       try {
-        await query(
+        await pool.query(
           `UPDATE boats
            SET make = $2,
                model = $3,
@@ -346,8 +346,8 @@ async function main() {
       }
     }
 
-    if (qualityFlags.length === 0) visible += 1;
-    else hidden += 1;
+    if (documentationStatus.import_quality_visible === false) hidden += 1;
+    else visible += 1;
 
     processed += 1;
     if (processed <= 5 || processed % 200 === 0) {

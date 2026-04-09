@@ -443,6 +443,15 @@ export function buildVisibleImportQualitySql(alias = "b") {
       WHERE bm.boat_id = ${alias}.id
         AND bm.type = 'image'
     )
+    AND COALESCE((
+      SELECT CASE
+        WHEN jsonb_typeof(d.documentation_status -> 'import_quality_visible') = 'boolean'
+          THEN (d.documentation_status ->> 'import_quality_visible')::boolean
+        ELSE true
+      END
+      FROM boat_dna d
+      WHERE d.boat_id = ${alias}.id
+    ), true)
   )
  )`;
 }
