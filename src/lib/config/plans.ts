@@ -48,7 +48,7 @@ export const PLANS: Record<string, PlanConfig> = {
   plus: {
     tier: "plus",
     name: "Plus",
-    price: 10,
+    price: 25,
     role: "buyer",
     stripePriceId: process.env.STRIPE_PRICE_BUYER_PLUS || "",
     features: [

@@ -20,9 +20,9 @@ const buyerPlans = [
   {
     tier: "plus",
     name: "Plus",
-    price: 10,
-    billingLabel: "/month",
-    priceNote: "",
+    price: 25,
+    billingLabel: "every 90 days",
+    priceNote: "Works out to about $8.33/month.",
     popular: true,
     features: [
       "Unlimited saves & matching",
@@ -206,7 +206,7 @@ export function BuyerPricing() {
     <div>
       <h2 className="text-center text-2xl font-bold">Buyer Plans</h2>
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
-        Browse for free, or upgrade for unlimited AI matching.
+        Browse for free, or upgrade for unlimited AI matching with simple 90-day pricing.
       </p>
       <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-2">
         {buyerPlans.map((plan) => (
