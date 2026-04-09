@@ -5,11 +5,27 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ContactGateModal from "./ContactGateModal";
 
+const BUYER_MATCH_FLOW_CALLBACK = "/matches";
+const BUYER_ONBOARDING_DESTINATION = `/onboarding/profile?callbackUrl=${encodeURIComponent(
+  BUYER_MATCH_FLOW_CALLBACK
+)}`;
+
 export function MatchCTAPrimary({ className = "" }: { className?: string }) {
   const router = useRouter();
+  const { data: session } = useSession();
+
+  function handleClick() {
+    if (session?.user) {
+      router.push(BUYER_ONBOARDING_DESTINATION);
+      return;
+    }
+
+    router.push(`/sign-in?callbackUrl=${encodeURIComponent(BUYER_ONBOARDING_DESTINATION)}`);
+  }
+
   return (
     <button
-      onClick={() => router.push("/onboarding/profile")}
+      onClick={handleClick}
       className={`cursor-pointer ${className}`}
     >
       Get Matched - It&apos;s Free
@@ -19,9 +35,20 @@ export function MatchCTAPrimary({ className = "" }: { className?: string }) {
 
 export function MatchCTASecondary({ className = "" }: { className?: string }) {
   const router = useRouter();
+  const { data: session } = useSession();
+
+  function handleClick() {
+    if (session?.user) {
+      router.push(BUYER_ONBOARDING_DESTINATION);
+      return;
+    }
+
+    router.push(`/sign-in?callbackUrl=${encodeURIComponent(BUYER_ONBOARDING_DESTINATION)}`);
+  }
+
   return (
     <button
-      onClick={() => router.push("/onboarding/profile")}
+      onClick={handleClick}
       className={`cursor-pointer ${className}`}
     >
       Get Matched - Free

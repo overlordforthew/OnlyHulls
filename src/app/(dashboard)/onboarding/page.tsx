@@ -8,6 +8,8 @@ type Role = "buyer" | "seller" | "both";
 export default function OnboardingPage() {
   const searchParams = useSearchParams();
   const defaultRole = searchParams.get("role");
+  const rawCallback = searchParams.get("callbackUrl") || "";
+  const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "";
   const [selectedRole, setSelectedRole] = useState<Role | null>(
     defaultRole === "buyer" || defaultRole === "seller" || defaultRole === "both"
       ? defaultRole
@@ -28,7 +30,11 @@ export default function OnboardingPage() {
       if (!res.ok) throw new Error("Failed to set role");
 
       if (selectedRole === "buyer" || selectedRole === "both") {
-        router.push("/onboarding/profile");
+        router.push(
+          callbackUrl
+            ? `/onboarding/profile?callbackUrl=${encodeURIComponent(callbackUrl)}`
+            : "/onboarding/profile"
+        );
       } else {
         router.push("/listings/new");
       }
