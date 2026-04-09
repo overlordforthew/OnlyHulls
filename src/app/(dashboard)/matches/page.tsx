@@ -125,6 +125,11 @@ export default function MatchesPage() {
 
   const hasMore = matches.length < total;
 
+  function openConnect(match: Match) {
+    const href = `/boats/${match.slug || match.boat_id}?connect=true&matchId=${match.match_id}`;
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
   function handleViewMode(nextView: ViewMode) {
     setViewMode(nextView);
     window.localStorage.setItem("matches_view_mode", nextView);
@@ -274,11 +279,7 @@ export default function MatchesPage() {
                     showActions
                     onSave={() => handleAction(match.match_id, "interested")}
                     onDismiss={() => handleAction(match.match_id, "passed")}
-                    onConnect={() =>
-                      router.push(
-                        `/boats/${match.slug || match.boat_id}?connect=true&matchId=${match.match_id}`
-                      )
-                    }
+                    onConnect={() => openConnect(match)}
                   />
                   {match.ai_verdict && match.ai_provider && (
                     <div className="flex flex-wrap items-center gap-2 px-1 text-xs text-foreground/60">
@@ -302,9 +303,7 @@ export default function MatchesPage() {
                   displayCurrency={displayCurrency}
                   onSave={() => handleAction(match.match_id, "interested")}
                   onDismiss={() => handleAction(match.match_id, "passed")}
-                  onConnect={() =>
-                    router.push(`/boats/${match.slug || match.boat_id}?connect=true&matchId=${match.match_id}`)
-                  }
+                  onConnect={() => openConnect(match)}
                 />
               ))}
             </div>
