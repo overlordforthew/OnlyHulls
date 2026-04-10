@@ -215,6 +215,28 @@ function canonicalizeMakeName(make: string) {
   return normalized;
 }
 
+function splitEmbeddedModelFromMake(make: string, model: string) {
+  if (model) return { make, model };
+
+  const spacedMatch = make.match(/^([A-Za-z][A-Za-z/&' -]+?)\s+(\d[\w.-]*)$/);
+  if (spacedMatch) {
+    return {
+      make: spacedMatch[1].trim(),
+      model: spacedMatch[2].trim(),
+    };
+  }
+
+  const embeddedMatch = make.match(/^([A-Za-z][A-Za-z/&' -]+?)(\d[\w.-]*)$/);
+  if (embeddedMatch && embeddedMatch[1].length >= 2) {
+    return {
+      make: embeddedMatch[1].trim(),
+      model: embeddedMatch[2].trim(),
+    };
+  }
+
+  return { make, model };
+}
+
 function normalizeRomanSuffixes(value: string) {
   return value
     .replace(/\bMk Ii\b/gi, "Mk II")
@@ -313,6 +335,8 @@ export function normalizeImportedMakeModel(input: {
   if (!model) {
     model = inferModelFromSlug(input.slug, make);
   }
+
+  ({ make, model } = splitEmbeddedModelFromMake(make, model));
 
   make = make
     .split(/\s+/)

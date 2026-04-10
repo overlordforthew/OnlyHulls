@@ -7,8 +7,8 @@ This document is a portfolio, not a bucket. A site being technically reachable d
 
 ## Operating Principles
 
-- Keep the current 4 active sources stable before adding more volume.
-- Promote high-value SSR sources next: Denison and Dream Yacht Sales.
+- Keep the current buyer-visible sources stable before adding more volume.
+- Promote only sources that clear quality gates with real buyer-visible inventory.
 - Test Rightboat carefully with throttling before promoting it.
 - Keep Boats Group properties in a separate commercial/API lane.
 - Prefer sources with clean price, location, image, and detail pages over raw listing count.
@@ -17,7 +17,7 @@ This document is a portfolio, not a bucket. A site being technically reachable d
 ## Status Legend
 
 - **ACTIVE** = already in the daily scrape/import pipeline
-- **NEXT** = high-value source to build and promote next
+- **NEXT** = high-value source to recover next if it produces buyer-visible inventory
 - **TEST** = worth controlled validation, but not daily yet
 - **API / COMMERCIAL** = pursue official access, not scraping as a core strategy
 - **HOLD** = scrapeable, but lower ROI or higher noise than current priorities
@@ -33,10 +33,11 @@ This document is a portfolio, not a bucket. A site being technically reachable d
 |---|---|---|---|---|
 | Core | Sailboat Listings | `sailboatlistings.com` | Largest working sailing source, broad inventory, proven import path | **ACTIVE** |
 | Core | TheYachtMarket | `theyachtmarket.com` | Strong sailing inventory, good buyer relevance | **ACTIVE** |
-| Core | Catamarans.com | `catamarans.com` | Pure catamaran source, high thematic fit | **ACTIVE** |
+| Core | Dream Yacht Sales | `dreamyachtsales.com` | High-fit cat inventory, now clearing quality gates with real images and locations | **ACTIVE** |
+| Core | CatamaranSite | `catamaransite.com` | Curated cat inventory, now partially recovered into visible buyer-facing stock | **ACTIVE** |
 | Core | Moorings Brokerage | `mooringsbrokerage.com` | Charter exit cats, clean niche inventory | **ACTIVE** |
-| Expansion | Denison Yachting | `denisonyachtsales.com` | Large SSR volume, good media, good price coverage | **NEXT** |
-| Expansion | Dream Yacht Sales | `dreamyachtsales.com` | High-fit cat inventory, low source complexity | **NEXT** |
+| Recovery | Catamarans.com | `catamarans.com` | Thematic fit is high, but current location extraction still leaves most rows hidden | **HOLD** |
+| Recovery | Denison Yachting | `denisonyachtsales.com` | Large SSR volume, but current scraper still produces buyer-invisible shells | **HOLD** |
 | Controlled Test | Rightboat | `rightboat.com` | Good sail inventory, but rate-limits aggressively | **TEST** |
 | Commercial | Boats.com | `boats.com` | Massive inventory, but should be official API/commercial | **API / COMMERCIAL** |
 | Commercial | Boat Trader | `boattrader.com` | Boats Group property, same lane as boats.com | **API / COMMERCIAL** |
@@ -52,37 +53,38 @@ These are the live portfolio sources and should remain the operational focus unt
 |---|---|---:|---|
 | Sailboat Listings | `sailboatlistings.com` | 16,864 | Strong volume, but requires source-specific normalization |
 | TheYachtMarket | `theyachtmarket.com` | 5,700 sail | Good buyer fit, image refreshes matter |
-| Catamarans.com | `catamarans.com` | 2,013 | Best direct catamaran-only source |
+| Dream Yacht Sales | `dreamyachtsales.com` | 115 | Recovered into buyer-visible inventory after image/location fixes |
+| CatamaranSite | `catamaransite.com` | 48 | Smaller source, but now producing real visible listings |
 | Moorings Brokerage | `mooringsbrokerage.com` | 73 | Small but very high relevance |
 
 **Operational instruction:** keep these stable, keep their cleanup rules improving, and do not dilute attention with too many new sources at once.
 
 ---
 
-## Promote Next
+## Recovery / Promote Next
 
-These are the next two sources to promote after the active four.
+These are the next sources to recover only if they prove buyer-visible value.
 
-### 1. Denison Yachting
+### 1. Catamarans.com
+- Domain: `catamarans.com`
+- Verified listings: `2,013`
+- Current status: **HOLD**
+- Why it matters:
+  - strong catamaran thematic fit
+  - detail pages have solid price, image, and spec coverage
+- Why it is still held:
+  - location extraction remains weak on most rows
+  - recent recovery pass improved visibility, but not enough for daily cron
+
+### 2. Denison Yachting
 - Domain: `denisonyachtsales.com`
 - Verified listings: `16,793`
-- Why next:
+- Current status: **HOLD**
+- Why recover later:
   - large SSR source
-  - price and media are available
   - substantial inventory upside
 - Watchouts:
-  - likely overlapping inventory with broader broker ecosystems
-  - needs dedupe discipline
-
-### 2. Dream Yacht Sales
-- Domain: `dreamyachtsales.com`
-- Verified listings: `115`
-- Why next:
-  - high-fit catamaran inventory
-  - charter-exit fleet relevance
-  - low implementation risk
-- Watchouts:
-  - smaller source, so treat as quality expansion rather than volume play
+  - current scraper still lands as buyer-invisible inventory because media/location are not good enough yet
 
 ---
 
@@ -247,9 +249,9 @@ Not all scraper files belong in the daily pipeline. Presence of a file means “
 
 ## Recommended Execution Order
 
-1. Keep the 4 active sources healthy and improve their normalization rules.
-2. Promote `denisonyachtsales.com`.
-3. Promote `dreamyachtsales.com`.
+1. Keep the active buyer-visible sources healthy and improve their normalization rules.
+2. Recover `catamarans.com` only if location extraction becomes materially better.
+3. Recover `denisonyachtsales.com` only if sailboat-only scraping produces visible inventory with images.
 4. Run a low-rate Rightboat validation pass with strict throttling.
 5. Keep Boats Group in business-development / API conversations.
 6. Revisit HOLD sources only after source-quality KPIs improve.

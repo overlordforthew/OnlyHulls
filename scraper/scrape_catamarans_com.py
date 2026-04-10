@@ -11,6 +11,7 @@ import json
 import re
 import sys
 import time
+from html import unescape
 
 from scrapling import Fetcher
 
@@ -18,6 +19,10 @@ BASE = "https://www.catamarans.com"
 LIST_URL = f"{BASE}/catamarans-for-sale/catamarans-all-listing-search-boats"
 
 fetcher = Fetcher()
+
+
+def clean_html_text(value: str) -> str:
+    return re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", value or ""))).strip()
 
 
 def get_listing_urls(limit=100):
@@ -64,8 +69,7 @@ def scrape_detail(boat_id, url):
         return None
 
     html = page.body.decode("utf-8", errors="replace")
-    text = re.sub(r'<[^>]+>', ' ', html)
-    text = re.sub(r'\s+', ' ', text)
+    text = clean_html_text(html)
     boat = {"id": boat_id, "url": url}
 
     # Name — extract from URL slug (most reliable): /2017-lagoon-560/no-name-lagoon-560/389854
@@ -118,6 +122,20 @@ def scrape_detail(boat_id, url):
     loc_m = re.search(r'(?:Location|Located)[:\s]+([A-Z][a-zA-Z\s,]+?)(?:\s{2,}|\.|United States)', text, re.I)
     if loc_m:
         boat["location"] = loc_m.group(1).strip().rstrip(",")
+    else:
+        desc_m = re.search(r'<h3>Boat Description</h3>\s*<p>(.*?)</p>\s*</div>', html, re.I | re.S)
+        if desc_m:
+            desc = clean_html_text(desc_m.group(1))
+
+            desc_loc = re.search(
+                r'(?:available|located|operating|based)\s+(?:in|at)\s+(?:the\s+)?([A-Z][A-Za-z0-9\' .,&()/\-]+?)(?:[.;]|,\s+(?:Cruised|and|with|where|was|for|offering|offered|ready))',
+                desc,
+                re.I,
+            )
+            if desc_loc:
+                location = desc_loc.group(1).strip().rstrip(",")
+                location = re.sub(r"^(?:in|at)\s+", "", location, flags=re.I)
+                boat["location"] = location
 
     # Engine
     engine_m = re.search(r'(?:Engine|Engines?)[:\s]+(.+?)(?:Fuel|Propeller|Hours|$)', text, re.I)
@@ -141,6 +159,9 @@ def scrape_detail(boat_id, url):
         if img_url not in images:
             images.append(img_url)
     boat["images"] = images[:15]
+
+    if boat.get("location"):
+        boat["location"] = re.sub(r"^(?:in|at)\s+", "", str(boat["location"]).strip(), flags=re.I)
 
     return boat if boat.get("name") else None
 
