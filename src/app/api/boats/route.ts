@@ -25,11 +25,20 @@ export async function GET(req: Request) {
     const filters = filtersFromSearchParams(url.searchParams);
 
     const orderBy = buildOrderBy(filters.sort, filters.dir);
+    const hasStructuredFilters =
+      Boolean(filters.minPrice) ||
+      Boolean(filters.maxPrice) ||
+      Boolean(filters.minYear) ||
+      Boolean(filters.maxYear) ||
+      Boolean(filters.rigType) ||
+      Boolean(filters.hullType) ||
+      Boolean(filters.tag);
+    const isExplicitSort =
+      filters.sort !== "newest" || filters.dir !== "desc";
     const shouldUseMeili =
       Boolean(filters.search) &&
-      !filters.rigType &&
-      !filters.hullType &&
-      !filters.tag;
+      !hasStructuredFilters &&
+      !isExplicitSort;
 
     if (shouldUseMeili) {
       try {

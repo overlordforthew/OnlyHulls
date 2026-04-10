@@ -70,3 +70,23 @@ test("boats search returns results and renders the page", async ({ page, request
   await expect(page).toHaveURL(/\/boats\?q=Leopard$/);
   await expect(page.getByText("Leopard", { exact: false }).first()).toBeVisible();
 });
+
+test("boats API honors price sorting for search queries", async ({ request }) => {
+  const api = await request.get("/api/boats?q=catana&sort=price&dir=asc&limit=12");
+  expect(api.ok()).toBeTruthy();
+
+  const payload = await api.json();
+  expect(payload.boats.length).toBeGreaterThan(2);
+
+  const prices = payload.boats
+    .map((boat: { asking_price_usd?: number | null; asking_price?: number | null }) =>
+      Number(boat.asking_price_usd ?? boat.asking_price ?? Number.POSITIVE_INFINITY)
+    )
+    .filter((price: number) => Number.isFinite(price));
+
+  expect(prices.length).toBeGreaterThan(2);
+
+  for (let i = 1; i < prices.length; i += 1) {
+    expect(prices[i]).toBeGreaterThanOrEqual(prices[i - 1]);
+  }
+});

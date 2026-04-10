@@ -44,6 +44,17 @@ interface Boat {
   source_url?: string | null;
 }
 
+function normalizeSortField(value: string | null): SortField {
+  return value === "price" || value === "size" || value === "year" || value === "newest"
+    ? value
+    : "newest";
+}
+
+function normalizeSortDir(value: string | null, field: SortField): SortDir {
+  if (value === "asc" || value === "desc") return value;
+  return field === "newest" ? "desc" : "asc";
+}
+
 export default function BoatsPage() {
   return (
     <Suspense
@@ -73,6 +84,8 @@ function BoatsPageInner() {
   const initialCurrency = requestedCurrency
     ? normalizeSupportedCurrency(requestedCurrency)
     : null;
+  const initialSortField = normalizeSortField(searchParams.get("sort"));
+  const initialSortDir = normalizeSortDir(searchParams.get("dir"), initialSortField);
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,8 +96,8 @@ function BoatsPageInner() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("newest");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortField, setSortField] = useState<SortField>(initialSortField);
+  const [sortDir, setSortDir] = useState<SortDir>(initialSortDir);
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
