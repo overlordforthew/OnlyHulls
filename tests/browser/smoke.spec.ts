@@ -90,3 +90,62 @@ test("boats API honors price sorting for search queries", async ({ request }) =>
     expect(prices[i]).toBeGreaterThanOrEqual(prices[i - 1]);
   }
 });
+
+test("boats page shows ascending prices when sorting by price", async ({ page }) => {
+  await page.goto("/boats?q=catana");
+  await page.getByRole("button", { name: "Price", exact: false }).click();
+  await page.waitForLoadState("networkidle");
+
+  const cardTexts = await page.locator("div.group.card-hover").evaluateAll((cards) =>
+    cards.slice(0, 6).map((card) => card.textContent || "")
+  );
+
+  const prices = cardTexts
+    .map((text) => {
+      const match = text.match(/\$([\d,]+)/);
+      return match ? Number(match[1].replace(/,/g, "")) : Number.NaN;
+    })
+    .filter((price) => Number.isFinite(price));
+
+  expect(prices.length).toBeGreaterThan(2);
+
+  for (let i = 1; i < prices.length; i += 1) {
+    expect(prices[i]).toBeGreaterThanOrEqual(prices[i - 1]);
+  }
+});
+
+test("boats page load more appends additional cards", async ({ page }) => {
+  await page.goto("/boats");
+  const cards = page.locator("div.group.card-hover");
+  await expect(cards.first()).toBeVisible();
+  const initialCount = await cards.count();
+  expect(initialCount).toBeGreaterThan(5);
+
+  const showMore = page.getByRole("button", { name: /Show More/i });
+  await expect(showMore).toBeVisible();
+  await showMore.click();
+
+  await expect.poll(async () => cards.count()).toBeGreaterThan(initialCount);
+});
+
+test("boats currency selection persists after reload", async ({ page }) => {
+  await page.goto("/boats");
+  await page.locator("#boats-currency").selectOption("EUR");
+  await expect(page.locator("#boats-currency")).toHaveValue("EUR");
+
+  await page.reload();
+  await expect(page.locator("#boats-currency")).toHaveValue("EUR");
+});
+
+test("boats card opens detail page", async ({ page }) => {
+  await page.goto("/boats?q=lagoon");
+
+  const firstCardTitle = page.locator("div.group.card-hover h3").first();
+  await expect(firstCardTitle).toBeVisible();
+  const title = (await firstCardTitle.textContent())?.trim();
+  expect(title).toBeTruthy();
+
+  await firstCardTitle.click();
+  await expect(page).toHaveURL(/\/boats\//);
+  await expect(page.getByRole("heading", { name: title!, exact: false })).toBeVisible();
+});
