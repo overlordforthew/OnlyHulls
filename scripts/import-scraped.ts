@@ -84,11 +84,50 @@ interface PendingEmbedding {
   text: string;
 }
 
+type DbLikeError = {
+  code?: string;
+  constraint?: string;
+  cause?: {
+    code?: string;
+    constraint?: string;
+  };
+};
+
 const EMBEDDING_BATCH_SIZE = 24;
+
+function isDedupConflict(err: unknown) {
+  const candidate = err as DbLikeError | undefined;
+  return (
+    (candidate?.code === "23505" || candidate?.cause?.code === "23505") &&
+    (candidate?.constraint === "idx_boats_dedup" ||
+      candidate?.cause?.constraint === "idx_boats_dedup")
+  );
+}
 
 function parsePrice(raw: string | number | undefined): number | null {
   if (!raw) return null;
-  const s = String(raw).replace(/[^0-9.]/g, "");
+  let s = String(raw).replace(/[^0-9.,]/g, "");
+  if (!s) return null;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    if (/^\d{1,3}(,\d{3})+(,\d+)?$/.test(s)) {
+      s = s.replace(/,/g, "");
+    } else {
+      s = s.replace(",", ".");
+    }
+  } else if (hasDot && /^\d{1,3}(\.\d{3})+(\.\d+)?$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+
   const n = parseFloat(s);
   return isNaN(n) || n <= 0 ? null : n;
 }
@@ -491,30 +530,41 @@ async function updateBoats(filePath: string, sourceSite: string) {
   let updated = 0;
   let notFound = 0;
   let errors = 0;
+  let duplicateSkips = 0;
 
   for (const b of boats) {
     try {
       if (!b.url) { notFound++; continue; }
 
       // Find existing boat by source_url
-      const existing = await queryOne<{ id: string }>(
-        "SELECT id FROM boats WHERE source_url = $1",
+      const existing = await queryOne<{
+        id: string;
+        make: string;
+        model: string;
+        year: number | null;
+        location_text: string | null;
+      }>(
+        "SELECT id, make, model, year, location_text FROM boats WHERE source_url = $1",
         [b.url]
       );
       if (!existing) { notFound++; continue; }
 
       const boatId = existing.id;
-      const year = parseYear(b.year);
+      const parsedYear = parseYear(b.year);
       const price = parsePrice(b.price);
-      const location = b.location || "";
-      const parsedName = b.name ? parseMakeModel(b.name, year ?? undefined) : { make: "", model: "" };
-      const preNormalizedSlug = generateSlug(year || 0, parsedName.make, parsedName.model, location);
-      const { make, model } = normalizeImportedMakeModel({
+      const parsedLocation = b.location || "";
+      const parsedName = b.name ? parseMakeModel(b.name, parsedYear ?? undefined) : { make: "", model: "" };
+      const preNormalizedSlug = generateSlug(parsedYear || 0, parsedName.make, parsedName.model, parsedLocation);
+      const normalized = normalizeImportedMakeModel({
         make: parsedName.make,
         model: parsedName.model,
         slug: preNormalizedSlug,
         sourceSite,
       });
+      const year = parsedYear ?? existing.year ?? null;
+      const make = normalized.make || existing.make;
+      const model = normalized.model || existing.model;
+      const location = parsedLocation || existing.location_text || "";
       const currency = detectCurrency(b);
 
       const { beam, draft, hullMaterial, engine, specs, summary, summarySource } = buildSpecsAndSummary({
@@ -548,20 +598,66 @@ async function updateBoats(filePath: string, sourceSite: string) {
         priceUsd,
       });
 
-      await query(
-        `UPDATE boats
-         SET make = CASE WHEN NULLIF($2, '') IS NOT NULL THEN $2 ELSE make END,
-             model = CASE WHEN NULLIF($3, '') IS NOT NULL THEN $3 ELSE model END,
-             year = COALESCE($4, year),
-             asking_price = COALESCE($5, asking_price),
-             currency = COALESCE(NULLIF($6, ''), currency),
-             asking_price_usd = COALESCE($7, asking_price_usd),
-             location_text = COALESCE(NULLIF($8, ''), location_text),
-             last_seen_at = NOW(),
-             updated_at = NOW()
-         WHERE id = $1`,
-        [boatId, make, model, year, price, currency, priceUsd, location]
-      );
+      const hasDedupKey = Boolean(make && model && year && location);
+      if (hasDedupKey) {
+        const collision = await queryOne<{ id: string }>(
+          `SELECT id
+           FROM boats
+           WHERE id <> $1
+             AND status = 'active'
+             AND make = $2
+             AND model = $3
+             AND year = $4
+             AND location_text = $5
+           LIMIT 1`,
+          [boatId, make, model, year, location]
+        );
+
+        if (collision) {
+          await query(
+            `UPDATE boats
+             SET last_seen_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [boatId]
+          );
+          duplicateSkips++;
+          console.warn(`  [~] Duplicate normalized row skipped for ${b.url}`);
+          continue;
+        }
+      }
+
+      try {
+        await query(
+          `UPDATE boats
+           SET last_seen_at = NOW(),
+               updated_at = NOW(),
+               make = CASE WHEN NULLIF($2, '') IS NOT NULL THEN $2 ELSE make END,
+               model = CASE WHEN NULLIF($3, '') IS NOT NULL THEN $3 ELSE model END,
+               year = COALESCE($4, year),
+               asking_price = COALESCE($5, asking_price),
+               currency = COALESCE(NULLIF($6, ''), currency),
+               asking_price_usd = COALESCE($7, asking_price_usd),
+               location_text = COALESCE(NULLIF($8, ''), location_text)
+           WHERE id = $1`,
+          [boatId, make, model, year, price, currency, priceUsd, location]
+        );
+      } catch (err) {
+        if (!isDedupConflict(err)) {
+          throw err;
+        }
+
+        await query(
+          `UPDATE boats
+           SET last_seen_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [boatId]
+        );
+        duplicateSkips++;
+        console.warn(`  [~] Duplicate normalized row skipped for ${b.url}`);
+        continue;
+      }
 
       await query(
         `INSERT INTO boat_dna (boat_id, specs, ai_summary, documentation_status)
@@ -599,7 +695,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
     }
   }
 
-  console.log(`\nUpdate complete: ${updated} updated, ${notFound} not found, ${errors} errors`);
+  console.log(
+    `\nUpdate complete: ${updated} updated, ${notFound} not found, ${duplicateSkips} duplicate skips, ${errors} errors`
+  );
   await pool.end();
 }
 

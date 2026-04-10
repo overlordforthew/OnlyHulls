@@ -5,7 +5,6 @@
 # Sources:
 #   - sailboatlistings.com (broad sailing inventory)
 #   - theyachtmarket.com (strong sailing inventory)
-#   - catamarans.com (pure catamaran source)
 #   - mooringsbrokerage.com (charter exit catamarans)
 #   - dreamyachtsales.com (charter exit fleet, cats + monos)
 #   - catamaransite.com (catamaran brokerage)
@@ -21,6 +20,7 @@ SCRIPTS_DIR="$PROJECT_DIR/scripts"
 LOG_FILE="/tmp/onlyhulls-scrape.log"
 LIMIT="${1:-100}"
 APP_CONTAINER_PREFIX="qkggs84cs88o0gww4wc80gwo-"
+TMP_DIR=$(python3 -c 'import os,tempfile; d=tempfile.gettempdir(); print("/tmp" if os.name != "nt" and d.startswith("/tmp/user/") else d)')
 
 load_runtime_env() {
     local container
@@ -98,18 +98,6 @@ else
     log "  FAILED: theyachtmarket scrape error"
 fi
 
-# --- Catamarans.com (pure catamaran brokerage) ---
-log "Scraping catamarans.com..."
-if python3 "$SCRAPER_DIR/scrape_catamarans_com.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_catamarans_com.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from catamarans.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_catamarans_com.json catamarans_com
-    fi
-else
-    log "  FAILED: catamarans.com scrape error"
-fi
-
 # --- Moorings Brokerage (charter exit fleet catamarans) ---
 log "Scraping mooringsbrokerage.com..."
 if python3 "$SCRAPER_DIR/scrape_moorings.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
@@ -125,10 +113,10 @@ fi
 # --- Dream Yacht Sales (SSR cards, strong catamaran relevance) ---
 log "Scraping dreamyachtsales.com..."
 if python3 "$SCRAPER_DIR/scrape_dreamyacht.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_dreamyacht.json'))))" 2>/dev/null || echo 0)
+    COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_dreamyacht.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from dreamyachtsales.com"
     if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_dreamyacht.json dreamyacht
+        run_import_cycle "${TMP_DIR}/scraped_dreamyacht.json" dreamyacht
     fi
 else
     log "  FAILED: dreamyacht scrape error"
@@ -137,10 +125,10 @@ fi
 # --- CatamaranSite (SSR cards, catamarans only) ---
 log "Scraping catamaransite.com..."
 if python3 "$SCRAPER_DIR/scrape_catamaransite.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_catamaransite.json'))))" 2>/dev/null || echo 0)
+    COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_catamaransite.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from catamaransite.com"
     if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_catamaransite.json catamaransite
+        run_import_cycle "${TMP_DIR}/scraped_catamaransite.json" catamaransite
     fi
 else
     log "  FAILED: catamaransite scrape error"

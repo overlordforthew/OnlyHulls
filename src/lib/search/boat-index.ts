@@ -40,7 +40,9 @@ export async function ensureBoatSearchIndex() {
   const meili = getMeili();
   const index = meili.index(BOATS_INDEX);
 
-  await meili.createIndex(BOATS_INDEX, { primaryKey: "id" }).catch(() => null);
+  await index.getRawInfo().catch(async () => {
+    await meili.createIndex(BOATS_INDEX, { primaryKey: "id" }).catch(() => null);
+  });
   await index.updateFilterableAttributes(BOAT_SEARCH_FILTERS).catch(() => null);
 
   return index;

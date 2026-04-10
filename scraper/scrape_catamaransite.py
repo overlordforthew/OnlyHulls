@@ -14,7 +14,10 @@ LIST_URL = f"{BASE}/yachts-for-sale/"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 ARTICLE_RE = re.compile(r"<article\b[^>]*class=\"[^\"]*card[^\"]*\"[^>]*>.*?</article>", re.S | re.I)
 EURO = "\u20ac"
-OUTPUT_PATH = os.path.join(tempfile.gettempdir(), "scraped_catamaransite.json")
+TEMP_DIR = tempfile.gettempdir()
+if os.name != "nt" and TEMP_DIR.startswith("/tmp/user/"):
+    TEMP_DIR = "/tmp"
+OUTPUT_PATH = os.path.join(TEMP_DIR, "scraped_catamaransite.json")
 
 
 def clean_html_text(value: str) -> str:
