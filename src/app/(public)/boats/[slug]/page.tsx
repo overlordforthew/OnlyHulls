@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { ArrowLeft, MapPin, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { buildVisibleImportQualitySql, hasUsableImportedLocation } from "@/lib/import-quality";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
 import CurrencySelector from "@/components/CurrencySelector";
 import { ImageGallery } from "@/components/ImageGallery";
@@ -86,7 +86,7 @@ async function getBoatForViewer(
       (
         !boat.hero_url ||
         !boat.model.trim() ||
-        !boat.location_text?.trim() ||
+        !hasUsableImportedLocation(boat.location_text) ||
         Number(boat.asking_price_usd || boat.asking_price) < 3000
       )
     ) {
