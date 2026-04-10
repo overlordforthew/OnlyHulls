@@ -7,7 +7,8 @@ import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
-  readPreferredCurrencyFromBrowser,
+  DEFAULT_CURRENCY,
+  normalizeSupportedCurrency,
   type SupportedCurrency,
 } from "@/lib/currency";
 import {
@@ -68,6 +69,7 @@ function BoatsPageInner() {
   const { status } = useSession();
   const initialQ = searchParams.get("q") || "";
   const initialTag = searchParams.get("tag") || "";
+  const initialCurrency = normalizeSupportedCurrency(searchParams.get("currency"));
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,9 +82,7 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>("newest");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
-    readPreferredCurrencyFromBrowser()
-  );
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() => initialCurrency || DEFAULT_CURRENCY);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({
