@@ -2,6 +2,30 @@ export type SupportedCurrency = "USD" | "EUR" | "GBP";
 
 export const DEFAULT_CURRENCY: SupportedCurrency = "USD";
 export const PREFERRED_CURRENCY_COOKIE = "preferred_currency";
+export const PREFERRED_CURRENCY_SELECTED_COOKIE = "preferred_currency_selected";
+
+const EURO_REGIONS = new Set([
+  "AT",
+  "BE",
+  "CY",
+  "DE",
+  "EE",
+  "ES",
+  "FI",
+  "FR",
+  "GR",
+  "HR",
+  "IE",
+  "IT",
+  "LT",
+  "LU",
+  "LV",
+  "MT",
+  "NL",
+  "PT",
+  "SI",
+  "SK",
+]);
 
 const USD_TO_CURRENCY_RATE: Record<SupportedCurrency, number> = {
   USD: 1,
@@ -39,6 +63,61 @@ export function formatCurrencyAmount(
 
 function isFiniteAmount(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function readBrowserPersistedCurrency(): SupportedCurrency | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(PREFERRED_CURRENCY_COOKIE);
+  if (stored) {
+    return normalizeSupportedCurrency(stored);
+  }
+
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${PREFERRED_CURRENCY_COOKIE}=([^;]+)`)
+  );
+  return match ? normalizeSupportedCurrency(decodeURIComponent(match[1])) : null;
+}
+
+function hasExplicitCurrencySelection(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const stored = window.localStorage.getItem(PREFERRED_CURRENCY_SELECTED_COOKIE);
+  if (stored === "1") {
+    return true;
+  }
+
+  return new RegExp(`(?:^|; )${PREFERRED_CURRENCY_SELECTED_COOKIE}=1(?:;|$)`).test(
+    document.cookie
+  );
+}
+
+function detectBrowserCurrency(): SupportedCurrency {
+  if (typeof navigator === "undefined") {
+    return DEFAULT_CURRENCY;
+  }
+
+  const locales = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
+
+  for (const locale of locales) {
+    const normalizedLocale = locale.replace(/_/g, "-");
+    const regionMatch = normalizedLocale.match(/-([A-Za-z]{2})(?:$|-)/);
+    const region = regionMatch?.[1]?.toUpperCase();
+
+    if (region === "GB") {
+      return "GBP";
+    }
+
+    if (region && EURO_REGIONS.has(region)) {
+      return "EUR";
+    }
+  }
+
+  return DEFAULT_CURRENCY;
 }
 
 function deriveUsdAmount(
@@ -116,15 +195,11 @@ export function readPreferredCurrencyFromBrowser(): SupportedCurrency {
     return DEFAULT_CURRENCY;
   }
 
-  const stored = window.localStorage.getItem(PREFERRED_CURRENCY_COOKIE);
-  if (stored) {
-    return normalizeSupportedCurrency(stored);
+  if (hasExplicitCurrencySelection()) {
+    return readBrowserPersistedCurrency() || DEFAULT_CURRENCY;
   }
 
-  const match = document.cookie.match(
-    new RegExp(`(?:^|; )${PREFERRED_CURRENCY_COOKIE}=([^;]+)`)
-  );
-  return normalizeSupportedCurrency(match ? decodeURIComponent(match[1]) : null);
+  return detectBrowserCurrency();
 }
 
 export function persistPreferredCurrency(currency: SupportedCurrency) {
@@ -134,8 +209,10 @@ export function persistPreferredCurrency(currency: SupportedCurrency) {
 
   const normalized = normalizeSupportedCurrency(currency);
   document.cookie = `${PREFERRED_CURRENCY_COOKIE}=${encodeURIComponent(normalized)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  document.cookie = `${PREFERRED_CURRENCY_SELECTED_COOKIE}=1; Path=/; Max-Age=31536000; SameSite=Lax`;
   if (typeof window !== "undefined") {
     window.localStorage.setItem(PREFERRED_CURRENCY_COOKIE, normalized);
+    window.localStorage.setItem(PREFERRED_CURRENCY_SELECTED_COOKIE, "1");
   }
 }
 

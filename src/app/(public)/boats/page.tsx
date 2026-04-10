@@ -7,8 +7,8 @@ import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
-  DEFAULT_CURRENCY,
   normalizeSupportedCurrency,
+  readPreferredCurrencyFromBrowser,
   type SupportedCurrency,
 } from "@/lib/currency";
 import {
@@ -82,7 +82,9 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>("newest");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() => initialCurrency || DEFAULT_CURRENCY);
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
+    initialCurrency || readPreferredCurrencyFromBrowser()
+  );
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState({
