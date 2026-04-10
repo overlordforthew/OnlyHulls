@@ -84,7 +84,7 @@ else
     log "  FAILED: sailboatlistings scrape error"
 fi
 
-# --- Apollo Duck — DROPPED (prices are JS-rendered, no static HTML access) ---
+# --- Apollo Duck â€” DROPPED (prices are JS-rendered, no static HTML access) ---
 
 # --- The Yacht Market (sailing boats, bluewater focus) ---
 log "Scraping theyachtmarket.com..."
