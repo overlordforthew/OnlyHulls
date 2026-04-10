@@ -69,6 +69,7 @@ test("boats search returns results and renders the page", async ({ page, request
   await page.goto("/boats?q=Leopard");
   await expect(page).toHaveURL(/\/boats\?q=Leopard$/);
   await expect(page.getByText("Leopard", { exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("boat-location").first()).toBeVisible();
 });
 
 test("boats API honors price sorting for search queries", async ({ request }) => {

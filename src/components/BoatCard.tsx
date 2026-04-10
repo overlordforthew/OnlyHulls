@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, X, MessageCircle, ExternalLink } from "lucide-react";
+import { ExternalLink, Heart, MapPin, MessageCircle, X } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
 
@@ -68,7 +68,7 @@ export default function BoatCard({
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated">
-              <span className="text-5xl opacity-20">⛵</span>
+              <span className="text-5xl opacity-20">Boat</span>
             </div>
           )}
 
@@ -108,18 +108,23 @@ export default function BoatCard({
           </h3>
         </Link>
 
+        {boat.location_text && (
+          <div
+            data-testid="boat-location"
+            className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground/85"
+            title={boat.location_text}
+          >
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="truncate">{boat.location_text}</span>
+          </div>
+        )}
+
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
           {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
           {boat.specs.rig_type && (
             <>
-              <span className="text-text-tertiary">·</span>
+              <span className="text-text-tertiary">/</span>
               <span>{boat.specs.rig_type}</span>
-            </>
-          )}
-          {boat.location_text && (
-            <>
-              <span className="text-text-tertiary">·</span>
-              <span>{boat.location_text}</span>
             </>
           )}
         </div>
