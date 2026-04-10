@@ -1,237 +1,270 @@
-# Boat Listing Sites — Verified Master Directory
+# Boat Listing Sites — Operational Source Directory
 
-**Last verified: 2026-03-30 from Hetzner CX33 (datacenter IP)**
-**Total sites: 140 | Verified: 140 | Unknown: 0**
+**Last updated: 2026-04-10**
+**Purpose:** This is the operational source-of-truth for marketplace acquisition decisions in OnlyHulls.
+
+This document is a portfolio, not a bucket. A site being technically reachable does **not** mean it belongs in the daily pipeline.
+
+## Operating Principles
+
+- Keep the current 4 active sources stable before adding more volume.
+- Promote high-value SSR sources next: Denison and Dream Yacht Sales.
+- Test Rightboat carefully with throttling before promoting it.
+- Keep Boats Group properties in a separate commercial/API lane.
+- Prefer sources with clean price, location, image, and detail pages over raw listing count.
+- Avoid making the business depend on heavily blocked or legally risky sources.
 
 ## Status Legend
-- **ACTIVE** = In our daily scrape pipeline, data integrity verified at 100%
-- **SCRAPABLE** = SSR, prices in HTML, no blocking — ready to build scraper
-- **WORKABLE** = SSR but missing some fields (no price, no location) — partial value
-- **JS-ONLY** = Content loaded via JavaScript, needs headless browser (Playwright)
-- **BLOCKED** = Cloudflare/WAF/Akamai blocking datacenter IPs (403)
-- **GH-ACTIONS** = Blocked from Hetzner but works from GitHub Actions (Azure IPs)
-- **DEAD** = Domain gone, SSL broken, site down, or path removed
-- **NOT-LISTING** = Not a boat marketplace (magazine, manufacturer, forum, transit company)
-- **NICHE** = Too small (<10 listings) or too specialized to be worth a scraper
+
+- **ACTIVE** = already in the daily scrape/import pipeline
+- **NEXT** = high-value source to build and promote next
+- **TEST** = worth controlled validation, but not daily yet
+- **API / COMMERCIAL** = pursue official access, not scraping as a core strategy
+- **HOLD** = scrapeable, but lower ROI or higher noise than current priorities
+- **JS / HEADLESS** = possible with Playwright, but operationally heavier
+- **BLOCKED / HOSTILE** = anti-bot, Cloudflare, Akamai, or similar friction
+- **DROP** = dead, not a marketplace, too small, or not worth operational effort
 
 ---
 
-## ACTIVE SOURCES (in daily pipeline, 100% data integrity verified)
+## Portfolio Decision Matrix
 
-| # | Site | Domain | Verified Listings | Import Rate | Status |
-|---|------|--------|------------------|-------------|--------|
-| 1 | **Sailboat Listings** | sailboatlistings.com | **16,864** | 83% (25ft filter) | **ACTIVE** |
-| 2 | **TheYachtMarket** | theyachtmarket.com | **5,700 sail** | 70% (POA filter) | **ACTIVE** |
-| 3 | **Catamarans.com** | catamarans.com | **2,013** | 100% | **ACTIVE** |
-| 4 | **Moorings Brokerage** | mooringsbrokerage.com | **73** | 100% | **ACTIVE** |
-
-**Total harvestable: ~20,350 boats**
-
----
-
-## SCRAPABLE — Ready to build scrapers (SSR + prices + no blocks)
-
-| # | Site | Domain | Verified Listings | Prices | Images | Region | Notes |
-|---|------|--------|------------------|--------|--------|--------|-------|
-| 5 | Denison Yachting | denisonyachtsales.com | **16,793** | Yes (SSR) | Yes (YW CDN) | US | Pulls from YachtWorld feed. Huge volume. |
-| 6 | Rightboat | rightboat.com | **6,376 sail** | JSON-LD | Lazy | Global | Rate-limits aggressively. Needs throttling. |
-| 7 | Dream Yacht Sales | dreamyachtsales.com | **115** | Yes (SSR) | Yes | Global | Charter exit fleet. Bali, FP, Lagoon cats. |
-| 8 | Multihull World | multihullworld.com | **61** | Yes (SSR) | Yes (inline) | EU | Clean SSR, cats/tris only. |
-| 9 | CatamaranSite.com | catamaransite.com | **48** | JSON-LD | Yes (lazy) | Global | Cruising cats, curated. Very scrape-friendly. |
-| 10 | The Log Classifieds | thelogclassifieds.com | **42** | Yes (SSR) | Yes | US West | WordPress. $7.5K-$1.19M range. |
-| 11 | Catamaran Guru | catamaranguru.com | **27** | Yes (SSR) | Yes (iyba CDN) | FL/Caribbean | Paginated. |
-| 12 | Gumtree UK | gumtree.com | **30+** | Yes (SSR) | Yes | UK | schema.org structured data. Zero bot protection. |
-| 13 | YATCO | yatco.com | **24** | JSON-LD | Yes | Global | Superyacht segment. $8.9M+ range. |
-| 14 | YachtX | yachtx.com | **~20** | Yes (SSR) | Yes | US | Drupal. FSBO + discount brokerage. |
-| 15 | Multihull Central | multihullcentral.com | **~16** | Yes (SSR) | Yes | South Pacific | Founded 2013. |
-| 16 | Multihull Company | multihullcompany.com | **~14** | Yes (carousel) | JS | Global | CleanTalk (forms only). World leader in multihull sales. |
-| 17 | Multihulls-4Sale | multihulls-4sale.com | **~13** | Yes (SSR) | Yes | Global | Free classifieds. reCAPTCHA on forms only. |
-| 18 | Camper & Nicholsons | camperandnicholsons.com | **~12** | Yes (SSR) | Yes (webp) | Global | Since 1782. reCAPTCHA present, not blocking. |
-| 19 | BoatNation | boatnation.com | **~12** | Yes (SSR) | Yes (lazy) | US | Small marketplace. |
-| 20 | Boatnet.de | boatnet.de | **~9** | Yes (SSR) | Yes | Germany | Clean SSR. |
-| 21 | Boatsfsbo.com | boatsfsbo.com | **~10** | Yes (SSR) | Yes | US | FSBO focus. |
-| 22 | Asia Yacht Brokers | asiayachtbrokers.com | **52** | Yes (SSR) | Yes | Singapore/SEA | SSR, SGD prices, WP thumbnails. |
-| 23 | Virgin Islands YB | virginislandsyachtbroker.com | **23** | Yes (SSR) | Yes | Caribbean | $59K-$2.8M. Responsive images. |
-| 24 | Boote & Yachten | boote-yachten.de | **17** | Yes (SSR) | Yes | Germany | EUR 15K-4.9M. boat-images.com CDN. |
-| 25 | Apollo Duck US | apolloduck.us | **10** | Yes (SSR) | Yes | US | **Prices in HTML** (unlike .com). $13K-$949K. |
-| 26 | Yacht Sales Co | yachtsalesco.com | **9** | Yes (SSR) | Yes | AU/NZ | Multi-currency. $170K-$1.89M. |
-| 27 | Edwards Yacht Sales | edwardsyachtsales.com | **4** | Yes (SSR) | Yes | US | reCAPTCHA on forms only. $169K-$850K. |
-| 28 | Sailboat Owners | sailboatowners.com | **40+** | Yes (SSR) | Yes | US | Bad SSL cert (needs -k). $5K-$123K. |
+| Lane | Site | Domain | Why It Matters | Decision |
+|---|---|---|---|---|
+| Core | Sailboat Listings | `sailboatlistings.com` | Largest working sailing source, broad inventory, proven import path | **ACTIVE** |
+| Core | TheYachtMarket | `theyachtmarket.com` | Strong sailing inventory, good buyer relevance | **ACTIVE** |
+| Core | Catamarans.com | `catamarans.com` | Pure catamaran source, high thematic fit | **ACTIVE** |
+| Core | Moorings Brokerage | `mooringsbrokerage.com` | Charter exit cats, clean niche inventory | **ACTIVE** |
+| Expansion | Denison Yachting | `denisonyachtsales.com` | Large SSR volume, good media, good price coverage | **NEXT** |
+| Expansion | Dream Yacht Sales | `dreamyachtsales.com` | High-fit cat inventory, low source complexity | **NEXT** |
+| Controlled Test | Rightboat | `rightboat.com` | Good sail inventory, but rate-limits aggressively | **TEST** |
+| Commercial | Boats.com | `boats.com` | Massive inventory, but should be official API/commercial | **API / COMMERCIAL** |
+| Commercial | Boat Trader | `boattrader.com` | Boats Group property, same lane as boats.com | **API / COMMERCIAL** |
+| Commercial | YachtWorld | `yachtworld.com` | Boats Group property, same lane as boats.com | **API / COMMERCIAL** |
 
 ---
 
-## WORKABLE — SSR but missing critical fields
+## Active Daily Sources
 
-| # | Site | Domain | Verified Listings | Issue | Region |
-|---|------|--------|------------------|-------|--------|
-| 22 | Boatcrazy | boatcrazy.com | **153 sail** | Images need JS | US |
-| 23 | BoatsForSale.co.uk | boatsforsale.co.uk | **822 links** | Light CF (passable w/ UA). Path 404 on /sailing | UK |
-| 24 | Boatsales.com.au | boatsales.com.au | **~5 featured** | SSR+React, DDoS protection | Australia |
-| 25 | BoatsOnline.com.au | boatsonline.com.au | **5 in carousel** | Small sample only | Australia |
-| 26 | Hisse et Oh | hisse-et-oh.com | **~40** | French, SSR+JS hybrid | France |
-| 27 | yacht.de | yacht.de | **~15** | German market | Germany |
-| 28 | bateaux.com | bateaux.com | **~5 shown** | French, full listings behind link | France |
-| 29 | Leopard Brokerage | leopardbrokerage.com | **~3 featured** | Hybrid SSR+JS search. reCAPTCHA. | Global |
-| 30 | Sailboat Owners | sailboatowners.com | **100+ est** | 200 status, forum classifieds | US |
-| 31 | SailingTexas | sailingtexas.com | **~35** | SSR classifieds, no prices in index (detail pages only) | US (TX) |
-| 32 | Best-Boats24 | best-boats24.net | **~15** | Hybrid, lazy-loaded images/prices | Germany |
-| 33 | YBW | ybw.com | **unknown** | 200, SSR, 293 listing signals | UK |
-| 34 | PBO | pbo.co.uk | **unknown** | 200, SSR, 251 listing signals | UK |
-| 35 | BoatClassifieds.US | boatclassifieds.us | **~25** | Forum-style, prices in titles, images need JS | US |
+These are the live portfolio sources and should remain the operational focus until data quality is stronger.
+
+| Site | Domain | Verified Listings | Import Notes |
+|---|---|---:|---|
+| Sailboat Listings | `sailboatlistings.com` | 16,864 | Strong volume, but requires source-specific normalization |
+| TheYachtMarket | `theyachtmarket.com` | 5,700 sail | Good buyer fit, image refreshes matter |
+| Catamarans.com | `catamarans.com` | 2,013 | Best direct catamaran-only source |
+| Moorings Brokerage | `mooringsbrokerage.com` | 73 | Small but very high relevance |
+
+**Operational instruction:** keep these stable, keep their cleanup rules improving, and do not dilute attention with too many new sources at once.
 
 ---
 
-## JS-ONLY — Need headless browser (Playwright/Puppeteer)
+## Promote Next
 
-| # | Site | Domain | Claimed Listings | Framework | Notes |
-|---|------|--------|-----------------|-----------|-------|
-| 36 | BoatExportUSA | boatexportusa.com | 27,700 | Angular SPA | Zero content in HTML |
-| 37 | Yachtr (IYBA) | yachtr.com | 10,700+ | WP + AJAX | All content loaded dynamically |
-| 38 | CatamaransForSale.net | catamaransforsale.net | 79 | Next.js | Client-side rendered |
-| 39 | CatamaranWorld | catamaranworld.com | 1,000+ | Wix | Zero content in source |
-| 40 | Just Catamarans | justcatamarans.net | 100+ | JS app | No content in source |
-| 41 | Northrop & Johnson | northropandjohnson.com | 661 | Algolia search | Zero listings in source |
-| 42 | Fraser Yachts | fraseryachts.com | 164 | Vue.js SPA | Dynamic loading |
-| 43 | United Yacht Sales | unitedyacht.com | 1,000+ | JS app | /yachts-for-sale returns 404 |
-| 44 | MarineSource | marinesource.com | 7,000+ | Next.js | Homepage only, no listings |
-| 45 | MoreBoats | moreboats.com | 7,600 | JS redirect | Just redirects to /lander |
-| 46 | PopSells | popsells.com | 7,000+ | Next.js | Claims 7K+ but zero in HTML |
-| 47 | Canadian Boat Sales | canadianboatsales.ca | 7 | JS carousel | Too small, no prices |
-| 48 | The Boat Shop CA | theboatshop.ca | unknown | WP + isotope | Landing page, no listings visible |
-| 49 | Windcraft Multihulls | windcraftmultihulls.com | 30+ | Avada/WP | Zero content in HTML |
-| 50 | Bluewater Yacht Sales | bluewateryachtsales.com | 100+ | Divi/WP | /used-yachts is 404, homepage JS-heavy |
-| 51 | Trade A Boat AU | tradeaboat.com.au | ~12 | Next.js | Embedded JSON data may be extractable |
+These are the next two sources to promote after the active four.
 
----
+### 1. Denison Yachting
+- Domain: `denisonyachtsales.com`
+- Verified listings: `16,793`
+- Why next:
+  - large SSR source
+  - price and media are available
+  - substantial inventory upside
+- Watchouts:
+  - likely overlapping inventory with broader broker ecosystems
+  - needs dedupe discipline
 
-## BLOCKED — Cloudflare / WAF / Anti-bot (403 from Hetzner)
-
-### Boats Group Empire (identical CF JS challenge on all 9)
-| # | Site | Domain | Est. Listings |
-|---|------|--------|--------------|
-| 49 | Boats.com | boats.com | 120,000+ |
-| 50 | Boat Trader | boattrader.com | 108,000+ |
-| 51 | YachtWorld | yachtworld.com | 70,000-80,000 |
-| 52 | Boatshop24 | boatshop24.com | 6,000+ |
-| 53 | BoatsAndOutboards | boatsandoutboards.co.uk | 6,000 |
-| 54 | Inautia | inautia.com | 5,000+ |
-| 55 | Botentekoop | botentekoop.nl | 2,000+ |
-| 56 | Cosas de Barcos | cosasdebarcos.com | 2,000+ |
-| 57 | Annonces du Bateau | annoncesbateau.com | 2,000+ |
-
-**Combined: ~300K+ listings, all behind identical Cloudflare JS challenge.**
-**Can bypass via GitHub Actions (Azure IPs) — proven with boats.com scraper.**
-
-### Other Cloudflare-blocked
-| # | Site | Domain | Est. Listings | Protection |
-|---|------|--------|--------------|-----------|
-| 58 | Boat24 | boat24.com | 34,000+ | CF IP/geo block |
-| 59 | YachtAll | yachtall.com | 18,000+ | CF JS challenge |
-| 60 | Boot24 | boot24.com | 17,000+ | CF JS challenge |
-| 61 | Boatdealers.ca | boatdealers.ca | 10,000 | CF JS challenge |
-| 62 | Scanboat | scanboat.com | 5,000+ | Sail URL 404 |
-| 63 | Botenbank | botenbank.nl | 4,000+ | CF JS challenge |
-| 64 | The Hull Truth | thehulltruth.com | 700/mo | CF hard block |
-| 65 | Boatmart | boatmart.com | 800+ | 403 blocked |
-| 66 | SailboatData | sailboatdata.com | 200+ | 403 blocked |
-| 67 | Yachtfocus | yachtfocus.com | 1,000+ | 403 blocked |
-| 68 | Band of Boats | bandofboats.com | 1,500+ | CF blocked |
-| 69 | SuperYacht Times | superyachttimes.com | unknown | CF hard block |
-| 70 | itboat.com | itboat.com | unknown | CF JS challenge |
-
-### Other WAF-blocked
-| # | Site | Domain | Protection |
-|---|------|--------|-----------|
-| 71 | BOAT International | boatinternational.com | AWS WAF captcha |
-| 72 | Sailing Anarchy | sailinganarchy.com | Tollbit paywall (402) |
-| 73 | NauticExpo | nauticexpo.com | CF JS challenge |
-| 74 | Subito.it | subito.it | Akamai WAF |
-| 75 | Marktplaats | marktplaats.nl | CloudFront + ThreatMetrix |
-
-### Apollo Duck (SSR but prices JS-rendered — 0% importable)
-| # | Site | Domain | Listings | Issue |
-|---|------|--------|---------|-------|
-| 76 | Apollo Duck | apolloduck.com | 14,000+ | Prices in JS only. 0% import rate. |
-| 77 | Apollo Duck Asia | apolloduck.asia | unknown | 403 from Hetzner |
-| 78 | Apollo Duck EU | apolloduck.eu | unknown | 403 from Hetzner |
-| 79 | Apollo Duck US | apolloduck.us | unknown | Same engine, same price issue |
-| 80 | Apollo Duck Japan | jp.apolloduck.com | unknown | 200 but same price issue |
-| 81 | Apollo Duck Oceania | oceania.apolloduck.com | unknown | 200 but same price issue |
+### 2. Dream Yacht Sales
+- Domain: `dreamyachtsales.com`
+- Verified listings: `115`
+- Why next:
+  - high-fit catamaran inventory
+  - charter-exit fleet relevance
+  - low implementation risk
+- Watchouts:
+  - smaller source, so treat as quality expansion rather than volume play
 
 ---
 
-## DEAD — Domain gone, SSL broken, path removed, or site down
+## Controlled Test Lane
 
-| # | Site | Domain | Status |
-|---|------|--------|--------|
-| 82 | BoatBuys | boatbuys.com | ECONNREFUSED |
-| 83 | Sailboat.guide | sailboat.guide | ECONNREFUSED |
-| 84 | UsedBoatTests | usedboattests.com | TLS hostname mismatch |
-| 85 | Boatsforsale.com | boatsforsale.com | SSL expired |
-| 86 | CFR Group Brokerage | cfrgroup-brokerage.com | NXDOMAIN (domain gone) |
-| 87 | ProprioBareau | propriobareau.ca | NXDOMAIN (domain gone) |
-| 88 | Sunreef Brokerage | sunreef-catamarans.com/brokerage | 404 (path removed) |
-| 89 | Bavaria Used | bavariayachts.com/en/used-boats/ | 404 (path removed) |
-| 90 | Fountaine-Pajot Occasion | fountaine-pajot.com/en/occasion/ | 404 (path removed) |
-| 91 | Burgess | burgessyachts.com/en/sale/ | 404 (path removed) |
-| 92 | IYC | iyc.com/yachts-for-sale | 404 (path removed) |
-| 93 | Horizon Yacht Sales | horizonyachtsales.com | Connection refused |
-| 94 | Asia Power Boats | asiapowerboats.com | Connection refused |
-| 95 | ReelBoating | reelboating.com | 406 Not Acceptable (forum, not marketplace) |
+### Rightboat
+- Domain: `rightboat.com`
+- Verified listings: `6,376 sail`
+- Current status: **TEST**
+- Why test:
+  - strong sail inventory
+  - good potential ROI
+- Why not daily yet:
+  - rate-limits aggressively
+  - needs request throttling, caching, and conservative recrawl policy
+
+**Rule:** do not promote Rightboat to daily until a low-rate validation pass proves stable extraction and acceptable ban risk.
 
 ---
 
-## NOT-LISTING — Not actual boat marketplaces
+## API / Commercial Lane
 
-| # | Site | Domain | What It Actually Is |
-|---|------|--------|-------------------|
-| 96 | iBoats | iboats.com | Boating discussion forum (no marketplace) |
-| 97 | YachtBroker.org | yachtbroker.org | B2B membership service ($349/mo) |
-| 98 | Sunsail | sunsail.com/yachts-for-sale | Charter program landing page (no inventory) |
-| 99 | Tide.no | tide.no | Norwegian public transit company (buses) |
-| 100 | Beneteau | beneteau.com/us/pre-owned | Model catalog, no prices, "Build My Boat" configurator |
-| 101 | Leopard Catamarans | leopardcatamarans.com | Manufacturer site, 6 model lines, no individual listings |
-| 102 | Row2k | row2k.com | Rowing/sculling site, 403 from Hetzner |
-| 103 | OffshoreOnly | offshoreonly.com | Performance powerboat forum, 403 from Hetzner |
-| 104 | GoodOldBoat | goodoldboat.com | Sailing magazine/content, not a marketplace |
+### Boats Group properties
 
----
+Use the official/commercial lane for:
+- `boats.com`
+- `boattrader.com`
+- `yachtworld.com`
+- `boatshop24.com`
+- `boatsandoutboards.co.uk`
+- `inautia.com`
+- `botentekoop.nl`
+- `cosasdebarcos.com`
+- `annoncesbateau.com`
 
-## NICHE / AUTH-BLOCKED — Too small, specialized, or behind auth
+Why:
+- identical anti-bot challenge patterns
+- legal/commercial risk is materially higher
+- the repo already contains an API-oriented path in:
+  - [C:\Users\Gil\OnlyHulls\scraper\fetch_boatsgroup_api.py](C:\Users\Gil\OnlyHulls\scraper\fetch_boatsgroup_api.py)
 
-| # | Site | Domain | Listings | Notes |
-|---|------|--------|---------|-------|
-| 104 | Multihull Centre | multihullcentre.com | 50+ | 401 auth required from Hetzner |
-
----
-
-## GENERAL CLASSIFIEDS (boat sections)
-
-| # | Site | Domain | Status | Notes |
-|---|------|--------|--------|-------|
-| 111 | Facebook Marketplace | facebook.com/marketplace | Login required | 50K+ boats but ungated |
-| 112 | Craigslist | craigslist.org | Blocks IPs | Hundreds/city, aggressive anti-bot |
-| 113 | Kijiji | kijiji.ca | Dynamic/login | Canadian classifieds |
-| 114 | eBay Motors | ebay.com/b/Boats | Partial | Structured data available |
-| 115 | Gumtree UK | gumtree.com | **SCRAPABLE** | Listed above in scrapable section |
+**Rule:** do not treat Boats Group as a scraper roadmap item. Treat it as a sales/business-development item.
 
 ---
 
-## PRIORITY SCRAPE TARGETS (by ROI — verified data)
+## Good HOLD Candidates
 
-| Priority | Site | Verified Listings | Effort | Import Rate |
-|----------|------|------------------|--------|-------------|
-| **P0** | sailboatlistings.com | 16,864 | Active | 83% |
-| **P0** | theyachtmarket.com | 5,700 sail | Active | 70% |
-| **P0** | catamarans.com | 2,013 | Active | 100% |
-| **P0** | mooringsbrokerage.com | 73 | Active | 100% |
-| **P1** | denisonyachtsales.com | 16,793 | Low (SSR) | High |
-| **P1** | rightboat.com | 6,376 sail | Medium (throttle) | High |
-| **P1** | dreamyachtsales.com | 115 | Low (SSR) | High |
-| **P2** | multihullworld.com | 61 | Low (SSR) | High |
-| **P2** | catamaransite.com | 48 | Low (JSON-LD) | High |
-| **P2** | thelogclassifieds.com | 42 | Low (SSR) | High |
-| **P2** | gumtree.com | 30+ | Low (SSR) | High |
-| **P2** | yatco.com | 24 | Low (JSON-LD) | High |
-| **P3** | boats.com | 120,000+ | High (GH Actions) | Unknown |
-| **P3** | boat24.com | 34,000+ | High (CF blocked) | Unknown |
+These are valid future sources, but not ahead of the current portfolio priorities.
+
+| Site | Domain | Verified Listings | Notes |
+|---|---|---:|---|
+| Multihull World | `multihullworld.com` | 61 | Good fit, but smaller source |
+| CatamaranSite | `catamaransite.com` | 48 | Friendly source, curated inventory |
+| Asia Yacht Brokers | `asiayachtbrokers.com` | 52 | Regional expansion candidate |
+| Virgin Islands Yacht Broker | `virginislandsyachtbroker.com` | 23 | Caribbean relevance |
+| Boote & Yachten | `boote-yachten.de` | 17 | EU expansion candidate |
+| Camper & Nicholsons | `camperandnicholsons.com` | ~12 | Prestigious but smaller |
+| Multihulls-4Sale | `multihulls-4sale.com` | ~13 | Useful niche feed |
+| YATCO | `yatco.com` | 24 | More superyacht-oriented, lower current fit |
+
+---
+
+## JS / Headless Candidates
+
+These may be technically workable, but they are operationally heavier and should not outrank strong SSR sources.
+
+| Site | Domain | Claimed Listings | Notes |
+|---|---|---:|---|
+| CatamaranWorld | `catamaranworld.com` | 1,000+ | Wix, JS-heavy |
+| Just Catamarans | `justcatamarans.net` | 100+ | JS app |
+| Yachtr | `yachtr.com` | 10,700+ | dynamic loading |
+| Fraser Yachts | `fraseryachts.com` | 164 | SPA behavior |
+| Trade A Boat AU | `tradeaboat.com.au` | ~12 | embedded data may be extractable |
+
+**Rule:** only pursue these after the SSR portfolio is stable and profitable.
+
+---
+
+## Blocked / Hostile Sources
+
+These should not be part of the near-term scraping roadmap.
+
+| Site | Domain | Reason |
+|---|---|---|
+| Boat24 | `boat24.com` | Cloudflare / geo friction |
+| Boot24 | `boot24.com` | Cloudflare challenge |
+| YachtAll | `yachtall.com` | Cloudflare challenge |
+| Scanboat | `scanboat.com` | unreliable sail paths + blocking |
+| BOAT International | `boatinternational.com` | AWS WAF / captcha |
+| Subito | `subito.it` | Akamai |
+| Marktplaats | `marktplaats.nl` | CloudFront + ThreatMetrix |
+
+---
+
+## Apollo Duck Clarification
+
+Apollo Duck was previously contradictory in this document. The operational truth is:
+
+- `apolloduck.com` main engine is **not** a good core source for OnlyHulls
+- the historic issue is poor usable import quality, especially around price extraction and inconsistent subdomains
+- `apolloduck.us` may expose some prices in SSR, but it is not strong enough to displace higher-priority sources
+
+**Decision:** keep Apollo Duck out of the main roadmap for now. It is not a `NEXT` source.
+
+---
+
+## Drop Lane
+
+These should not receive more engineering time.
+
+### Dead or broken
+- `boatbuys.com`
+- `sailboat.guide`
+- `usedboattests.com`
+- `boatsforsale.com`
+- `cfrgroup-brokerage.com`
+- `sunreef-catamarans.com/brokerage`
+- `bavariayachts.com/en/used-boats/`
+- `fountaine-pajot.com/en/occasion/`
+
+### Not actual marketplaces
+- `iboats.com`
+- `yachtbroker.org`
+- `sunsail.com/yachts-for-sale`
+- `tide.no`
+- `beneteau.com/us/pre-owned`
+- `leopardcatamarans.com`
+- `goodoldboat.com`
+
+### Low-value general classifieds
+- `craigslist.org`
+- `facebook.com/marketplace`
+- `kijiji.ca`
+- most forum-style or login-gated classified sections
+
+---
+
+## Live Scraper Inventory
+
+Current scraper files in the repo:
+
+- `scrape_sailboats.py`
+- `scrape_yachtmarket.py`
+- `scrape_catamarans_com.py`
+- `scrape_moorings.py`
+- `scrape_denison.py`
+- `scrape_dreamyacht.py`
+- `scrape_multihullworld.py`
+- `scrape_catamaransite.py`
+- `scrape_multihullcompany.py`
+- `scrape_camperandnicholsons.py`
+- `scrape_vi_yachtbroker.py`
+- `scrape_boote_yachten.py`
+- `scrape_apolloduck.py`
+- `scrape_apolloduck_us.py`
+- `scrape_multihulls4sale.py`
+- `fetch_boatsgroup_api.py`
+
+Not all scraper files belong in the daily pipeline. Presence of a file means “explored or available,” not “approved for production.”
+
+---
+
+## Recommended Execution Order
+
+1. Keep the 4 active sources healthy and improve their normalization rules.
+2. Promote `denisonyachtsales.com`.
+3. Promote `dreamyachtsales.com`.
+4. Run a low-rate Rightboat validation pass with strict throttling.
+5. Keep Boats Group in business-development / API conversations.
+6. Revisit HOLD sources only after source-quality KPIs improve.
+
+---
+
+## Success Criteria for Promoting a Source
+
+A source should not move to **ACTIVE** unless it meets all of these:
+
+- price extraction is reliable
+- location extraction is reliable
+- image count/media quality is acceptable
+- duplicate rate is manageable
+- scrape stability is acceptable under conservative rate limits
+- buyer-facing listing quality is good enough to avoid polluting browse and matches
+
+If a source adds volume but lowers trust, it should stay out of the daily pipeline.
