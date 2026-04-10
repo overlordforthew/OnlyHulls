@@ -69,7 +69,10 @@ function BoatsPageInner() {
   const { status } = useSession();
   const initialQ = searchParams.get("q") || "";
   const initialTag = searchParams.get("tag") || "";
-  const initialCurrency = normalizeSupportedCurrency(searchParams.get("currency"));
+  const requestedCurrency = searchParams.get("currency");
+  const initialCurrency = requestedCurrency
+    ? normalizeSupportedCurrency(requestedCurrency)
+    : null;
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
