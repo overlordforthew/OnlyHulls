@@ -1,6 +1,11 @@
 export const MIN_VISIBLE_IMPORTED_PRICE_USD = 3000;
 export const MIN_VISIBLE_IMPORTED_IMAGES = 1;
 export const MIN_GOOD_SUMMARY_LENGTH = 40;
+const GENERIC_LOCATION_VALUES = new Set([
+  "outside united states",
+  "outside usa",
+  "outside the united states",
+]);
 
 const TITLE_CASE_EXACT: Record<string, string> = {
   "o'day": "O'Day",
@@ -197,6 +202,11 @@ export function normalizeImportedSummary(value?: string | null) {
   return normalized.length >= 20 ? normalized : "";
 }
 
+export function hasUsableImportedLocation(value?: string | null) {
+  const normalized = normalizeSpacing(value).toLowerCase();
+  return Boolean(normalized) && !GENERIC_LOCATION_VALUES.has(normalized);
+}
+
 function canonicalizeMakeName(make: string) {
   const normalized = normalizeSpacing(make);
   if (/^o\s+day$/i.test(normalized)) return "O'Day";
@@ -388,7 +398,7 @@ export function buildImportQualityFlags(input: {
   const flags: string[] = [];
 
   if (!normalizeSpacing(input.model)) flags.push("missing_model");
-  if (!normalizeSpacing(input.locationText)) flags.push("missing_location");
+  if (!hasUsableImportedLocation(input.locationText)) flags.push("missing_location");
   if (input.imageCount < MIN_VISIBLE_IMPORTED_IMAGES) flags.push("missing_image");
   if (input.priceUsd !== null && input.priceUsd < MIN_VISIBLE_IMPORTED_PRICE_USD) {
     flags.push("low_price");
@@ -440,6 +450,7 @@ export function buildVisibleImportQualitySql(alias = "b") {
     COALESCE(NULLIF(TRIM(${alias}.make), ''), '') <> ''
     AND COALESCE(NULLIF(TRIM(${alias}.model), ''), '') <> ''
     AND COALESCE(NULLIF(TRIM(${alias}.location_text), ''), '') <> ''
+    AND LOWER(TRIM(${alias}.location_text)) NOT IN ('outside united states', 'outside usa', 'outside the united states')
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (
       SELECT 1
