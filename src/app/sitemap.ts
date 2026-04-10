@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { CATEGORY_HUBS, LOCATION_HUBS, MAKE_HUBS } from "@/lib/seo/hubs";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${appUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${appUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
+  const hubPages: MetadataRoute.Sitemap = [
+    ...Object.values(CATEGORY_HUBS),
+    ...Object.values(MAKE_HUBS),
+    ...Object.values(LOCATION_HUBS),
+  ].map((hub) => ({
+    url: `${appUrl}${hub.href}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.75,
+  }));
 
   try {
     const boats = await query<{ slug: string; updated_at: string }>(
@@ -36,8 +47,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-    return [...staticPages, ...boatPages];
+    return [...staticPages, ...hubPages, ...boatPages];
   } catch {
-    return staticPages;
+    return [...staticPages, ...hubPages];
   }
 }

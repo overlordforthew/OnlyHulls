@@ -5,6 +5,8 @@ const publicPages = [
   { path: "/boats", heading: "Browse Boats" },
   { path: "/match", heading: "Your Perfect Match is Waiting" },
   { path: "/sell", heading: "Become a Creator" },
+  { path: "/catamarans-for-sale", heading: "Catamarans for Sale" },
+  { path: "/sailboats-for-sale", heading: "Sailboats for Sale" },
 ];
 
 for (const pageCase of publicPages) {
@@ -149,4 +151,16 @@ test("boats card opens detail page", async ({ page }) => {
   await firstCardTitle.click();
   await expect(page).toHaveURL(/\/boats\//);
   await expect(page.getByRole("heading", { name: title!, exact: false })).toBeVisible();
+});
+
+test("make SEO hub loads", async ({ page }) => {
+  await page.goto("/boats/make/lagoon");
+  await expect(page.getByRole("heading", { name: "Lagoon Boats for Sale", exact: false })).toBeVisible();
+  await expect(page.getByText("Related boat searches", { exact: false })).toBeVisible();
+});
+
+test("location SEO hub loads", async ({ page }) => {
+  await page.goto("/boats/location/florida");
+  await expect(page.getByRole("heading", { name: "Boats for Sale in Florida", exact: false })).toBeVisible();
+  await expect(page.getByText("live Florida listings", { exact: false })).toBeVisible();
 });

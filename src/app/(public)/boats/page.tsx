@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
+import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
   normalizeSupportedCurrency,
@@ -426,6 +427,14 @@ function BoatsPageInner() {
             );
           })}
         </div>
+      </div>
+
+      <div className="pt-6">
+        <SeoHubLinks
+          compact
+          title="Explore Search Hubs"
+          subtitle="Use stable browse pages for popular makes, regions, and boat types."
+        />
       </div>
 
       {/* Results */}

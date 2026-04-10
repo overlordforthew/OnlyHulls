@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import BoatCard from "@/components/BoatCard";
 import { ListBoatCTA } from "@/components/MatchCTA";
+import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { getBoatCount, getFeaturedBoats } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +177,8 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      <SeoHubLinks />
 
       {/* ─── Trending Hulls ─── */}
       {boats.length > 0 && (
