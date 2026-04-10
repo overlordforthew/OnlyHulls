@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   ClipboardList,
   Camera,
@@ -10,13 +11,20 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import { SellerPricing } from "@/components/PricingCards";
 import { ListBoatCTA } from "@/components/MatchCTA";
 
-export const metadata = {
+const appUrl = getPublicAppUrl();
+
+export const metadata: Metadata = {
   title: "Sell Your Boat",
+  metadataBase: new URL(appUrl),
   description:
     "List your boat on OnlyHulls. No commissions, no brokers — connect directly with AI-matched buyers worldwide.",
+  alternates: {
+    canonical: `${appUrl}/sell`,
+  },
 };
 
 const STEPS = [

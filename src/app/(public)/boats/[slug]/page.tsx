@@ -10,6 +10,7 @@ import { ContactOwnerCTA } from "@/components/MatchCTA";
 import CurrencySelector from "@/components/CurrencySelector";
 import { ImageGallery } from "@/components/ImageGallery";
 import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
+import { getPublicAppUrl } from "@/lib/config/urls";
 
 interface BoatDetail {
   id: string;
@@ -33,6 +34,36 @@ interface BoatDetail {
   source_url: string | null;
   source_site: string | null;
   hero_url: string | null;
+}
+
+function buildBoatTitle(boat: Pick<BoatDetail, "year" | "make" | "model">) {
+  return `${boat.year} ${boat.make} ${boat.model}`;
+}
+
+function trimMetaDescription(text: string, maxLength = 160) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function toAbsoluteUrl(url: string | null | undefined, appUrl: string) {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/")) return `${appUrl}${url}`;
+  return `${appUrl}/${url}`;
+}
+
+function buildBoatMetaDescription(boat: BoatDetail, priceStr: string) {
+  const title = buildBoatTitle(boat);
+  const location = boat.location_text ? ` in ${boat.location_text}` : "";
+  const summary = boat.ai_summary?.trim();
+  if (summary) {
+    return trimMetaDescription(`${title} for sale${location}. ${summary}`);
+  }
+
+  return trimMetaDescription(
+    `${title} boat for sale${location} on OnlyHulls. View price, photos, specs, and seller contact details. Listed at ${priceStr}.`
+  );
 }
 
 async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
@@ -127,29 +158,49 @@ export async function generateMetadata({
   const boat = await getPublicBoat(slug);
   if (!boat) return { title: "Boat Not Found" };
 
-  const heroImage = boat.hero_url || undefined;
+  const appUrl = getPublicAppUrl();
+  const canonicalUrl = `${appUrl}/boats/${slug}`;
+  const boatTitle = buildBoatTitle(boat);
+  const heroImage = toAbsoluteUrl(boat.hero_url, appUrl);
   const priceStr = boat.asking_price_usd
     ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}`
     : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`;
-  const boatTitle = `${boat.year} ${boat.make} ${boat.model}`;
-  const desc = boat.ai_summary || `${boatTitle} for sale. ${boat.location_text || ""}`;
+  const title = boat.location_text
+    ? `${boatTitle} for sale in ${boat.location_text}`
+    : `${boatTitle} for sale`;
+  const description = buildBoatMetaDescription(boat, priceStr);
+  const keywords = [
+    boat.make,
+    boat.model,
+    String(boat.year),
+    "boat for sale",
+    "OnlyHulls",
+    ...boat.character_tags,
+    ...(boat.location_text ? [boat.location_text] : []),
+  ];
 
   return {
-    title: `${boatTitle} - ${priceStr}`,
-    description: desc,
+    title,
+    description,
+    keywords,
     alternates: {
-      canonical: `https://onlyhulls.com/boats/${slug}`,
+      canonical: canonicalUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
     openGraph: {
-      title: boatTitle,
-      description: `${priceStr} - ${boat.location_text || "Location TBD"}`,
-      url: `https://onlyhulls.com/boats/${slug}`,
+      type: "article",
+      title: `${title} | OnlyHulls`,
+      description,
+      url: canonicalUrl,
       ...(heroImage && { images: [{ url: heroImage, alt: boatTitle }] }),
     },
     twitter: {
       card: "summary_large_image",
-      title: boatTitle,
-      description: `${priceStr} - ${boat.location_text || ""}`,
+      title: `${title} | OnlyHulls`,
+      description,
       ...(heroImage && { images: [heroImage] }),
     },
   };
@@ -168,6 +219,8 @@ export default async function BoatDetailPage({
   const viewer = await getCurrentUser();
   const boat = await getBoatForViewer(slug, viewer?.id ?? null, viewer?.role ?? null);
   if (!boat) notFound();
+  const appUrl = getPublicAppUrl();
+  const boatUrl = `${appUrl}/boats/${slug}`;
 
   if (boat.status === "active") {
     query(`UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`, [
@@ -184,38 +237,85 @@ export default async function BoatDetailPage({
     amountUsd: boat.asking_price_usd,
     preferredCurrency,
   });
+  const boatTitle = buildBoatTitle(boat);
+  const imageUrls = media
+    .filter((mediaItem) => mediaItem.type === "image")
+    .slice(0, 8)
+    .map((mediaItem) => toAbsoluteUrl(mediaItem.url, appUrl))
+    .filter((url): url is string => Boolean(url));
+  const listingSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: boatTitle,
+    category: "Boat",
+    model: boat.model,
+    sku: boat.id,
+    description: buildBoatMetaDescription(
+      boat,
+      boat.asking_price_usd
+        ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}`
+        : `${boat.currency} ${Math.round(boat.asking_price).toLocaleString("en-US")}`
+    ),
+    ...(imageUrls.length > 0 && { image: imageUrls }),
+    brand: { "@type": "Brand", name: boat.make },
+    offers: {
+      "@type": "Offer",
+      price: boat.asking_price,
+      priceCurrency: boat.currency,
+      availability: "https://schema.org/InStock",
+      itemCondition: "https://schema.org/UsedCondition",
+      url: boatUrl,
+      seller: {
+        "@type": "Organization",
+        name: boat.source_url
+          ? formatSourceSite(boat.source_site)
+          : boat.seller_name || "OnlyHulls Seller",
+      },
+    },
+    ...(boat.location_text && {
+      availableAtOrFrom: {
+        "@type": "Place",
+        name: boat.location_text,
+      },
+    }),
+  };
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "OnlyHulls",
+        item: appUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Browse Boats",
+        item: `${appUrl}/boats`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: boatTitle,
+        item: boatUrl,
+      },
+    ],
+  };
 
   return (
     <div className="pb-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Product",
-            name: `${boat.year} ${boat.make} ${boat.model}`,
-            description: boat.ai_summary || `${boat.year} ${boat.make} ${boat.model} for sale`,
-            ...(media.length > 0 && {
-              image: media
-                .filter((mediaItem) => mediaItem.type === "image")
-                .slice(0, 5)
-                .map((mediaItem) => mediaItem.url),
-            }),
-            brand: { "@type": "Brand", name: boat.make },
-            offers: {
-              "@type": "Offer",
-              price: boat.asking_price,
-              priceCurrency: boat.currency,
-              availability: "https://schema.org/InStock",
-              url: `https://onlyhulls.com/boats/${slug}`,
-            },
-            ...(boat.location_text && {
-              availableAtOrFrom: {
-                "@type": "Place",
-                name: boat.location_text,
-              },
-            }),
-          }).replace(/</g, "\\u003c"),
+          __html: JSON.stringify(listingSchema).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
         }}
       />
 

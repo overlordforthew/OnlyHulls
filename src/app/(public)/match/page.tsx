@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,15 +12,22 @@ import {
   Heart,
 } from "lucide-react";
 import { getFeaturedBoats } from "@/lib/db/queries";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import { BuyerPricing } from "@/components/PricingCards";
 import { MatchCTAPrimary, MatchCTASecondary } from "@/components/MatchCTA";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+const appUrl = getPublicAppUrl();
+
+export const metadata: Metadata = {
   title: "AI Boat Matching",
+  metadataBase: new URL(appUrl),
   description:
     "Tell us your dream boat and our AI will match you with the best listings — even when you don't know exactly what you're looking for.",
+  alternates: {
+    canonical: `${appUrl}/match`,
+  },
 };
 
 const STEPS = [

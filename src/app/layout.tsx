@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import Providers from "@/components/Providers";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -18,19 +19,38 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appUrl = getPublicAppUrl();
+
 export const metadata: Metadata = {
   title: {
-    default: "OnlyHulls - AI-Powered Boat Marketplace",
+    default: "OnlyHulls | AI-Powered Boat Marketplace",
     template: "%s | OnlyHulls",
   },
   description:
     "AI-powered boat marketplace for catamarans, sailboats, and serious buyers. Better matching, cleaner listings, and direct seller connections.",
-  metadataBase: new URL("https://onlyhulls.com"),
+  metadataBase: new URL(appUrl),
+  applicationName: "OnlyHulls",
+  category: "marketplace",
+  creator: "OnlyHulls",
+  publisher: "OnlyHulls",
+  keywords: [
+    "boats for sale",
+    "catamarans for sale",
+    "sailboats for sale",
+    "AI boat marketplace",
+    "boat matching",
+    "boat listings",
+  ],
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     siteName: "OnlyHulls",
-    url: "https://onlyhulls.com",
-    title: "OnlyHulls - AI-Powered Boat Marketplace",
+    url: appUrl,
+    title: "OnlyHulls | AI-Powered Boat Marketplace",
     description:
       "Discover catamarans and sailboats with AI-powered matching, cleaner inventory, and direct seller connections.",
     images: [
@@ -44,13 +64,13 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "OnlyHulls - AI-Powered Boat Marketplace",
+    title: "OnlyHulls | AI-Powered Boat Marketplace",
     description:
       "AI-powered boat matching, cleaner listings, and direct seller connections.",
     images: ["/og-image.png"],
   },
   alternates: {
-    canonical: "https://onlyhulls.com",
+    canonical: appUrl,
   },
   robots: {
     index: true,
@@ -65,6 +85,36 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "OnlyHulls",
+    url: appUrl,
+    logo: `${appUrl}/og-image.png`,
+    description:
+      "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: "hello@onlyhulls.com",
+      },
+    ],
+    sameAs: [],
+  };
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "OnlyHulls",
+    url: appUrl,
+    description:
+      "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${appUrl}/boats?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
 
   return (
     <html lang={locale} className="dark">
@@ -72,16 +122,13 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "OnlyHulls",
-              url: "https://onlyhulls.com",
-              logo: "https://onlyhulls.com/og-image.png",
-              description:
-                "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
-              sameAs: [],
-            }),
+            __html: JSON.stringify(organizationSchema).replace(/</g, "\\u003c"),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteSchema).replace(/</g, "\\u003c"),
           }}
         />
         {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
