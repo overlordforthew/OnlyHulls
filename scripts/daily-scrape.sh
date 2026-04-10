@@ -2,10 +2,13 @@
 # Daily boat scrape + import pipeline for OnlyHulls
 # Runs from cron on the Hetzner server
 #
-# Sources (server-scrapable, no Cloudflare blocks):
-#   - sailboatlistings.com (540 sailboats, 100% sailing focus)
-#   - apolloduck.com (2,400+ cruising yachts, EU+US)
-#   - theyachtmarket.com (5,700 sailing boats, bluewater subcats)
+# Sources:
+#   - sailboatlistings.com (broad sailing inventory)
+#   - theyachtmarket.com (strong sailing inventory)
+#   - catamarans.com (pure catamaran source)
+#   - mooringsbrokerage.com (charter exit catamarans)
+#   - dreamyachtsales.com (charter exit fleet, cats + monos)
+#   - catamaransite.com (catamaran brokerage)
 #
 # Focus: cruisers, liveaboards, bluewater sailboats 25ft+
 # NO fishing boats, dinghies, or powerboats
@@ -48,6 +51,22 @@ load_fallback_env
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
+run_import_cycle() {
+    local json_file="$1"
+    local source_key="$2"
+    local result
+    local update_result
+    local imported
+
+    result=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" "$json_file" "$source_key" 2>&1 | tail -1)
+    log "  $result"
+    imported=$(echo "$result" | grep -oP '\d+(?= imported)' || echo 0)
+    TOTAL_IMPORTED=$((TOTAL_IMPORTED + imported))
+
+    update_result=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" "$json_file" "$source_key" --update 2>&1 | tail -1)
+    log "  $update_result"
+}
+
 log "=== OnlyHulls daily scrape (limit=$LIMIT) ==="
 
 TOTAL_IMPORTED=0
@@ -59,10 +78,7 @@ if python3 "$SCRAPER_DIR/scrape_sailboats.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
     COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_boats.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from sailboatlistings.com"
     if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_boats.json sailboatlistings 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        run_import_cycle /tmp/scraped_boats.json sailboatlistings
     fi
 else
     log "  FAILED: sailboatlistings scrape error"
@@ -76,10 +92,7 @@ if python3 "$SCRAPER_DIR/scrape_yachtmarket.py" "$LIMIT" >> "$LOG_FILE" 2>&1; th
     COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_yachtmarket.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from theyachtmarket.com"
     if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_yachtmarket.json theyachtmarket 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        run_import_cycle /tmp/scraped_yachtmarket.json theyachtmarket
     fi
 else
     log "  FAILED: theyachtmarket scrape error"
@@ -91,10 +104,7 @@ if python3 "$SCRAPER_DIR/scrape_catamarans_com.py" "$LIMIT" >> "$LOG_FILE" 2>&1;
     COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_catamarans_com.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from catamarans.com"
     if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_catamarans_com.json catamarans_com 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        run_import_cycle /tmp/scraped_catamarans_com.json catamarans_com
     fi
 else
     log "  FAILED: catamarans.com scrape error"
@@ -106,57 +116,35 @@ if python3 "$SCRAPER_DIR/scrape_moorings.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
     COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_moorings.json'))))" 2>/dev/null || echo 0)
     log "  Scraped $COUNT boats from mooringsbrokerage.com"
     if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_moorings.json moorings 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        run_import_cycle /tmp/scraped_moorings.json moorings
     fi
 else
     log "  FAILED: mooringsbrokerage scrape error"
 fi
 
-# --- Denison Yachting (16,793 listings, data-price SSR) ---
-log "Scraping denisonyachtsales.com..."
-if python3 "$SCRAPER_DIR/scrape_denison.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_denison.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from denisonyachtsales.com"
+# --- Dream Yacht Sales (SSR cards, strong catamaran relevance) ---
+log "Scraping dreamyachtsales.com..."
+if python3 "$SCRAPER_DIR/scrape_dreamyacht.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_dreamyacht.json'))))" 2>/dev/null || echo 0)
+    log "  Scraped $COUNT boats from dreamyachtsales.com"
     if [ "$COUNT" -gt 0 ]; then
-        RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" /tmp/scraped_denison.json denison 2>&1 | tail -1)
-        log "  $RESULT"
-        IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-        TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
+        run_import_cycle /tmp/scraped_dreamyacht.json dreamyacht
     fi
 else
-    log "  FAILED: denison scrape error"
+    log "  FAILED: dreamyacht scrape error"
 fi
 
-# --- Playwright-based scrapers (run sequentially to manage memory) ---
-# Kill any orphaned chromium processes before starting
-pkill -f "chromium.*headless" 2>/dev/null || true
-
-for PW_SCRAPER in multihullworld:multihullworld apolloduck_us:apolloduck_us catamaransite:catamaransite multihullcompany:multihullcompany camperandnicholsons:camperandnicholsons vi_yachtbroker:vi_yachtbroker dreamyacht:dreamyacht boote_yachten:boote_yachten; do
-    PW_FILE="${PW_SCRAPER%%:*}"
-    PW_SOURCE="${PW_SCRAPER##*:}"
-    PW_JSON="/tmp/scraped_${PW_FILE}.json"
-
-    log "Scraping ${PW_FILE} (Playwright)..."
-    if timeout 120 python3 "$SCRAPER_DIR/scrape_${PW_FILE}.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-        COUNT=$(python3 -c "import json; print(len(json.load(open('${PW_JSON}'))))" 2>/dev/null || echo 0)
-        log "  Scraped $COUNT boats"
-        if [ "$COUNT" -gt 0 ]; then
-            RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/import-scraped.ts" "$PW_JSON" "$PW_SOURCE" 2>&1 | tail -1)
-            log "  $RESULT"
-            IMPORTED=$(echo "$RESULT" | grep -oP '\d+(?= imported)' || echo 0)
-            TOTAL_IMPORTED=$((TOTAL_IMPORTED + IMPORTED))
-        fi
-    else
-        log "  FAILED: ${PW_FILE} scrape error or timeout"
+# --- CatamaranSite (SSR cards, catamarans only) ---
+log "Scraping catamaransite.com..."
+if python3 "$SCRAPER_DIR/scrape_catamaransite.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_catamaransite.json'))))" 2>/dev/null || echo 0)
+    log "  Scraped $COUNT boats from catamaransite.com"
+    if [ "$COUNT" -gt 0 ]; then
+        run_import_cycle /tmp/scraped_catamaransite.json catamaransite
     fi
-
-    # Clean up chromium between runs
-    pkill -f "chromium.*headless" 2>/dev/null || true
-    sleep 2
-done
+else
+    log "  FAILED: catamaransite scrape error"
+fi
 
 # --- Expire stale listings (not seen in 14+ days) ---
 log "Expiring stale listings..."
