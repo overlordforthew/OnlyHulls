@@ -20,22 +20,33 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "OnlyHulls — The OnlyFans of Boats",
+    default: "OnlyHulls - AI-Powered Boat Marketplace",
     template: "%s | OnlyHulls",
   },
   description:
-    "The boat marketplace that doesn't suck. AI-powered matching, zero commission, and a community of boat lovers. Find your perfect hull.",
+    "AI-powered boat marketplace for catamarans, sailboats, and serious buyers. Better matching, cleaner listings, and direct seller connections.",
   metadataBase: new URL("https://onlyhulls.com"),
   openGraph: {
     type: "website",
     siteName: "OnlyHulls",
     url: "https://onlyhulls.com",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "OnlyHulls — AI-Powered Boat Marketplace" }],
+    title: "OnlyHulls - AI-Powered Boat Marketplace",
+    description:
+      "Discover catamarans and sailboats with AI-powered matching, cleaner inventory, and direct seller connections.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "OnlyHulls - AI-Powered Boat Marketplace",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "OnlyHulls — The OnlyFans of Boats",
-    description: "AI-powered boat matching. Zero commission. 14,000+ sailboats.",
+    title: "OnlyHulls - AI-Powered Boat Marketplace",
+    description:
+      "AI-powered boat matching, cleaner listings, and direct seller connections.",
     images: ["/og-image.png"],
   },
   alternates: {
@@ -67,7 +78,8 @@ export default async function RootLayout({
               name: "OnlyHulls",
               url: "https://onlyhulls.com",
               logo: "https://onlyhulls.com/og-image.png",
-              description: "AI-powered boat marketplace. Zero commission. 14,000+ sailboats.",
+              description:
+                "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
               sameAs: [],
             }),
           }}

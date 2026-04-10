@@ -26,10 +26,19 @@ def normalize_location(raw):
     if not location:
         return ""
 
+    # Prefer the first concrete location over travel notes or generic catch-alls.
+    location = re.split(r"\buntil\b|\bthen\b|\bcurrently\b|\bnow in\b", location, maxsplit=1, flags=re.I)[0]
     location = re.sub(r"\bOutside United States\b", "", location, flags=re.I)
+    location = re.sub(r"\bOutside USA\b", "", location, flags=re.I)
     location = re.sub(r"\bUnited States\b", "USA", location, flags=re.I)
-    location = re.sub(r"\bPuerto Rico\b", "Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bUSVI\b", "US Virgin Islands", location, flags=re.I)
     location = re.sub(r"\bSan Juan Puerto Rico\b", "San Juan, Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bCulebra Puerto Rico\b", "Culebra, Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bVieques Puerto Rico\b", "Vieques, Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bSt Thomas US Virgin Islands\b", "St. Thomas, US Virgin Islands", location, flags=re.I)
+    location = re.sub(r"\bSt Thomas\b", "St. Thomas", location, flags=re.I)
+    location = re.sub(r"\bSt John\b", "St. John", location, flags=re.I)
+    location = re.sub(r"\bSt Croix\b", "St. Croix", location, flags=re.I)
     location = re.sub(r"\s+,", ",", location)
     location = re.sub(r",\s*,+", ", ", location)
     location = re.sub(r"\s{2,}", " ", location).strip(" ,")
