@@ -296,29 +296,56 @@ async function main() {
       ai_summary: summary,
     });
     const embedding = shouldRefreshEmbeddings ? await generateEmbedding(embeddingText) : [];
+    let normalizationConflict = false;
 
     if (!dryRun) {
-      try {
-        await pool.query(
-          `UPDATE boats
-           SET make = $2,
-               model = $3,
-               updated_at = NOW()
-           WHERE id = $1`,
-          [row.id, normalized.make, normalized.model]
+      const makeChanged = normalized.make !== row.make;
+      const modelChanged = normalized.model !== row.model;
+
+      if (makeChanged || modelChanged) {
+        const collision = await query<{ id: string }>(
+          `SELECT id
+           FROM boats
+           WHERE id <> $1
+             AND status = 'active'
+             AND make = $2
+             AND model = $3
+             AND year = $4
+             AND location_text = $5
+           LIMIT 1`,
+          [row.id, normalized.make, normalized.model, row.year, row.location_text]
         );
-      } catch (err) {
-        if (isDuplicateConflict(err)) {
-          documentationStatus.import_quality_flags = Array.from(
-            new Set([...(documentationStatus.import_quality_flags as string[] || []), "normalization_conflict"])
-          );
-          documentationStatus.import_quality_score = calculateImportQualityScore(
-            documentationStatus.import_quality_flags as string[]
-          );
-          documentationStatus.import_quality_visible = false;
+
+        if (collision.length > 0) {
+          normalizationConflict = true;
         } else {
-          throw err;
+          try {
+            await pool.query(
+              `UPDATE boats
+               SET make = $2,
+                   model = $3,
+                   updated_at = NOW()
+               WHERE id = $1`,
+              [row.id, normalized.make, normalized.model]
+            );
+          } catch (err) {
+            if (isDuplicateConflict(err)) {
+              normalizationConflict = true;
+            } else {
+              throw err;
+            }
+          }
         }
+      }
+
+      if (normalizationConflict) {
+        documentationStatus.import_quality_flags = Array.from(
+          new Set([...(documentationStatus.import_quality_flags as string[] || []), "normalization_conflict"])
+        );
+        documentationStatus.import_quality_score = calculateImportQualityScore(
+          documentationStatus.import_quality_flags as string[]
+        );
+        documentationStatus.import_quality_visible = false;
       }
 
       await query(
