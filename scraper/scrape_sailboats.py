@@ -33,12 +33,16 @@ def normalize_location(raw):
     location = re.sub(r"\bUnited States\b", "USA", location, flags=re.I)
     location = re.sub(r"\bUSVI\b", "US Virgin Islands", location, flags=re.I)
     location = re.sub(r"\bSan Juan Puerto Rico\b", "San Juan, Puerto Rico", location, flags=re.I)
+    location = re.sub(r"\bCukebra\b", "Culebra", location, flags=re.I)
+    location = re.sub(r"\bSpanish Virgin Island\b", "Spanish Virgin Islands", location, flags=re.I)
     location = re.sub(r"\bCulebra Puerto Rico\b", "Culebra, Puerto Rico", location, flags=re.I)
     location = re.sub(r"\bVieques Puerto Rico\b", "Vieques, Puerto Rico", location, flags=re.I)
     location = re.sub(r"\bSt Thomas US Virgin Islands\b", "St. Thomas, US Virgin Islands", location, flags=re.I)
     location = re.sub(r"\bSt Thomas\b", "St. Thomas", location, flags=re.I)
     location = re.sub(r"\bSt John\b", "St. John", location, flags=re.I)
     location = re.sub(r"\bSt Croix\b", "St. Croix", location, flags=re.I)
+    if "Puerto Rico" in location and "Culebra" in location:
+        location = "Culebra, Puerto Rico"
     location = re.sub(r"\s+,", ",", location)
     location = re.sub(r",\s*,+", ", ", location)
     location = re.sub(r"\s{2,}", " ", location).strip(" ,")
