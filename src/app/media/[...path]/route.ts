@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
-import { resolveLocalMediaPath, getStorageBackend } from "@/lib/storage";
+import { getStorageBackend } from "@/lib/storage-config";
+import { resolveLocalMediaPath } from "@/lib/storage-local";
 import { logger } from "@/lib/logger";
 
 const CONTENT_TYPES: Record<string, string> = {
