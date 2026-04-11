@@ -19,6 +19,10 @@ function normalizeIds(ids: string[]) {
   );
 }
 
+function serializeCompareIds(ids: string[]) {
+  return JSON.stringify(ids);
+}
+
 function readPersistedCompareIds(): string[] {
   if (!isBrowser()) return EMPTY_COMPARE_IDS;
 
@@ -35,7 +39,7 @@ function readPersistedCompareIds(): string[] {
 
 function cacheCompareBoatIds(ids: string[]) {
   const normalized = normalizeIds(ids);
-  const serialized = JSON.stringify(normalized);
+  const serialized = serializeCompareIds(normalized);
   if (serialized === compareCache.serialized) {
     return compareCache.ids;
   }
@@ -56,11 +60,11 @@ function persistCompareBoatIds(ids: string[]) {
   if (!isBrowser()) return;
 
   const normalized = cacheCompareBoatIds(ids);
-  if (JSON.stringify(normalized) === window.localStorage.getItem(COMPARE_STORAGE_KEY)) {
+  if (compareCache.serialized === window.localStorage.getItem(COMPARE_STORAGE_KEY)) {
     return;
   }
 
-  window.localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(normalized));
+  window.localStorage.setItem(COMPARE_STORAGE_KEY, compareCache.serialized);
   window.dispatchEvent(
     new CustomEvent(COMPARE_UPDATED_EVENT, {
       detail: { ids: normalized },

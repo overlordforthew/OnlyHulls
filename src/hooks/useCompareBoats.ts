@@ -5,12 +5,13 @@ import {
   addCompareBoatId,
   clearCompareBoatIds,
   COMPARE_UPDATED_EVENT,
-  hasComparedBoat,
   MAX_COMPARE_BOATS,
   readCompareBoatIds,
   removeCompareBoatId,
   toggleCompareBoatId,
 } from "@/lib/compare";
+
+const EMPTY_COMPARE_IDS: string[] = [];
 
 function subscribe(onStoreChange: () => void) {
   if (typeof window === "undefined") {
@@ -30,28 +31,33 @@ function getSnapshot() {
 }
 
 function getServerSnapshot() {
-  return [];
+  return EMPTY_COMPARE_IDS;
 }
 
 export function useCompareBoats() {
   const compareIds = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const comparedBoatIds = useMemo(() => new Set(compareIds), [compareIds]);
 
   const toggleBoat = useCallback((boatId: string) => toggleCompareBoatId(boatId), []);
   const addBoat = useCallback((boatId: string) => addCompareBoatId(boatId), []);
   const removeBoat = useCallback((boatId: string) => removeCompareBoatId(boatId), []);
   const clear = useCallback(() => clearCompareBoatIds(), []);
+  const isCompared = useCallback(
+    (boatId: string) => comparedBoatIds.has(boatId),
+    [comparedBoatIds]
+  );
 
   return useMemo(
     () => ({
       compareIds,
       compareCount: compareIds.length,
       maxCompareBoats: MAX_COMPARE_BOATS,
-      isCompared: (boatId: string) => hasComparedBoat(boatId),
+      isCompared,
       toggleBoat,
       addBoat,
       removeBoat,
       clear,
     }),
-    [addBoat, clear, compareIds, removeBoat, toggleBoat]
+    [addBoat, clear, compareIds, isCompared, removeBoat, toggleBoat]
   );
 }

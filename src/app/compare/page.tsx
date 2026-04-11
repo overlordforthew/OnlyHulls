@@ -30,19 +30,26 @@ interface CompareBoat {
 
 const compareRows: Array<{
   label: string;
-  render: (boat: CompareBoat) => string;
+  render: (boat: CompareBoat, displayCurrency: SupportedCurrency) => string;
 }> = [
-  { label: "Price", render: (boat) => getDisplayedPrice({
-      amount: boat.asking_price,
-      nativeCurrency: boat.currency,
-      amountUsd: boat.asking_price_usd,
-      preferredCurrency: "USD",
-    }).primary },
+  {
+    label: "Price",
+    render: (boat, displayCurrency) =>
+      getDisplayedPrice({
+        amount: boat.asking_price,
+        nativeCurrency: boat.currency,
+        amountUsd: boat.asking_price_usd,
+        preferredCurrency: displayCurrency,
+      }).primary,
+  },
   { label: "Year", render: (boat) => String(boat.year) },
   { label: "Location", render: (boat) => boat.location_text || "Unknown" },
   { label: "Length", render: (boat) => (boat.specs.loa ? `${boat.specs.loa}ft` : "Unknown") },
   { label: "Rig / Type", render: (boat) => boat.specs.rig_type || "Unknown" },
-  { label: "Tags", render: (boat) => (boat.character_tags.length ? boat.character_tags.join(", ") : "None yet") },
+  {
+    label: "Tags",
+    render: (boat) => (boat.character_tags.length ? boat.character_tags.join(", ") : "None yet"),
+  },
   { label: "Source", render: (boat) => boat.source_name || boat.source_site || "OnlyHulls" },
 ];
 
@@ -187,14 +194,7 @@ export default function ComparePage() {
                   </div>
                   {boats.map((boat) => (
                     <div key={`${boat.id}-${row.label}`} className="border-b border-l border-border px-4 py-3 text-foreground/85">
-                      {row.label === "Price"
-                        ? getDisplayedPrice({
-                            amount: boat.asking_price,
-                            nativeCurrency: boat.currency,
-                            amountUsd: boat.asking_price_usd,
-                            preferredCurrency: displayCurrency,
-                          }).primary
-                        : row.render(boat)}
+                      {row.render(boat, displayCurrency)}
                     </div>
                   ))}
                 </div>
