@@ -6,6 +6,7 @@ import {
   profileToEmbeddingText,
 } from "@/lib/ai/embeddings";
 import { computeMatchesForBuyer } from "@/lib/matching/engine";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -104,6 +105,11 @@ export async function POST(req: Request) {
 
   try {
     const matches = await computeMatchesForBuyer(buyerProfileId);
+    await trackFunnelEvent({
+      eventType: "buyer_profile_saved",
+      userId: session.user.id,
+      payload: { matches: matches.length },
+    });
     return NextResponse.json({ ok: true, matches: matches.length });
   } catch (err) {
     logger.error({ err, buyerProfileId }, "Failed to compute matches after profile save");

@@ -2,6 +2,7 @@ import { queryOne } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendVerificationEmail } from "@/lib/email/resend";
 import { getPublicAppUrl } from "@/lib/config/urls";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -63,6 +64,12 @@ export async function POST(req: Request) {
   let requiresVerification = true;
 
   if (newUser) {
+    await trackFunnelEvent({
+      eventType: "signup_created",
+      userId: newUser.id,
+      payload: { emailDomain: email.split("@")[1] || null },
+    });
+
     try {
       await sendVerificationEmail({
         email,

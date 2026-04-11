@@ -20,6 +20,7 @@ test.describe("seller auth flow", () => {
     await expect(page.getByRole("heading", { name: "Seller Dashboard", exact: false })).toBeVisible();
     await expect(page.getByText("Needs Attention", { exact: false })).toBeVisible();
     await expect(page.getByText("Recent Buyer Leads", { exact: false })).toBeVisible();
+    await expect(page.getByText("What to do next", { exact: false })).toBeVisible();
   });
 
   test("seller can open listing workspace", async ({ page }) => {

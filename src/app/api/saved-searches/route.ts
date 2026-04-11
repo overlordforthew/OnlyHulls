@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { requireUser } from "@/lib/auth";
 import { createSavedSearch, listSavedSearches } from "@/lib/saved-searches";
+import { trackFunnelEvent } from "@/lib/funnel";
 
 export async function GET() {
   try {
@@ -26,6 +27,17 @@ export async function POST(req: Request) {
     const user = await requireUser();
     const body = await req.json();
     const result = await createSavedSearch(user.id, body ?? {});
+
+    if (!result.duplicate) {
+      await trackFunnelEvent({
+        eventType: "saved_search_created",
+        userId: user.id,
+        payload: {
+          search: result.savedSearch.filters.search || null,
+          tag: result.savedSearch.filters.tag || null,
+        },
+      });
+    }
 
     return NextResponse.json(result, { status: result.duplicate ? 200 : 201 });
   } catch (err) {

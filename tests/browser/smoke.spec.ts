@@ -5,6 +5,7 @@ const publicPages = [
   { path: "/boats", heading: "Browse Boats" },
   { path: "/match", heading: "Your Perfect Match is Waiting" },
   { path: "/sell", heading: "Become a Creator" },
+  { path: "/compare", heading: "Side-by-side boat comparison" },
   { path: "/catamarans-for-sale", heading: "Catamarans for Sale" },
   { path: "/sailboats-for-sale", heading: "Sailboats for Sale" },
   { path: "/boats/make/bali", heading: "Bali Boats for Sale" },
@@ -153,6 +154,19 @@ test("boats card opens detail page", async ({ page }) => {
   await firstCardTitle.click();
   await expect(page).toHaveURL(/\/boats\//);
   await expect(page.getByRole("heading", { name: title!, exact: false })).toBeVisible();
+});
+
+test("boats can be added to compare and rendered side by side", async ({ page }) => {
+  await page.goto("/boats?q=lagoon");
+  const compareButtons = page.getByTestId("boat-compare-toggle");
+  await expect(compareButtons.nth(0)).toBeVisible();
+  await compareButtons.nth(0).click();
+  await compareButtons.nth(1).click();
+
+  await page.goto("/compare");
+  await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();
+  await expect(page.getByText("Decision signal", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Start browsing/i })).toHaveCount(0);
 });
 
 test("make SEO hub loads", async ({ page }) => {

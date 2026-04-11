@@ -66,6 +66,10 @@ export default async function ListingsDashboardPage({
   );
   const pendingLeads = leads.filter((lead) => lead.status === "pending");
   const hotLeads = pendingLeads.filter((lead) => getLeadAgeHours(lead) >= 24);
+  const upgradeReadyListings = listings.filter((listing) => getListingHealthScore(listing) >= 75);
+  const nextLeadToHandle = hotLeads[0] ?? pendingLeads[0] ?? null;
+  const nextListingToFix = listingsNeedingAttention[0] ?? null;
+  const nextUpgradeCandidate = upgradeReadyListings[0] ?? null;
 
   async function updateLeadStatus(formData: FormData) {
     "use server";
@@ -230,6 +234,59 @@ export default async function ListingsDashboardPage({
         />
       </section>
 
+      <section className="mt-8 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">What to do next</h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              The fastest actions that improve seller response speed, listing quality, and upgrade readiness.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <PriorityActionCard
+            title="Handle buyer replies"
+            eyebrow={nextLeadToHandle ? `${Math.round(getLeadAgeHours(nextLeadToHandle))}h old` : "No lead backlog"}
+            description={
+              nextLeadToHandle
+                ? `${nextLeadToHandle.buyer_name || "A buyer"} is waiting on ${nextLeadToHandle.boat_title}.`
+                : "No pending buyer requests need a response right now."
+            }
+            actionHref={nextLeadToHandle ? "/listings#seller-leads" : undefined}
+            actionLabel={nextLeadToHandle ? "Open lead queue" : undefined}
+            tone={nextLeadToHandle ? (hotLeads.length > 0 ? "danger" : "accent") : "neutral"}
+          />
+          <PriorityActionCard
+            title="Fix listing quality"
+            eyebrow={
+              nextListingToFix
+                ? `${getListingAttentionReasons(nextListingToFix).length} issue${getListingAttentionReasons(nextListingToFix).length === 1 ? "" : "s"}`
+                : "Quality baseline is good"
+            }
+            description={
+              nextListingToFix
+                ? `${nextListingToFix.year} ${nextListingToFix.make} ${nextListingToFix.model} needs ${getListingAttentionReasons(nextListingToFix).join(", ").toLowerCase()}.`
+                : "No active listing is currently flagged for photos, freshness, or moderation cleanup."
+            }
+            actionHref={nextListingToFix ? `/listings/${nextListingToFix.id}` : undefined}
+            actionLabel={nextListingToFix ? "Manage listing" : undefined}
+            tone={nextListingToFix ? "warning" : "neutral"}
+          />
+          <PriorityActionCard
+            title="Promote a strong listing"
+            eyebrow={nextUpgradeCandidate ? `${getListingHealthScore(nextUpgradeCandidate)}/100 health` : "No strong candidate yet"}
+            description={
+              nextUpgradeCandidate
+                ? `${nextUpgradeCandidate.year} ${nextUpgradeCandidate.make} ${nextUpgradeCandidate.model} is presentation-ready for premium placement.`
+                : "Add more photos and listing detail before pushing a listing toward featured placement."
+            }
+            actionHref={nextUpgradeCandidate ? "/sell#pricing" : "/listings/new"}
+            actionLabel={nextUpgradeCandidate ? "Review featured plans" : "Create another listing"}
+            tone={nextUpgradeCandidate ? "success" : "neutral"}
+          />
+        </div>
+      </section>
+
       <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Contacted" value={stats.contactedLeads} hint="Seller reached out" />
         <MetricCard label="Qualified" value={stats.qualifiedLeads} hint="Worth active follow-up" />
@@ -242,6 +299,7 @@ export default async function ListingsDashboardPage({
       </section>
 
       <section className="mt-10">
+        <div id="seller-listings" />
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold">Your Listings</h2>
           <p className="text-sm text-text-secondary">{listings.length} total</p>
@@ -270,6 +328,7 @@ export default async function ListingsDashboardPage({
       </section>
 
       <section className="mt-12">
+        <div id="seller-leads" />
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold">Recent Buyer Leads</h2>
           <p className="text-sm text-text-secondary">{leads.length} recent</p>
@@ -682,6 +741,46 @@ function ActionCard({
       <p className="text-sm font-medium text-text-secondary">{title}</p>
       <p className="mt-2 text-3xl font-bold">{count.toLocaleString("en-US")}</p>
       <p className="mt-2 text-sm text-text-secondary">{description}</p>
+    </div>
+  );
+}
+
+function PriorityActionCard({
+  title,
+  eyebrow,
+  description,
+  actionHref,
+  actionLabel,
+  tone,
+}: {
+  title: string;
+  eyebrow: string;
+  description: string;
+  actionHref?: string;
+  actionLabel?: string;
+  tone: "neutral" | "accent" | "warning" | "danger" | "success";
+}) {
+  const tones: Record<typeof tone, string> = {
+    neutral: "border-border bg-background",
+    accent: "border-accent/30 bg-accent/10",
+    warning: "border-yellow-500/30 bg-yellow-500/10",
+    danger: "border-red-500/30 bg-red-500/10",
+    success: "border-green-500/30 bg-green-500/10",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 ${tones[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{eyebrow}</p>
+      <p className="mt-2 text-lg font-semibold">{title}</p>
+      <p className="mt-2 text-sm text-text-secondary">{description}</p>
+      {actionHref && actionLabel && (
+        <Link
+          href={actionHref}
+          className="mt-4 inline-flex rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+        >
+          {actionLabel}
+        </Link>
+      )}
     </div>
   );
 }

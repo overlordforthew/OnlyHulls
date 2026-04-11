@@ -11,6 +11,14 @@ interface Stats {
   pendingListings: number;
   totalMatches: number;
   totalIntroductions: number;
+  funnel30d: {
+    signups: number;
+    buyerProfiles: number;
+    savedSearches: number;
+    sellerListings: number;
+    matchInterested: number;
+    connectRequests: number;
+  };
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -218,6 +226,21 @@ export default function AdminPage() {
               value={`${stats.serviceStatus.meiliDocuments}`}
               healthy={stats.serviceStatus.meiliDocuments >= stats.activeListings}
             />
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Funnel - Last 30 Days</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              This is the actual product flow, not just raw account or listing totals.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+              <StatCard label="Signups" value={stats.funnel30d.signups} />
+              <StatCard label="Buyer Profiles" value={stats.funnel30d.buyerProfiles} />
+              <StatCard label="Saved Searches" value={stats.funnel30d.savedSearches} />
+              <StatCard label="Seller Listings" value={stats.funnel30d.sellerListings} />
+              <StatCard label="Shortlist Saves" value={stats.funnel30d.matchInterested} />
+              <StatCard label="Connect Requests" value={stats.funnel30d.connectRequests} highlight />
+            </div>
           </div>
         </>
       )}

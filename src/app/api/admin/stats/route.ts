@@ -3,6 +3,7 @@ import { queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
+import { getFunnelSnapshot } from "@/lib/funnel";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -19,7 +20,7 @@ export async function GET() {
       AND email NOT LIKE 'browser-%'
     `;
 
-    const [users, admins, listings, pending, matches, intros, meiliStats] = await Promise.all([
+    const [users, admins, listings, pending, matches, intros, meiliStats, funnel30d] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
@@ -30,6 +31,7 @@ export async function GET() {
         .index(BOATS_INDEX)
         .getStats()
         .catch(() => null),
+      getFunnelSnapshot(30),
     ]);
 
     return NextResponse.json({
@@ -39,6 +41,7 @@ export async function GET() {
       pendingListings: parseInt(pending?.count || "0"),
       totalMatches: parseInt(matches?.count || "0"),
       totalIntroductions: parseInt(intros?.count || "0"),
+      funnel30d,
       serviceStatus: {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),

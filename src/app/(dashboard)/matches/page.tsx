@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ExternalLink, Grid2X2, Heart, List, MapPin, MessageCircle, Ruler, Sailboat, X } from "lucide-react";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
+import { useCompareBoats } from "@/hooks/useCompareBoats";
 import {
   getDisplayedPrice,
   readPreferredCurrencyFromBrowser,
@@ -65,6 +66,7 @@ export default function MatchesPage() {
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     readPreferredCurrencyFromBrowser()
   );
+  const { compareCount, isCompared, maxCompareBoats, toggleBoat } = useCompareBoats();
   const router = useRouter();
 
   useEffect(() => {
@@ -174,6 +176,12 @@ export default function MatchesPage() {
             value={displayCurrency}
             onChange={setDisplayCurrency}
           />
+          <Link
+            href="/compare"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            Compare shortlist ({compareCount})
+          </Link>
           <div className="inline-flex rounded-full border border-border bg-surface p-1">
             <button
               type="button"
@@ -280,6 +288,9 @@ export default function MatchesPage() {
                     onSave={() => handleAction(match.match_id, "interested")}
                     onDismiss={() => handleAction(match.match_id, "passed")}
                     onConnect={() => openConnect(match)}
+                    onCompareToggle={() => toggleBoat(match.boat_id)}
+                    compareSelected={isCompared(match.boat_id)}
+                    compareDisabled={!isCompared(match.boat_id) && compareCount >= maxCompareBoats}
                   />
                   {match.ai_verdict && match.ai_provider && (
                     <div className="flex flex-wrap items-center gap-2 px-1 text-xs text-foreground/60">
@@ -304,6 +315,9 @@ export default function MatchesPage() {
                   onSave={() => handleAction(match.match_id, "interested")}
                   onDismiss={() => handleAction(match.match_id, "passed")}
                   onConnect={() => openConnect(match)}
+                  onCompareToggle={() => toggleBoat(match.boat_id)}
+                  compareSelected={isCompared(match.boat_id)}
+                  compareDisabled={!isCompared(match.boat_id) && compareCount >= maxCompareBoats}
                 />
               ))}
             </div>
@@ -333,12 +347,18 @@ function MatchRow({
   onSave,
   onDismiss,
   onConnect,
+  onCompareToggle,
+  compareSelected,
+  compareDisabled,
 }: {
   match: Match;
   displayCurrency: SupportedCurrency;
   onSave: () => void;
   onDismiss: () => void;
   onConnect: () => void;
+  onCompareToggle: () => void;
+  compareSelected: boolean;
+  compareDisabled: boolean;
 }) {
   const href = `/boats/${match.slug || match.boat_id}`;
   const displayedPrice = getDisplayedPrice({
@@ -484,6 +504,19 @@ function MatchRow({
             >
               <X className="h-4 w-4" />
               Pass
+            </button>
+            <button
+              type="button"
+              onClick={onCompareToggle}
+              disabled={compareDisabled && !compareSelected}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                compareSelected
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <Grid2X2 className="h-4 w-4" />
+              {compareSelected ? "Compared" : "Compare"}
             </button>
             <button
               type="button"

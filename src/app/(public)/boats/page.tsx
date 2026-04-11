@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
+import { useCompareBoats } from "@/hooks/useCompareBoats";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
@@ -104,6 +105,7 @@ function BoatsPageInner() {
   );
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const { compareCount, isCompared, toggleBoat, maxCompareBoats } = useCompareBoats();
   const [filters, setFilters] = useState({
     minPrice: "",
     maxPrice: "",
@@ -299,6 +301,9 @@ function BoatsPageInner() {
                   {saveMessage}
                 </p>
               )}
+              <p className="mt-2 text-xs text-text-secondary">
+                Compare shortlist: {compareCount}/{maxCompareBoats} boats selected.
+              </p>
             </div>
 
             <form onSubmit={handleSearch} className="flex max-w-md flex-1 gap-2 sm:justify-end">
@@ -474,7 +479,14 @@ function BoatsPageInner() {
           <>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {boats.map((boat) => (
-                <BoatCard key={boat.id} boat={boat} displayCurrency={displayCurrency} />
+                <BoatCard
+                  key={boat.id}
+                  boat={boat}
+                  displayCurrency={displayCurrency}
+                  onCompareToggle={() => toggleBoat(boat.id)}
+                  compareSelected={isCompared(boat.id)}
+                  compareDisabled={!isCompared(boat.id) && compareCount >= maxCompareBoats}
+                />
               ))}
             </div>
 

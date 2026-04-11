@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -40,8 +41,8 @@ export async function POST(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const match = await queryOne<{ id: string }>(
-    `SELECT m.id FROM matches m
+  const match = await queryOne<{ id: string; boat_id: string }>(
+    `SELECT m.id, m.boat_id FROM matches m
      JOIN buyer_profiles bp ON bp.id = m.buyer_id
      WHERE m.id = $1 AND bp.user_id = $2`,
     [matchId, user.id]
@@ -56,6 +57,13 @@ export async function POST(
       "UPDATE matches SET buyer_action = $1, updated_at = NOW() WHERE id = $2",
       [parsed.data.action, matchId]
     );
+    if (parsed.data.action === "interested" || parsed.data.action === "passed") {
+      await trackFunnelEvent({
+        eventType: parsed.data.action === "interested" ? "match_interested" : "match_passed",
+        userId: user.id,
+        boatId: match.boat_id,
+      });
+    }
   } catch (err) {
     logger.error({ err, matchId }, "POST /api/matches/action error");
     return NextResponse.json(

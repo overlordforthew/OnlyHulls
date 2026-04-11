@@ -9,6 +9,7 @@ import {
   updateListingEmbedding,
 } from "@/lib/listings/shared";
 import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -143,6 +144,13 @@ export async function POST(req: Request) {
     updateListingEmbedding(boat.id, data).catch((err) =>
       logger.error({ err, boatId: boat.id }, "Failed to generate boat embedding")
     );
+
+    await trackFunnelEvent({
+      eventType: "seller_listing_created",
+      userId: user.id,
+      boatId: boat.id,
+      payload: { status: "draft" },
+    });
 
     return NextResponse.json({ id: boat.id, slug, status: "draft" });
   } catch (err) {

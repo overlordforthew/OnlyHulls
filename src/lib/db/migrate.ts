@@ -234,6 +234,12 @@ const MIGRATION_MARKERS: MigrationMarker[] = [
       ) AS ok
     `,
   },
+  {
+    name: "020_funnel_events.sql",
+    checkSql: `
+      SELECT to_regclass('public.funnel_events') IS NOT NULL AS ok
+    `,
+  },
 ];
 
 async function reconcileExistingMigrations(

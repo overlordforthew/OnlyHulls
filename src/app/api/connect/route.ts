@@ -5,6 +5,7 @@ import { getPlanByTier } from "@/lib/config/plans";
 import { emailEnabled } from "@/lib/capabilities";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { scoreBoatForBuyer } from "@/lib/matching/heuristic";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
@@ -161,6 +162,14 @@ export async function POST(req: Request) {
       { status: 403 }
     );
   }
+
+  await trackFunnelEvent({
+    eventType: "connect_requested",
+    userId: user.id,
+    boatId: match.boat_id,
+    introductionId: intro.id,
+    payload: { fromMatch: Boolean(parsed.data.matchId) },
+  });
 
   const canSendEmail = emailEnabled();
   if (!canSendEmail) {

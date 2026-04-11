@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Heart, MapPin, MessageCircle, X } from "lucide-react";
+import { ExternalLink, GitCompareArrows, Heart, MapPin, MessageCircle, X } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
 
@@ -32,6 +32,9 @@ interface BoatCardProps {
   onSave?: () => void;
   onDismiss?: () => void;
   onConnect?: () => void;
+  onCompareToggle?: () => void;
+  compareSelected?: boolean;
+  compareDisabled?: boolean;
 }
 
 export default function BoatCard({
@@ -42,6 +45,9 @@ export default function BoatCard({
   onSave,
   onDismiss,
   onConnect,
+  onCompareToggle,
+  compareSelected,
+  compareDisabled,
 }: BoatCardProps) {
   const href = `/boats/${boat.slug || boat.id}`;
   const listingBadge = getListingBadge(boat);
@@ -158,6 +164,25 @@ export default function BoatCard({
             ) : (
               <span className="font-medium text-text-secondary">{boat.source_name}</span>
             )}
+          </div>
+        )}
+
+        {onCompareToggle && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={onCompareToggle}
+              disabled={compareDisabled && !compareSelected}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                compareSelected
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-text-secondary hover:border-primary hover:text-primary"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+              data-testid="boat-compare-toggle"
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" />
+              {compareSelected ? "Added to Compare" : "Compare"}
+            </button>
           </div>
         )}
 

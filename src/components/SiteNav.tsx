@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Waves, Menu, X, User, LogOut, Bell } from "lucide-react";
+import { Waves, Menu, X, User, LogOut, Bell, GitCompareArrows } from "lucide-react";
+import { useCompareBoats } from "@/hooks/useCompareBoats";
 
 export default function SiteNav() {
   const { data: session, status } = useSession();
@@ -11,6 +12,7 @@ export default function SiteNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchesWithUpdates, setSearchesWithUpdates] = useState(0);
+  const { compareCount } = useCompareBoats();
 
   const isLoggedIn = status === "authenticated" && !!session?.user;
 
@@ -89,6 +91,15 @@ export default function SiteNav() {
             <Link href="/sell" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
               Sell
             </Link>
+            <Link href="/compare" className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-primary">
+              <GitCompareArrows className="h-4 w-4" />
+              Compare
+              {compareCount > 0 && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  {compareCount}
+                </span>
+              )}
+            </Link>
           </nav>
 
           {/* Desktop Actions */}
@@ -131,6 +142,21 @@ export default function SiteNav() {
                       onClick={() => setProfileOpen(false)}
                     >
                       List a Boat
+                    </Link>
+                    <Link
+                      href="/compare"
+                      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <GitCompareArrows className="h-3.5 w-3.5" />
+                        Compare Boats
+                      </span>
+                      {compareCount > 0 && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          {compareCount}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       href="/saved-searches"
@@ -213,6 +239,9 @@ export default function SiteNav() {
             </Link>
             <Link href="/sell" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
               Sell Your Boat
+            </Link>
+            <Link href="/compare" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
+              Compare Boats{compareCount > 0 ? ` (${compareCount})` : ""}
             </Link>
             <div className="mt-4 flex flex-col items-center gap-4">
               {isLoggedIn ? (

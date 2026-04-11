@@ -102,6 +102,19 @@ export async function getSeoHubBoatCount(
   return parseInt(result?.count || "0", 10);
 }
 
+export async function getBoatsByIds(ids: string[]): Promise<BoatRow[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  return query<BoatRow>(
+    `${BOAT_SELECT}
+       AND b.id = ANY($1::uuid[])
+     ORDER BY array_position($1::uuid[], b.id)`,
+    [ids]
+  );
+}
+
 export async function getRelatedBoats(input: {
   boatId: string;
   make: string;
