@@ -1,6 +1,12 @@
 export const COMPARE_STORAGE_KEY = "onlyhulls_compare_boats";
 export const COMPARE_UPDATED_EVENT = "compare-boats:updated";
 export const MAX_COMPARE_BOATS = 4;
+const EMPTY_COMPARE_IDS: string[] = [];
+
+let compareCache = {
+  serialized: "[]",
+  ids: EMPTY_COMPARE_IDS,
+};
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -13,24 +19,47 @@ function normalizeIds(ids: string[]) {
   );
 }
 
-export function readCompareBoatIds(): string[] {
-  if (!isBrowser()) return [];
+function readPersistedCompareIds(): string[] {
+  if (!isBrowser()) return EMPTY_COMPARE_IDS;
 
   try {
     const stored = window.localStorage.getItem(COMPARE_STORAGE_KEY);
-    if (!stored) return [];
+    if (!stored) return EMPTY_COMPARE_IDS;
     const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return EMPTY_COMPARE_IDS;
     return normalizeIds(parsed);
   } catch {
-    return [];
+    return EMPTY_COMPARE_IDS;
   }
+}
+
+function cacheCompareBoatIds(ids: string[]) {
+  const normalized = normalizeIds(ids);
+  const serialized = JSON.stringify(normalized);
+  if (serialized === compareCache.serialized) {
+    return compareCache.ids;
+  }
+
+  compareCache = {
+    serialized,
+    ids: normalized.length > 0 ? normalized : EMPTY_COMPARE_IDS,
+  };
+
+  return compareCache.ids;
+}
+
+export function readCompareBoatIds(): string[] {
+  return cacheCompareBoatIds(readPersistedCompareIds());
 }
 
 function persistCompareBoatIds(ids: string[]) {
   if (!isBrowser()) return;
 
-  const normalized = normalizeIds(ids);
+  const normalized = cacheCompareBoatIds(ids);
+  if (JSON.stringify(normalized) === window.localStorage.getItem(COMPARE_STORAGE_KEY)) {
+    return;
+  }
+
   window.localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(normalized));
   window.dispatchEvent(
     new CustomEvent(COMPARE_UPDATED_EVENT, {
