@@ -5,7 +5,71 @@ const GENERIC_LOCATION_VALUES = new Set([
   "outside united states",
   "outside usa",
   "outside the united states",
+  "price",
+  "poa",
+  "call",
+  "contact seller",
+  "contact broker",
+  "ask for location",
+  "ask seller",
+  "global",
+  "worldwide",
+  "unknown",
+  "europe",
+  "caribbean",
+  "mediterranean",
+  "north america",
+  "south pacific",
 ]);
+
+const LOCATION_LABEL_PREFIXES = [
+  /^location\s*:\s*/i,
+  /^located in\s+/i,
+  /^area\s*:\s*/i,
+  /^city\s*:\s*/i,
+  /^port of registry\s*:\s*/i,
+  /^port\s*:\s*/i,
+];
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  espagne: "Spain",
+  espana: "Spain",
+  españa: "Spain",
+  italia: "Italy",
+  deutschland: "Germany",
+  hellas: "Greece",
+  grece: "Greece",
+  grecia: "Greece",
+  usa: "United States",
+  us: "United States",
+  uae: "United Arab Emirates",
+  bvi: "British Virgin Islands",
+  pr: "Puerto Rico",
+};
+
+const COMMON_LOCATION_SUFFIXES = [
+  "Puerto Rico",
+  "Bahamas",
+  "Florida",
+  "California",
+  "Texas",
+  "North Carolina",
+  "South Carolina",
+  "New York",
+  "British Virgin Islands",
+  "Virgin Islands",
+  "United States",
+  "Canada",
+  "Mexico",
+  "Spain",
+  "France",
+  "Italy",
+  "Greece",
+  "Croatia",
+  "Turkey",
+  "Australia",
+  "New Zealand",
+];
 
 const TITLE_CASE_EXACT: Record<string, string> = {
   "o'day": "O'Day",
@@ -184,6 +248,23 @@ function titleCaseToken(token: string) {
     .join("");
 }
 
+function normalizeLocationPart(value: string) {
+  const normalized = normalizeSpacing(value)
+    .replace(/^[./-]+|[./-]+$/g, "")
+    .trim();
+  if (!normalized) return "";
+
+  const alias = COUNTRY_ALIASES[normalized.toLowerCase()];
+  if (alias) return alias;
+  if (/^[A-Z]{2}$/.test(normalized)) return normalized;
+
+  return normalized
+    .split(/\s+/)
+    .map(titleCaseToken)
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function normalizeSpacing(value?: string | null) {
   return stripMojibake(String(value || ""))
     .replace(/[|]+/g, " ")
@@ -202,8 +283,50 @@ export function normalizeImportedSummary(value?: string | null) {
   return normalized.length >= 20 ? normalized : "";
 }
 
+export function normalizeImportedLocation(value?: string | null) {
+  let normalized = normalizeSpacing(value);
+  if (!normalized) return "";
+
+  for (const pattern of LOCATION_LABEL_PREFIXES) {
+    normalized = normalized.replace(pattern, "");
+  }
+
+  normalized = normalized
+    .replace(/\s*\|\s*/g, ", ")
+    .replace(/\s*\/\s*/g, " / ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (!normalized) return "";
+  if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
+
+  if (!normalized.includes(",")) {
+    for (const suffix of COMMON_LOCATION_SUFFIXES) {
+      const suffixPattern = new RegExp(`^(.+?)\\s+${suffix.replace(/\s+/g, "\\s+")}$`, "i");
+      const match = normalized.match(suffixPattern);
+      if (match) {
+        normalized = `${match[1]}, ${suffix}`;
+        break;
+      }
+    }
+  }
+
+  const parts = normalized
+    .split(",")
+    .map((part) => normalizeLocationPart(part))
+    .filter(Boolean);
+
+  const deduped = parts.filter((part, index) => part.toLowerCase() !== parts[index - 1]?.toLowerCase());
+  const collapsed = deduped.join(", ").trim();
+
+  if (!collapsed) return "";
+  if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
+
+  return collapsed;
+}
+
 export function hasUsableImportedLocation(value?: string | null) {
-  const normalized = normalizeSpacing(value).toLowerCase();
+  const normalized = normalizeImportedLocation(value).toLowerCase();
   return Boolean(normalized) && !GENERIC_LOCATION_VALUES.has(normalized);
 }
 

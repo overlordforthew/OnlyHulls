@@ -7,10 +7,14 @@ import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { buildVisibleImportQualitySql, hasUsableImportedLocation } from "@/lib/import-quality";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
+import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { ImageGallery } from "@/components/ImageGallery";
 import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
 import { getPublicAppUrl } from "@/lib/config/urls";
+import SeoHubLinks from "@/components/seo/SeoHubLinks";
+import { getRelatedBoats } from "@/lib/db/queries";
+import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 
 interface BoatDetail {
   id: string;
@@ -228,9 +232,24 @@ export default async function BoatDetailPage({
     ]).catch(() => {});
   }
 
-  const media = await getBoatMedia(boat.id);
+  const [media, relatedBoats] = await Promise.all([
+    getBoatMedia(boat.id),
+    getRelatedBoats({
+      boatId: boat.id,
+      make: boat.make,
+      locationText: boat.location_text,
+      characterTags: boat.character_tags,
+      priceUsd: boat.asking_price_usd ?? boat.asking_price,
+      limit: 3,
+    }),
+  ]);
   const specs = boat.specs as Record<string, unknown>;
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
+  const relatedHubLinks = getRelevantSeoHubLinksForBoat({
+    make: boat.make,
+    locationText: boat.location_text,
+    characterTags: boat.character_tags,
+  });
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -474,6 +493,42 @@ export default async function BoatDetailPage({
             </div>
           </div>
         </div>
+
+        {(relatedBoats.length > 0 || relatedHubLinks.length > 0) && (
+          <div className="mt-12 space-y-8 border-t border-border pt-10">
+            {relatedBoats.length > 0 && (
+              <section>
+                <div className="max-w-2xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
+                    Keep Comparing
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold">Similar boats to consider</h2>
+                  <p className="mt-2 text-text-secondary">
+                    These listings line up with this boat on make, location, or buyer-intent tags so you can compare the market without restarting your search.
+                  </p>
+                </div>
+                <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {relatedBoats.map((relatedBoat) => (
+                    <BoatCard
+                      key={relatedBoat.id}
+                      boat={relatedBoat}
+                      displayCurrency={preferredCurrency}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {relatedHubLinks.length > 0 && (
+              <SeoHubLinks
+                compact
+                links={relatedHubLinks}
+                title="Keep browsing this market"
+                subtitle="Jump into the strongest make, region, and boat-type hubs connected to this listing."
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

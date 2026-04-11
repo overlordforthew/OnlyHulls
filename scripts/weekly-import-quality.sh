@@ -65,4 +65,10 @@ log "Running Claude Haiku copy refresh..."
     --reindex
 ) | tee -a "$LOG_FILE"
 
+log "Writing source health report..."
+(
+  cd "$PROJECT_DIR"
+  npm run db:source-health -- --limit 12
+) | tee -a "$LOG_FILE"
+
 log "=== Weekly quality pass complete ==="

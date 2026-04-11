@@ -81,9 +81,52 @@ const COMPARISON = [
   { feature: "Time to List", us: "Minutes", them: "Days to weeks" },
 ];
 
+const FAQS = [
+  {
+    question: "Do I need to pay before I can create a listing?",
+    answer:
+      "No. You can create a listing for free, get it into draft or review, and decide later whether to stay on the free tier or upgrade into a 90-day paid seller plan.",
+  },
+  {
+    question: "What does the AI actually do for sellers?",
+    answer:
+      "OnlyHulls analyzes the listing, tags it for buyer intent, and helps route it toward the right buyers. Higher-tier seller plans also include AI help cleaning up listing copy, structure, and presentation.",
+  },
+  {
+    question: "How long does a paid seller plan last?",
+    answer:
+      "Creator and Featured Creator plans are billed for 90 days at a time, which gives sellers a longer listing window without feeling like a month-to-month subscription trap.",
+  },
+  {
+    question: "Do you take a commission when my boat sells?",
+    answer:
+      "No. OnlyHulls does not take a broker-style commission. You keep the sale proceeds and connect directly with buyers.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
+
 export default function SellPage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqSchema).replace(/</g, "\\u003c"),
+        }}
+      />
+
       {/* Hero */}
       <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
         <div className="absolute inset-0 -z-10">
@@ -222,8 +265,34 @@ export default function SellPage() {
         </div>
       </section>
 
+      <section className="border-t border-border bg-surface/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
+              Seller FAQ
+            </p>
+            <h2 className="mt-2 text-2xl font-bold">The practical questions sellers ask before they list</h2>
+            <p className="mt-3 text-text-secondary">
+              These answers make the commercial model clearer for owners deciding whether to list on OnlyHulls.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            {FAQS.map((faq) => (
+              <div
+                key={faq.question}
+                className="rounded-2xl border border-border bg-surface p-6"
+              >
+                <h3 className="text-lg font-semibold">{faq.question}</h3>
+                <p className="mt-3 text-sm leading-7 text-text-secondary">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="border-t border-border bg-surface/30 py-20">
+      <section className="py-20">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold">
             Ready to Show Us Your <span className="text-primary">Hull(s)</span>!?

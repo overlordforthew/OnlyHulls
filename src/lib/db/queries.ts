@@ -101,3 +101,44 @@ export async function getSeoHubBoatCount(
 
   return parseInt(result?.count || "0", 10);
 }
+
+export async function getRelatedBoats(input: {
+  boatId: string;
+  make: string;
+  locationText?: string | null;
+  characterTags?: string[];
+  priceUsd?: number | null;
+  limit?: number;
+}): Promise<BoatRow[]> {
+  const limit = input.limit ?? 3;
+  const locationPattern = input.locationText
+    ? `%${String(input.locationText).trim().toLowerCase()}%`
+    : "";
+  const characterTags = (input.characterTags || []).filter(Boolean);
+  const priceUsd = Number(input.priceUsd ?? 0);
+
+  return query<BoatRow>(
+    `${BOAT_SELECT}
+       AND b.id <> $1
+       AND (
+         LOWER(b.make) = LOWER($2)
+         OR ($3 <> '' AND LOWER(COALESCE(b.location_text, '')) LIKE $3)
+         OR (array_length($4::text[], 1) IS NOT NULL AND COALESCE(d.character_tags, '{}'::text[]) && $4::text[])
+       )
+     ORDER BY
+       CASE WHEN LOWER(b.make) = LOWER($2) THEN 0 ELSE 1 END,
+       CASE
+         WHEN array_length($4::text[], 1) IS NOT NULL AND COALESCE(d.character_tags, '{}'::text[]) && $4::text[] THEN 0
+         ELSE 1
+       END,
+       CASE
+         WHEN $5 > 0 AND COALESCE(b.asking_price_usd, b.asking_price) > 0
+           THEN ABS(COALESCE(b.asking_price_usd, b.asking_price) - $5)
+         ELSE 999999999
+       END,
+       b.view_count DESC NULLS LAST,
+       b.created_at DESC
+     LIMIT $6`,
+    [input.boatId, input.make, locationPattern, characterTags, priceUsd, limit]
+  );
+}

@@ -14,6 +14,7 @@
     "db:seed": "npx tsx scripts/seed.ts",
     "db:import": "npx tsx scripts/import-scraped.ts",
     "db:clean-imports": "npx tsx scripts/clean-imported-data.ts",
+    "db:source-health": "npx tsx scripts/source-health-report.ts",
     "db:claude-haiku-copy": "npx tsx scripts/claude-haiku-copy-pass.ts",
     "db:resolve-import-duplicates": "npx tsx scripts/resolve-import-duplicates.ts",
     "db:backfill-embeddings": "npx tsx scripts/backfill-embeddings.ts",

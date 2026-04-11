@@ -159,4 +159,9 @@ log "By source:"
 echo "$SOURCE_BREAKDOWN" | while read line; do
     [ -n "$line" ] && log "  $line"
 done
+log "Source health snapshot:"
+(
+    cd "$PROJECT_DIR"
+    npm run db:source-health -- --limit 8
+) | tee -a "$LOG_FILE"
 log "=== Done ==="

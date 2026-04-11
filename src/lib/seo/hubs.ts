@@ -137,6 +137,36 @@ export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
     countLabel: "live Leopard listings",
     relatedLinks: buildSeoHubLinks("/boats/make/leopard"),
   },
+  bali: {
+    slug: "bali",
+    href: "/boats/make/bali",
+    title: "Bali Boats for Sale",
+    heading: "Bali Boats for Sale",
+    description:
+      "Browse Bali boats for sale on OnlyHulls with cleaner inventory, direct listing paths, and better buyer-facing data.",
+    intro:
+      "Bali is one of the strongest modern catamaran brands in buyer searches, so it gets its own crawlable make hub here.",
+    eyebrow: "Popular Make",
+    queryWhere: "LOWER(b.make) = $1",
+    queryParams: ["bali"],
+    countLabel: "live Bali listings",
+    relatedLinks: buildSeoHubLinks("/boats/make/bali"),
+  },
+  catana: {
+    slug: "catana",
+    href: "/boats/make/catana",
+    title: "Catana Boats for Sale",
+    heading: "Catana Boats for Sale",
+    description:
+      "Browse Catana boats for sale on OnlyHulls with stronger location coverage and cleaner buyer-facing inventory.",
+    intro:
+      "Catana attracts serious bluewater catamaran buyers, so this hub keeps that inventory in one high-intent make page.",
+    eyebrow: "Popular Make",
+    queryWhere: "LOWER(b.make) = $1",
+    queryParams: ["catana"],
+    countLabel: "live Catana listings",
+    relatedLinks: buildSeoHubLinks("/boats/make/catana"),
+  },
 };
 
 export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
@@ -169,6 +199,36 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: CARIBBEAN_PATTERNS,
     countLabel: "live Caribbean listings",
     relatedLinks: buildSeoHubLinks("/boats/location/caribbean"),
+  },
+  "puerto-rico": {
+    slug: "puerto-rico",
+    href: "/boats/location/puerto-rico",
+    title: "Boats for Sale in Puerto Rico",
+    heading: "Boats for Sale in Puerto Rico",
+    description:
+      "Browse boats for sale in Puerto Rico on OnlyHulls with stronger local intent, better photos, and direct seller paths.",
+    intro:
+      "Puerto Rico is a strong Caribbean search market with recurring island inventory, so it deserves a dedicated local landing page.",
+    eyebrow: "Island Market",
+    queryWhere: "LOWER(COALESCE(b.location_text, '')) LIKE $1",
+    queryParams: ["%puerto rico%"],
+    countLabel: "live Puerto Rico listings",
+    relatedLinks: buildSeoHubLinks("/boats/location/puerto-rico"),
+  },
+  bahamas: {
+    slug: "bahamas",
+    href: "/boats/location/bahamas",
+    title: "Boats for Sale in the Bahamas",
+    heading: "Boats for Sale in the Bahamas",
+    description:
+      "Browse boats for sale in the Bahamas on OnlyHulls, from island-based catamarans to cruising boats with cleaner location data.",
+    intro:
+      "The Bahamas is one of the clearest Caribbean cruising search patterns, so this page gives it a stable, rankable regional hub.",
+    eyebrow: "Island Market",
+    queryWhere: "LOWER(COALESCE(b.location_text, '')) LIKE $1",
+    queryParams: ["%bahamas%"],
+    countLabel: "live Bahamas listings",
+    relatedLinks: buildSeoHubLinks("/boats/location/bahamas"),
   },
 };
 
@@ -267,3 +327,59 @@ export function buildHubBreadcrumbSchema(hub: SeoHubDefinition) {
     ],
   };
 }
+
+export function getRelevantSeoHubLinksForBoat(input: {
+  make?: string | null;
+  locationText?: string | null;
+  characterTags?: string[] | null;
+}) {
+  const links: SeoHubLink[] = [];
+  const seen = new Set<string>();
+  const makeSlug = String(input.make || "").trim().toLowerCase();
+  const location = String(input.locationText || "").trim().toLowerCase();
+  const tagSet = new Set((input.characterTags || []).map((tag) => tag.toLowerCase()));
+
+  const push = (link: SeoHubLink | undefined) => {
+    if (!link || seen.has(link.href)) return;
+    seen.add(link.href);
+    links.push(link);
+  };
+
+  push(STATIC_HUB_LOOKUP[`/boats/make/${makeSlug}`]);
+
+  if (tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug)) {
+    push(STATIC_HUB_LOOKUP["/catamarans-for-sale"]);
+  } else {
+    push(STATIC_HUB_LOOKUP["/sailboats-for-sale"]);
+  }
+
+  if (location.includes("puerto rico")) {
+    push(STATIC_HUB_LOOKUP["/boats/location/puerto-rico"]);
+    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
+  } else if (location.includes("bahamas")) {
+    push(STATIC_HUB_LOOKUP["/boats/location/bahamas"]);
+    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
+  } else if (location.includes("florida")) {
+    push(STATIC_HUB_LOOKUP["/boats/location/florida"]);
+  } else if (
+    location.includes("caribbean") ||
+    location.includes("virgin islands") ||
+    location.includes("tortola") ||
+    location.includes("grenada") ||
+    location.includes("st martin") ||
+    location.includes("martinique")
+  ) {
+    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
+  }
+
+  for (const fallback of buildSeoHubLinks("__none__")) {
+    if (links.length >= 4) break;
+    push(fallback);
+  }
+
+  return links.slice(0, 4);
+}
+
+const STATIC_HUB_LOOKUP = Object.fromEntries(
+  buildSeoHubLinks("__none__").map((link) => [link.href, link])
+);

@@ -73,6 +73,42 @@ const FEATURES = [
 
 const MATCH_SCORES = [97, 91, 84];
 
+const FAQS = [
+  {
+    question: "How does OnlyHulls decide what is a good match?",
+    answer:
+      "OnlyHulls combines your buyer profile, boat type, budget, specs, location signals, and AI-assisted ranking to score listings. Stronger matches rise to the top, but you can still browse the full market yourself.",
+  },
+  {
+    question: "Do I have to know the exact make and model I want?",
+    answer:
+      "No. The matching flow is built for buyers who know the lifestyle, budget, and mission more than the exact boat. The AI uses those signals to surface likely fits and explain the tradeoffs.",
+  },
+  {
+    question: "Can I still sort and browse boats manually after I get matched?",
+    answer:
+      "Yes. Your matches are saved, and you can still sort by price, size, year, and listing date while comparing listings across the broader inventory.",
+  },
+  {
+    question: "What do I get with Buyer Plus?",
+    answer:
+      "Buyer Plus unlocks longer-term AI matching, unlimited saves, better shortlist tools, and saved-search alerts over a 90-day period while keeping direct contact with sellers commission-free.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
+
 function formatPrice(price: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -86,6 +122,13 @@ export default async function MatchPage() {
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqSchema).replace(/</g, "\\u003c"),
+        }}
+      />
+
       {/* Hero */}
       <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
         <div className="absolute inset-0 -z-10">
@@ -219,6 +262,32 @@ export default async function MatchPage() {
       <section id="pricing" className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <BuyerPricing />
+        </div>
+      </section>
+
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
+              Buyer FAQ
+            </p>
+            <h2 className="mt-2 text-2xl font-bold">Questions buyers usually ask before they start matching</h2>
+            <p className="mt-3 text-text-secondary">
+              These are the practical questions we see most often from buyers using OnlyHulls to narrow the market quickly.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            {FAQS.map((faq) => (
+              <div
+                key={faq.question}
+                className="rounded-2xl border border-border bg-surface p-6"
+              >
+                <h3 className="text-lg font-semibold">{faq.question}</h3>
+                <p className="mt-3 text-sm leading-7 text-text-secondary">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -7,6 +7,8 @@ const publicPages = [
   { path: "/sell", heading: "Become a Creator" },
   { path: "/catamarans-for-sale", heading: "Catamarans for Sale" },
   { path: "/sailboats-for-sale", heading: "Sailboats for Sale" },
+  { path: "/boats/make/bali", heading: "Bali Boats for Sale" },
+  { path: "/boats/location/puerto-rico", heading: "Boats for Sale in Puerto Rico" },
 ];
 
 for (const pageCase of publicPages) {
@@ -163,4 +165,28 @@ test("location SEO hub loads", async ({ page }) => {
   await page.goto("/boats/location/florida");
   await expect(page.getByRole("heading", { name: "Boats for Sale in Florida", exact: false })).toBeVisible();
   await expect(page.getByText("live Florida listings", { exact: false })).toBeVisible();
+});
+
+test("match page renders buyer faq content", async ({ page }) => {
+  await page.goto("/match");
+  await expect(page.getByRole("heading", { name: "Questions buyers usually ask before they start matching", exact: false })).toBeVisible();
+  await expect(page.getByText("How does OnlyHulls decide what is a good match?", { exact: false })).toBeVisible();
+});
+
+test("sell page renders seller faq content", async ({ page }) => {
+  await page.goto("/sell");
+  await expect(page.getByRole("heading", { name: "The practical questions sellers ask before they list", exact: false })).toBeVisible();
+  await expect(page.getByText("How long does a paid seller plan last?", { exact: false })).toBeVisible();
+});
+
+test("boat detail page shows related discovery sections", async ({ page }) => {
+  await page.goto("/boats?q=lagoon");
+
+  const firstCardTitle = page.locator("div.group.card-hover h3").first();
+  await expect(firstCardTitle).toBeVisible();
+  await firstCardTitle.click();
+
+  await expect(page).toHaveURL(/\/boats\//);
+  await expect(page.getByRole("heading", { name: "Similar boats to consider", exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Keep browsing this market", exact: false })).toBeVisible();
 });

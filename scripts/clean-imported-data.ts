@@ -8,6 +8,7 @@ import {
   buildImportQualityFlags,
   buildVisibleImportQualitySql,
   calculateImportQualityScore,
+  normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
 } from "../src/lib/import-quality";
@@ -220,6 +221,7 @@ async function main() {
       slug: row.slug,
       sourceSite: row.source_site,
     });
+    const normalizedLocation = normalizeImportedLocation(row.location_text);
     const normalizedTags = buildImportedCharacterTags({
       priceUsd: row.asking_price_usd,
       loa: typeof row.specs?.loa === "number" ? row.specs.loa : null,
@@ -235,7 +237,7 @@ async function main() {
         year: row.year,
         make: normalized.make,
         model: normalized.model,
-        locationText: row.location_text,
+        locationText: normalizedLocation,
         price: Number(row.asking_price),
         currency: row.currency,
         loa: typeof row.specs?.loa === "number" ? row.specs.loa : null,
@@ -265,7 +267,7 @@ async function main() {
 
     const qualityFlags = buildImportQualityFlags({
       model: normalized.model,
-      locationText: row.location_text,
+      locationText: normalizedLocation,
       imageCount: row.image_count,
       priceUsd: row.asking_price_usd,
       summary,
@@ -290,7 +292,7 @@ async function main() {
       year: row.year,
       asking_price: row.asking_price,
       currency: row.currency,
-      location_text: row.location_text,
+      location_text: normalizedLocation,
       specs: row.specs,
       character_tags: normalizedTags,
       ai_summary: summary,
@@ -301,8 +303,9 @@ async function main() {
     if (!dryRun) {
       const makeChanged = normalized.make !== row.make;
       const modelChanged = normalized.model !== row.model;
+      const locationChanged = normalizedLocation !== (row.location_text || "");
 
-      if (makeChanged || modelChanged) {
+      if (makeChanged || modelChanged || locationChanged) {
         const collision = await query<{ id: string }>(
           `SELECT id
            FROM boats
@@ -313,7 +316,7 @@ async function main() {
              AND year = $4
              AND location_text = $5
            LIMIT 1`,
-          [row.id, normalized.make, normalized.model, row.year, row.location_text]
+          [row.id, normalized.make, normalized.model, row.year, normalizedLocation]
         );
 
         if (collision.length > 0) {
@@ -324,9 +327,10 @@ async function main() {
               `UPDATE boats
                SET make = $2,
                    model = $3,
+                   location_text = $4,
                    updated_at = NOW()
                WHERE id = $1`,
-              [row.id, normalized.make, normalized.model]
+              [row.id, normalized.make, normalized.model, normalizedLocation]
             );
           } catch (err) {
             if (isDuplicateConflict(err)) {

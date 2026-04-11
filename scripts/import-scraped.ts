@@ -24,6 +24,7 @@ import {
   buildImportedSummary,
   buildImportQualityFlags,
   calculateImportQualityScore,
+  normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
 } from "../src/lib/import-quality";
@@ -340,7 +341,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         continue;
       }
 
-      const location = b.location || "";
+      const location = normalizeImportedLocation(b.location);
       const sourceUrl = b.url || "";
       const preNormalizedSlug = generateSlug(year, parsedName.make, parsedName.model, location);
       const { make, model } = normalizeImportedMakeModel({
@@ -552,7 +553,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const boatId = existing.id;
       const parsedYear = parseYear(b.year);
       const price = parsePrice(b.price);
-      const parsedLocation = b.location || "";
+      const parsedLocation = normalizeImportedLocation(b.location);
       const parsedName = b.name ? parseMakeModel(b.name, parsedYear ?? undefined) : { make: "", model: "" };
       const preNormalizedSlug = generateSlug(parsedYear || 0, parsedName.make, parsedName.model, parsedLocation);
       const normalized = normalizeImportedMakeModel({
@@ -564,7 +565,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const year = parsedYear ?? existing.year ?? null;
       const make = normalized.make || existing.make;
       const model = normalized.model || existing.model;
-      const location = parsedLocation || existing.location_text || "";
+      const location = parsedLocation || normalizeImportedLocation(existing.location_text) || "";
       const currency = detectCurrency(b);
 
       const { beam, draft, hullMaterial, engine, specs, summary, summarySource } = buildSpecsAndSummary({
