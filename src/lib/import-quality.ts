@@ -22,6 +22,12 @@ const GENERIC_LOCATION_VALUES = new Set([
   "south pacific",
 ]);
 
+function toSqlStringList(values: Iterable<string>) {
+  return Array.from(values, (value) => `'${value.replace(/'/g, "''")}'`).join(", ");
+}
+
+const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
+
 const LOCATION_LABEL_PREFIXES = [
   /^location\s*:\s*/i,
   /^located in\s+/i,
@@ -591,13 +597,15 @@ export function buildImportDocumentationStatus(input: {
 }
 
 export function buildVisibleImportQualitySql(alias = "b") {
+  const normalizedLocationSql = `LOWER(COALESCE(NULLIF(REGEXP_REPLACE(TRIM(${alias}.location_text), '[,\\s]+$', '', 'g'), ''), ''))`;
+
   return `(
   ${alias}.source_url IS NULL
   OR (
     COALESCE(NULLIF(TRIM(${alias}.make), ''), '') <> ''
     AND COALESCE(NULLIF(TRIM(${alias}.model), ''), '') <> ''
-    AND COALESCE(NULLIF(TRIM(${alias}.location_text), ''), '') <> ''
-    AND LOWER(TRIM(${alias}.location_text)) NOT IN ('outside united states', 'outside usa', 'outside the united states')
+    AND ${normalizedLocationSql} <> ''
+    AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (
       SELECT 1
