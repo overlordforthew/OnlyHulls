@@ -70,7 +70,7 @@ export default function SiteFooter() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <p className="text-xs text-text-tertiary">
-            &copy; {new Date().getFullYear()} OnlyHulls. All rights reserved.
+            {"\u00A9"} {new Date().getFullYear()} OnlyHulls. All rights reserved.
           </p>
           <p className="text-xs text-text-tertiary">
             Zero commission. AI-powered. Built for boat lovers.
