@@ -3,16 +3,20 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
+import Link from "next/link";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
+  getDisplayedPrice,
   normalizeSupportedCurrency,
   readPreferredCurrencyFromBrowser,
   type SupportedCurrency,
 } from "@/lib/currency";
+import { isLocalMediaUrl } from "@/lib/media";
 import {
   Search,
   SlidersHorizontal,
@@ -22,10 +26,18 @@ import {
   ArrowUpDown,
   Bell,
   BookmarkPlus,
+  ExternalLink,
+  GitCompareArrows,
+  Grid2X2,
+  List,
+  MapPin,
+  Ruler,
+  Sailboat,
 } from "lucide-react";
 
 type SortField = "price" | "size" | "year" | "newest";
 type SortDir = "asc" | "desc";
+type ViewMode = "grid" | "rows";
 
 interface Boat {
   id: string;
@@ -100,6 +112,7 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortDir);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
@@ -117,6 +130,25 @@ function BoatsPageInner() {
   const BATCH_SIZE = 30;
   const isLoggedIn = status === "authenticated";
 
+  useEffect(() => {
+    const savedView = window.localStorage.getItem("boats_view_mode");
+    if (savedView === "grid" || savedView === "rows") {
+      setViewMode(savedView);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialCurrency) {
+      setDisplayCurrency(initialCurrency);
+      return;
+    }
+
+    const browserCurrency = readPreferredCurrencyFromBrowser();
+    setDisplayCurrency((currentCurrency) =>
+      currentCurrency === browserCurrency ? currentCurrency : browserCurrency
+    );
+  }, [initialCurrency]);
+
   function toggleSort(field: SortField) {
     if (sortField === field) {
       // Same field — reverse direction
@@ -126,6 +158,11 @@ function BoatsPageInner() {
       setSortField(field);
       setSortDir(field === "newest" ? "desc" : "asc");
     }
+  }
+
+  function handleViewMode(nextView: ViewMode) {
+    setViewMode(nextView);
+    window.localStorage.setItem("boats_view_mode", nextView);
   }
 
   // Refetch when sort changes
@@ -415,32 +452,63 @@ function BoatsPageInner() {
 
       {/* Sort Bar */}
       <div className="border-b border-border bg-surface/30">
-        <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-5 py-2">
-          <span className="mr-1 text-xs text-text-tertiary whitespace-nowrap">Sort by</span>
-          {(["price", "size", "year", "newest"] as SortField[]).map((field) => {
-            const active = sortField === field;
-            const labels: Record<SortField, string> = {
-              price: "Price", size: "Size", year: "Year", newest: "Newest",
-            };
-            return (
-              <button
-                key={field}
-                onClick={() => toggleSort(field)}
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                  active
-                    ? "bg-primary/10 text-primary border border-primary/30"
-                    : "text-text-secondary hover:text-foreground hover:bg-surface-elevated border border-transparent"
-                }`}
-              >
-                {labels[field]}
-                {active ? (
-                  sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                ) : (
-                  <ArrowUpDown className="h-3 w-3 opacity-30" />
-                )}
-              </button>
-            );
-          })}
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            <span className="mr-1 text-xs text-text-tertiary whitespace-nowrap">Sort by</span>
+            {(["price", "size", "year", "newest"] as SortField[]).map((field) => {
+              const active = sortField === field;
+              const labels: Record<SortField, string> = {
+                price: "Price", size: "Size", year: "Year", newest: "Newest",
+              };
+              return (
+                <button
+                  key={field}
+                  onClick={() => toggleSort(field)}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
+                    active
+                      ? "bg-primary/10 text-primary border border-primary/30"
+                      : "text-text-secondary hover:text-foreground hover:bg-surface-elevated border border-transparent"
+                  }`}
+                >
+                  {labels[field]}
+                  {active ? (
+                    sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="inline-flex self-start rounded-full border border-border bg-surface p-1">
+            <button
+              type="button"
+              onClick={() => handleViewMode("grid")}
+              data-testid="boats-view-toggle-grid"
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors ${
+                viewMode === "grid"
+                  ? "bg-primary-btn text-white"
+                  : "text-text-secondary hover:text-foreground"
+              }`}
+            >
+              <Grid2X2 className="h-4 w-4" />
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewMode("rows")}
+              data-testid="boats-view-toggle-rows"
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors ${
+                viewMode === "rows"
+                  ? "bg-primary-btn text-white"
+                  : "text-text-secondary hover:text-foreground"
+              }`}
+            >
+              <List className="h-4 w-4" />
+              Rows
+            </button>
+          </div>
         </div>
       </div>
 
@@ -489,18 +557,33 @@ function BoatsPageInner() {
           </div>
         ) : (
           <>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {boats.map((boat) => (
-                <BoatCard
-                  key={boat.id}
-                  boat={boat}
-                  displayCurrency={displayCurrency}
-                  onCompareToggle={() => toggleBoat(boat.id)}
-                  compareSelected={isCompared(boat.id)}
-                  compareDisabled={!isCompared(boat.id) && compareCount >= maxCompareBoats}
-                />
-              ))}
-            </div>
+            {viewMode === "grid" ? (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {boats.map((boat) => (
+                  <BoatCard
+                    key={boat.id}
+                    boat={boat}
+                    displayCurrency={displayCurrency}
+                    onCompareToggle={() => toggleBoat(boat.id)}
+                    compareSelected={isCompared(boat.id)}
+                    compareDisabled={!isCompared(boat.id) && compareCount >= maxCompareBoats}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {boats.map((boat) => (
+                  <BoatBrowseRow
+                    key={boat.id}
+                    boat={boat}
+                    displayCurrency={displayCurrency}
+                    onCompareToggle={() => toggleBoat(boat.id)}
+                    compareSelected={isCompared(boat.id)}
+                    compareDisabled={!isCompared(boat.id) && compareCount >= maxCompareBoats}
+                  />
+                ))}
+              </div>
+            )}
 
             {hasMore && (
               <div className="mt-10 flex justify-center">
@@ -522,6 +605,148 @@ function BoatsPageInner() {
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function BoatBrowseRow({
+  boat,
+  displayCurrency,
+  onCompareToggle,
+  compareSelected,
+  compareDisabled,
+}: {
+  boat: Boat;
+  displayCurrency: SupportedCurrency;
+  onCompareToggle: () => void;
+  compareSelected: boolean;
+  compareDisabled: boolean;
+}) {
+  const href = `/boats/${boat.slug || boat.id}`;
+  const displayedPrice = getDisplayedPrice({
+    amount: boat.asking_price,
+    nativeCurrency: boat.currency,
+    amountUsd: boat.asking_price_usd,
+    preferredCurrency: displayCurrency,
+  });
+
+  return (
+    <div
+      data-testid="boat-row-card"
+      className="overflow-hidden rounded-2xl border border-border bg-surface"
+    >
+      <div className="grid gap-0 md:grid-cols-[280px_minmax(0,1fr)]">
+        <Link href={href} className="relative block min-h-[220px] bg-muted">
+          {boat.hero_url ? (
+            <Image
+              src={boat.hero_url}
+              alt={`${boat.year} ${boat.make} ${boat.model}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 280px"
+              unoptimized={!isLocalMediaUrl(boat.hero_url)}
+              quality={isLocalMediaUrl(boat.hero_url) ? 84 : undefined}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-surface-elevated text-5xl opacity-20">
+              Boat
+            </div>
+          )}
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute bottom-4 left-4">
+            <p className="text-2xl font-bold text-white">{displayedPrice.primary}</p>
+            {displayedPrice.secondary && (
+              <p className="text-xs text-white/70">{displayedPrice.secondary}</p>
+            )}
+          </div>
+        </Link>
+
+        <div className="flex flex-col justify-between p-5">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <Link href={href} className="text-xl font-semibold text-foreground hover:text-primary">
+                  {`${boat.year} ${boat.make} ${boat.model}`}
+                </Link>
+                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-foreground/70">
+                  {boat.specs.loa && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Ruler className="h-4 w-4 text-primary" />
+                      {boat.specs.loa}ft
+                    </span>
+                  )}
+                  {boat.specs.rig_type && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Sailboat className="h-4 w-4 text-primary" />
+                      {boat.specs.rig_type}
+                    </span>
+                  )}
+                  {boat.location_text && (
+                    <span
+                      data-testid="boat-row-location"
+                      className="inline-flex items-center gap-1.5 font-medium text-foreground/85"
+                    >
+                      <MapPin className="h-4 w-4 text-primary" />
+                      {boat.location_text}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {boat.character_tags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {boat.character_tags.slice(0, 5).map((tag) => (
+                  <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs text-primary">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {boat.source_name && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
+                <span>Found on</span>
+                {boat.source_url && /^https?:\/\//i.test(boat.source_url) ? (
+                  <a
+                    href={boat.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-foreground/75 hover:text-primary"
+                  >
+                    {boat.source_name}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <span className="font-medium text-foreground/75">{boat.source_name}</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onCompareToggle}
+              disabled={compareDisabled && !compareSelected}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                compareSelected
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <GitCompareArrows className="h-4 w-4" />
+              {compareSelected ? "Added to Compare" : "Compare"}
+            </button>
+            <Link
+              href={href}
+              className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
+            >
+              View Listing
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

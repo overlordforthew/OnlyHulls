@@ -17,6 +17,45 @@ const errorBoundaryMessages = [
   "We had trouble loading this page. Please try again.",
 ];
 
+const mockBrowseBoats = [
+  {
+    id: "mock-lagoon-1",
+    make: "Lagoon",
+    model: "450 F",
+    year: 2018,
+    asking_price: 495000,
+    currency: "USD",
+    asking_price_usd: 495000,
+    location_text: "Puerto Rico",
+    slug: "2018-lagoon-450-f",
+    is_sample: false,
+    hero_url: null,
+    specs: { loa: 45, rig_type: "catamaran" },
+    character_tags: ["bluewater", "liveaboard-ready"],
+    source_site: "onlyhulls",
+    source_name: "OnlyHulls",
+    source_url: "https://onlyhulls.com/boats/2018-lagoon-450-f",
+  },
+  {
+    id: "mock-lagoon-2",
+    make: "Lagoon",
+    model: "42",
+    year: 2016,
+    asking_price: 369000,
+    currency: "USD",
+    asking_price_usd: 369000,
+    location_text: "Florida",
+    slug: "2016-lagoon-42",
+    is_sample: false,
+    hero_url: null,
+    specs: { loa: 42, rig_type: "catamaran" },
+    character_tags: ["family-friendly"],
+    source_site: "onlyhulls",
+    source_name: "OnlyHulls",
+    source_url: "https://onlyhulls.com/boats/2016-lagoon-42",
+  },
+];
+
 async function expectHealthyPublicPage(page: Page, path: string, heading: string) {
   await page.goto(path);
   await page.waitForLoadState("networkidle");
@@ -196,6 +235,30 @@ test("boats page load more appends additional cards", async ({ page }) => {
   await showMore.click();
 
   await expect.poll(async () => cards.count()).toBeGreaterThan(initialCount);
+});
+
+test("boats page can switch to row view and persist it", async ({ page }) => {
+  await page.route("**/api/boats**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockBrowseBoats,
+        total: mockBrowseBoats.length,
+      }),
+    });
+  });
+
+  await page.goto("/boats?q=lagoon");
+
+  await expect(page.locator("div.group.card-hover").first()).toBeVisible();
+  await page.getByTestId("boats-view-toggle-rows").click();
+  await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
+  await expect(page.getByTestId("boat-row-location").first()).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByTestId("boats-view-toggle-rows")).toHaveClass(/bg-primary-btn/);
+  await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
 });
 
 test("boats currency selection persists after reload", async ({ page }) => {
