@@ -73,7 +73,10 @@ log "Writing source health report..."
 
 log "Sending owner digest..."
 (
-  docker exec "$APP_CONTAINER" sh -lc 'cd /app && npm run alerts:owner-digest -- --days 7 --limit 12 --signup-limit 10'
+  export OWNER_ALERT_USE_SENDMAIL=true
+  export SENDMAIL_PATH=/usr/sbin/sendmail
+  cd "$PROJECT_DIR"
+  npm run alerts:owner-digest -- --days 7 --limit 12 --signup-limit 10
 ) | tee -a "$LOG_FILE"
 
 log "=== Weekly quality pass complete ==="

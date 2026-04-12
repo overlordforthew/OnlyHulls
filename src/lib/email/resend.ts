@@ -6,6 +6,7 @@ import type { SavedSearchAlertCandidate } from "@/lib/saved-searches";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
 let smtpTransporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null = null;
+let sendmailTransporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo> | null = null;
 let resendClient: Resend | null = null;
 
 function hasConfiguredValue(value?: string | null) {
@@ -25,6 +26,14 @@ function resendEnabled() {
     hasConfiguredValue(process.env.RESEND_API_KEY) &&
     hasConfiguredValue(process.env.RESEND_FROM_EMAIL)
   );
+}
+
+function sendmailEnabled() {
+  return hasConfiguredValue(process.env.SENDMAIL_PATH);
+}
+
+function preferSendmail() {
+  return sendmailEnabled() && (process.env.OWNER_ALERT_USE_SENDMAIL || "").toLowerCase() === "true";
 }
 
 function getResend() {
@@ -69,6 +78,22 @@ function getSmtpTransport() {
   return smtpTransporter;
 }
 
+function getSendmailTransport() {
+  if (!sendmailEnabled()) {
+    throw new Error("Sendmail is not configured");
+  }
+
+  if (!sendmailTransporter) {
+    sendmailTransporter = nodemailer.createTransport({
+      sendmail: true,
+      newline: "unix",
+      path: process.env.SENDMAIL_PATH || "/usr/sbin/sendmail",
+    });
+  }
+
+  return sendmailTransporter;
+}
+
 function getFrom() {
   return (
     process.env.SMTP_FROM ||
@@ -95,6 +120,15 @@ async function sendEmail(params: {
   subject: string;
   html: string;
 }) {
+  if (preferSendmail()) {
+    return getSendmailTransport().sendMail({
+      from: getFrom(),
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+  }
+
   if (smtpEnabled()) {
     return getSmtpTransport().sendMail({
       from: getFrom(),
