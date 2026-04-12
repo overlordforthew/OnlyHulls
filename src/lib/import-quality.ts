@@ -319,7 +319,7 @@ function stripMojibake(value: string) {
     .trim();
 }
 
-function titleCaseTokenCore(token: string) {
+function titleCaseTokenCore(token: string): string {
   const exact = TITLE_CASE_EXACT[token.toLowerCase()];
   if (exact) return exact;
   if (ALL_CAPS_KEEP.has(token.toUpperCase())) return token.toUpperCase();
