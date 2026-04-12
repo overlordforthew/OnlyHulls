@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const publicPages = [
   { path: "/", heading: "Find Your Perfect Hull" },
@@ -12,11 +12,29 @@ const publicPages = [
   { path: "/boats/location/puerto-rico", heading: "Boats for Sale in Puerto Rico" },
 ];
 
+const errorBoundaryMessages = [
+  "An unexpected error occurred. Please try again, or go back to the homepage.",
+  "We had trouble loading this page. Please try again.",
+];
+
+async function expectHealthyPublicPage(page: Page, path: string, heading: string) {
+  await page.goto(path);
+  await page.waitForLoadState("networkidle");
+
+  expect(new URL(page.url()).pathname).toBe(path);
+  await expect(page.getByRole("heading", { name: heading, exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Something went wrong", exact: false })
+  ).toHaveCount(0);
+
+  for (const message of errorBoundaryMessages) {
+    await expect(page.getByText(message, { exact: false })).toHaveCount(0);
+  }
+}
+
 for (const pageCase of publicPages) {
   test(`public page loads: ${pageCase.path}`, async ({ page }) => {
-    await page.goto(pageCase.path);
-    await expect(page).toHaveURL(/onlyhulls\.com/);
-    await expect(page.getByRole("heading", { name: pageCase.heading, exact: false })).toBeVisible();
+    await expectHealthyPublicPage(page, pageCase.path, pageCase.heading);
   });
 }
 
@@ -27,9 +45,7 @@ test("pricing redirects to sell section", async ({ page }) => {
 });
 
 test("sign in page loads", async ({ page }) => {
-  await page.goto("/sign-in");
-  await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole("heading", { name: "Welcome back", exact: false })).toBeVisible();
+  await expectHealthyPublicPage(page, "/sign-in", "Welcome back");
 });
 
 test("sign up page loads", async ({ page }) => {
@@ -112,28 +128,60 @@ test("boats API honors price sorting for search queries", async ({ request }) =>
 });
 
 test("boats page shows ascending prices when sorting by price", async ({ page }) => {
-  await page.goto("/boats?q=catana");
-  await page.locator("#boats-currency").selectOption("USD");
-  await expect(page.locator("#boats-currency")).toHaveValue("USD");
-  await page.getByRole("button", { name: "Price", exact: false }).click();
-  await page.waitForLoadState("networkidle");
+  const api = await page.request.get("/api/boats?q=catana&sort=price&dir=asc&limit=12");
+  expect(api.ok()).toBeTruthy();
 
-  const priceTexts = await page.getByTestId("boat-price-primary").evaluateAll((nodes) =>
-    nodes.slice(0, 6).map((node) => node.textContent || "")
-  );
+  const payload = await api.json();
+  const expectedHeadings = payload.boats
+    .map((boat: { year?: number | null; make?: string | null; model?: string | null }) =>
+      [boat.year, boat.make, boat.model].filter(Boolean).join(" ").trim()
+    )
+    .filter((heading: string) => heading.length > 0)
+    .slice(0, 6);
 
-  const prices = priceTexts
-    .map((text) => {
-      const match = text.match(/\$([\d,]+)/);
-      return match ? Number(match[1].replace(/,/g, "")) : Number.NaN;
-    })
-    .filter((price) => Number.isFinite(price));
+  expect(expectedHeadings.length).toBeGreaterThan(2);
 
-  expect(prices.length).toBeGreaterThan(2);
+  const cardHeadings = page.locator("div.group.card-hover h3");
 
-  for (let i = 1; i < prices.length; i += 1) {
-    expect(prices[i]).toBeGreaterThanOrEqual(prices[i - 1]);
-  }
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.ok()
+        && url.pathname === "/api/boats"
+        && url.searchParams.get("q") === "catana"
+        && url.searchParams.get("sort") === "newest"
+        && url.searchParams.get("dir") === "desc";
+    }),
+    page.goto("/boats?q=catana"),
+  ]);
+
+  await expect.poll(async () => cardHeadings.count(), { timeout: 15_000 }).toBeGreaterThan(0);
+
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.ok()
+        && url.pathname === "/api/boats"
+        && url.searchParams.get("q") === "catana"
+        && url.searchParams.get("sort") === "price"
+        && url.searchParams.get("dir") === "asc";
+    }),
+    page.getByRole("button", { name: "Price", exact: false }).click(),
+  ]);
+
+  await expect
+    .poll(async () => {
+      const visibleCount = await cardHeadings.count();
+      return cardHeadings.evaluateAll(
+        (headings, limit) =>
+          headings
+            .slice(0, Math.min(headings.length, limit))
+            .map((heading) => heading.textContent?.trim() || "")
+            .filter((heading) => heading.length > 0),
+        Math.min(visibleCount, expectedHeadings.length)
+      );
+    }, { timeout: 15_000 })
+    .toEqual(expectedHeadings);
 });
 
 test("boats page load more appends additional cards", async ({ page }) => {
