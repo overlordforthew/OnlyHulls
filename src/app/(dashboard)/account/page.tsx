@@ -92,6 +92,15 @@ export default function AccountPage() {
   const isPaid = !tier.startsWith("free");
   const billingEnabled = profile?.billing_enabled ?? false;
   const emailEnabled = profile?.email_enabled ?? false;
+  const alertCadenceLabel =
+    emailAlerts === "instant" ? "Instant alerts" : emailAlerts === "weekly" ? "Weekly digest" : "Alerts off";
+  const alertCadenceDescription = !emailEnabled
+    ? "Email delivery is configured in-app, but this environment is not ready to send alerts yet."
+    : emailAlerts === "instant"
+      ? "New matching boats will email you as soon as the alert job finds them."
+      : emailAlerts === "weekly"
+        ? "You will get a weekly round-up of new boats matching your saved searches."
+        : "You can still track new boats in-app even with email alerts turned off.";
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-10">
@@ -184,6 +193,12 @@ export default function AccountPage() {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-border bg-background/40 p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Alert cadence</p>
+          <p className="mt-2 text-lg font-semibold">{alertCadenceLabel}</p>
+          <p className="mt-1 text-sm text-text-secondary">{alertCadenceDescription}</p>
+        </div>
+
         <Link
           href="/saved-searches"
           className="mt-6 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
@@ -205,7 +220,7 @@ export default function AccountPage() {
           <div>
             <label className="text-sm font-medium">New Boat Alerts</label>
             <p className="text-xs text-text-secondary">
-              Get notified when boats matching your profile are listed
+              Get notified when new boats hit your saved searches and buyer profile
             </p>
             <div className="mt-2 flex gap-2">
               {(["none", "weekly", "instant"] as const).map((opt) => (

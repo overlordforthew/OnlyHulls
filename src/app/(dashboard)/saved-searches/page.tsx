@@ -9,6 +9,15 @@ interface SavedSearch {
   name: string;
   browseUrl: string;
   newResults: number;
+  latestNewBoats: Array<{
+    id: string;
+    slug: string | null;
+    title: string;
+    price: number;
+    currency: string;
+    locationText: string | null;
+    heroUrl: string | null;
+  }>;
   totalResults: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +42,18 @@ function formatTimestamp(value: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatCurrency(amount: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${Math.round(amount).toLocaleString("en-US")}`;
+  }
 }
 
 function describeFilters(search: SavedSearch) {
@@ -201,6 +222,32 @@ export default function SavedSearchesPage() {
                   <p className="mt-2 text-sm text-text-secondary">
                     {search.totalResults} active boats match this search. Last checked {formatTimestamp(search.lastCheckedAt)}.
                   </p>
+                  {search.latestNewBoats.length > 0 && (
+                    <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                        Fresh boats for this search
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        {search.latestNewBoats.map((boat) => (
+                          <Link
+                            key={`${search.id}-${boat.id}`}
+                            href={`/boats/${boat.slug || boat.id}`}
+                            className="rounded-2xl border border-border bg-background/50 p-3 transition-all hover:border-primary hover:bg-background/70"
+                          >
+                            <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                              {boat.title}
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-primary">
+                              {formatCurrency(boat.price, boat.currency)}
+                            </p>
+                            <p className="mt-1 text-xs text-text-secondary">
+                              {boat.locationText || "Location being refined"}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-4 flex flex-wrap gap-2">
                     {describeFilters(search).map((chip) => (
                       <span

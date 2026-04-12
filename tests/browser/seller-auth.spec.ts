@@ -31,4 +31,18 @@ test.describe("seller auth flow", () => {
     await expect(page.getByRole("heading", { name: "Manage Listing", exact: false })).toBeVisible();
     await expect(page.getByText("Readiness", { exact: false })).toBeVisible();
   });
+
+  test("seller account shows saved-search alert status", async ({ page }) => {
+    await signInAsSeller(page);
+    await page.goto("/account");
+    await expect(page.getByRole("heading", { name: "Account", exact: false })).toBeVisible();
+    await expect(page.getByText("Alert cadence", { exact: false })).toBeVisible();
+    await expect(page.getByText("Saved Searches", { exact: false })).toBeVisible();
+  });
+
+  test("seller can open saved searches page", async ({ page }) => {
+    await signInAsSeller(page);
+    await page.goto("/saved-searches");
+    await expect(page.getByRole("heading", { name: "Saved Searches", exact: false })).toBeVisible();
+  });
 });

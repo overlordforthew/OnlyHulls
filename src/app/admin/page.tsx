@@ -26,6 +26,15 @@ interface Stats {
     createdAt: string;
     emailVerified: boolean;
   }>;
+  recentActivity: Array<{
+    id: string;
+    eventType: string;
+    createdAt: string;
+    email: string | null;
+    displayName: string | null;
+    boatTitle: string | null;
+    payload: Record<string, unknown>;
+  }>;
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -47,6 +56,57 @@ interface PendingListing {
   listing_source: string;
   seller_email: string;
   created_at: string;
+}
+
+function formatActivityTitle(activity: Stats["recentActivity"][number]) {
+  switch (activity.eventType) {
+    case "signup_created":
+      return "New signup";
+    case "buyer_profile_saved":
+      return "Buyer profile updated";
+    case "saved_search_created":
+      return "Saved search created";
+    case "seller_listing_created":
+      return "Seller listing created";
+    case "match_interested":
+      return "Boat added to shortlist";
+    case "connect_requested":
+      return "Connect request sent";
+    default:
+      return activity.eventType.replace(/_/g, " ");
+  }
+}
+
+function formatActivityDetail(activity: Stats["recentActivity"][number]) {
+  const person = activity.displayName?.trim() || activity.email || "Unknown user";
+
+  switch (activity.eventType) {
+    case "signup_created":
+      return `${person} created an account.`;
+    case "buyer_profile_saved":
+      return `${person} updated their buyer profile.`;
+    case "saved_search_created": {
+      const search = typeof activity.payload.search === "string" ? activity.payload.search : "";
+      const tag = typeof activity.payload.tag === "string" ? activity.payload.tag : "";
+      if (search) return `${person} saved a search for "${search}".`;
+      if (tag) return `${person} saved the ${tag.replace(/[-_]+/g, " ")} browse view.`;
+      return `${person} created a new saved search.`;
+    }
+    case "seller_listing_created":
+      return activity.boatTitle
+        ? `${person} created ${activity.boatTitle}.`
+        : `${person} created a new seller listing.`;
+    case "match_interested":
+      return activity.boatTitle
+        ? `${person} shortlisted ${activity.boatTitle}.`
+        : `${person} shortlisted a boat.`;
+    case "connect_requested":
+      return activity.boatTitle
+        ? `${person} requested a connection for ${activity.boatTitle}.`
+        : `${person} requested a seller connection.`;
+    default:
+      return `${person} triggered ${activity.eventType.replace(/_/g, " ")}.`;
+  }
 }
 
 export default function AdminPage() {
@@ -275,6 +335,33 @@ export default function AdminPage() {
                       <p className={signup.emailVerified ? "text-green-600" : "text-amber-500"}>
                         {signup.emailVerified ? "Email verified" : "Email not verified yet"}
                       </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Recent Activity</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              Live product activity across signups, saved searches, shortlists, and connect requests.
+            </p>
+            {stats.recentActivity.length === 0 ? (
+              <p className="mt-4 text-sm text-foreground/60">No recent activity recorded yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {stats.recentActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex flex-col justify-between gap-2 rounded-lg border border-border px-4 py-3 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <p className="font-medium">{formatActivityTitle(activity)}</p>
+                      <p className="text-sm text-foreground/70">{formatActivityDetail(activity)}</p>
+                    </div>
+                    <div className="text-sm text-foreground/60 sm:text-right">
+                      <p>{new Date(activity.createdAt).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}

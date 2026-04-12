@@ -57,6 +57,7 @@ export interface SavedSearchRecord {
   filters: BoatSearchFilters;
   browseUrl: string;
   newResults: number;
+  latestNewBoats: SavedSearchAlertBoat[];
   totalResults: number;
   createdAt: string;
   updatedAt: string;
@@ -173,12 +174,18 @@ async function hydrateSavedSearch(row: SavedSearchRow): Promise<SavedSearchRecor
     countResults(filters, row.last_checked_at),
   ]);
 
+  const latestNewBoats =
+    newResults > 0
+      ? await listMatchingBoats(filters, row.last_checked_at, Math.min(3, newResults))
+      : [];
+
   return {
     id: row.id,
     name: row.name,
     filters,
     browseUrl: buildBoatSearchUrl(filters),
     newResults,
+    latestNewBoats,
     totalResults,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
