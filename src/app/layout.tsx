@@ -7,6 +7,7 @@ import Providers from "@/components/Providers";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import WhatsAppContactButton from "@/components/WhatsAppContactButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -147,6 +148,7 @@ export default async function RootLayout({
             <SiteNav />
             <main className="min-h-screen">{children}</main>
             <SiteFooter />
+            <WhatsAppContactButton />
             <ThemeSwitcher />
           </NextIntlClientProvider>
         </Providers>
