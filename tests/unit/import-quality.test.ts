@@ -17,6 +17,7 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
   assert.equal(normalizeImportedLocation("Mare Adriatico,"), "Mare Adriatico");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
   assert.equal(normalizeImportedLocation("Price"), "");
+  assert.equal(normalizeImportedLocation("???????"), "");
 });
 
 test("normalizeImportedLocation preserves useful region formatting", () => {

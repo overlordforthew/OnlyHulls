@@ -369,6 +369,10 @@ export function normalizeImportedSummary(value?: string | null) {
   return normalized.length >= 20 ? normalized : "";
 }
 
+function isQuestionMarkPlaceholderLocation(value: string) {
+  return value.replace(/[?,\s]+/g, "").length === 0;
+}
+
 export function normalizeImportedLocation(value?: string | null) {
   let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
@@ -384,6 +388,7 @@ export function normalizeImportedLocation(value?: string | null) {
     .trim();
 
   if (!normalized) return "";
+  if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
 
   if (!normalized.includes(",")) {
@@ -406,6 +411,7 @@ export function normalizeImportedLocation(value?: string | null) {
   const collapsed = deduped.join(", ").trim();
 
   if (!collapsed) return "";
+  if (isQuestionMarkPlaceholderLocation(collapsed)) return "";
   if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
 
   return collapsed;
@@ -678,6 +684,7 @@ export function buildImportDocumentationStatus(input: {
 
 export function buildVisibleImportQualitySql(alias = "b") {
   const normalizedLocationSql = `LOWER(COALESCE(NULLIF(REGEXP_REPLACE(TRIM(${alias}.location_text), '[,\\s]+$', '', 'g'), ''), ''))`;
+  const nonQuestionLocationSql = `REPLACE(REPLACE(REPLACE(${normalizedLocationSql}, '?', ''), ' ', ''), ',', '')`;
 
   return `(
   ${alias}.source_url IS NULL
@@ -685,6 +692,7 @@ export function buildVisibleImportQualitySql(alias = "b") {
     COALESCE(NULLIF(TRIM(${alias}.make), ''), '') <> ''
     AND COALESCE(NULLIF(TRIM(${alias}.model), ''), '') <> ''
     AND ${normalizedLocationSql} <> ''
+    AND ${nonQuestionLocationSql} <> ''
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (
