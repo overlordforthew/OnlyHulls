@@ -56,4 +56,36 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
     normalizeImportedLocation("Nanny Cay, Virgin Islands (British)"),
     "Nanny Cay, Virgin Islands (British)"
   );
+  assert.equal(
+    normalizeImportedLocation("Cap D'Agde"),
+    "Cap D'Agde"
+  );
+  assert.equal(
+    normalizeImportedLocation("L'Escala, Catalonia"),
+    "L'Escala, Catalonia"
+  );
+  assert.equal(
+    normalizeImportedLocation("En Route St.Lucia Late April 2026"),
+    "En Route St.Lucia Late April 2026"
+  );
+  assert.equal(
+    normalizeImportedLocation("S.W, Turkey"),
+    "S.W, Turkey"
+  );
+  assert.equal(
+    normalizeImportedLocation("Ensenada B.C, Null"),
+    "Ensenada B.C, Null"
+  );
+  assert.equal(
+    normalizeImportedLocation("Clarke'S Court Boatyard & Marina"),
+    "Clarke's Court Boatyard & Marina"
+  );
+  assert.equal(
+    normalizeImportedLocation("St George'S"),
+    "St George's"
+  );
+  assert.equal(
+    normalizeImportedLocation("Bvi Yacht Charter Docks, Tortola"),
+    "BVI Yacht Charter Docks, Tortola"
+  );
 });

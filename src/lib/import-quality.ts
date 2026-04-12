@@ -320,22 +320,50 @@ function titleCaseTokenCore(token: string) {
   const exact = TITLE_CASE_EXACT[token.toLowerCase()];
   if (exact) return exact;
   if (ALL_CAPS_KEEP.has(token.toUpperCase())) return token.toUpperCase();
-  if (/^(?:[a-z]\.){2,}[a-z]?\.?$/i.test(token)) return token.toUpperCase();
+  if (/^[a-z](?:\.[a-z]){1,3}\.?$/i.test(token)) return token.toUpperCase();
   if (/^[a-z]\d+$/i.test(token)) return token.toUpperCase();
   if (/^\d+(\.\d+)?$/.test(token)) return token;
   if (token === token.toUpperCase() && /^[\p{L}]{2,4}$/u.test(token)) return token;
 
-  return token
-    .split(/([/-])/)
-    .map((part) => {
-      if (!part || part === "/" || part === "-") return part;
-      const lowered = part.toLowerCase();
-      const special = TITLE_CASE_EXACT[lowered];
-      if (special) return special;
+  if (token.includes("'") || token.includes("’")) {
+    const parts = token.split(/(['’])/);
+    return parts
+      .map((part, index) => {
+        if (!part || part === "'" || part === "’") return part;
 
-      return lowered.charAt(0).toUpperCase() + lowered.slice(1);
-    })
-    .join("");
+        const previousSeparator = parts[index - 1];
+        const previousWord = parts[index - 2] || "";
+        if (previousSeparator && /^s$/i.test(part) && previousWord.length > 1) {
+          return "s";
+        }
+
+        return titleCaseTokenCore(part);
+      })
+      .join("");
+  }
+
+  if (token.includes(".")) {
+    return token
+      .split(/(\.)/)
+      .map((part) => {
+        if (!part || part === ".") return part;
+        return titleCaseTokenCore(part);
+      })
+      .join("");
+  }
+
+  if (token.includes("/") || token.includes("-")) {
+    return token
+      .split(/([/-])/)
+      .map((part) => {
+        if (!part || part === "/" || part === "-") return part;
+        return titleCaseTokenCore(part);
+      })
+      .join("");
+  }
+
+  const lowered = token.toLowerCase();
+  return lowered.charAt(0).toUpperCase() + lowered.slice(1);
 }
 
 function titleCaseToken(token: string) {
