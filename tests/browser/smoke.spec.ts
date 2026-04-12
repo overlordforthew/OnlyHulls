@@ -270,6 +270,21 @@ test("boats currency selection persists after reload", async ({ page }) => {
   await expect(page.locator("#boats-currency")).toHaveValue("EUR");
 });
 
+test("boats no-results state offers recovery paths", async ({ page }) => {
+  await page.route("**/api/boats**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ boats: [], total: 0 }),
+    });
+  });
+
+  await page.goto("/boats?q=not-a-real-match");
+  await expect(page.getByText("No hulls found", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toBeVisible();
+  await expect(page.getByText("Try these live markets", { exact: true })).toBeVisible();
+});
+
 test("boats card opens detail page", async ({ page }) => {
   await page.goto("/boats?q=lagoon");
 
@@ -328,6 +343,8 @@ test("boat detail page shows related discovery sections", async ({ page }) => {
   await firstCardTitle.click();
 
   await expect(page).toHaveURL(/\/boats\//);
+  await expect(page.getByText("Listing trust", { exact: true })).toBeVisible();
+  await expect(page.getByText("Photos", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Similar boats to consider", exact: false })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Keep browsing this market", exact: false })).toBeVisible();
 });

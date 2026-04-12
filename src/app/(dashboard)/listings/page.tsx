@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { emailEnabled, storageEnabled } from "@/lib/capabilities";
+import { billingEnabled, emailEnabled, storageEnabled } from "@/lib/capabilities";
+import { getCustomerBillingSummary, type CustomerBillingSummary } from "@/lib/stripe";
 import {
   getSellerDashboardData,
   getListingAgeDays,
@@ -56,10 +57,17 @@ export default async function ListingsDashboardPage({
     );
   }
 
-  const [{ stats, listings, leads }, canEmail, canUploadMedia] = await Promise.all([
+  const billingConfigured = billingEnabled();
+  const billingSummaryPromise: Promise<CustomerBillingSummary | null> =
+    billingConfigured && user.stripeCustomerId
+      ? getCustomerBillingSummary(user.stripeCustomerId).catch(() => null)
+      : Promise.resolve(null);
+
+  const [{ stats, listings, leads }, canEmail, canUploadMedia, billingSummary] = await Promise.all([
     getSellerDashboardData(user.id),
     emailEnabled(),
     storageEnabled(),
+    billingSummaryPromise,
   ]);
   const listingsNeedingAttention = listings.filter(
     (listing) => getListingAttentionReasons(listing).length > 0
@@ -151,6 +159,24 @@ export default async function ListingsDashboardPage({
         <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-foreground/85">
           Your listing was submitted successfully. It is now in review and will appear to
           buyers once an admin approves it.
+        </div>
+      )}
+
+      {billingConfigured && billingSummary?.billingIssue && (
+        <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+          <p className="font-semibold text-amber-300">Billing needs attention</p>
+          <p className="mt-1">
+            {billingSummary.billingIssueMessage ||
+              "There is a billing problem on this seller account. Open billing and update the payment method to keep paid visibility active."}
+          </p>
+          <div className="mt-3">
+            <Link
+              href="/account"
+              className="inline-flex rounded-full border border-amber-400/30 px-4 py-2 text-sm font-medium text-amber-100 transition-all hover:border-amber-300 hover:text-white"
+            >
+              Open billing
+            </Link>
+          </div>
         </div>
       )}
 

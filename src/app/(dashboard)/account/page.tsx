@@ -3,7 +3,19 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Crown, CreditCard, Mail, ExternalLink, Bell } from "lucide-react";
+import { Crown, CreditCard, Mail, ExternalLink, Bell, AlertTriangle, CalendarClock } from "lucide-react";
+
+interface BillingSummary {
+  hasCustomer: boolean;
+  subscriptionStatus: string | null;
+  latestInvoiceStatus: string | null;
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  amountDue: number | null;
+  currency: string | null;
+  billingIssue: boolean;
+  billingIssueMessage: string | null;
+}
 
 interface UserProfile {
   subscription_tier: string;
@@ -12,6 +24,7 @@ interface UserProfile {
   role: string;
   billing_enabled: boolean;
   email_enabled: boolean;
+  billing_summary?: BillingSummary | null;
 }
 
 interface SavedSearchSummary {
@@ -29,6 +42,17 @@ const TIER_LABELS: Record<string, string> = {
   featured: "Featured Creator (Seller)",
   broker: "Broker",
 };
+
+function formatBillingDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export default function AccountPage() {
   const { data: session } = useSession();
@@ -92,6 +116,8 @@ export default function AccountPage() {
   const isPaid = !tier.startsWith("free");
   const billingEnabled = profile?.billing_enabled ?? false;
   const emailEnabled = profile?.email_enabled ?? false;
+  const billingSummary = profile?.billing_summary ?? null;
+  const billingRenewalLabel = formatBillingDate(billingSummary?.renewsAt);
   const alertCadenceLabel =
     emailAlerts === "instant" ? "Instant alerts" : emailAlerts === "weekly" ? "Weekly digest" : "Alerts off";
   const alertCadenceDescription = !emailEnabled
@@ -161,6 +187,42 @@ export default function AccountPage() {
           <p className="mt-4 text-sm text-accent">
             Paid billing is not configured on this environment yet. Free buyer and seller flows still work.
           </p>
+        )}
+        {billingEnabled && billingSummary?.billingIssue && (
+          <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-400" />
+              <div>
+                <p className="text-sm font-semibold text-amber-300">Billing needs attention</p>
+                <p className="mt-1 text-sm text-amber-100/90">
+                  {billingSummary.billingIssueMessage ||
+                    "There is a billing problem on your account. Open billing to update your payment method."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {billingEnabled && billingSummary && !billingSummary.billingIssue && (
+          <div className="mt-4 rounded-2xl border border-border bg-background/40 p-4">
+            <div className="flex items-start gap-3">
+              <CalendarClock className="mt-0.5 h-5 w-5 text-primary" />
+              <div className="space-y-1 text-sm text-text-secondary">
+                {billingRenewalLabel && (
+                  <p>
+                    Renews on <span className="font-medium text-foreground">{billingRenewalLabel}</span>.
+                  </p>
+                )}
+                {billingSummary.cancelAtPeriodEnd && (
+                  <p>
+                    This plan is set to cancel at the end of the current billing period.
+                  </p>
+                )}
+                {!billingRenewalLabel && !billingSummary.cancelAtPeriodEnd && (
+                  <p>Your billing account is connected and healthy.</p>
+                )}
+              </div>
+            </div>
+          </div>
         )}
         {billingMessage && (
           <p className="mt-3 text-sm text-accent">{billingMessage}</p>

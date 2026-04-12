@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { billingEnabled, emailEnabled, storageEnabled } from "@/lib/capabilities";
+import { getCustomerBillingSummary } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -16,8 +17,11 @@ export async function GET() {
       email_alerts: string;
       newsletter_opt_in: boolean;
       role: string;
+      stripe_customer_id: string | null;
     }>(
-      "SELECT subscription_tier, email_alerts, newsletter_opt_in, role FROM users WHERE id = $1",
+      `SELECT subscription_tier, email_alerts, newsletter_opt_in, role, stripe_customer_id
+       FROM users
+       WHERE id = $1`,
       [session.user.id]
     );
 
@@ -25,8 +29,18 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    let billingSummary = null;
+    if (billingEnabled() && user.stripe_customer_id) {
+      try {
+        billingSummary = await getCustomerBillingSummary(user.stripe_customer_id);
+      } catch (err) {
+        logger.warn({ err, userId: session.user.id }, "Failed to load Stripe billing summary");
+      }
+    }
+
     return NextResponse.json({
       ...user,
+      billing_summary: billingSummary,
       billing_enabled: billingEnabled(),
       email_enabled: emailEnabled(),
       storage_enabled: storageEnabled(),

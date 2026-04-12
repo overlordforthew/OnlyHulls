@@ -5,6 +5,7 @@ import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
 import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -31,6 +32,25 @@ export async function GET() {
       boat_title: string | null;
       payload: Record<string, unknown> | null;
     };
+    type ImportQualitySummaryRow = {
+      active_count: string;
+      visible_count: string;
+      missing_model_count: string;
+      missing_location_count: string;
+      missing_image_count: string;
+      thin_summary_count: string;
+      low_price_count: string;
+    };
+    type SourceHealthRow = {
+      source: string;
+      active_count: string;
+      visible_count: string;
+      missing_model_count: string;
+      missing_location_count: string;
+      missing_image_count: string;
+      thin_summary_count: string;
+      low_price_count: string;
+    };
 
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
@@ -38,7 +58,20 @@ export async function GET() {
       AND email NOT LIKE 'browser-%'
     `;
 
-    const [users, admins, listings, pending, matches, intros, meiliStats, funnel30d, recentSignups, recentActivity] = await Promise.all([
+    const [
+      users,
+      admins,
+      listings,
+      pending,
+      matches,
+      intros,
+      meiliStats,
+      funnel30d,
+      recentSignups,
+      recentActivity,
+      importQualitySummary,
+      sourceHealth,
+    ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
@@ -74,6 +107,56 @@ export async function GET() {
          ORDER BY fe.created_at DESC
          LIMIT 12`
       ),
+      queryOne<ImportQualitySummaryRow>(
+        `SELECT
+           COUNT(*)::text AS active_count,
+           COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_model'
+           )::text AS missing_model_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_location'
+           )::text AS missing_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_image'
+           )::text AS missing_image_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'thin_summary'
+           )::text AS thin_summary_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'low_price'
+           )::text AS low_price_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'`
+      ),
+      query<SourceHealthRow>(
+        `SELECT
+           COALESCE(b.source_name, 'Platform') AS source,
+           COUNT(*)::text AS active_count,
+           COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_model'
+           )::text AS missing_model_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_location'
+           )::text AS missing_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_image'
+           )::text AS missing_image_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'thin_summary'
+           )::text AS thin_summary_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'low_price'
+           )::text AS low_price_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+         GROUP BY COALESCE(b.source_name, 'Platform')
+         ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC, COUNT(*) DESC
+         LIMIT 8`
+      ),
     ]);
 
     return NextResponse.json({
@@ -99,6 +182,25 @@ export async function GET() {
         displayName: activity.display_name,
         boatTitle: activity.boat_title,
         payload: activity.payload || {},
+      })),
+      importQualitySummary: {
+        activeCount: parseInt(importQualitySummary?.active_count || "0", 10),
+        visibleCount: parseInt(importQualitySummary?.visible_count || "0", 10),
+        missingModelCount: parseInt(importQualitySummary?.missing_model_count || "0", 10),
+        missingLocationCount: parseInt(importQualitySummary?.missing_location_count || "0", 10),
+        missingImageCount: parseInt(importQualitySummary?.missing_image_count || "0", 10),
+        thinSummaryCount: parseInt(importQualitySummary?.thin_summary_count || "0", 10),
+        lowPriceCount: parseInt(importQualitySummary?.low_price_count || "0", 10),
+      },
+      sourceHealth: sourceHealth.map((row) => ({
+        source: row.source,
+        activeCount: parseInt(row.active_count || "0", 10),
+        visibleCount: parseInt(row.visible_count || "0", 10),
+        missingModelCount: parseInt(row.missing_model_count || "0", 10),
+        missingLocationCount: parseInt(row.missing_location_count || "0", 10),
+        missingImageCount: parseInt(row.missing_image_count || "0", 10),
+        thinSummaryCount: parseInt(row.thin_summary_count || "0", 10),
+        lowPriceCount: parseInt(row.low_price_count || "0", 10),
       })),
       serviceStatus: {
         billingEnabled: billingEnabled(),

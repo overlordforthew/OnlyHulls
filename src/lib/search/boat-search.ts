@@ -139,6 +139,7 @@ export function buildOrderBy(sort: string, dir: string) {
   };
   const sortCol = SORT_MAP[sort] || SORT_MAP.newest;
   const sortDir = dir === "desc" ? "DESC" : "ASC";
+  const qualityScoreSql = "COALESCE((d.documentation_status->>'import_quality_score')::int, 100)";
 
   const listingBoost =
     sort === "newest"
@@ -149,7 +150,9 @@ export function buildOrderBy(sort: string, dir: string) {
          END DESC, `
       : "";
 
-  return `${listingBoost}(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${sortCol} ${sortDir} NULLS LAST`;
+  const qualityTiebreaker = sort === "newest" ? `${qualityScoreSql} DESC, ` : "";
+
+  return `${listingBoost}(EXISTS (SELECT 1 FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')) DESC, ${qualityTiebreaker}${sortCol} ${sortDir} NULLS LAST, ${qualityScoreSql} DESC, b.updated_at DESC, b.id DESC`;
 }
 
 export function buildWhereClause(filters: BoatSearchFilters) {

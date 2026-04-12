@@ -3,9 +3,17 @@ import { expect, test } from "@playwright/test";
 
 const sellerEmail = process.env.PLAYWRIGHT_SELLER_EMAIL;
 const sellerPassword = process.env.PLAYWRIGHT_SELLER_PASSWORD;
+const sellerSetupReady = process.env.PLAYWRIGHT_SELLER_SETUP_READY === "1";
+const sellerSkipReason =
+  process.env.PLAYWRIGHT_SELLER_SKIP_REASON || "Seller browser setup is not available.";
 
 test.describe("seller auth flow", () => {
-  test.skip(!sellerEmail || !sellerPassword, "Seller browser credentials are not configured.");
+  test.skip(
+    !sellerEmail || !sellerPassword || !sellerSetupReady,
+    !sellerEmail || !sellerPassword
+      ? "Seller browser credentials are not configured."
+      : sellerSkipReason
+  );
 
   async function signInAsSeller(page: Page) {
     await page.goto("/sign-in?callbackUrl=%2Flistings");

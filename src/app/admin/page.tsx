@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Info } from "lucide-react";
 
 interface Stats {
@@ -35,6 +35,25 @@ interface Stats {
     boatTitle: string | null;
     payload: Record<string, unknown>;
   }>;
+  importQualitySummary: {
+    activeCount: number;
+    visibleCount: number;
+    missingModelCount: number;
+    missingLocationCount: number;
+    missingImageCount: number;
+    thinSummaryCount: number;
+    lowPriceCount: number;
+  };
+  sourceHealth: Array<{
+    source: string;
+    activeCount: number;
+    visibleCount: number;
+    missingModelCount: number;
+    missingLocationCount: number;
+    missingImageCount: number;
+    thinSummaryCount: number;
+    lowPriceCount: number;
+  }>;
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -55,8 +74,15 @@ interface PendingListing {
   currency: string;
   location_text: string | null;
   listing_source: string;
+  source_name: string;
   seller_email: string;
   created_at: string;
+  image_count: number;
+  video_count: number;
+  condition_score: number;
+  has_description: boolean;
+  quality_flags: string[];
+  quality_score: number;
 }
 
 function formatActivityTitle(activity: Stats["recentActivity"][number]) {
@@ -116,13 +142,21 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [moderationSearch, setModerationSearch] = useState("");
+  const [moderationSource, setModerationSource] = useState("all");
+  const [moderationIssue, setModerationIssue] = useState("all");
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
+      const moderationParams = new URLSearchParams({ status: "pending_review" });
+      if (moderationSearch.trim()) moderationParams.set("q", moderationSearch.trim());
+      if (moderationSource !== "all") moderationParams.set("source", moderationSource);
+      if (moderationIssue !== "all") moderationParams.set("issue", moderationIssue);
+
       const [statsRes, pendingRes] = await Promise.all([
         fetch("/api/admin/stats"),
-        fetch("/api/admin/listings?status=pending_review"),
+        fetch(`/api/admin/listings?${moderationParams.toString()}`),
       ]);
       const [statsData, pendingData] = await Promise.all([
         statsRes.json(),
@@ -134,11 +168,11 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [moderationIssue, moderationSearch, moderationSource]);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
   async function handleApprove(id: string) {
     setActionLoading(id);
@@ -233,6 +267,10 @@ export default function AdminPage() {
     }
   }
 
+  const sourceOptions = Array.from(new Set((stats?.sourceHealth || []).map((row) => row.source))).sort(
+    (a, b) => a.localeCompare(b)
+  );
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -305,6 +343,65 @@ export default function AdminPage() {
               </span>
               .
             </p>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Source Health</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              Track which inventory sources are buyer-ready and where cleanup effort is still blocking visibility.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+              <StatCard label="Tracked Boats" value={stats.importQualitySummary.activeCount} />
+              <StatCard label="Buyer Visible" value={stats.importQualitySummary.visibleCount} highlight />
+              <StatCard label="Missing Location" value={stats.importQualitySummary.missingLocationCount} />
+              <StatCard label="Missing Images" value={stats.importQualitySummary.missingImageCount} />
+              <StatCard label="Thin Summary" value={stats.importQualitySummary.thinSummaryCount} />
+              <StatCard label="Low Price Flags" value={stats.importQualitySummary.lowPriceCount} />
+            </div>
+            <div className="mt-5 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-left text-foreground/50">
+                  <tr className="border-b border-border">
+                    <th className="py-2 pr-4 font-medium">Source</th>
+                    <th className="py-2 pr-4 font-medium">Active</th>
+                    <th className="py-2 pr-4 font-medium">Visible</th>
+                    <th className="py-2 pr-4 font-medium">Missing location</th>
+                    <th className="py-2 pr-4 font-medium">Missing images</th>
+                    <th className="py-2 pr-4 font-medium">Thin summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.sourceHealth.map((source) => {
+                    const visibleRate =
+                      source.activeCount > 0
+                        ? `${((source.visibleCount / source.activeCount) * 100).toFixed(1)}%`
+                        : "0%";
+
+                    return (
+                      <tr key={source.source} className="border-b border-border/60 last:border-b-0">
+                        <td className="py-3 pr-4 font-medium">{source.source}</td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.activeCount}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <div className="font-medium text-foreground">{source.visibleCount}</div>
+                          <div className="text-xs text-foreground/50">{visibleRate} visible</div>
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.missingLocationCount}
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.missingImageCount}
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.thinSummaryCount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
@@ -451,15 +548,56 @@ export default function AdminPage() {
       </div>
 
       <div className="mt-12">
-        <h2 className="text-xl font-semibold">Moderation Queue ({pending.length})</h2>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Moderation Queue ({pending.length})</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              Filter pending listings by source or quality issue so cleanup work stays focused.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <input
+              type="text"
+              value={moderationSearch}
+              onChange={(event) => setModerationSearch(event.target.value)}
+              placeholder="Search listing or seller"
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
+            />
+            <select
+              value={moderationSource}
+              onChange={(event) => setModerationSource(event.target.value)}
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground"
+            >
+              <option value="all">All sources</option>
+              {sourceOptions.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
+              ))}
+            </select>
+            <select
+              value={moderationIssue}
+              onChange={(event) => setModerationIssue(event.target.value)}
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground"
+            >
+              <option value="all">All issues</option>
+              <option value="missing_location">Missing location</option>
+              <option value="missing_image">Missing images</option>
+              <option value="missing_model">Missing model</option>
+              <option value="thin_summary">Thin summary</option>
+              <option value="missing_description">Missing description</option>
+              <option value="low_condition">Low condition</option>
+            </select>
+          </div>
+        </div>
         {pending.length === 0 ? (
-          <p className="mt-4 text-foreground/60">No listings pending review.</p>
+          <p className="mt-4 text-foreground/60">No pending listings match the current filters.</p>
         ) : (
           <div className="mt-4 space-y-4">
             {pending.map((listing) => (
               <div
                 key={listing.id}
-                className="flex items-center justify-between rounded-lg border border-border p-4"
+                className="flex flex-col gap-4 rounded-lg border border-border p-4 lg:flex-row lg:items-start lg:justify-between"
               >
                 <div>
                   <p className="font-medium">
@@ -470,9 +608,35 @@ export default function AdminPage() {
                     {listing.location_text ? ` - ${listing.location_text}` : ""}
                   </p>
                   <p className="text-xs text-foreground/40">
-                    {listing.listing_source} listing by {listing.seller_email} -{" "}
+                    {listing.source_name} source by {listing.seller_email} -{" "}
                     {new Date(listing.created_at).toLocaleDateString()}
                   </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                      Quality {listing.quality_score}/100
+                    </span>
+                    <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                      {listing.image_count} photo{listing.image_count === 1 ? "" : "s"}
+                    </span>
+                    {listing.video_count > 0 && (
+                      <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                        {listing.video_count} video{listing.video_count === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {!listing.has_description && (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">
+                        Missing description
+                      </span>
+                    )}
+                    {listing.quality_flags.map((flag) => (
+                      <span
+                        key={flag}
+                        className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200"
+                      >
+                        {formatQualityFlag(flag)}
+                      </span>
+                    ))}
+                  </div>
                   <Link
                     href={`/boats/${listing.slug || listing.id}`}
                     className="mt-2 inline-block text-xs text-primary hover:text-primary-light"
@@ -529,6 +693,10 @@ function StatCard({
       </div>
     </div>
   );
+}
+
+function formatQualityFlag(flag: string) {
+  return flag.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function HealthCard({

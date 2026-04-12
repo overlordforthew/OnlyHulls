@@ -257,6 +257,14 @@ export default async function BoatDetailPage({
     preferredCurrency,
   });
   const boatTitle = buildBoatTitle(boat);
+  const imageCount = media.filter((mediaItem) => mediaItem.type === "image").length;
+  const videoCount = media.filter((mediaItem) => mediaItem.type === "video").length;
+  const hasSpecificLocation = boat.source_url
+    ? hasUsableImportedLocation(boat.location_text)
+    : Boolean(boat.location_text?.trim());
+  const trustSourceLabel = boat.source_url
+    ? `Imported from ${formatSourceSite(boat.source_site)}`
+    : "Exclusive to OnlyHulls";
   const imageUrls = media
     .filter((mediaItem) => mediaItem.type === "image")
     .slice(0, 8)
@@ -490,6 +498,44 @@ export default async function BoatDetailPage({
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">Free to message sellers.</p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface p-6">
+              <p className="text-sm font-semibold text-foreground">Listing trust</p>
+              <div className="mt-4 space-y-3 text-sm text-text-secondary">
+                <div className="flex items-start justify-between gap-4">
+                  <span>Source</span>
+                  <span className="text-right font-medium text-foreground">{trustSourceLabel}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>Photos</span>
+                  <span className="text-right font-medium text-foreground">
+                    {imageCount} image{imageCount === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>Video</span>
+                  <span className="text-right font-medium text-foreground">
+                    {videoCount > 0 ? `${videoCount} clip${videoCount === 1 ? "" : "s"}` : "None attached"}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>Location confidence</span>
+                  <span className="text-right font-medium text-foreground">
+                    {hasSpecificLocation ? "Specific location provided" : "Location still being verified"}
+                  </span>
+                </div>
+              </div>
+              {boat.source_url && (
+                <a
+                  href={boat.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary-light"
+                >
+                  View original source listing
+                </a>
+              )}
             </div>
           </div>
         </div>

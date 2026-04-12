@@ -165,6 +165,20 @@ function BoatsPageInner() {
     window.localStorage.setItem("boats_view_mode", nextView);
   }
 
+  function clearSearchCriteria() {
+    setSearch("");
+    setActiveTag("");
+    setFilters({
+      minPrice: "",
+      maxPrice: "",
+      minYear: "",
+      maxYear: "",
+      rigType: "",
+    });
+    setSaveMessage(null);
+    router.push("/boats");
+  }
+
   // Refetch when sort changes
   useEffect(() => {
     fetchBoats();
@@ -548,12 +562,38 @@ function BoatsPageInner() {
             ))}
           </div>
         ) : boats.length === 0 ? (
-          <div className="py-20 text-center">
+          <div className="space-y-8 py-16">
             <p className="text-4xl">🌊</p>
             <p className="mt-4 text-lg font-medium text-foreground">No hulls found</p>
-            <p className="mt-1 text-sm text-text-secondary">
-              Try a different search or adjust your filters.
+            <p className="mx-auto mt-2 max-w-2xl text-sm text-text-secondary">
+              We did not find a live listing for this exact search. Clear the current filters or jump into one of the strongest live browse paths below.
             </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={clearSearchCriteria}
+                className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
+              >
+                Clear filters
+              </button>
+              <Link
+                href="/catamarans-for-sale"
+                className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+              >
+                Browse catamarans
+              </Link>
+              <Link
+                href="/boats/location/puerto-rico"
+                className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+              >
+                Puerto Rico boats
+              </Link>
+            </div>
+            <SeoHubLinks
+              compact
+              title="Try these live markets"
+              subtitle="These browse hubs stay cleaner and usually recover the search fastest."
+            />
           </div>
         ) : (
           <>
