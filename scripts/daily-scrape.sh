@@ -21,6 +21,11 @@ LOG_FILE="/tmp/onlyhulls-scrape.log"
 LIMIT="${1:-100}"
 APP_CONTAINER_PREFIX="qkggs84cs88o0gww4wc80gwo-"
 TMP_DIR=$(python3 -c 'import os,tempfile; d=tempfile.gettempdir(); print("/tmp" if os.name != "nt" and d.startswith("/tmp/user/") else d)')
+APP_CONTAINER_NAME=""
+
+find_app_container() {
+    docker ps --format '{{.Names}}' | grep "^${APP_CONTAINER_PREFIX}" | head -1 || true
+}
 
 rewrite_database_url_for_host() {
     if [ -z "${DATABASE_URL:-}" ]; then
@@ -39,10 +44,12 @@ rewrite_database_url_for_host() {
 
 load_runtime_env() {
     local container
-    container=$(docker ps --format '{{.Names}}' | grep "^${APP_CONTAINER_PREFIX}" | head -1 || true)
+    container=$(find_app_container)
     if [ -z "$container" ]; then
         return
     fi
+
+    APP_CONTAINER_NAME="$container"
 
     for var in DATABASE_URL RESEND_API_KEY RESEND_FROM_EMAIL SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM NEXT_PUBLIC_APP_URL NEXTAUTH_URL; do
         local value
@@ -181,7 +188,7 @@ log "Source health snapshot:"
     npm run db:source-health -- --limit 8
 ) | tee -a "$LOG_FILE"
 log "Sending owner digest..."
-if DIGEST_RESULT=$(cd "$PROJECT_DIR" && npm run alerts:owner-digest -- --days 1 --limit 8 --signup-limit 8 2>&1 | tail -1); then
+if [ -n "${APP_CONTAINER_NAME:-}" ] && DIGEST_RESULT=$(docker exec "$APP_CONTAINER_NAME" sh -lc 'cd /app && npm run alerts:owner-digest -- --days 1 --limit 8 --signup-limit 8' 2>&1 | tail -1); then
     log "  $DIGEST_RESULT"
 else
     log "  FAILED: owner digest"
