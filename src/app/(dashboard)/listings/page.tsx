@@ -75,6 +75,8 @@ export default async function ListingsDashboardPage({
   const pendingLeads = leads.filter((lead) => lead.status === "pending");
   const hotLeads = pendingLeads.filter((lead) => getLeadAgeHours(lead) >= 24);
   const upgradeReadyListings = listings.filter((listing) => getListingHealthScore(listing) >= 75);
+  const viewsPerLiveListing =
+    stats.activeListings > 0 ? stats.totalViews / stats.activeListings : 0;
   const nextLeadToHandle = hotLeads[0] ?? pendingLeads[0] ?? null;
   const nextListingToFix = listingsNeedingAttention[0] ?? null;
   const nextUpgradeCandidate = upgradeReadyListings[0] ?? null;
@@ -189,7 +191,7 @@ export default async function ListingsDashboardPage({
         <MetricCard label="Pending Leads" value={stats.pendingLeads} />
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <MetricCard
           label="Response Rate"
           value={formatPercent(stats.responseRate)}
@@ -210,6 +212,16 @@ export default async function ListingsDashboardPage({
           value={stats.listingsNeedingAttention}
           hint={`${stats.staleListings} stale, ${hotLeads.length} hot leads`}
           highlight={stats.listingsNeedingAttention > 0 || hotLeads.length > 0}
+        />
+        <MetricCard
+          label="Lead Acceptance"
+          value={formatPercent(stats.acceptanceRate)}
+          hint={`${stats.acceptedLeads} introductions accepted`}
+        />
+        <MetricCard
+          label="Views / Live Listing"
+          value={formatOneDecimal(viewsPerLiveListing)}
+          hint="Average traffic each active listing is earning"
         />
       </div>
 
@@ -861,6 +873,10 @@ function formatDateTime(value: string) {
 
 function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
+}
+
+function formatOneDecimal(value: number) {
+  return `${Math.round(value * 10) / 10}`;
 }
 
 function formatHours(value: number) {
