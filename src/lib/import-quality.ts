@@ -218,6 +218,86 @@ const LOCATION_STATE_CODES = new Set([
   "wy",
 ]);
 
+const WINDOWS_1252_UNICODE_TO_BYTE: Record<string, number> = {
+  "\u20AC": 0x80,
+  "\u201A": 0x82,
+  "\u0192": 0x83,
+  "\u201E": 0x84,
+  "\u2026": 0x85,
+  "\u2020": 0x86,
+  "\u2021": 0x87,
+  "\u02C6": 0x88,
+  "\u2030": 0x89,
+  "\u0160": 0x8a,
+  "\u2039": 0x8b,
+  "\u0152": 0x8c,
+  "\u017D": 0x8e,
+  "\u2018": 0x91,
+  "\u2019": 0x92,
+  "\u201C": 0x93,
+  "\u201D": 0x94,
+  "\u2022": 0x95,
+  "\u2013": 0x96,
+  "\u2014": 0x97,
+  "\u02DC": 0x98,
+  "\u2122": 0x99,
+  "\u0161": 0x9a,
+  "\u203A": 0x9b,
+  "\u0153": 0x9c,
+  "\u017E": 0x9e,
+  "\u0178": 0x9f,
+};
+
+const UTF8_MOJIBAKE_MARKER = /[\u00c2\u00c3\u00e2\u0192]/;
+const UTF8_MOJIBAKE_SIGNAL = /[\u00c2\u00c3\u00e2]/g;
+const UTF8_DECODER = new TextDecoder("utf-8");
+
+function encodeWindows1252(value: string) {
+  const bytes: number[] = [];
+
+  for (const char of value) {
+    const code = char.codePointAt(0);
+    if (!code) continue;
+
+    if (code <= 0xff) {
+      bytes.push(code);
+      continue;
+    }
+
+    const mapped = WINDOWS_1252_UNICODE_TO_BYTE[char];
+    if (mapped === undefined) {
+      return null;
+    }
+
+    bytes.push(mapped);
+  }
+
+  return Uint8Array.from(bytes);
+}
+
+function countUtf8MojibakeSignals(value: string) {
+  return (value.match(UTF8_MOJIBAKE_SIGNAL) || []).length;
+}
+
+function repairUtf8Mojibake(value: string) {
+  let repaired = value;
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    if (!UTF8_MOJIBAKE_MARKER.test(repaired)) break;
+
+    const bytes = encodeWindows1252(repaired);
+    if (!bytes) break;
+
+    const decoded = UTF8_DECODER.decode(bytes);
+    if (!decoded || decoded === repaired || decoded.includes("\uFFFD")) break;
+    if (countUtf8MojibakeSignals(decoded) > countUtf8MojibakeSignals(repaired)) break;
+
+    repaired = decoded;
+  }
+
+  return repaired;
+}
+
 function stripMojibake(value: string) {
   return value
     .replace(/â€™/g, "'")
@@ -249,13 +329,13 @@ function titleCaseToken(token: string) {
       const special = TITLE_CASE_EXACT[lowered];
       if (special) return special;
 
-      return lowered.replace(/\b\w/g, (char) => char.toUpperCase());
+      return lowered.charAt(0).toUpperCase() + lowered.slice(1);
     })
     .join("");
 }
 
 function normalizeLocationPart(value: string) {
-  const normalized = normalizeSpacing(value)
+  const normalized = normalizeSpacing(repairUtf8Mojibake(value))
     .replace(/^[./-]+|[./-]+$/g, "")
     .trim();
   if (!normalized) return "";
@@ -290,7 +370,7 @@ export function normalizeImportedSummary(value?: string | null) {
 }
 
 export function normalizeImportedLocation(value?: string | null) {
-  let normalized = normalizeSpacing(value);
+  let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
 
   for (const pattern of LOCATION_LABEL_PREFIXES) {
