@@ -105,6 +105,8 @@ test("boats API honors price sorting for search queries", async ({ request }) =>
 
 test("boats page shows ascending prices when sorting by price", async ({ page }) => {
   await page.goto("/boats?q=catana");
+  await page.locator("#boats-currency").selectOption("USD");
+  await expect(page.locator("#boats-currency")).toHaveValue("USD");
   await page.getByRole("button", { name: "Price", exact: false }).click();
   await page.waitForLoadState("networkidle");
 
