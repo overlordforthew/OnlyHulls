@@ -164,4 +164,10 @@ log "Source health snapshot:"
     cd "$PROJECT_DIR"
     npm run db:source-health -- --limit 8
 ) | tee -a "$LOG_FILE"
+log "Sending owner digest..."
+if DIGEST_RESULT=$(cd "$PROJECT_DIR" && npm run alerts:owner-digest -- --days 1 --limit 8 --signup-limit 8 2>&1 | tail -1); then
+    log "  $DIGEST_RESULT"
+else
+    log "  FAILED: owner digest"
+fi
 log "=== Done ==="

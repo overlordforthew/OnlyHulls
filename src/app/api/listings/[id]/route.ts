@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { pool, queryOne } from "@/lib/db";
 import { getPlanByTier } from "@/lib/config/plans";
+import { getPublicAppUrl } from "@/lib/config/urls";
+import { sendOwnerAlertEmail } from "@/lib/email/resend";
 import { logger } from "@/lib/logger";
 import {
   ensureUniqueListingSlug,
@@ -163,8 +165,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const seller = await queryOne<{ subscription_tier: string }>(
-    "SELECT subscription_tier FROM users WHERE id = $1",
+  const seller = await queryOne<{
+    subscription_tier: string;
+    email: string;
+    display_name: string | null;
+  }>(
+    "SELECT subscription_tier, email, display_name FROM users WHERE id = $1",
     [listing.seller_id]
   );
   const plan = getPlanByTier(seller?.subscription_tier || "free-seller");
@@ -297,6 +303,27 @@ export async function PATCH(
     }).catch((err) =>
       logger.error({ err, boatId: listing.id }, "Failed to refresh boat embedding")
     );
+
+    if (nextStatus === "pending_review" && listing.status !== "pending_review") {
+      try {
+        await sendOwnerAlertEmail({
+          subject: `Listing ready for review: ${data.year} ${data.make} ${data.model}`,
+          title: "Seller listing submitted for review",
+          intro: "A platform listing is ready for moderation and review.",
+          metadata: [
+            { label: "Listing", value: `${data.year} ${data.make} ${data.model}` },
+            { label: "Seller", value: `${seller?.display_name || "Unnamed seller"} (${seller?.email || "unknown"})` },
+            { label: "Location", value: data.locationText || "No location" },
+            { label: "Photos", value: String(imageCount) },
+            { label: "Status", value: `${listing.status} -> ${nextStatus}` },
+          ],
+          ctaUrl: `${getPublicAppUrl()}/admin`,
+          ctaLabel: "Open admin review queue",
+        });
+      } catch (err) {
+        logger.warn({ err, listingId: listing.id }, "Failed to send owner listing review alert");
+      }
+    }
 
     return NextResponse.json({ success: true, id: listing.id, slug, status: nextStatus });
   } catch (err) {

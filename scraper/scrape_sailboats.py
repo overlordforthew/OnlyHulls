@@ -20,6 +20,28 @@ LIST_URL = f"{BASE}/cgi-bin/saildata/db.cgi?db=default&uid=default&view_records=
 
 fetcher = Fetcher()
 
+GENERIC_LOCATIONS = {
+    "",
+    "outside united states",
+    "outside usa",
+    "outside the united states",
+    "price",
+    "poa",
+    "call",
+    "contact seller",
+    "contact broker",
+    "ask for location",
+    "ask seller",
+    "global",
+    "worldwide",
+    "unknown",
+    "europe",
+    "caribbean",
+    "mediterranean",
+    "north america",
+    "south pacific",
+}
+
 
 def normalize_location(raw):
     location = re.sub(r"\s+", " ", str(raw or "")).strip(" ,")
@@ -46,6 +68,8 @@ def normalize_location(raw):
     location = re.sub(r"\s+,", ",", location)
     location = re.sub(r",\s*,+", ", ", location)
     location = re.sub(r"\s{2,}", " ", location).strip(" ,")
+    if location.lower() in GENERIC_LOCATIONS:
+        return ""
     return location
 
 
@@ -61,7 +85,7 @@ def extract_best_location(html):
         if not match:
             continue
         location = normalize_location(match.group(1))
-        if location and location.lower() not in {"outside usa", "outside united states"}:
+        if location:
             return location
 
     return ""

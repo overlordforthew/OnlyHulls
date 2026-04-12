@@ -30,6 +30,28 @@ SSH_PROXY_HOST = "root@100.89.16.27"  # ElmoServer — fallback when Hetzner IP 
 
 METERS_TO_FEET = 3.28084
 
+GENERIC_LOCATIONS = {
+    "",
+    "outside united states",
+    "outside usa",
+    "outside the united states",
+    "price",
+    "poa",
+    "call",
+    "contact seller",
+    "contact broker",
+    "ask for location",
+    "ask seller",
+    "global",
+    "worldwide",
+    "unknown",
+    "europe",
+    "caribbean",
+    "mediterranean",
+    "north america",
+    "south pacific",
+}
+
 # Regex patterns for spec extraction from stripped text
 SPEC_PATTERNS = {
     "loa": r"(?:Overall\s+)?Length[:\s]+(\d+(?:\.\d+)?)\s*m",
@@ -413,21 +435,36 @@ def extract_description(html):
     return "\n\n".join(parts)[:3000]  # Cap at 3000 chars
 
 
+def normalize_location(raw):
+    location = re.sub(r"\s+", " ", str(raw or "")).strip(" ,.")
+    if not location:
+        return ""
+
+    location = re.sub(r"\.\s*Priced.*$", "", location, flags=re.I).strip(" ,.")
+    location = re.sub(r"\bEspagne\b", "Spain", location, flags=re.I)
+    location = re.sub(r"\bUSA\b", "United States", location, flags=re.I)
+    location = re.sub(r",\s*,+", ", ", location)
+    location = re.sub(r"\s{2,}", " ", location).strip(" ,.")
+
+    if location.lower() in GENERIC_LOCATIONS:
+        return ""
+
+    return location
+
+
 def extract_location(html):
     """Extract location from detail page."""
     # Pattern 1: Structured <strong>Location</strong><br />Value
     loc_m = re.search(r'<strong>Location</strong>\s*<br\s*/?\s*>\s*\n?\s*([^<\n]+)', html)
     if loc_m:
-        loc = loc_m.group(1).strip().rstrip(",. ")
+        loc = normalize_location(loc_m.group(1))
         if len(loc) > 2:
             return loc
 
-    # Pattern 2: from og:title — "for sale in City, Country - YYYY"
+    # Pattern 2: from og:title - "for sale in City, Country - YYYY"
     title_m = re.search(r'for (?:for )?[Ss]ale in\s+([^"]+?)(?:\s*-\s*\d{4})', html)
     if title_m:
-        loc = title_m.group(1).strip().rstrip(",. ")
-        # Strip "Priced at..." suffix if present
-        loc = re.sub(r'\.\s*Priced.*$', '', loc).strip()
+        loc = normalize_location(title_m.group(1))
         if len(loc) > 2:
             return loc
 
@@ -435,7 +472,7 @@ def extract_location(html):
     text = re.sub(r'<[^>]+>', ' ', html)
     loc_m2 = re.search(r'(?:Location|Lying)[:\s]+([A-Z][\w\s,]+?)(?:\s{2,}|\n)', text)
     if loc_m2:
-        loc = loc_m2.group(1).strip()
+        loc = normalize_location(loc_m2.group(1))
         if len(loc) > 3:
             return loc
 

@@ -77,6 +77,19 @@ function getFrom() {
   );
 }
 
+function getOwnerAlertRecipients() {
+  const configured = (
+    process.env.OWNER_ALERT_EMAILS ||
+    process.env.ADMIN_ALERT_EMAILS ||
+    "hello@onlyhulls.com"
+  )
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(configured));
+}
+
 async function sendEmail(params: {
   to: string | string[];
   subject: string;
@@ -105,6 +118,30 @@ function esc(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function buildMetadataRows(
+  rows: Array<{ label: string; value: string | null | undefined }>
+) {
+  const items = rows
+    .filter((row) => row.value && row.value.toString().trim())
+    .map(
+      (row) => `
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; width: 160px; vertical-align: top;">${esc(row.label)}</td>
+          <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${esc(row.value || "")}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  if (!items) return "";
+
+  return `
+    <table style="width: 100%; border-collapse: collapse; margin: 18px 0;">
+      ${items}
+    </table>
+  `;
 }
 
 function formatCurrency(amount: number, currency: string): string {
@@ -289,6 +326,37 @@ export async function sendSavedSearchAlertEmail(params: {
           Manage your alert settings in
           <a href="${appUrl}/account" style="color: #0369a1;">your account</a>.
         </p>
+      </div>
+    `,
+  });
+}
+
+export async function sendOwnerAlertEmail(params: {
+  subject: string;
+  title: string;
+  intro: string;
+  metadata?: Array<{ label: string; value: string | null | undefined }>;
+  detailsHtml?: string;
+  ctaUrl?: string;
+  ctaLabel?: string;
+}) {
+  return sendEmail({
+    to: getOwnerAlertRecipients(),
+    subject: params.subject,
+    html: `
+      <div style="font-family: sans-serif; max-width: 700px; margin: 0 auto; color: #0f172a;">
+        <h2 style="color: #0369a1;">${esc(params.title)}</h2>
+        <p>${esc(params.intro)}</p>
+        ${buildMetadataRows(params.metadata || [])}
+        ${params.detailsHtml || ""}
+        ${
+          params.ctaUrl && params.ctaLabel
+            ? `<div style="margin-top: 24px;">
+                 <a href="${esc(params.ctaUrl)}" style="background: #0369a1; color: #ffffff; padding: 12px 22px; border-radius: 999px; text-decoration: none; display: inline-block;">${esc(params.ctaLabel)}</a>
+               </div>`
+            : ""
+        }
+        <p style="margin-top: 24px; color: #64748b; font-size: 12px;">OnlyHulls owner alert</p>
       </div>
     `,
   });

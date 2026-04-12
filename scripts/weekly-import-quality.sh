@@ -71,4 +71,10 @@ log "Writing source health report..."
   npm run db:source-health -- --limit 12
 ) | tee -a "$LOG_FILE"
 
+log "Sending owner digest..."
+(
+  cd "$PROJECT_DIR"
+  npm run alerts:owner-digest -- --days 7 --limit 12 --signup-limit 10
+) | tee -a "$LOG_FILE"
+
 log "=== Weekly quality pass complete ==="

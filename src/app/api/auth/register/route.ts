@@ -1,6 +1,7 @@
 import { queryOne } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendVerificationEmail } from "@/lib/email/resend";
+import { sendOwnerAlertEmail, sendVerificationEmail } from "@/lib/email/resend";
+import { logger } from "@/lib/logger";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { randomBytes } from "crypto";
@@ -69,6 +70,24 @@ export async function POST(req: Request) {
       userId: newUser.id,
       payload: { emailDomain: email.split("@")[1] || null },
     });
+
+    try {
+      await sendOwnerAlertEmail({
+        subject: `New OnlyHulls signup: ${email}`,
+        title: "New user signup",
+        intro: "A new OnlyHulls account was just created.",
+        metadata: [
+          { label: "Email", value: email },
+          { label: "Display name", value: displayName || "Not provided" },
+          { label: "Email domain", value: email.split("@")[1] || "" },
+          { label: "User ID", value: newUser.id },
+        ],
+        ctaUrl: `${getPublicAppUrl()}/admin`,
+        ctaLabel: "Open admin dashboard",
+      });
+    } catch (err) {
+      logger.warn({ err, email }, "Failed to send owner signup alert");
+    }
 
     try {
       await sendVerificationEmail({

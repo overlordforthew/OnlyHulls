@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
-import { sendSellerNotification } from "@/lib/email/resend";
+import { sendOwnerAlertEmail, sendSellerNotification } from "@/lib/email/resend";
 import { getPlanByTier } from "@/lib/config/plans";
 import { emailEnabled } from "@/lib/capabilities";
 import { getPublicAppUrl } from "@/lib/config/urls";
@@ -170,6 +170,25 @@ export async function POST(req: Request) {
     introductionId: intro.id,
     payload: { fromMatch: Boolean(parsed.data.matchId) },
   });
+
+  try {
+    await sendOwnerAlertEmail({
+      subject: `New connect request: ${match.boat_title}`,
+      title: "New buyer connect request",
+      intro: "A buyer has requested a seller connection on OnlyHulls.",
+      metadata: [
+        { label: "Boat", value: match.boat_title },
+        { label: "Buyer", value: `${user.display_name || "Unnamed buyer"} (${user.email})` },
+        { label: "Seller", value: `${match.seller_name || "Unnamed seller"} (${match.seller_email})` },
+        { label: "Match score", value: `${Math.round(match.score * 100)}%` },
+        { label: "Requested from", value: parsed.data.matchId ? "Matches" : "Direct boat page" },
+      ],
+      ctaUrl: `${getPublicAppUrl()}/admin`,
+      ctaLabel: "Review in admin",
+    });
+  } catch (err) {
+    logger.warn({ err, matchId: match.id }, "Failed to send owner connect alert");
+  }
 
   const canSendEmail = emailEnabled();
   if (!canSendEmail) {
