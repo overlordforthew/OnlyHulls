@@ -50,6 +50,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
   us: "United States",
   uae: "United Arab Emirates",
   bvi: "British Virgin Islands",
+  "british virgin islands": "British Virgin Islands",
   pr: "Puerto Rico",
 };
 
@@ -82,6 +83,10 @@ const TITLE_CASE_EXACT: Record<string, string> = {
   oday: "O'Day",
   "o-day": "O'Day",
   macgregor: "MacGregor",
+  dc: "D.C",
+  "d.c": "D.C",
+  bvi: "BVI",
+  usvi: "USVI",
   "x-yachts": "X-Yachts",
   "j-boats": "J/Boats",
   "jboats": "J/Boats",
@@ -311,17 +316,16 @@ function stripMojibake(value: string) {
     .trim();
 }
 
-function titleCaseToken(token: string) {
-  const clean = stripMojibake(token);
-  if (!clean) return "";
-
-  const exact = TITLE_CASE_EXACT[clean.toLowerCase()];
+function titleCaseTokenCore(token: string) {
+  const exact = TITLE_CASE_EXACT[token.toLowerCase()];
   if (exact) return exact;
-  if (ALL_CAPS_KEEP.has(clean.toUpperCase())) return clean.toUpperCase();
-  if (/^[a-z]\d+$/i.test(clean)) return clean.toUpperCase();
-  if (/^\d+(\.\d+)?$/.test(clean)) return clean;
+  if (ALL_CAPS_KEEP.has(token.toUpperCase())) return token.toUpperCase();
+  if (/^(?:[a-z]\.){2,}[a-z]?\.?$/i.test(token)) return token.toUpperCase();
+  if (/^[a-z]\d+$/i.test(token)) return token.toUpperCase();
+  if (/^\d+(\.\d+)?$/.test(token)) return token;
+  if (token === token.toUpperCase() && /^[\p{L}]{2,4}$/u.test(token)) return token;
 
-  return clean
+  return token
     .split(/([/-])/)
     .map((part) => {
       if (!part || part === "/" || part === "-") return part;
@@ -332,6 +336,19 @@ function titleCaseToken(token: string) {
       return lowered.charAt(0).toUpperCase() + lowered.slice(1);
     })
     .join("");
+}
+
+function titleCaseToken(token: string) {
+  const clean = stripMojibake(token);
+  if (!clean) return "";
+
+  const affixMatch = clean.match(/^([^\p{L}\p{N}]*)((?:[\p{L}\p{N}.&'’]+))(.*)$/u);
+  if (!affixMatch) {
+    return titleCaseTokenCore(clean);
+  }
+
+  const [, prefix, core, suffix] = affixMatch;
+  return `${prefix}${titleCaseTokenCore(core)}${suffix}`;
 }
 
 function normalizeLocationPart(value: string) {
@@ -390,6 +407,9 @@ export function normalizeImportedLocation(value?: string | null) {
   if (!normalized) return "";
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
+
+  const exactLocationAlias = COUNTRY_ALIASES[normalized.toLowerCase()];
+  if (exactLocationAlias) return exactLocationAlias;
 
   if (!normalized.includes(",")) {
     for (const suffix of COMMON_LOCATION_SUFFIXES) {
