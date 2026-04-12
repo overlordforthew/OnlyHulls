@@ -88,4 +88,8 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
     normalizeImportedLocation("Bvi Yacht Charter Docks, Tortola"),
     "BVI Yacht Charter Docks, Tortola"
   );
+  assert.equal(
+    normalizeImportedLocation("Hodge'S Creek Marina Hotel, Parham Town, ???Les Vierges Britanniques"),
+    "Hodge's Creek Marina Hotel, Parham Town, British Virgin Islands"
+  );
 });

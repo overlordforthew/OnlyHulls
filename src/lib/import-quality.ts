@@ -51,6 +51,9 @@ const COUNTRY_ALIASES: Record<string, string> = {
   uae: "United Arab Emirates",
   bvi: "British Virgin Islands",
   "british virgin islands": "British Virgin Islands",
+  "les vierges britanniques": "British Virgin Islands",
+  "iles vierges britanniques": "British Virgin Islands",
+  "îles vierges britanniques": "British Virgin Islands",
   pr: "Puerto Rico",
 };
 
@@ -381,7 +384,7 @@ function titleCaseToken(token: string) {
 
 function normalizeLocationPart(value: string) {
   const normalized = normalizeSpacing(repairUtf8Mojibake(value))
-    .replace(/^[./-]+|[./-]+$/g, "")
+    .replace(/^[./?-]+|[./?-]+$/g, "")
     .trim();
   if (!normalized) return "";
 
