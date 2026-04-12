@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Info } from "lucide-react";
 
 interface Stats {
@@ -176,14 +176,23 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<PendingListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [moderationSearch, setModerationSearch] = useState("");
   const [moderationSource, setModerationSource] = useState("all");
   const [moderationIssue, setModerationIssue] = useState("all");
+  const hasLoadedRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const isInitialLoad = !hasLoadedRef.current;
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     try {
       const moderationParams = new URLSearchParams({ status: "pending_review" });
       if (moderationSearch.trim()) moderationParams.set("q", moderationSearch.trim());
@@ -201,14 +210,27 @@ export default function AdminPage() {
 
       setStats(statsData);
       setPending(pendingData.listings || []);
+      setLastUpdatedAt(new Date().toISOString());
+      hasLoadedRef.current = true;
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [moderationIssue, moderationSearch, moderationSource]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!autoRefresh || !stats) return;
+
+    const interval = window.setInterval(() => {
+      refresh();
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, [autoRefresh, refresh, stats]);
 
   async function handleApprove(id: string) {
     setActionLoading(id);
@@ -325,6 +347,25 @@ export default function AdminPage() {
       <p className="mt-2 text-sm text-foreground/60">
         Moderation, indexing, and match maintenance for the live marketplace.
       </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-foreground/60">
+        <span>
+          {lastUpdatedAt ? `Last updated ${new Date(lastUpdatedAt).toLocaleString()}` : "Waiting for first refresh"}
+        </span>
+        <span className={refreshing ? "text-primary" : ""}>
+          {refreshing ? "Refreshing now..." : "Dashboard idle"}
+        </span>
+        <button
+          type="button"
+          onClick={() => setAutoRefresh((current) => !current)}
+          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            autoRefresh
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+          }`}
+        >
+          {autoRefresh ? "Auto-refresh: On" : "Auto-refresh: Off"}
+        </button>
+      </div>
       {message && (
         <div className="mt-4 rounded-lg border border-border bg-surface p-3 text-sm text-foreground/80">
           {message}
