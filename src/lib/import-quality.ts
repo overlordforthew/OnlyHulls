@@ -48,6 +48,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
   grecia: "Greece",
   greee: "Greece",
   "greecen a": "Greece",
+  αλιμος: "Alimos",
   usa: "United States",
   us: "United States",
   uk: "UK",

@@ -49,7 +49,7 @@ test("normalizeImportedLocation fixes live TheYachtMarket UK and Greece tails", 
   );
   assert.equal(
     normalizeImportedLocation("Alimos Marina, άλιμος, GrèCe"),
-    "Alimos Marina, Άλιμος, Greece"
+    "Alimos Marina, Alimos, Greece"
   );
   assert.equal(
     normalizeImportedLocation("Athens, Greecen / A"),
