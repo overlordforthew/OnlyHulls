@@ -35,6 +35,18 @@ interface Stats {
     boatTitle: string | null;
     payload: Record<string, unknown>;
   }>;
+  ownerPulse: {
+    signups24h: number;
+    savedSearches24h: number;
+    shortlists24h: number;
+    connectRequests24h: number;
+    sellerListings24h: number;
+    lastSignupAt: string | null;
+    lastSavedSearchAt: string | null;
+    lastShortlistAt: string | null;
+    lastConnectRequestAt: string | null;
+    lastSellerListingAt: string | null;
+  };
   importQualitySummary: {
     activeCount: number;
     visibleCount: number;
@@ -134,6 +146,30 @@ function formatActivityDetail(activity: Stats["recentActivity"][number]) {
     default:
       return `${person} triggered ${activity.eventType.replace(/_/g, " ")}.`;
   }
+}
+
+function formatRelativeTime(value: string | null) {
+  if (!value) return "No activity yet";
+
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "No activity yet";
+
+  const diffMs = Date.now() - timestamp;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < hour) {
+    const minutes = Math.max(1, Math.round(diffMs / minute));
+    return `${minutes}m ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.max(1, Math.round(diffMs / hour));
+    return `${hours}h ago`;
+  }
+
+  const days = Math.max(1, Math.round(diffMs / day));
+  return `${days}d ago`;
 }
 
 export default function AdminPage() {
@@ -270,6 +306,10 @@ export default function AdminPage() {
   const sourceOptions = Array.from(new Set((stats?.sourceHealth || []).map((row) => row.source))).sort(
     (a, b) => a.localeCompare(b)
   );
+  const ownerAttention = (stats?.recentActivity || []).filter((activity) =>
+    ["signup_created", "seller_listing_created", "connect_requested"].includes(activity.eventType)
+  );
+  const recentUnverifiedSignups = (stats?.recentSignups || []).filter((signup) => !signup.emailVerified).length;
 
   if (loading) {
     return (
@@ -343,6 +383,57 @@ export default function AdminPage() {
               </span>
               .
             </p>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Owner Pulse</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  The fastest read on whether the marketplace is moving right now and what deserves attention first.
+                </p>
+              </div>
+              <p className="text-sm text-foreground/60">
+                {recentUnverifiedSignups > 0
+                  ? `${recentUnverifiedSignups} recent signup${recentUnverifiedSignups === 1 ? "" : "s"} still waiting on email verification.`
+                  : "Recent signups are verified or no new signups are waiting."}
+              </p>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+              <StatCard
+                label="Signups (24h)"
+                value={stats.ownerPulse.signups24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSignupAt)}`}
+                highlight={stats.ownerPulse.signups24h > 0}
+              />
+              <StatCard
+                label="Connects (24h)"
+                value={stats.ownerPulse.connectRequests24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastConnectRequestAt)}`}
+                highlight={stats.ownerPulse.connectRequests24h > 0}
+              />
+              <StatCard
+                label="Saved Searches (24h)"
+                value={stats.ownerPulse.savedSearches24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSavedSearchAt)}`}
+              />
+              <StatCard
+                label="Shortlists (24h)"
+                value={stats.ownerPulse.shortlists24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastShortlistAt)}`}
+              />
+              <StatCard
+                label="Seller Listings (24h)"
+                value={stats.ownerPulse.sellerListings24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSellerListingAt)}`}
+              />
+              <StatCard
+                label="Needs Verification"
+                value={recentUnverifiedSignups}
+                detail="Recent signups without a verified email yet."
+                highlight={recentUnverifiedSignups > 0}
+              />
+            </div>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
@@ -471,6 +562,34 @@ export default function AdminPage() {
                     </div>
                     <div className="text-sm text-foreground/60 sm:text-right">
                       <p>{new Date(activity.createdAt).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Owner Attention</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              The recent events most likely to matter to you directly: new accounts, fresh seller supply, and active connect requests.
+            </p>
+            {ownerAttention.length === 0 ? (
+              <p className="mt-4 text-sm text-foreground/60">No owner-priority events recorded yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {ownerAttention.slice(0, 6).map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex flex-col justify-between gap-2 rounded-lg border border-border px-4 py-3 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <p className="font-medium">{formatActivityTitle(activity)}</p>
+                      <p className="text-sm text-foreground/70">{formatActivityDetail(activity)}</p>
+                    </div>
+                    <div className="text-sm text-foreground/60 sm:text-right">
+                      <p>{new Date(activity.createdAt).toLocaleString()}</p>
+                      <p>{formatRelativeTime(activity.createdAt)}</p>
                     </div>
                   </div>
                 ))}
@@ -674,11 +793,13 @@ function StatCard({
   value,
   highlight,
   info,
+  detail,
 }: {
   label: string;
   value: number;
   highlight?: boolean;
   info?: string;
+  detail?: string;
 }) {
   return (
     <div
@@ -691,6 +812,7 @@ function StatCard({
         <p className="text-sm text-foreground/60">{label}</p>
         {info && <InfoBubble text={info} />}
       </div>
+      {detail && <p className="mt-2 text-xs text-foreground/55">{detail}</p>}
     </div>
   );
 }

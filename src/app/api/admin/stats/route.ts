@@ -51,6 +51,20 @@ export async function GET() {
       thin_summary_count: string;
       low_price_count: string;
     };
+    type OwnerPulseRow = {
+      saved_searches_24h: string;
+      shortlists_24h: string;
+      connect_requests_24h: string;
+      seller_listings_24h: string;
+      last_saved_search_at: string | null;
+      last_shortlist_at: string | null;
+      last_connect_request_at: string | null;
+      last_seller_listing_at: string | null;
+    };
+    type SignupPulseRow = {
+      signups_24h: string;
+      last_signup_at: string | null;
+    };
 
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
@@ -71,6 +85,8 @@ export async function GET() {
       recentActivity,
       importQualitySummary,
       sourceHealth,
+      ownerPulse,
+      signupPulse,
     ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
@@ -157,6 +173,25 @@ export async function GET() {
          ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC, COUNT(*) DESC
          LIMIT 8`
       ),
+      queryOne<OwnerPulseRow>(
+        `SELECT
+           COUNT(*) FILTER (WHERE event_type = 'saved_search_created' AND created_at >= NOW() - INTERVAL '24 hours')::text AS saved_searches_24h,
+           COUNT(*) FILTER (WHERE event_type = 'match_interested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS shortlists_24h,
+           COUNT(*) FILTER (WHERE event_type = 'connect_requested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS connect_requests_24h,
+           COUNT(*) FILTER (WHERE event_type = 'seller_listing_created' AND created_at >= NOW() - INTERVAL '24 hours')::text AS seller_listings_24h,
+           MAX(created_at) FILTER (WHERE event_type = 'saved_search_created') AS last_saved_search_at,
+           MAX(created_at) FILTER (WHERE event_type = 'match_interested') AS last_shortlist_at,
+           MAX(created_at) FILTER (WHERE event_type = 'connect_requested') AS last_connect_request_at,
+           MAX(created_at) FILTER (WHERE event_type = 'seller_listing_created') AS last_seller_listing_at
+         FROM funnel_events`
+      ),
+      queryOne<SignupPulseRow>(
+        `SELECT
+           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours')::text AS signups_24h,
+           MAX(created_at) AS last_signup_at
+         FROM users
+         WHERE ${liveUserWhere}`
+      ),
     ]);
 
     return NextResponse.json({
@@ -202,6 +237,18 @@ export async function GET() {
         thinSummaryCount: parseInt(row.thin_summary_count || "0", 10),
         lowPriceCount: parseInt(row.low_price_count || "0", 10),
       })),
+      ownerPulse: {
+        signups24h: parseInt(signupPulse?.signups_24h || "0", 10),
+        savedSearches24h: parseInt(ownerPulse?.saved_searches_24h || "0", 10),
+        shortlists24h: parseInt(ownerPulse?.shortlists_24h || "0", 10),
+        connectRequests24h: parseInt(ownerPulse?.connect_requests_24h || "0", 10),
+        sellerListings24h: parseInt(ownerPulse?.seller_listings_24h || "0", 10),
+        lastSignupAt: signupPulse?.last_signup_at || null,
+        lastSavedSearchAt: ownerPulse?.last_saved_search_at || null,
+        lastShortlistAt: ownerPulse?.last_shortlist_at || null,
+        lastConnectRequestAt: ownerPulse?.last_connect_request_at || null,
+        lastSellerListingAt: ownerPulse?.last_seller_listing_at || null,
+      },
       serviceStatus: {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),
