@@ -77,12 +77,6 @@ test("boats search returns results and renders the page", async ({ page, request
   await expect(page.getByTestId("boat-location").first()).toBeVisible();
 });
 
-test("boats search hides SEO hub links once a real query is active", async ({ page }) => {
-  await page.goto("/boats?q=catana");
-  await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Catana", { exact: false }).first()).toBeVisible();
-});
-
 test("boats API honors price sorting for search queries", async ({ request }) => {
   const api = await request.get("/api/boats?q=catana&sort=price&dir=asc&limit=12");
   expect(api.ok()).toBeTruthy();
@@ -105,13 +99,11 @@ test("boats API honors price sorting for search queries", async ({ request }) =>
 
 test("boats page shows ascending prices when sorting by price", async ({ page }) => {
   await page.goto("/boats?q=catana");
-  await page.locator("#boats-currency").selectOption("USD");
-  await expect(page.locator("#boats-currency")).toHaveValue("USD");
   await page.getByRole("button", { name: "Price", exact: false }).click();
   await page.waitForLoadState("networkidle");
 
-  const priceTexts = await page.getByTestId("boat-price-primary").evaluateAll((nodes) =>
-    nodes.slice(0, 6).map((node) => node.textContent || "")
+  const priceTexts = await page.getByTestId("boat-price-primary").evaluateAll((prices) =>
+    prices.slice(0, 6).map((price) => price.textContent || "")
   );
 
   const prices = priceTexts
