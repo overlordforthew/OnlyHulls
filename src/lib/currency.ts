@@ -3,6 +3,32 @@ export type SupportedCurrency = "USD" | "EUR" | "GBP";
 export const DEFAULT_CURRENCY: SupportedCurrency = "USD";
 export const PREFERRED_CURRENCY_COOKIE = "preferred_currency";
 export const PREFERRED_CURRENCY_SELECTED_COOKIE = "preferred_currency_selected";
+<<<<<<< HEAD
+
+const EURO_REGIONS = new Set([
+  "AT",
+  "BE",
+  "CY",
+  "DE",
+  "EE",
+  "ES",
+  "FI",
+  "FR",
+  "GR",
+  "HR",
+  "IE",
+  "IT",
+  "LT",
+  "LU",
+  "LV",
+  "MT",
+  "NL",
+  "PT",
+  "SI",
+  "SK",
+]);
+=======
+>>>>>>> 5520c7a (Fix price sorting and filtering across currencies)
 
 const EURO_REGIONS = new Set([
   "AT",
@@ -27,7 +53,7 @@ const EURO_REGIONS = new Set([
   "SK",
 ]);
 
-const USD_TO_CURRENCY_RATE: Record<SupportedCurrency, number> = {
+export const USD_TO_CURRENCY_RATE: Record<SupportedCurrency, number> = {
   USD: 1,
   EUR: 0.92,
   GBP: 0.78,

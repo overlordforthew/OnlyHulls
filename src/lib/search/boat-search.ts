@@ -1,5 +1,10 @@
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
-import { convertCurrencyToUsd, normalizeSupportedCurrency, type SupportedCurrency } from "@/lib/currency";
+import {
+  convertCurrencyToUsd,
+  normalizeSupportedCurrency,
+  type SupportedCurrency,
+  USD_TO_CURRENCY_RATE,
+} from "@/lib/currency";
 
 export type BoatSortField = "price" | "size" | "year" | "newest";
 export type BoatSortDir = "asc" | "desc";
@@ -22,6 +27,12 @@ export interface BoatSearchFilters {
 
 const VALID_SORTS = new Set<BoatSortField>(["price", "size", "year", "newest"]);
 const VALID_DIRS = new Set<BoatSortDir>(["asc", "desc"]);
+const PRICE_USD_SQL = `CASE
+  WHEN b.asking_price_usd IS NOT NULL THEN b.asking_price_usd
+  WHEN b.currency = 'EUR' THEN b.asking_price / ${USD_TO_CURRENCY_RATE.EUR}
+  WHEN b.currency = 'GBP' THEN b.asking_price / ${USD_TO_CURRENCY_RATE.GBP}
+  ELSE b.asking_price
+END`;
 
 interface BoatSearchFilterInput extends Omit<Partial<BoatSearchFilters>, "currency"> {
   currency?: string;
@@ -121,7 +132,7 @@ export function buildBoatSearchUrl(filters: Partial<BoatSearchFilters>) {
 
 export function buildOrderBy(sort: string, dir: string) {
   const SORT_MAP: Record<string, string> = {
-    price: "COALESCE(b.asking_price_usd, b.asking_price)",
+    price: PRICE_USD_SQL,
     size: "CAST(NULLIF(REGEXP_REPLACE(d.specs->>'loa', '[^0-9.]', '', 'g'), '') AS float)",
     year: "b.year",
     newest: "b.created_at",
@@ -164,11 +175,11 @@ export function buildWhereClause(filters: BoatSearchFilters) {
   }
 
   if (filters.minPrice) {
-    conditions.push(`COALESCE(b.asking_price_usd, b.asking_price) >= $${paramIdx++}`);
+    conditions.push(`${PRICE_USD_SQL} >= $${paramIdx++}`);
     params.push(convertCurrencyToUsd(parseFloat(filters.minPrice), filters.currency));
   }
   if (filters.maxPrice) {
-    conditions.push(`COALESCE(b.asking_price_usd, b.asking_price) <= $${paramIdx++}`);
+    conditions.push(`${PRICE_USD_SQL} <= $${paramIdx++}`);
     params.push(convertCurrencyToUsd(parseFloat(filters.maxPrice), filters.currency));
   }
   if (filters.minYear) {
