@@ -32,9 +32,33 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
     "Honolulu, Hawaii"
   );
   assert.equal(normalizeImportedLocation("Mare Adriatico,"), "Mare Adriatico");
+  assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
   assert.equal(normalizeImportedLocation("Price"), "");
   assert.equal(normalizeImportedLocation("???????"), "");
+});
+
+test("normalizeImportedLocation fixes live TheYachtMarket UK and Greece tails", () => {
+  assert.equal(
+    normalizeImportedLocation("Cowes, Uk \u{1F1EC}\u{1F1E7}"),
+    "Cowes, UK"
+  );
+  assert.equal(
+    normalizeImportedLocation("Hamble, Uk \u{1F1EC}\u{1F1E7}"),
+    "Hamble, UK"
+  );
+  assert.equal(
+    normalizeImportedLocation("Alimos Marina, άλιμος, GrèCe"),
+    "Alimos Marina, Άλιμος, Greece"
+  );
+  assert.equal(
+    normalizeImportedLocation("Athens, Greecen / A"),
+    "Athens, Greece"
+  );
+  assert.equal(
+    normalizeImportedLocation("Lefkas, Greee"),
+    "Lefkas, Greece"
+  );
 });
 
 test("normalizeImportedLocation preserves useful region formatting", () => {

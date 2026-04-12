@@ -46,8 +46,11 @@ const COUNTRY_ALIASES: Record<string, string> = {
   hellas: "Greece",
   grece: "Greece",
   grecia: "Greece",
+  greee: "Greece",
+  "greecen a": "Greece",
   usa: "United States",
   us: "United States",
+  uk: "UK",
   uae: "United Arab Emirates",
   bvi: "British Virgin Islands",
   "british virgin islands": "British Virgin Islands",
@@ -89,6 +92,7 @@ const TITLE_CASE_EXACT: Record<string, string> = {
   dc: "D.C",
   "d.c": "D.C",
   bvi: "BVI",
+  uk: "UK",
   usvi: "USVI",
   "x-yachts": "X-Yachts",
   "j-boats": "J/Boats",
@@ -319,6 +323,19 @@ function stripMojibake(value: string) {
     .trim();
 }
 
+function normalizeAliasKey(value: string) {
+  return stripMojibake(value)
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function lookupCountryAlias(value: string) {
+  return COUNTRY_ALIASES[value.toLowerCase()] ?? COUNTRY_ALIASES[normalizeAliasKey(value)];
+}
+
 function titleCaseTokenCore(token: string): string {
   const exact = TITLE_CASE_EXACT[token.toLowerCase()];
   if (exact) return exact;
@@ -384,11 +401,12 @@ function titleCaseToken(token: string) {
 
 function normalizeLocationPart(value: string) {
   const normalized = normalizeSpacing(repairUtf8Mojibake(value))
+    .replace(/\p{Regional_Indicator}+/gu, " ")
     .replace(/^[./?-]+|[./?-]+$/g, "")
     .trim();
   if (!normalized) return "";
 
-  const alias = COUNTRY_ALIASES[normalized.toLowerCase()];
+  const alias = lookupCountryAlias(normalized);
   if (alias) return alias;
   if (/^[A-Z]{2}$/.test(normalized)) return normalized;
 
@@ -439,7 +457,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
 
-  const exactLocationAlias = COUNTRY_ALIASES[normalized.toLowerCase()];
+  const exactLocationAlias = lookupCountryAlias(normalized);
   if (exactLocationAlias) return exactLocationAlias;
 
   if (!normalized.includes(",")) {
