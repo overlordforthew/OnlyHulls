@@ -22,6 +22,21 @@ LIMIT="${1:-100}"
 APP_CONTAINER_PREFIX="qkggs84cs88o0gww4wc80gwo-"
 TMP_DIR=$(python3 -c 'import os,tempfile; d=tempfile.gettempdir(); print("/tmp" if os.name != "nt" and d.startswith("/tmp/user/") else d)')
 
+rewrite_database_url_for_host() {
+    if [ -z "${DATABASE_URL:-}" ]; then
+        return
+    fi
+
+    if [[ "$DATABASE_URL" == *"@onlyhulls-db:"* ]]; then
+        local db_ip
+        db_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' onlyhulls-db 2>/dev/null || true)
+        if [ -n "$db_ip" ]; then
+            DATABASE_URL="${DATABASE_URL//@onlyhulls-db:/@${db_ip}:}"
+            export DATABASE_URL
+        fi
+    fi
+}
+
 load_runtime_env() {
     local container
     container=$(docker ps --format '{{.Names}}' | grep "^${APP_CONTAINER_PREFIX}" | head -1 || true)
@@ -48,6 +63,7 @@ load_fallback_env() {
 
 load_runtime_env
 load_fallback_env
+rewrite_database_url_for_host
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
