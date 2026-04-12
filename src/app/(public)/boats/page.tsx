@@ -38,6 +38,7 @@ import {
 type SortField = "price" | "size" | "year" | "newest";
 type SortDir = "asc" | "desc";
 type ViewMode = "grid" | "rows";
+type SearchParamReader = { get: (key: string) => string | null };
 
 interface Boat {
   id: string;
@@ -58,6 +59,22 @@ interface Boat {
   source_url?: string | null;
 }
 
+interface FilterState {
+  minPrice: string;
+  maxPrice: string;
+  minYear: string;
+  maxYear: string;
+  rigType: string;
+}
+
+const EMPTY_FILTERS: FilterState = {
+  minPrice: "",
+  maxPrice: "",
+  minYear: "",
+  maxYear: "",
+  rigType: "",
+};
+
 function normalizeSortField(value: string | null): SortField {
   return value === "price" || value === "size" || value === "year" || value === "newest"
     ? value
@@ -67,6 +84,16 @@ function normalizeSortField(value: string | null): SortField {
 function normalizeSortDir(value: string | null, field: SortField): SortDir {
   if (value === "asc" || value === "desc") return value;
   return field === "newest" ? "desc" : "asc";
+}
+
+function filtersFromParams(searchParams: SearchParamReader): FilterState {
+  return {
+    minPrice: searchParams.get("minPrice") || "",
+    maxPrice: searchParams.get("maxPrice") || "",
+    minYear: searchParams.get("minYear") || "",
+    maxYear: searchParams.get("maxYear") || "",
+    rigType: searchParams.get("rigType") || "",
+  };
 }
 
 export default function BoatsPage() {
@@ -100,11 +127,13 @@ function BoatsPageInner() {
     : null;
   const initialSortField = normalizeSortField(searchParams.get("sort"));
   const initialSortDir = normalizeSortDir(searchParams.get("dir"), initialSortField);
+  const initialFilters = filtersFromParams(searchParams);
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState(initialQ);
   const [search, setSearch] = useState(initialQ);
   const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
@@ -119,13 +148,8 @@ function BoatsPageInner() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const { compareCount, isCompared, toggleBoat, maxCompareBoats } = useCompareBoats();
-  const [filters, setFilters] = useState({
-    minPrice: "",
-    maxPrice: "",
-    minYear: "",
-    maxYear: "",
-    rigType: "",
-  });
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters);
 
   const BATCH_SIZE = 30;
   const isLoggedIn = status === "authenticated";
@@ -166,15 +190,11 @@ function BoatsPageInner() {
   }
 
   function clearSearchCriteria() {
+    setSearchInput("");
     setSearch("");
     setActiveTag("");
-    setFilters({
-      minPrice: "",
-      maxPrice: "",
-      minYear: "",
-      maxYear: "",
-      rigType: "",
-    });
+    setFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
     setSaveMessage(null);
     router.push("/boats");
   }
@@ -185,36 +205,43 @@ function BoatsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortField, sortDir, displayCurrency]);
 
-  const buildParams = useCallback((q?: string, tag?: string, pageNum?: number) => {
+  const buildParams = useCallback((q?: string, tag?: string, pageNum?: number, filterState?: FilterState) => {
     const params = new URLSearchParams();
     const searchQ = q !== undefined ? q : search;
     const searchTag = tag !== undefined ? tag : activeTag;
+    const currentFilters = filterState ?? appliedFilters;
     if (searchQ) params.set("q", searchQ);
     if (searchTag) params.set("tag", searchTag);
     params.set("page", String(pageNum || page));
     params.set("limit", String(BATCH_SIZE));
-    if (filters.minPrice) params.set("minPrice", filters.minPrice);
-    if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
-    if (filters.minYear) params.set("minYear", filters.minYear);
-    if (filters.maxYear) params.set("maxYear", filters.maxYear);
-    if (filters.rigType) params.set("rigType", filters.rigType);
+    if (currentFilters.minPrice) params.set("minPrice", currentFilters.minPrice);
+    if (currentFilters.maxPrice) params.set("maxPrice", currentFilters.maxPrice);
+    if (currentFilters.minYear) params.set("minYear", currentFilters.minYear);
+    if (currentFilters.maxYear) params.set("maxYear", currentFilters.maxYear);
+    if (currentFilters.rigType) params.set("rigType", currentFilters.rigType);
     if (displayCurrency !== "USD") params.set("currency", displayCurrency);
     params.set("sort", sortField);
     params.set("dir", sortDir);
     return params;
-  }, [search, activeTag, page, filters, displayCurrency, sortField, sortDir]);
+  }, [search, activeTag, page, appliedFilters, displayCurrency, sortField, sortDir]);
 
-  async function fetchBoats(q?: string, tag?: string) {
+  async function fetchBoats(q?: string, tag?: string, filterState?: FilterState) {
     setLoading(true);
     setError(null);
     setPage(1);
+    const nextSearch = q !== undefined ? q : search;
+    const nextTag = tag !== undefined ? tag : activeTag;
+    const nextFilters = filterState ?? appliedFilters;
     try {
-      const params = buildParams(q, tag, 1);
+      const params = buildParams(nextSearch, nextTag, 1, nextFilters);
       const res = await fetch(`/api/boats?${params}`);
       if (!res.ok) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
       setBoats(data.boats || []);
       setTotal(data.total || 0);
+      setSearch(nextSearch);
+      setActiveTag(nextTag);
+      setAppliedFilters(nextFilters);
     } catch {
       setError("Failed to load boats. Please try again.");
       setBoats([]);
@@ -245,32 +272,34 @@ function BoatsPageInner() {
   useEffect(() => {
     const q = searchParams.get("q") || "";
     const tag = searchParams.get("tag") || "";
+    const nextFilters = filtersFromParams(searchParams);
+    setSearchInput(q);
     setSearch(q);
     setActiveTag(tag);
-    fetchBoats(q, tag);
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    fetchBoats(q, tag, nextFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    setActiveTag("");
-    fetchBoats(search, "");
+    fetchBoats(searchInput, "", filters);
   }
 
   function clearTag() {
-    setActiveTag("");
-    fetchBoats(search, "");
+    fetchBoats(search, "", appliedFilters);
   }
 
   const hasMore = boats.length < total;
   const currentSearchFilters = {
     search,
     tag: activeTag,
-    minPrice: filters.minPrice || null,
-    maxPrice: filters.maxPrice || null,
-    minYear: filters.minYear || null,
-    maxYear: filters.maxYear || null,
-    rigType: filters.rigType || null,
+    minPrice: appliedFilters.minPrice || null,
+    maxPrice: appliedFilters.maxPrice || null,
+    minYear: appliedFilters.minYear || null,
+    maxYear: appliedFilters.maxYear || null,
+    rigType: appliedFilters.rigType || null,
     currency: displayCurrency,
     sort: sortField,
     dir: sortDir,
@@ -279,11 +308,11 @@ function BoatsPageInner() {
     search.trim().length > 0 ||
     activeTag.trim().length > 0 ||
     Boolean(
-      filters.minPrice ||
-      filters.maxPrice ||
-      filters.minYear ||
-      filters.maxYear ||
-      filters.rigType
+      appliedFilters.minPrice ||
+      appliedFilters.maxPrice ||
+      appliedFilters.minYear ||
+      appliedFilters.maxYear ||
+      appliedFilters.rigType
     );
 
   const inputClass =
@@ -372,8 +401,8 @@ function BoatsPageInner() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
                 <input
                   type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search boats..."
                   className={`${inputClass} w-full pl-9`}
                 />
@@ -454,7 +483,7 @@ function BoatsPageInner() {
                 <option value="schooner">Schooner</option>
               </select>
               <button
-                onClick={() => fetchBoats()}
+                onClick={() => fetchBoats(searchInput, activeTag, filters)}
                 className="rounded-lg bg-primary-btn px-4 py-2 text-sm font-medium text-white hover:bg-primary-light"
               >
                 Apply
@@ -563,7 +592,9 @@ function BoatsPageInner() {
           </div>
         ) : boats.length === 0 ? (
           <div className="space-y-8 py-16">
-            <p className="text-4xl">🌊</p>
+            <div className="flex justify-center text-primary">
+              <Sailboat className="h-10 w-10" aria-hidden="true" />
+            </div>
             <p className="mt-4 text-lg font-medium text-foreground">No hulls found</p>
             <p className="mx-auto mt-2 max-w-2xl text-sm text-text-secondary">
               We did not find a live listing for this exact search. Clear the current filters or jump into one of the strongest live browse paths below.

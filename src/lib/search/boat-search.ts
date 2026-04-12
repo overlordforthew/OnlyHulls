@@ -274,7 +274,7 @@ export function buildSavedSearchName(filters: Partial<BoatSearchFilters>) {
     parts.push(humanize(normalized.hullType));
   }
 
-  return parts.join(" • ");
+  return parts.join(" | ");
 }
 
 export function buildSavedSearchSignature(filters: Partial<BoatSearchFilters>) {

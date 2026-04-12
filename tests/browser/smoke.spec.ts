@@ -146,6 +146,29 @@ test("boats search hides SEO hub links once a real query is active", async ({ pa
   await expect(page.getByText("Catana", { exact: false }).first()).toBeVisible();
 });
 
+test("boats search hubs stay visible until a draft query is submitted", async ({ page }) => {
+  await page.route("**/api/boats**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockBrowseBoats,
+        total: mockBrowseBoats.length,
+      }),
+    });
+  });
+
+  await page.goto("/boats");
+  await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
+
+  await page.getByPlaceholder("Search boats...").fill("lagoon");
+  await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
+});
+
 test("boats API honors price sorting for search queries", async ({ request }) => {
   const api = await request.get("/api/boats?q=catana&sort=price&dir=asc&limit=12");
   expect(api.ok()).toBeTruthy();
