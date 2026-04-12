@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth";
-import { queryOne } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
@@ -14,13 +14,21 @@ export async function GET() {
   }
 
   try {
+    type RecentSignupRow = {
+      id: string;
+      email: string;
+      display_name: string | null;
+      created_at: string;
+      email_verified: boolean;
+    };
+
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
       AND email NOT LIKE '%@onlyhulls.test'
       AND email NOT LIKE 'browser-%'
     `;
 
-    const [users, admins, listings, pending, matches, intros, meiliStats, funnel30d] = await Promise.all([
+    const [users, admins, listings, pending, matches, intros, meiliStats, funnel30d, recentSignups] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM boats WHERE status = 'active'"),
@@ -32,6 +40,13 @@ export async function GET() {
         .getStats()
         .catch(() => null),
       getFunnelSnapshot(30),
+      query<RecentSignupRow>(
+        `SELECT id, email, display_name, created_at, email_verified
+         FROM users
+         WHERE ${liveUserWhere}
+         ORDER BY created_at DESC
+         LIMIT 8`
+      ),
     ]);
 
     return NextResponse.json({
@@ -42,6 +57,13 @@ export async function GET() {
       totalMatches: parseInt(matches?.count || "0"),
       totalIntroductions: parseInt(intros?.count || "0"),
       funnel30d,
+      recentSignups: recentSignups.map((signup) => ({
+        id: signup.id,
+        email: signup.email,
+        displayName: signup.display_name,
+        createdAt: signup.created_at,
+        emailVerified: signup.email_verified,
+      })),
       serviceStatus: {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),

@@ -19,6 +19,13 @@ interface Stats {
     matchInterested: number;
     connectRequests: number;
   };
+  recentSignups: Array<{
+    id: string;
+    email: string;
+    displayName: string | null;
+    createdAt: string;
+    emailVerified: boolean;
+  }>;
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -241,6 +248,38 @@ export default function AdminPage() {
               <StatCard label="Shortlist Saves" value={stats.funnel30d.matchInterested} />
               <StatCard label="Connect Requests" value={stats.funnel30d.connectRequests} highlight />
             </div>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-lg font-semibold">Recent Signups</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              The newest live user accounts, so you can quickly confirm whether people are joining.
+            </p>
+            {stats.recentSignups.length === 0 ? (
+              <p className="mt-4 text-sm text-foreground/60">No live signups recorded yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {stats.recentSignups.map((signup) => (
+                  <div
+                    key={signup.id}
+                    className="flex flex-col justify-between gap-2 rounded-lg border border-border px-4 py-3 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {signup.displayName?.trim() || "Unnamed user"}
+                      </p>
+                      <p className="text-sm text-foreground/70">{signup.email}</p>
+                    </div>
+                    <div className="text-sm text-foreground/60 sm:text-right">
+                      <p>{new Date(signup.createdAt).toLocaleString()}</p>
+                      <p className={signup.emailVerified ? "text-green-600" : "text-amber-500"}>
+                        {signup.emailVerified ? "Email verified" : "Email not verified yet"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

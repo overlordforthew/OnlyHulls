@@ -224,6 +224,16 @@ function BoatsPageInner() {
     sort: sortField,
     dir: sortDir,
   };
+  const hasActiveSearchCriteria =
+    search.trim().length > 0 ||
+    activeTag.trim().length > 0 ||
+    Boolean(
+      filters.minPrice ||
+      filters.maxPrice ||
+      filters.minYear ||
+      filters.maxYear ||
+      filters.rigType
+    );
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
@@ -434,13 +444,15 @@ function BoatsPageInner() {
         </div>
       </div>
 
-      <div className="pt-6">
-        <SeoHubLinks
-          compact
-          title="Explore Search Hubs"
-          subtitle="Use stable browse pages for popular makes, regions, and boat types."
-        />
-      </div>
+      {!hasActiveSearchCriteria && (
+        <div className="pt-6">
+          <SeoHubLinks
+            compact
+            title="Explore Search Hubs"
+            subtitle="Use stable browse pages for popular makes, regions, and boat types."
+          />
+        </div>
+      )}
 
       {/* Results */}
       <div className="mx-auto max-w-7xl px-5 pt-8">

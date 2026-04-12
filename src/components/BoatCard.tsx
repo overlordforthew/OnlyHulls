@@ -95,7 +95,10 @@ export default function BoatCard({
           ) : null}
 
           <div className="absolute bottom-3 left-3">
-            <p className="text-lg font-bold text-white drop-shadow-lg">
+            <p
+              data-testid="boat-price-primary"
+              className="text-lg font-bold text-white drop-shadow-lg"
+            >
               {displayedPrice.primary}
             </p>
             {displayedPrice.secondary && (
