@@ -1,9 +1,11 @@
-import { getStripe } from "@/lib/stripe";
-import { query } from "@/lib/db";
+import { createCustomerPortalSession, getStripe } from "@/lib/stripe";
+import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
+import { getPublicAppUrl } from "@/lib/config/urls";
 import type { SubscriptionTier } from "@/lib/config/plans";
-import { PLANS } from "@/lib/config/plans";
+import { getPlanByTier, PLANS } from "@/lib/config/plans";
+import { sendBillingIssueEmail, sendOwnerAlertEmail } from "@/lib/email/resend";
 
 function tierFromPriceId(priceId: string): SubscriptionTier | null {
   for (const plan of Object.values(PLANS)) {
@@ -104,11 +106,65 @@ export async function POST(req: Request) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;
+        const customerId = invoice.customer as string;
         logger.warn(
-          { customerId: invoice.customer, amount: invoice.amount_due, currency: invoice.currency },
+          { customerId, amount: invoice.amount_due, currency: invoice.currency },
           "Invoice payment FAILED"
         );
-        // TODO: Send notification to user about failed payment
+
+        const user = await queryOne<{
+          email: string;
+          display_name: string | null;
+          subscription_tier: SubscriptionTier | null;
+        }>(
+          "SELECT email, display_name, subscription_tier FROM users WHERE stripe_customer_id = $1",
+          [customerId]
+        );
+
+        const planName = getPlanByTier(user?.subscription_tier || "free").name;
+
+        if (user?.email) {
+          try {
+            const portalUrl = await createCustomerPortalSession(
+              customerId,
+              `${getPublicAppUrl()}/account`
+            );
+
+            await sendBillingIssueEmail({
+              email: user.email,
+              displayName: user.display_name,
+              planName,
+              updateBillingUrl: portalUrl,
+            });
+          } catch (err) {
+            logger.warn({ err, customerId }, "Failed to send billing issue email");
+          }
+        }
+
+        try {
+          await sendOwnerAlertEmail({
+            subject: `OnlyHulls payment failed: ${user?.email || customerId}`,
+            title: "Stripe payment failed",
+            intro: "A subscription renewal or invoice payment failed and may need follow-up.",
+            metadata: [
+              { label: "Customer", value: user?.email || customerId },
+              { label: "Display name", value: user?.display_name || "Not provided" },
+              { label: "Plan", value: planName },
+              {
+                label: "Amount due",
+                value:
+                  typeof invoice.amount_due === "number"
+                    ? `${invoice.currency?.toUpperCase() || "USD"} ${(invoice.amount_due / 100).toFixed(2)}`
+                    : null,
+              },
+              { label: "Invoice ID", value: invoice.id || null },
+            ],
+            ctaUrl: `${getPublicAppUrl()}/admin`,
+            ctaLabel: "Open admin dashboard",
+          });
+        } catch (err) {
+          logger.warn({ err, customerId }, "Failed to send owner billing alert");
+        }
         break;
       }
     }

@@ -395,3 +395,37 @@ export async function sendOwnerAlertEmail(params: {
     `,
   });
 }
+
+export async function sendBillingIssueEmail(params: {
+  email: string;
+  displayName?: string | null;
+  planName?: string | null;
+  updateBillingUrl: string;
+}) {
+  const firstName = params.displayName?.trim() || "there";
+  const planLabel = params.planName?.trim() || "your OnlyHulls plan";
+
+  return sendEmail({
+    to: params.email,
+    subject: `Action needed: update billing for ${planLabel}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #0f172a;">
+        <h2 style="color: #0369a1;">We couldn't process your OnlyHulls payment</h2>
+        <p>Hi ${esc(firstName)},</p>
+        <p>
+          We tried to renew <strong>${esc(planLabel)}</strong>, but the payment did not go through.
+          Your plan may lapse if the billing method is not updated.
+        </p>
+        <div style="margin: 24px 0;">
+          <a href="${esc(params.updateBillingUrl)}" style="background: #0369a1; color: white; padding: 12px 24px; border-radius: 24px; text-decoration: none; display: inline-block;">Update Billing</a>
+        </div>
+        <p style="color: #475569;">
+          After updating your payment method, Stripe will handle the retry automatically.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px;">
+          If you already fixed this, you can ignore this email.
+        </p>
+      </div>
+    `,
+  });
+}
