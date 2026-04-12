@@ -25,12 +25,12 @@ export default function WhatsAppContactButton() {
       target="_blank"
       rel="noopener noreferrer"
       data-testid="whatsapp-contact-button"
-      aria-label="Chat with Gil on WhatsApp"
+      aria-label="Open WhatsApp chat"
       className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full border border-[#25D366]/30 bg-[#25D366] px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105 hover:bg-[#20ba59] active:scale-95 sm:bottom-6 sm:right-6"
-      title="Chat with Gil on WhatsApp"
+      title="WhatsApp"
     >
       <MessageCircle className="h-4 w-4" />
-      <span className="hidden sm:inline">WhatsApp Gil</span>
+      <span className="hidden sm:inline">WhatsApp</span>
     </Link>
   );
 }
