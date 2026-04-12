@@ -81,7 +81,7 @@ function getOwnerAlertRecipients() {
   const configured = (
     process.env.OWNER_ALERT_EMAILS ||
     process.env.ADMIN_ALERT_EMAILS ||
-    "hello@onlyhulls.com"
+    "gilbarden@gmail.com"
   )
     .split(",")
     .map((value) => value.trim())
