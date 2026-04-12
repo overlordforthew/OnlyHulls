@@ -102,7 +102,7 @@ function getFrom() {
   );
 }
 
-function getOwnerAlertRecipients() {
+export function getOwnerAlertRecipients() {
   const configured = (
     process.env.OWNER_ALERT_EMAILS ||
     process.env.ADMIN_ALERT_EMAILS ||

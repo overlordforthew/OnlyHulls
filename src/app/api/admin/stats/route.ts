@@ -3,6 +3,7 @@ import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
 import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
+import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { NextResponse } from "next/server";
 
@@ -105,6 +106,7 @@ export async function GET() {
         openAIEnabled: openAIEnabled(),
         storageEnabled: storageEnabled(),
         meiliDocuments: meiliStats?.numberOfDocuments || 0,
+        ownerAlertRecipients: getOwnerAlertRecipients(),
       },
     });
   } catch (err) {

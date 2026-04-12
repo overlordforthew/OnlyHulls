@@ -41,6 +41,7 @@ interface Stats {
     openAIEnabled: boolean;
     storageEnabled: boolean;
     meiliDocuments: number;
+    ownerAlertRecipients: string[];
   };
 }
 
@@ -293,6 +294,17 @@ export default function AdminPage() {
               value={`${stats.serviceStatus.meiliDocuments}`}
               healthy={stats.serviceStatus.meiliDocuments >= stats.activeListings}
             />
+          </div>
+
+          <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+            <p className="text-sm font-medium text-foreground">Owner alerts destination</p>
+            <p className="mt-1 text-sm text-foreground/70">
+              New signups, connect requests, and digests currently route to{" "}
+              <span className="font-medium text-foreground">
+                {stats.serviceStatus.ownerAlertRecipients.join(", ")}
+              </span>
+              .
+            </p>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
