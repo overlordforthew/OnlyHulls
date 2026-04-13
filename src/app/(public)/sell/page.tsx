@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "Sell Your Boat",
   metadataBase: new URL(appUrl),
   description:
-    "List your boat on OnlyHulls. No commissions, no brokers — connect directly with AI-matched buyers worldwide.",
+    "List your boat on OnlyHulls. No commissions, no brokers, and direct contact with AI-matched buyers worldwide.",
   alternates: {
     canonical: `${appUrl}/sell`,
   },
@@ -31,22 +31,22 @@ const STEPS = [
   {
     Icon: ClipboardList,
     title: "Create Your Listing",
-    desc: "Enter your boat's details — make, model, specs, condition, and price. Our guided wizard walks you through it step by step.",
+    desc: "Enter your boat's details - make, model, specs, condition, and price. Our guided wizard walks you through it step by step.",
   },
   {
     Icon: Camera,
     title: "Add Photos",
-    desc: "Upload photos to showcase your boat. Great photos get more interest — we'll help you pick the best ones.",
+    desc: "Upload photos to showcase your boat. Great photos get more interest, and we help you lead with the strongest ones.",
   },
   {
     Icon: Zap,
     title: "AI Does the Work",
-    desc: "Our AI analyzes your listing, tags it with character traits (bluewater, liveaboard, race-ready), and matches it with qualified buyers. Featured and Broker plans also get AI help cleaning up listing copy, structure, and presentation.",
+    desc: "Our AI analyzes your listing, tags it with character traits such as bluewater, liveaboard, and race-ready, and matches it with qualified buyers. Featured and Broker plans also get AI help cleaning up listing copy, structure, and presentation.",
   },
   {
     Icon: Users,
     title: "Connect with Buyers",
-    desc: "When a buyer is interested, you connect directly. No broker in the middle, no commission on the sale.",
+    desc: "When a buyer is interested, you connect directly. No broker in the middle and no commission on the sale.",
   },
 ];
 
@@ -54,28 +54,28 @@ const BENEFITS = [
   {
     Icon: DollarSign,
     title: "$0 Commission",
-    desc: "Keep every dollar of your sale. We never take a cut — listing and matching are free.",
+    desc: "Keep every dollar of your sale. We never take a cut, and listing plus matching start free.",
   },
   {
     Icon: Globe,
     title: "Global Reach",
-    desc: "Your listing is visible to buyers worldwide. AI matching means the right buyers find you, not just the local ones.",
+    desc: "Your listing is visible to buyers worldwide. AI matching helps the right buyers find you, not just the local ones.",
   },
   {
     Icon: Shield,
     title: "You Stay in Control",
-    desc: "You decide who to talk to and when. No cold calls from brokers, no pressure to accept lowball offers.",
+    desc: "You decide who to talk to and when. No cold calls from brokers and no pressure to accept lowball offers.",
   },
   {
     Icon: Clock,
     title: "List in Minutes",
-    desc: "Our step-by-step wizard makes it fast. Enter the basics, add photos, and you're live.",
+    desc: "Our step-by-step wizard makes it fast. Enter the basics, add photos, and go live.",
   },
 ];
 
 const COMPARISON = [
-  { feature: "Commission", us: "$0", them: "8–10% of sale price" },
-  { feature: "Listing Fee", us: "Free", them: "$200–500+" },
+  { feature: "Commission", us: "$0", them: "8-10% of sale price" },
+  { feature: "Listing Fee", us: "Free", them: "$200-500+" },
   { feature: "Buyer Matching", us: "AI-powered", them: "Manual, limited" },
   { feature: "Reach", us: "Global", them: "Local / regional" },
   { feature: "Time to List", us: "Minutes", them: "Days to weeks" },
@@ -127,7 +127,6 @@ export default function SellPage() {
         }}
       />
 
-      {/* Hero */}
       <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-transparent" />
@@ -141,18 +140,15 @@ export default function SellPage() {
               For Sellers
             </div>
             <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Become a{" "}
-              <span className="text-primary">Creator</span>
+              Become a <span className="text-primary">Creator</span>
             </h1>
             <p className="mt-4 text-lg text-text-secondary">
               Show us your hull. List your boat for free and let our AI connect
-              you with qualified buyers worldwide. No brokers, no middlemen, no
-              percentage of your sale.
+              you with qualified buyers worldwide. No brokers, no middlemen, and
+              no percentage of your sale.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <ListBoatCTA
-                className="rounded-full bg-accent-btn px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-              />
+              <ListBoatCTA className="rounded-full bg-accent-btn px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
               <a
                 href="#pricing"
                 className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
@@ -164,13 +160,15 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* How Selling Works */}
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold">How Selling Works</h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {STEPS.map((step, i) => (
-              <div key={step.title} className="rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30">
+              <div
+                key={step.title}
+                className="rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
+              >
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <step.Icon className="h-6 w-6" strokeWidth={1.5} />
@@ -192,25 +190,24 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* Benefits */}
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold">
             Why Sell on <span className="text-primary">OnlyHulls</span>?
           </h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {BENEFITS.map((b) => (
+            {BENEFITS.map((benefit) => (
               <div
-                key={b.title}
+                key={benefit.title}
                 className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
               >
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all group-hover:bg-primary/20">
-                    <b.Icon className="h-6 w-6" strokeWidth={1.5} />
+                    <benefit.Icon className="h-6 w-6" strokeWidth={1.5} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold">{b.title}</h3>
-                    <p className="mt-2 text-sm text-text-secondary">{b.desc}</p>
+                    <h3 className="text-lg font-bold">{benefit.title}</h3>
+                    <p className="mt-2 text-sm text-text-secondary">{benefit.desc}</p>
                   </div>
                 </div>
               </div>
@@ -219,7 +216,6 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* Comparison Table */}
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold">
@@ -236,7 +232,12 @@ export default function SellPage() {
               </thead>
               <tbody>
                 {COMPARISON.map((row, i) => (
-                  <tr key={row.feature} className={`border-b border-border last:border-0 ${i % 2 === 0 ? "bg-surface-elevated" : "bg-surface"}`}>
+                  <tr
+                    key={row.feature}
+                    className={`border-b border-border last:border-0 ${
+                      i % 2 === 0 ? "bg-surface-elevated" : "bg-surface"
+                    }`}
+                  >
                     <td className="px-6 py-4 font-medium">{row.feature}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-primary">
@@ -258,7 +259,6 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* Pricing */}
       <section id="pricing" className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <SellerPricing />
@@ -271,7 +271,9 @@ export default function SellPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
               Seller FAQ
             </p>
-            <h2 className="mt-2 text-2xl font-bold">The practical questions sellers ask before they list</h2>
+            <h2 className="mt-2 text-2xl font-bold">
+              The practical questions sellers ask before they list
+            </h2>
             <p className="mt-3 text-text-secondary">
               These answers make the commercial model clearer for owners deciding whether to list on OnlyHulls.
             </p>
@@ -291,19 +293,15 @@ export default function SellPage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold">
-            Ready to Show Us Your <span className="text-primary">Hull(s)</span>!?
+            Ready to Show Us Your <span className="text-primary">Hull(s)</span>?
           </h2>
           <p className="mx-auto mt-4 max-w-md text-text-secondary">
-            Create a free account and list your boat in minutes. No credit card
-            required.
+            Create a free account and list your boat in minutes. No credit card required.
           </p>
-          <ListBoatCTA
-            className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
-          />
+          <ListBoatCTA className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
         </div>
       </section>
     </div>

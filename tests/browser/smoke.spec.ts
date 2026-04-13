@@ -352,6 +352,29 @@ test("match page renders buyer faq content", async ({ page }) => {
   await expect(page.getByText("How does OnlyHulls decide what is a good match?", { exact: false })).toBeVisible();
 });
 
+test("match page surfaces current matching stack status", async ({ page, request }) => {
+  const response = await request.get("/api/public/capabilities");
+  expect(response.ok()).toBeTruthy();
+  const capabilities = await response.json();
+
+  await page.goto("/match");
+  await expect(page.getByTestId("match-stack-status")).toBeVisible();
+
+  if (capabilities.matchIntelligenceEnabled) {
+    await expect(page.getByText("AI matching is live", { exact: true })).toBeVisible();
+  } else {
+    await expect(page.getByText("Smart matching is active", { exact: true })).toBeVisible();
+  }
+
+  if (capabilities.semanticMatchingEnabled) {
+    await expect(page.getByText("Semantic ranking is on", { exact: true })).toBeVisible();
+  } else {
+    await expect(page.getByText("Spec ranking is on", { exact: true })).toBeVisible();
+  }
+
+  await expect(page.getByText("Your matches stay saved", { exact: true })).toBeVisible();
+});
+
 test("sell page renders seller faq content", async ({ page }) => {
   await page.goto("/sell");
   await expect(page.getByRole("heading", { name: "The practical questions sellers ask before they list", exact: false })).toBeVisible();

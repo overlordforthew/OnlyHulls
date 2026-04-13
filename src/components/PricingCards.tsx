@@ -25,10 +25,10 @@ const buyerPlans = [
     priceNote: "Works out to about $8.33/month.",
     popular: true,
     features: [
-      "Unlimited saves & matching",
+      "Unlimited saves and matching",
       "AI buyer profile",
       "Match score breakdowns",
-      "Saved searches & alerts",
+      "Saved searches and alerts",
       "Dreamboard",
     ],
   },
@@ -126,10 +126,10 @@ function PlanCard({
         <p className="mt-1 text-sm text-text-secondary">{plan.priceNote}</p>
       )}
       <ul className="mt-6 space-y-3">
-        {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-sm">
+        {plan.features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2.5 text-sm">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <span className="text-text-secondary">{f}</span>
+            <span className="text-text-secondary">{feature}</span>
           </li>
         ))}
       </ul>
@@ -218,9 +218,7 @@ export function BuyerPricing() {
           />
         ))}
       </div>
-      {error && (
-        <p className="mt-4 text-center text-sm text-accent">{error}</p>
-      )}
+      {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
           Paid billing is not live yet on this environment. Free browsing still works.
@@ -237,7 +235,7 @@ export function SellerPricing() {
     <div>
       <h2 className="text-center text-2xl font-bold">Seller Plans</h2>
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
-        No commissions, no hidden fees — just simple 90-day pricing.
+        No commissions, no hidden fees - just simple 90-day pricing.
       </p>
       <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
         {sellerPlans.map((plan) => (
@@ -249,9 +247,7 @@ export function SellerPricing() {
           />
         ))}
       </div>
-      {error && (
-        <p className="mt-4 text-center text-sm text-accent">{error}</p>
-      )}
+      {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
           Free seller onboarding is live. Paid seller billing will unlock once Stripe is configured.
