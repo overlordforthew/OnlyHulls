@@ -46,6 +46,7 @@ function hasFlag(name: string) {
 
 function buildNormalizedKey(row: ImportCandidate) {
   const normalized = normalizeImportedMakeModel({
+    year: row.year,
     make: row.make,
     model: row.model,
     slug: row.slug,

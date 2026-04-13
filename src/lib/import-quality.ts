@@ -748,6 +748,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
       /^(Robertson And Caine|Robertson And Cane|Robertson Caine)\s+/i,
       ""
     );
+    cleaned = cleaned.replace(
+      /^(?:fractional\s+ownership\s+)?(?:sailboat\s+partnership\s+)+/i,
+      ""
+    );
     if (/^Leopard$/i.test(make)) {
       cleaned = cleaned.replace(/^South Africa\s+/i, "");
     }
@@ -800,17 +804,37 @@ function isLikelyMultihull(make: string, model: string, rigType?: string | null)
   return /\b(cat|catamaran|trimaran|multihull)\b/.test(haystack);
 }
 
-function getExpectedLoaFromModel(make: string, model: string) {
-  if (!/^bali$/i.test(make)) return null;
-
+function getExpectedLoaFromModel(make: string, model: string, sourceSite?: string | null) {
   const match = model.match(/(\d+(?:\.\d+)?)/);
   if (!match) return null;
 
-  let expectedLoa = Number.parseFloat(match[1]);
-  if (expectedLoa < 10 && /^\d\.\d$/.test(match[1])) {
-    expectedLoa *= 10;
+  if (/^bali$/i.test(make)) {
+    let expectedLoa = Number.parseFloat(match[1]);
+    if (expectedLoa < 10 && /^\d\.\d$/.test(match[1])) {
+      expectedLoa *= 10;
+    }
+    return Number.isFinite(expectedLoa) ? expectedLoa : null;
   }
-  return Number.isFinite(expectedLoa) ? expectedLoa : null;
+
+  if (normalizeSpacing(sourceSite).toLowerCase() !== "sailboatlistings") {
+    return null;
+  }
+
+  const digits = match[1].replace(/\./g, "");
+  let expectedLoa: number | null = null;
+
+  if (/^\d{2}$/.test(match[1])) {
+    expectedLoa = Number.parseInt(match[1], 10);
+  } else if (/^\d{3}$/.test(digits)) {
+    expectedLoa = Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 10;
+  } else if (/^\d{4}$/.test(digits)) {
+    expectedLoa = Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 100;
+  } else if (/^\d{2}\.\d$/.test(match[1])) {
+    expectedLoa = Number.parseFloat(match[1]);
+  }
+
+  if (expectedLoa === null || !Number.isFinite(expectedLoa)) return null;
+  return expectedLoa >= 20 && expectedLoa <= 90 ? expectedLoa : null;
 }
 
 function repairLoaFromExpected(rawLoa: number | null, expectedLoa: number | null) {
@@ -838,13 +862,18 @@ function getPlausibleDraftLimit(candidateLoa: number, isMultihull: boolean) {
 
 function parseCompactFeetInches(rawValue: number) {
   const digits = String(Math.trunc(rawValue));
-  if (!/^\d{3,4}$/.test(digits)) return [];
+  if (!/^\d{2,4}$/.test(digits)) return [];
 
   const candidates: number[] = [];
   if (digits.length === 4) {
     const inches = Number.parseInt(digits.slice(2), 10);
     if (inches <= 11) {
       candidates.push(Number.parseInt(digits.slice(0, 2), 10) + inches / 12);
+    }
+  } else if (digits.length === 2) {
+    const inches = Number.parseInt(digits.slice(1), 10);
+    if (inches <= 11) {
+      candidates.push(Number.parseInt(digits.slice(0, 1), 10) + inches / 12);
     }
   } else if (digits.length === 3) {
     const optionAFeet = Number.parseInt(digits.slice(0, 2), 10);
@@ -865,11 +894,13 @@ function parseCompactFeetInches(rawValue: number) {
 
 function parseCollapsedDecimalCandidates(rawValue: number) {
   const digits = String(Math.trunc(rawValue));
-  if (!/^\d{3,4}$/.test(digits)) return [];
+  if (!/^\d{2,4}$/.test(digits)) return [];
 
   const candidates: number[] = [];
   if (digits.length === 4) {
     candidates.push(Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 100);
+  } else if (digits.length === 2) {
+    candidates.push(Number.parseInt(digits.slice(0, 1), 10) + Number.parseInt(digits.slice(1), 10) / 10);
   } else if (digits.length === 3) {
     candidates.push(Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 10);
     candidates.push(Number.parseInt(digits.slice(0, 1), 10) + Number.parseInt(digits.slice(1), 10) / 100);
@@ -925,7 +956,7 @@ function repairDraftFromLoa(
   if (rawDraft <= maxPlausibleDraft) return rawDraft;
 
   if (normalizeSpacing(sourceSite).toLowerCase() === "sailboatlistings") {
-    const compact = repairCollapsedDimension(rawDraft, maxPlausibleDraft, 1);
+    const compact = repairCollapsedDimension(rawDraft, maxPlausibleDraft, Math.max(2, candidateLoa * 0.03));
     return compact;
   }
 
@@ -948,7 +979,7 @@ export function sanitizeImportedDimensions(input: {
 }) {
   const make = normalizeSpacing(input.make);
   const model = normalizeSpacing(input.model);
-  const expectedLoa = getExpectedLoaFromModel(make, model);
+  const expectedLoa = getExpectedLoaFromModel(make, model, input.sourceSite);
   const multihull = isLikelyMultihull(make, model, input.rigType);
 
   const loa = repairLoaFromExpected(toFiniteNumber(input.loa), expectedLoa);
@@ -1004,6 +1035,7 @@ export function sanitizeImportedSpecs(
 }
 
 type SanitizableBoatRecord = {
+  year?: number | null;
   make: string;
   model: string;
   slug?: string | null;
@@ -1014,6 +1046,7 @@ type SanitizableBoatRecord = {
 
 export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat: T): T {
   const normalizedMakeModel = normalizeImportedMakeModel({
+    year: boat.year,
     make: boat.make,
     model: boat.model,
     slug: boat.slug,
@@ -1091,6 +1124,7 @@ function inferModelFromSlug(slug?: string | null, make?: string | null) {
 }
 
 export function normalizeImportedMakeModel(input: {
+  year?: number | null;
   make?: string | null;
   model?: string | null;
   slug?: string | null;
@@ -1133,6 +1167,14 @@ export function normalizeImportedMakeModel(input: {
   model = stripRepeatedMakeFromModel(make, model);
   model = dedupeAdjacentModelTokens(model);
   model = normalizeRomanSuffixes(model);
+
+  if (
+    normalizeSpacing(input.sourceSite).toLowerCase() === "sailboatlistings" &&
+    input.year &&
+    model === String(input.year)
+  ) {
+    model = "";
+  }
 
   if (GENERIC_MODEL_TOKENS.has(model.toLowerCase())) {
     model = "";

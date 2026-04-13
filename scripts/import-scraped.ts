@@ -160,9 +160,9 @@ function parseMakeModel(name: string, year?: number): { make: string; model: str
   let cleaned = name.trim();
   // Strip leading year if present (e.g. "1979 catalina 30 sailboat" → "catalina 30 sailboat")
   if (year) cleaned = cleaned.replace(new RegExp(`^${year}\\s+`), "");
-  if (year) cleaned = cleaned.replace(new RegExp(`\\s+${year}$`), "").trim();
   // Strip trailing noise words
   cleaned = cleaned.replace(/\s+(sailboat|yacht|for sale|boat)$/i, "").trim();
+  if (year) cleaned = cleaned.replace(new RegExp(`\\s+${year}$`), "").trim();
   // Strip price bleed: anything starting with currency symbol (e.g. "Sadler 32 £24,000")
   cleaned = cleaned.replace(/\s+[£$€][\d,]+.*$/, "").trim();
   // Strip parenthetical year: "Beneteau 211 (2001)"
@@ -348,6 +348,7 @@ async function importBoats(filePath: string, sourceSite: string) {
       const sourceUrl = b.url || "";
       const preNormalizedSlug = buildImportedSlug(year, parsedName.make, parsedName.model, location);
       const { make, model } = normalizeImportedMakeModel({
+        year,
         make: parsedName.make,
         model: parsedName.model,
         slug: preNormalizedSlug,
@@ -572,6 +573,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
         parsedLocation
       );
       const normalized = normalizeImportedMakeModel({
+        year: parsedYear ?? existing.year ?? null,
         make: parsedName.make,
         model: parsedName.model,
         slug: preNormalizedSlug,

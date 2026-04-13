@@ -218,6 +218,7 @@ async function main() {
 
   for (const row of rows) {
     const normalized = normalizeImportedMakeModel({
+      year: row.year,
       make: row.make,
       model: row.model,
       slug: row.slug,

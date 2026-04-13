@@ -595,6 +595,29 @@ test("normalizeImportedMakeModel promotes out of generic sailboat listing makes"
   );
 });
 
+test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and partnership models", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1978,
+      make: "C&C",
+      model: "1978",
+      sourceSite: "sailboatlistings",
+      slug: "1978-c-c-1978-texas",
+    }),
+    { make: "C&C", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 2012,
+      make: "Dufour",
+      model: "Fractional Ownership Sailboat Partnership 425 Grand Large",
+      sourceSite: "sailboatlistings",
+      slug: "2012-dufour-fractional-ownership-sailboat-partnership-425-grand-large-culebra",
+    }),
+    { make: "Dufour", model: "425 Grand Large" }
+  );
+});
+
 test("normalizeImportedMakeModel restores dotted Bali model codes", () => {
   assert.deepEqual(
     normalizeImportedMakeModel({
@@ -680,6 +703,31 @@ test("sanitizeImportedDimensions drops sailboatlistings draft values that stay i
       draft: 11,
     }),
     { loa: 27, beam: 8.8, draft: null }
+  );
+});
+
+test("sanitizeImportedDimensions can infer sailboatlistings loa from model for compact repairs", () => {
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Crealock",
+      model: "37",
+      sourceSite: "sailboatlistings",
+      loa: null,
+      beam: 1011,
+      draft: 56,
+    }),
+    { loa: null, beam: 10.9, draft: 5.6 }
+  );
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Seidelmann",
+      model: "299",
+      sourceSite: "sailboatlistings",
+      loa: null,
+      beam: 113,
+      draft: 55,
+    }),
+    { loa: null, beam: 11.3, draft: 5.5 }
   );
 });
 
