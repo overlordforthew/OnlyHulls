@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildImportedSlugFallback,
   buildImportedSlug,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
@@ -616,6 +617,16 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
     }),
     { make: "Dufour", model: "425 Grand Large" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 2008,
+      make: "Fountaine Pajot",
+      model: "Salina Fractional Ownership",
+      sourceSite: "sailboatlistings",
+      slug: "2008-fountaine-pajot-salina-fractional-ownership-st-thomas",
+    }),
+    { make: "Fountaine Pajot", model: "Salina" }
+  );
 });
 
 test("normalizeImportedMakeModel restores dotted Bali model codes", () => {
@@ -760,5 +771,15 @@ test("buildImportedSlug uses cleaned location lead token", () => {
   assert.equal(
     buildImportedSlug(2003, "Robertson and Caine", "Leopard 47 Catamaran", "British Virgin Islands"),
     "2003-robertson-and-caine-leopard-47-catamaran-british-virgin-islands"
+  );
+});
+
+test("buildImportedSlugFallback appends deterministic suffix", () => {
+  assert.equal(
+    buildImportedSlugFallback(
+      "1983-irwin-38-center-cockpit-mark-2-la-cruz-marina-near-puerto-vallarta",
+      "4cc610fb-435a-4dd4-88f7-934f655964b3"
+    ),
+    "1983-irwin-38-center-cockpit-mark-2-la-cruz-marina-near-puerto-vallarta-4cc610"
   );
 });

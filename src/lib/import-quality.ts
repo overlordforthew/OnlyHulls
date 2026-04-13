@@ -752,6 +752,7 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
       /^(?:fractional\s+ownership\s+)?(?:sailboat\s+partnership\s+)+/i,
       ""
     );
+    cleaned = cleaned.replace(/\s+fractional\s+ownership$/i, "");
     if (/^Leopard$/i.test(make)) {
       cleaned = cleaned.replace(/^South Africa\s+/i, "");
     }
@@ -1083,6 +1084,15 @@ export function buildImportedSlug(
     )
     .filter(Boolean)
     .join("-");
+}
+
+export function buildImportedSlugFallback(slug: string, id: string) {
+  const suffix = String(id || "")
+    .replace(/[^a-zA-Z0-9]+/g, "")
+    .slice(0, 6)
+    .toLowerCase();
+
+  return suffix ? `${slug}-${suffix}` : slug;
 }
 
 function inferModelFromSlug(slug?: string | null, make?: string | null) {

@@ -2,6 +2,7 @@ import { pool, query } from "../src/lib/db/index";
 import { boatToEmbeddingText, embeddingsEnabled, generateEmbedding } from "../src/lib/ai/embeddings";
 import { generateText } from "../src/lib/ai/provider";
 import {
+  buildImportedSlugFallback,
   buildImportedSlug,
   buildImportDocumentationStatus,
   buildImportedCharacterTags,
@@ -333,6 +334,7 @@ async function main() {
     const embedding = shouldRefreshEmbeddings ? await generateEmbedding(embeddingText) : [];
     let normalizationConflict = false;
     let slugConflict = false;
+    let targetSlug = normalizedSlug;
 
     if (!dryRun) {
       const makeChanged = normalized.make !== row.make;
@@ -366,7 +368,23 @@ async function main() {
                LIMIT 1`,
               [row.id, normalizedSlug]
             );
-            slugConflict = slugCollision.length > 0;
+            if (slugCollision.length > 0) {
+              const fallbackSlug = buildImportedSlugFallback(normalizedSlug, row.id);
+              const fallbackCollision = await query<{ id: string }>(
+                `SELECT id
+                 FROM boats
+                 WHERE id <> $1
+                   AND slug = $2
+                 LIMIT 1`,
+                [row.id, fallbackSlug]
+              );
+              if (fallbackCollision.length > 0) {
+                slugConflict = true;
+                targetSlug = row.slug || normalizedSlug;
+              } else {
+                targetSlug = fallbackSlug;
+              }
+            }
           }
 
           try {
@@ -386,7 +404,7 @@ async function main() {
                 normalized.make,
                 normalized.model,
                 normalizedLocation,
-                slugConflict ? row.slug : normalizedSlug,
+                targetSlug,
               ]
             );
           } catch (err) {

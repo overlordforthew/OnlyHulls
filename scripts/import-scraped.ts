@@ -19,6 +19,7 @@ import {
   generateEmbeddings,
 } from "../src/lib/ai/embeddings";
 import {
+  buildImportedSlugFallback,
   buildImportedSlug,
   buildImportDocumentationStatus,
   buildImportedCharacterTags,
@@ -620,7 +621,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       });
 
       const hasDedupKey = Boolean(make && model && year && location);
-      let slugConflict = false;
+      let targetSlug = normalizedSlug;
       if (hasDedupKey) {
         const collision = await queryOne<{ id: string }>(
           `SELECT id
@@ -658,7 +659,22 @@ async function updateBoats(filePath: string, sourceSite: string) {
            LIMIT 1`,
           [boatId, normalizedSlug]
         );
-        slugConflict = Boolean(slugCollision);
+        if (slugCollision) {
+          const fallbackSlug = buildImportedSlugFallback(normalizedSlug, boatId);
+          const fallbackCollision = await queryOne<{ id: string }>(
+            `SELECT id
+             FROM boats
+             WHERE id <> $1
+               AND slug = $2
+             LIMIT 1`,
+            [boatId, fallbackSlug]
+          );
+          if (fallbackCollision) {
+            targetSlug = existing.slug;
+          } else {
+            targetSlug = fallbackSlug;
+          }
+        }
       }
 
       try {
@@ -687,7 +703,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
             currency,
             priceUsd,
             location,
-            slugConflict ? existing.slug : normalizedSlug,
+            targetSlug,
           ]
         );
       } catch (err) {
