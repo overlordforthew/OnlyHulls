@@ -1,9 +1,9 @@
 import Redis from "ioredis";
 
-function buildRedisOptions() {
-  const redisUrl = (process.env.REDIS_URL || "").trim();
+export function getRedisConnectionOptions(redisUrl = process.env.REDIS_URL || "") {
+  const normalizedUrl = redisUrl.trim();
 
-  if (!redisUrl) {
+  if (!normalizedUrl) {
     return {
       host: "localhost",
       port: 6380,
@@ -11,7 +11,7 @@ function buildRedisOptions() {
     };
   }
 
-  const parsed = new URL(redisUrl);
+  const parsed = new URL(normalizedUrl);
   const dbFromPath = parsed.pathname.replace(/^\/+/, "");
   const db = Number.parseInt(dbFromPath || "0", 10);
 
@@ -26,7 +26,7 @@ function buildRedisOptions() {
 }
 
 export const redis = new Redis({
-  ...buildRedisOptions(),
+  ...getRedisConnectionOptions(),
   maxRetriesPerRequest: 3,
   lazyConnect: true,
 });
