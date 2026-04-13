@@ -600,6 +600,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^marine\b[\s-]*/i, "").trim();
   }
 
+  if (/^spirit$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
+    make = "Spirit Yachts";
+    model = model.replace(/^yachts\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
@@ -659,6 +664,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^hunter marine$/i.test(make)) {
     cleaned = cleaned.replace(/^hunter\b[\s-]*/i, "");
+  }
+
+  if (/^spirit yachts$/i.test(make)) {
+    cleaned = cleaned.replace(/^spirit\b[\s-]*/i, "");
   }
 
   return cleaned.trim();

@@ -374,6 +374,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Hunter Marine", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Spirit",
+      model: "Yachts C72",
+      sourceSite: "theyachtmarket",
+      slug: "2023-spirit-yachts-c72-",
+    }),
+    { make: "Spirit Yachts", model: "C72" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Spirit",
+      model: "Yachts Spirit 76",
+      sourceSite: "theyachtmarket",
+      slug: "2008-spirit-yachts-spirit-76-balearic-islands",
+    }),
+    { make: "Spirit Yachts", model: "76" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Spirit",
+      model: "Yachts Spirit 50dh",
+      sourceSite: "theyachtmarket",
+      slug: "2013-spirit-yachts-spirit-50dh-",
+    }),
+    { make: "Spirit Yachts", model: "50dh" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Spirit",
+      model: "Yachts",
+      sourceSite: "theyachtmarket",
+      slug: "1980-spirit-yachts-",
+    }),
+    { make: "Spirit Yachts", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
