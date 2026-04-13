@@ -70,6 +70,10 @@ interface Stats {
     billingEnabled: boolean;
     emailEnabled: boolean;
     openAIEnabled: boolean;
+    matchIntelligenceEnabled: boolean;
+    matchIntelligenceProvider: string;
+    semanticMatchingEnabled: boolean;
+    embeddingProvider: string;
     storageEnabled: boolean;
     meiliDocuments: number;
     ownerAlertRecipients: string[];
@@ -187,6 +191,19 @@ function formatRelativeTime(value: string | null) {
 
   const days = Math.max(1, Math.round(diffMs / day));
   return `${days}d ago`;
+}
+
+function formatProviderLabel(provider: string) {
+  switch (provider) {
+    case "openai":
+      return "OpenAI";
+    case "openrouter":
+      return "OpenRouter";
+    case "ollama":
+      return "Ollama";
+    default:
+      return "None";
+  }
 }
 
 export default function AdminPage() {
@@ -426,7 +443,7 @@ export default function AdminPage() {
             <StatCard label="Introductions" value={stats.totalIntroductions} />
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <HealthCard
               label="Billing"
               value={stats.serviceStatus.billingEnabled ? "Configured" : "Missing"}
@@ -438,9 +455,22 @@ export default function AdminPage() {
               healthy={stats.serviceStatus.emailEnabled}
             />
             <HealthCard
-              label="OpenAI"
-              value={stats.serviceStatus.openAIEnabled ? "Configured" : "Fallback Only"}
-              healthy={stats.serviceStatus.openAIEnabled}
+              label="Match AI"
+              value={
+                stats.serviceStatus.matchIntelligenceEnabled
+                  ? formatProviderLabel(stats.serviceStatus.matchIntelligenceProvider)
+                  : "Fallback Only"
+              }
+              healthy={stats.serviceStatus.matchIntelligenceEnabled}
+            />
+            <HealthCard
+              label="Embeddings"
+              value={
+                stats.serviceStatus.semanticMatchingEnabled
+                  ? formatProviderLabel(stats.serviceStatus.embeddingProvider)
+                  : "Off"
+              }
+              healthy={stats.serviceStatus.semanticMatchingEnabled}
             />
             <HealthCard
               label="Storage"
@@ -460,6 +490,21 @@ export default function AdminPage() {
               New signups, connect requests, and digests currently route to{" "}
               <span className="font-medium text-foreground">
                 {stats.serviceStatus.ownerAlertRecipients.join(", ")}
+              </span>
+              .
+            </p>
+            <p className="mt-2 text-sm text-foreground/70">
+              Matching stack:{" "}
+              <span className="font-medium text-foreground">
+                {stats.serviceStatus.matchIntelligenceEnabled
+                  ? formatProviderLabel(stats.serviceStatus.matchIntelligenceProvider)
+                  : "fallback rules only"}
+              </span>
+              {" "}with{" "}
+              <span className="font-medium text-foreground">
+                {stats.serviceStatus.semanticMatchingEnabled
+                  ? `${formatProviderLabel(stats.serviceStatus.embeddingProvider)} embeddings`
+                  : "no semantic embeddings"}
               </span>
               .
             </p>

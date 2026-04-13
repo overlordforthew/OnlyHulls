@@ -2,7 +2,16 @@ import { requireRole } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getMeili, BOATS_INDEX } from "@/lib/meilisearch";
-import { billingEnabled, emailEnabled, openAIEnabled, storageEnabled } from "@/lib/capabilities";
+import {
+  billingEnabled,
+  emailEnabled,
+  embeddingProvider,
+  matchIntelligenceConfigured,
+  matchIntelligenceProvider,
+  openAIEnabled,
+  semanticMatchingEnabled,
+  storageEnabled,
+} from "@/lib/capabilities";
 import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
@@ -253,6 +262,10 @@ export async function GET() {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),
         openAIEnabled: openAIEnabled(),
+        matchIntelligenceEnabled: matchIntelligenceConfigured(),
+        matchIntelligenceProvider: matchIntelligenceProvider(),
+        semanticMatchingEnabled: semanticMatchingEnabled(),
+        embeddingProvider: embeddingProvider(),
         storageEnabled: storageEnabled(),
         meiliDocuments: meiliStats?.numberOfDocuments || 0,
         ownerAlertRecipients: getOwnerAlertRecipients(),

@@ -29,19 +29,39 @@ function getLocalMediaRoot() {
     return "/media-data";
   }
 
-  return ".local-media";
+  return null;
 }
 
-function resolveRouteLocalMediaPath(key: string) {
+function normalizeMediaSegments(key: string) {
   const normalizedKey = key.replace(/^\/+/, "").replace(/\\/g, "/");
-  const root = path.resolve(getLocalMediaRoot());
-  const resolved = path.resolve(path.join(/* turbopackIgnore: true */ root, normalizedKey));
+  const segments = normalizedKey
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
 
-  if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+  if (
+    segments.length === 0 ||
+    segments.some((segment) => segment === "." || segment === "..")
+  ) {
     throw new Error("Invalid media path");
   }
 
-  return resolved;
+  return segments;
+}
+
+function resolveRouteLocalMediaPath(key: string) {
+  const segments = normalizeMediaSegments(key);
+  const configuredRoot = getLocalMediaRoot();
+
+  if (configuredRoot) {
+    return path.join(configuredRoot, ...segments);
+  }
+
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    ".local-media",
+    ...segments
+  );
 }
 
 export async function GET(req: Request) {

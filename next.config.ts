@@ -5,9 +5,6 @@ const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  outputFileTracingExcludes: {
-    "/media/*": ["next.config.ts"],
-  },
   async headers() {
     return [
       {
