@@ -358,6 +358,9 @@ export default function AdminPage() {
   const sourceOptions = Array.from(new Set((stats?.sourceHealth || []).map((row) => row.source))).sort(
     (a, b) => a.localeCompare(b)
   );
+  const cleanupNeededCount = stats
+    ? Math.max(0, stats.importQualitySummary.activeCount - stats.importQualitySummary.visibleCount)
+    : 0;
   const recentActivity = (stats?.recentActivity || []).filter((activity) =>
     activityFilter === "all" ? true : activity.eventType === activityFilter
   );
@@ -534,6 +537,12 @@ export default function AdminPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
               <StatCard label="Tracked Boats" value={stats.importQualitySummary.activeCount} />
               <StatCard label="Buyer Visible" value={stats.importQualitySummary.visibleCount} highlight />
+              <StatCard
+                label="Needs Cleanup"
+                value={cleanupNeededCount}
+                actionHref="#cleanup-queue"
+                actionLabel="Open cleanup queue"
+              />
               <StatCard label="Missing Location" value={stats.importQualitySummary.missingLocationCount} />
               <StatCard label="Missing Images" value={stats.importQualitySummary.missingImageCount} />
               <StatCard label="Thin Summary" value={stats.importQualitySummary.thinSummaryCount} />
@@ -805,6 +814,7 @@ export default function AdminPage() {
       </div>
 
       <div className="mt-12">
+        <div id="cleanup-queue" />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-xl font-semibold">Active Cleanup Queue ({cleanupQueue.length})</h2>
