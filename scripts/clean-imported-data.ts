@@ -2,6 +2,7 @@ import { pool, query } from "../src/lib/db/index";
 import { boatToEmbeddingText, embeddingsEnabled, generateEmbedding } from "../src/lib/ai/embeddings";
 import { generateText } from "../src/lib/ai/provider";
 import {
+  buildImportedSlug,
   buildImportDocumentationStatus,
   buildImportedCharacterTags,
   buildImportedSummary,
@@ -223,6 +224,12 @@ async function main() {
       sourceSite: row.source_site,
     });
     const normalizedLocation = normalizeImportedLocation(row.location_text);
+    const normalizedSlug = buildImportedSlug(
+      row.year,
+      normalized.make,
+      normalized.model,
+      normalizedLocation
+    );
     const normalizedSpecs = sanitizeImportedSpecs(row.specs, {
       make: normalized.make,
       model: normalized.model,
@@ -324,13 +331,15 @@ async function main() {
     });
     const embedding = shouldRefreshEmbeddings ? await generateEmbedding(embeddingText) : [];
     let normalizationConflict = false;
+    let slugConflict = false;
 
     if (!dryRun) {
       const makeChanged = normalized.make !== row.make;
       const modelChanged = normalized.model !== row.model;
       const locationChanged = normalizedLocation !== (row.location_text || "");
+      const slugChanged = normalizedSlug !== (row.slug || "");
 
-      if (makeChanged || modelChanged || locationChanged) {
+      if (makeChanged || modelChanged || locationChanged || slugChanged) {
         const collision = await query<{ id: string }>(
           `SELECT id
            FROM boats
@@ -347,15 +356,37 @@ async function main() {
         if (collision.length > 0) {
           normalizationConflict = true;
         } else {
+          if (slugChanged) {
+            const slugCollision = await query<{ id: string }>(
+              `SELECT id
+               FROM boats
+               WHERE id <> $1
+                 AND slug = $2
+               LIMIT 1`,
+              [row.id, normalizedSlug]
+            );
+            slugConflict = slugCollision.length > 0;
+          }
+
           try {
             await pool.query(
               `UPDATE boats
                SET make = $2,
                    model = $3,
                    location_text = $4,
+                   slug = CASE
+                     WHEN NULLIF($5, '') IS NOT NULL THEN $5
+                     ELSE slug
+                   END,
                    updated_at = NOW()
                WHERE id = $1`,
-              [row.id, normalized.make, normalized.model, normalizedLocation]
+              [
+                row.id,
+                normalized.make,
+                normalized.model,
+                normalizedLocation,
+                slugConflict ? row.slug : normalizedSlug,
+              ]
             );
           } catch (err) {
             if (isDuplicateConflict(err)) {
@@ -375,6 +406,14 @@ async function main() {
           documentationStatus.import_quality_flags as string[]
         );
         documentationStatus.import_quality_visible = false;
+      }
+      if (!normalizationConflict && slugConflict) {
+        documentationStatus.import_quality_flags = Array.from(
+          new Set([...(documentationStatus.import_quality_flags as string[] || []), "slug_conflict"])
+        );
+        documentationStatus.import_quality_score = calculateImportQualityScore(
+          documentationStatus.import_quality_flags as string[]
+        );
       }
 
       await query(

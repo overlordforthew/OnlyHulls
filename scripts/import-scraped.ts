@@ -19,6 +19,7 @@ import {
   generateEmbeddings,
 } from "../src/lib/ai/embeddings";
 import {
+  buildImportedSlug,
   buildImportDocumentationStatus,
   buildImportedCharacterTags,
   buildImportedSummary,
@@ -218,12 +219,6 @@ function toUsd(price: number, currency: string): number {
   return Math.round(price * rate);
 }
 
-function generateSlug(year: number, make: string, model: string, location: string): string {
-  return [year, make, model, location.split(",")[0]]
-    .map((p) => String(p).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""))
-    .join("-");
-}
-
 function buildSpecsAndSummary(input: {
   boat: ScrapedBoat;
   year: number;
@@ -235,15 +230,16 @@ function buildSpecsAndSummary(input: {
   sourceName: string;
   sourceSite: string;
 }) {
+  const rigType = input.boat.rigging || input.boat.type || "";
   const { loa, beam, draft } = sanitizeImportedDimensions({
     make: input.make,
     model: input.model,
     sourceSite: input.sourceSite,
+    rigType,
     loa: parseNumber(input.boat.length || input.boat.loa),
     beam: parseNumber(input.boat.beam),
     draft: parseNumber(input.boat.draft),
   });
-  const rigType = input.boat.rigging || input.boat.type || "";
   const hullMaterial = input.boat.hull || "";
   const engine = input.boat.engine || "";
 
@@ -350,7 +346,7 @@ async function importBoats(filePath: string, sourceSite: string) {
 
       const location = normalizeImportedLocation(b.location);
       const sourceUrl = b.url || "";
-      const preNormalizedSlug = generateSlug(year, parsedName.make, parsedName.model, location);
+      const preNormalizedSlug = buildImportedSlug(year, parsedName.make, parsedName.model, location);
       const { make, model } = normalizeImportedMakeModel({
         make: parsedName.make,
         model: parsedName.model,
@@ -384,7 +380,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         continue;
       }
 
-      const slug = generateSlug(year, make, model, location);
+      const slug = buildImportedSlug(year, make, model, location);
 
       // Unique slug — append random suffix on collision
       let finalSlug = slug;
@@ -557,8 +553,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
         model: string;
         year: number | null;
         location_text: string | null;
+        slug: string | null;
       }>(
-        "SELECT id, make, model, year, location_text FROM boats WHERE source_url = $1",
+        "SELECT id, make, model, year, location_text, slug FROM boats WHERE source_url = $1",
         [b.url]
       );
       if (!existing) { notFound++; continue; }
@@ -568,7 +565,12 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const price = parsePrice(b.price);
       const parsedLocation = normalizeImportedLocation(b.location);
       const parsedName = b.name ? parseMakeModel(b.name, parsedYear ?? undefined) : { make: "", model: "" };
-      const preNormalizedSlug = generateSlug(parsedYear || 0, parsedName.make, parsedName.model, parsedLocation);
+      const preNormalizedSlug = buildImportedSlug(
+        parsedYear || existing.year || new Date().getUTCFullYear(),
+        parsedName.make,
+        parsedName.model,
+        parsedLocation
+      );
       const normalized = normalizeImportedMakeModel({
         make: parsedName.make,
         model: parsedName.model,
@@ -579,6 +581,8 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const make = normalized.make || existing.make;
       const model = normalized.model || existing.model;
       const location = parsedLocation || normalizeImportedLocation(existing.location_text) || "";
+      const normalizedSlug =
+        year && location ? buildImportedSlug(year, make, model, location) : null;
       const currency = detectCurrency(b);
 
       const { beam, draft, hullMaterial, engine, specs, summary, summarySource } = buildSpecsAndSummary({
@@ -614,6 +618,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       });
 
       const hasDedupKey = Boolean(make && model && year && location);
+      let slugConflict = false;
       if (hasDedupKey) {
         const collision = await queryOne<{ id: string }>(
           `SELECT id
@@ -642,6 +647,18 @@ async function updateBoats(filePath: string, sourceSite: string) {
         }
       }
 
+      if (normalizedSlug && normalizedSlug !== existing.slug) {
+        const slugCollision = await queryOne<{ id: string }>(
+          `SELECT id
+           FROM boats
+           WHERE id <> $1
+             AND slug = $2
+           LIMIT 1`,
+          [boatId, normalizedSlug]
+        );
+        slugConflict = Boolean(slugCollision);
+      }
+
       try {
         await query(
           `UPDATE boats
@@ -653,9 +670,23 @@ async function updateBoats(filePath: string, sourceSite: string) {
                asking_price = COALESCE($5, asking_price),
                currency = COALESCE(NULLIF($6, ''), currency),
                asking_price_usd = COALESCE($7, asking_price_usd),
-               location_text = COALESCE(NULLIF($8, ''), location_text)
+               location_text = COALESCE(NULLIF($8, ''), location_text),
+               slug = CASE
+                 WHEN NULLIF($9, '') IS NOT NULL THEN $9
+                 ELSE slug
+               END
            WHERE id = $1`,
-          [boatId, make, model, year, price, currency, priceUsd, location]
+          [
+            boatId,
+            make,
+            model,
+            year,
+            price,
+            currency,
+            priceUsd,
+            location,
+            slugConflict ? existing.slug : normalizedSlug,
+          ]
         );
       } catch (err) {
         if (!isDedupConflict(err)) {

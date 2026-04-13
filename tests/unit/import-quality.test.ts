@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildImportedSlug,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   sanitizeImportedBoatRecord,
@@ -564,6 +565,36 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
   );
 });
 
+test("normalizeImportedMakeModel promotes out of generic sailboat listing makes", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sailboat",
+      model: "Benetau Idille 51",
+      sourceSite: "sailboatlistings",
+      slug: "1987-sailboat-benetau-idille-51-outside-united-states",
+    }),
+    { make: "Benetau", model: "Idille 51" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Yacht",
+      model: "Constructors Cascade 36",
+      sourceSite: "sailboatlistings",
+      slug: "1986-yacht-constructors-cascade-36-outside-united-states",
+    }),
+    { make: "Cascade", model: "36" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Performance",
+      model: "Cruising Gemini 3000",
+      sourceSite: "sailboatlistings",
+      slug: "1989-performance-cruising-gemini-3000-california",
+    }),
+    { make: "Performance Cruising", model: "Gemini 3000" }
+  );
+});
+
 test("normalizeImportedMakeModel restores dotted Bali model codes", () => {
   assert.deepEqual(
     normalizeImportedMakeModel({
@@ -613,6 +644,45 @@ test("sanitizeImportedDimensions drops impossible Bali draft after conversion ch
   );
 });
 
+test("sanitizeImportedDimensions repairs compact sailboatlistings beam values", () => {
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Irwin",
+      model: "43cc",
+      sourceSite: "sailboatlistings",
+      loa: 45.6,
+      beam: 1358,
+      draft: 4.9,
+    }),
+    { loa: 45.6, beam: 13.6, draft: 4.9 }
+  );
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Catalina",
+      model: "Tall Rig",
+      sourceSite: "sailboatlistings",
+      loa: 36,
+      beam: 1111,
+      draft: 5,
+    }),
+    { loa: 36, beam: 11.9, draft: 5 }
+  );
+});
+
+test("sanitizeImportedDimensions drops sailboatlistings draft values that stay implausible", () => {
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Catalina",
+      model: "Tall Rig",
+      sourceSite: "sailboatlistings",
+      loa: 27,
+      beam: 810,
+      draft: 11,
+    }),
+    { loa: 27, beam: 8.8, draft: null }
+  );
+});
+
 test("sanitizeImportedBoatRecord normalizes make model, location, and specs together", () => {
   const normalized = sanitizeImportedBoatRecord({
     make: "Bali",
@@ -636,4 +706,11 @@ test("sanitizeImportedBoatRecord normalizes make model, location, and specs toge
     draft: 6.6,
     rig_type: "catamaran",
   });
+});
+
+test("buildImportedSlug uses cleaned location lead token", () => {
+  assert.equal(
+    buildImportedSlug(2003, "Robertson and Caine", "Leopard 47 Catamaran", "British Virgin Islands"),
+    "2003-robertson-and-caine-leopard-47-catamaran-british-virgin-islands"
+  );
 });

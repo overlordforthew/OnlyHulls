@@ -59,6 +59,8 @@ const COUNTRY_ALIASES: Record<string, string> = {
   "iles vierges britanniques": "British Virgin Islands",
   "îles vierges britanniques": "British Virgin Islands",
   pr: "Puerto Rico",
+  "ducht antilles": "Dutch Antilles",
+  "dutch antilles": "Dutch Antilles",
 };
 
 const COMMON_LOCATION_SUFFIXES = [
@@ -508,6 +510,72 @@ function canonicalizeMakeName(make: string) {
   return normalized;
 }
 
+const GENERIC_IMPORTED_MAKE_TOKENS = new Set(["boat", "boats", "sailboat", "yacht", "yachts"]);
+const SOURCE_NOISE_PREFIX_PATTERN =
+  /^(?:yachts?|sailboat|yacht\s+corp(?:oration)?|yacht\s+company(?:\s+inc)?|yacht\s+building|yacht\s*&\s*shipbuilding(?:\s+usa)?|boat\s+works|boat\s+builders|boat\s+yard|boatyard|fiberglass)\s+/i;
+const PROMOTION_STOPWORDS = new Set([
+  "boat",
+  "boats",
+  "builders",
+  "building",
+  "builder",
+  "company",
+  "constructors",
+  "corp",
+  "corporation",
+  "fiberglass",
+  "inc",
+  "marine",
+  "shipbuilding",
+  "usa",
+  "works",
+  "yard",
+  "yacht",
+  "yachts",
+]);
+
+function promoteSpecificSourceMakeModel(input: {
+  make: string;
+  model: string;
+  sourceSite?: string | null;
+}) {
+  if (normalizeSpacing(input.sourceSite).toLowerCase() !== "sailboatlistings") {
+    return { make: input.make, model: input.model };
+  }
+
+  let make = input.make;
+  let model = input.model;
+
+  if (GENERIC_IMPORTED_MAKE_TOKENS.has(make.toLowerCase())) {
+    const tokens = model.split(/\s+/).filter(Boolean);
+    while (tokens.length > 0 && PROMOTION_STOPWORDS.has(tokens[0].toLowerCase())) {
+      tokens.shift();
+    }
+
+    if (tokens.length > 0 && !/^\d{4}$/.test(tokens[0])) {
+      make = tokens.shift() || make;
+      model = tokens.join(" ");
+    }
+  }
+
+  if (/^hank$/i.test(make) && /^hinckley\b/i.test(model)) {
+    make = "Hinckley";
+    model = model.replace(/^hinckley(?:\s+boat\s+builders)?\b[\s-]*/i, "").trim();
+  }
+
+  if (/^performance$/i.test(make) && /^cruising\b/i.test(model)) {
+    make = "Performance Cruising";
+    model = model.replace(/^cruising\b[\s-]*/i, "").trim();
+  }
+
+  if (/^canadian$/i.test(make) && /^sailcraft\b/i.test(model)) {
+    make = "Canadian Sailcraft";
+    model = model.replace(/^sailcraft\b[\s-]*/i, "").trim();
+  }
+
+  return { make, model };
+}
+
 function splitEmbeddedModelFromMake(make: string, model: string) {
   if (model) return { make, model };
 
@@ -668,12 +736,23 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
   let cleaned = model;
 
   if (sourceSite === "sailboatlistings") {
+    for (let pass = 0; pass < 4; pass += 1) {
+      const next = cleaned
+        .replace(SOURCE_NOISE_PREFIX_PATTERN, "")
+        .replace(/^\d{4}\s+/i, "")
+        .trim();
+      if (next === cleaned) break;
+      cleaned = next;
+    }
     cleaned = cleaned.replace(
       /^(Robertson And Caine|Robertson And Cane|Robertson Caine)\s+/i,
       ""
     );
     if (/^Leopard$/i.test(make)) {
       cleaned = cleaned.replace(/^South Africa\s+/i, "");
+    }
+    if (/^hinckley$/i.test(make)) {
+      cleaned = cleaned.replace(/^boat builders\s+/i, "");
     }
   }
 
@@ -713,6 +792,14 @@ function roundDimension(value: number | null) {
   return Math.round(value * 10) / 10;
 }
 
+function isLikelyMultihull(make: string, model: string, rigType?: string | null) {
+  if (/^(bali|lagoon|leopard|catana|nautitech|outremer|seawind)$/i.test(make)) {
+    return true;
+  }
+  const haystack = `${make} ${model} ${rigType || ""}`.toLowerCase();
+  return /\b(cat|catamaran|trimaran|multihull)\b/.test(haystack);
+}
+
 function getExpectedLoaFromModel(make: string, model: string) {
   if (!/^bali$/i.test(make)) return null;
 
@@ -737,21 +824,110 @@ function repairLoaFromExpected(rawLoa: number | null, expectedLoa: number | null
   return rawLoa;
 }
 
-function repairBeamFromLoa(rawBeam: number | null, candidateLoa: number | null) {
-  if (rawBeam === null || candidateLoa === null) return rawBeam;
-
-  const maxPlausibleBeam = Math.max(16, candidateLoa * 0.72);
-  if (rawBeam <= maxPlausibleBeam) return rawBeam;
-
-  const converted = rawBeam / METERS_TO_FEET;
-  return converted <= maxPlausibleBeam ? roundDimension(converted) : rawBeam;
+function getPlausibleBeamLimit(candidateLoa: number, isMultihull: boolean) {
+  return isMultihull
+    ? Math.max(16, candidateLoa * 0.72)
+    : Math.max(10, candidateLoa * 0.45);
 }
 
-function repairDraftFromLoa(rawDraft: number | null, candidateLoa: number | null) {
+function getPlausibleDraftLimit(candidateLoa: number, isMultihull: boolean) {
+  return isMultihull
+    ? Math.max(6, candidateLoa * 0.14)
+    : Math.max(6, candidateLoa * 0.2);
+}
+
+function parseCompactFeetInches(rawValue: number) {
+  const digits = String(Math.trunc(rawValue));
+  if (!/^\d{3,4}$/.test(digits)) return [];
+
+  const candidates: number[] = [];
+  if (digits.length === 4) {
+    const inches = Number.parseInt(digits.slice(2), 10);
+    if (inches <= 11) {
+      candidates.push(Number.parseInt(digits.slice(0, 2), 10) + inches / 12);
+    }
+  } else if (digits.length === 3) {
+    const optionAFeet = Number.parseInt(digits.slice(0, 2), 10);
+    const optionAInches = Number.parseInt(digits.slice(2), 10);
+    if (optionAInches <= 11) {
+      candidates.push(optionAFeet + optionAInches / 12);
+    }
+
+    const optionBFeet = Number.parseInt(digits.slice(0, 1), 10);
+    const optionBInches = Number.parseInt(digits.slice(1), 10);
+    if (optionBInches <= 11) {
+      candidates.push(optionBFeet + optionBInches / 12);
+    }
+  }
+
+  return Array.from(new Set(candidates.filter((candidate) => Number.isFinite(candidate) && candidate > 0)));
+}
+
+function parseCollapsedDecimalCandidates(rawValue: number) {
+  const digits = String(Math.trunc(rawValue));
+  if (!/^\d{3,4}$/.test(digits)) return [];
+
+  const candidates: number[] = [];
+  if (digits.length === 4) {
+    candidates.push(Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 100);
+  } else if (digits.length === 3) {
+    candidates.push(Number.parseInt(digits.slice(0, 2), 10) + Number.parseInt(digits.slice(2), 10) / 10);
+    candidates.push(Number.parseInt(digits.slice(0, 1), 10) + Number.parseInt(digits.slice(1), 10) / 100);
+  }
+
+  return Array.from(new Set(candidates.filter((candidate) => Number.isFinite(candidate) && candidate > 0)));
+}
+
+function repairCollapsedDimension(
+  rawValue: number | null,
+  maxPlausibleValue: number,
+  minPlausibleValue: number
+) {
+  if (rawValue === null) return null;
+  const candidates = [...parseCompactFeetInches(rawValue), ...parseCollapsedDecimalCandidates(rawValue)]
+    .filter((candidate) => candidate >= minPlausibleValue && candidate <= maxPlausibleValue)
+    .sort((left, right) => right - left);
+  return candidates.length > 0 ? roundDimension(candidates[0]) : null;
+}
+
+function repairBeamFromLoa(
+  rawBeam: number | null,
+  candidateLoa: number | null,
+  sourceSite: string | null,
+  isMultihull: boolean
+) {
+  if (rawBeam === null || candidateLoa === null) return rawBeam;
+
+  const maxPlausibleBeam = getPlausibleBeamLimit(candidateLoa, isMultihull);
+  if (rawBeam <= maxPlausibleBeam) return rawBeam;
+
+  if (normalizeSpacing(sourceSite).toLowerCase() === "sailboatlistings") {
+    return repairCollapsedDimension(rawBeam, maxPlausibleBeam, Math.max(4, candidateLoa * 0.12));
+  }
+
+  const converted = rawBeam / METERS_TO_FEET;
+  if (converted <= maxPlausibleBeam) {
+    return roundDimension(converted);
+  }
+
+  return null;
+}
+
+function repairDraftFromLoa(
+  rawDraft: number | null,
+  candidateLoa: number | null,
+  sourceSite: string | null,
+  isMultihull: boolean
+) {
   if (rawDraft === null || candidateLoa === null) return rawDraft;
 
-  const maxPlausibleDraft = Math.max(12, candidateLoa * 0.2);
+  const maxPlausibleDraft = getPlausibleDraftLimit(candidateLoa, isMultihull);
   if (rawDraft <= maxPlausibleDraft) return rawDraft;
+
+  if (normalizeSpacing(sourceSite).toLowerCase() === "sailboatlistings") {
+    const compact = repairCollapsedDimension(rawDraft, maxPlausibleDraft, 1);
+    return compact;
+  }
 
   const converted = rawDraft / METERS_TO_FEET;
   if (converted <= maxPlausibleDraft) {
@@ -765,6 +941,7 @@ export function sanitizeImportedDimensions(input: {
   make?: string | null;
   model?: string | null;
   sourceSite?: string | null;
+  rigType?: string | null;
   loa?: number | null;
   beam?: number | null;
   draft?: number | null;
@@ -772,10 +949,21 @@ export function sanitizeImportedDimensions(input: {
   const make = normalizeSpacing(input.make);
   const model = normalizeSpacing(input.model);
   const expectedLoa = getExpectedLoaFromModel(make, model);
+  const multihull = isLikelyMultihull(make, model, input.rigType);
 
   const loa = repairLoaFromExpected(toFiniteNumber(input.loa), expectedLoa);
-  const beam = repairBeamFromLoa(toFiniteNumber(input.beam), loa ?? expectedLoa);
-  const draft = repairDraftFromLoa(toFiniteNumber(input.draft), loa ?? expectedLoa);
+  const beam = repairBeamFromLoa(
+    toFiniteNumber(input.beam),
+    loa ?? expectedLoa,
+    input.sourceSite ?? null,
+    multihull
+  );
+  const draft = repairDraftFromLoa(
+    toFiniteNumber(input.draft),
+    loa ?? expectedLoa,
+    input.sourceSite ?? null,
+    multihull
+  );
 
   return {
     loa: roundDimension(loa),
@@ -797,6 +985,7 @@ export function sanitizeImportedSpecs(
     make: context.make,
     model: context.model,
     sourceSite: context.sourceSite,
+    rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
     loa: toFiniteNumber(normalizedSpecs.loa),
     beam: toFiniteNumber(normalizedSpecs.beam),
     draft: toFiniteNumber(normalizedSpecs.draft),
@@ -844,6 +1033,23 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     location_text: normalizedLocation || boat.location_text || null,
     specs: normalizedSpecs,
   };
+}
+
+export function buildImportedSlug(
+  year: number,
+  make: string,
+  model: string,
+  locationText?: string | null
+) {
+  return [year, make, model, String(locationText || "").split(",")[0]]
+    .map((part) =>
+      String(part)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
+    )
+    .filter(Boolean)
+    .join("-");
 }
 
 function inferModelFromSlug(slug?: string | null, make?: string | null) {
@@ -896,6 +1102,12 @@ export function normalizeImportedMakeModel(input: {
   if (!model) {
     model = inferModelFromSlug(input.slug, make);
   }
+
+  ({ make, model } = promoteSpecificSourceMakeModel({
+    make,
+    model,
+    sourceSite: input.sourceSite,
+  }));
 
   ({ make, model } = splitEmbeddedModelFromMake(make, model));
 
