@@ -16,6 +16,7 @@ interface SeoHubPageProps {
 export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
   const collectionSchema = buildHubCollectionSchema(hub, boats, total);
   const breadcrumbSchema = buildHubBreadcrumbSchema(hub);
+  const lowInventory = boats.length > 0 && boats.length < 6;
 
   return (
     <div className="pb-16">
@@ -71,6 +72,32 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
             <p className="mt-2 text-text-secondary">
               The page is ready, but the current catalog does not have enough clean live listings here yet.
             </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/boats"
+                className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+              >
+                Browse all boats
+              </Link>
+              <Link
+                href="/match"
+                className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                Get AI matched
+              </Link>
+            </div>
+            <div className="mt-8 grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
+              {hub.relatedLinks.slice(0, 3).map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-xl border border-border bg-background/40 px-4 py-4 transition-all hover:border-primary/30"
+                >
+                  <p className="font-medium text-foreground">{link.label}</p>
+                  <p className="mt-1 text-sm text-text-secondary">{link.description}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         ) : (
           <>
@@ -79,6 +106,29 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
                 <BoatCard key={boat.id} boat={boat} />
               ))}
             </div>
+
+            {lowInventory && (
+              <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
+                <h2 className="text-xl font-semibold">Need a broader search?</h2>
+                <p className="mt-3 text-sm leading-7 text-text-secondary">
+                  This hub is live but still narrow. If you want more options right now, open a wider browse page or let the matcher fan out to nearby markets.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/boats"
+                    className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                  >
+                    Browse all boats
+                  </Link>
+                  <Link
+                    href="/match"
+                    className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    Get AI matched
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
               <h2 className="text-xl font-semibold">Why this page matters</h2>

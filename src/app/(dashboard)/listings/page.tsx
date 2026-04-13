@@ -77,6 +77,15 @@ export default async function ListingsDashboardPage({
   const upgradeReadyListings = listings.filter((listing) => getListingHealthScore(listing) >= 75);
   const viewsPerLiveListing =
     stats.activeListings > 0 ? stats.totalViews / stats.activeListings : 0;
+  const recentLeads7d = leads.filter((lead) => getLeadAgeHours(lead) <= 24 * 7).length;
+  const activeListingsWithLeads = listings.filter(
+    (listing) => listing.status === "active" && listing.lead_count > 0
+  ).length;
+  const listingCoverageRate =
+    stats.activeListings > 0 ? activeListingsWithLeads / stats.activeListings : 0;
+  const pipelineInMotion = stats.contactedLeads + stats.qualifiedLeads + stats.negotiatingLeads;
+  const recentListings14d = listings.filter((listing) => getListingAgeDays(listing) <= 14).length;
+  const winRate = stats.totalLeads > 0 ? stats.wonLeads / stats.totalLeads : 0;
   const nextLeadToHandle = hotLeads[0] ?? pendingLeads[0] ?? null;
   const nextListingToFix = listingsNeedingAttention[0] ?? null;
   const nextUpgradeCandidate = upgradeReadyListings[0] ?? null;
@@ -223,6 +232,37 @@ export default async function ListingsDashboardPage({
           value={formatOneDecimal(viewsPerLiveListing)}
           hint="Average traffic each active listing is earning"
         />
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-border bg-surface p-5">
+        <h2 className="text-lg font-semibold">Seller Momentum</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          A cleaner read on whether demand is arriving and whether your active inventory is converting into real conversations.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="New Leads (7d)"
+            value={recentLeads7d}
+            hint="Fresh demand that arrived this week"
+            highlight={recentLeads7d > 0}
+          />
+          <MetricCard
+            label="Live Listing Coverage"
+            value={formatPercent(listingCoverageRate)}
+            hint={`${activeListingsWithLeads} of ${stats.activeListings} active listings have at least one lead`}
+          />
+          <MetricCard
+            label="Pipeline In Motion"
+            value={pipelineInMotion}
+            hint="Contacted, qualified, or negotiating leads"
+            highlight={pipelineInMotion > 0}
+          />
+          <MetricCard
+            label="Win Rate"
+            value={formatPercent(winRate)}
+            hint={`${stats.wonLeads} closed won, ${recentListings14d} listings refreshed in 14 days`}
+          />
+        </div>
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-surface p-5">

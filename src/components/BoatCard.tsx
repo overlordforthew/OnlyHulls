@@ -51,6 +51,7 @@ export default function BoatCard({
 }: BoatCardProps) {
   const href = `/boats/${boat.slug || boat.id}`;
   const listingBadge = getListingBadge(boat);
+  const trustSignal = getTrustSignal(boat);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -117,7 +118,7 @@ export default function BoatCard({
           </h3>
         </Link>
 
-        {boat.location_text && (
+        {boat.location_text ? (
           <div
             data-testid="boat-location"
             className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground/85"
@@ -125,6 +126,14 @@ export default function BoatCard({
           >
             <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{boat.location_text}</span>
+          </div>
+        ) : (
+          <div
+            data-testid="boat-location-missing"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200"
+          >
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            Location being refined
           </div>
         )}
 
@@ -167,6 +176,18 @@ export default function BoatCard({
             ) : (
               <span className="font-medium text-text-secondary">{boat.source_name}</span>
             )}
+          </div>
+        )}
+
+        {trustSignal && (
+          <div
+            className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+              trustSignal.tone === "warning"
+                ? "border-amber-500/20 bg-amber-500/10 text-amber-100"
+                : "border-border bg-background/40 text-text-secondary"
+            }`}
+          >
+            {trustSignal.label}
           </div>
         )}
 
@@ -251,4 +272,24 @@ function getListingBadge(boat: BoatCardProps["boat"]) {
     label: "Exclusive to OnlyHulls",
     className: "bg-primary-btn/85",
   };
+}
+
+function getTrustSignal(boat: BoatCardProps["boat"]) {
+  if (!boat.location_text) {
+    return {
+      label: boat.source_name
+        ? `Location is still being refined from the ${boat.source_name} source feed.`
+        : "Seller still needs to confirm the boat's location.",
+      tone: "warning" as const,
+    };
+  }
+
+  if (boat.source_name && !boat.source_url) {
+    return {
+      label: `Source details were imported from ${boat.source_name}; external link is not available yet.`,
+      tone: "neutral" as const,
+    };
+  }
+
+  return null;
 }

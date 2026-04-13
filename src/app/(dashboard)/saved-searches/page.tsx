@@ -41,6 +41,41 @@ interface AlertSettings {
   email_enabled: boolean;
 }
 
+function getDeliveryStatus(settings: AlertSettings | null) {
+  const emailCadence = settings?.email_alerts || "none";
+  const emailEnabled = Boolean(settings?.email_enabled);
+
+  if (!emailEnabled) {
+    return {
+      label: "In-app alerts only",
+      description: "Email delivery is not active on this environment yet, so fresh boats stay visible here inside OnlyHulls.",
+      nextStep: "Open this page to review fresh boats, and switch email on later without losing the search.",
+    };
+  }
+
+  if (emailCadence === "instant") {
+    return {
+      label: "Instant email alerts",
+      description: "Fresh matches can trigger email as soon as the alert job finds them.",
+      nextStep: "You will still see the same boats here in-app until you mark them seen.",
+    };
+  }
+
+  if (emailCadence === "weekly") {
+    return {
+      label: "Weekly email digest",
+      description: "Fresh matches collect into a weekly digest while updates continue to appear here in-app.",
+      nextStep: "If you want faster delivery, switch to instant alerts from your account page.",
+    };
+  }
+
+  return {
+    label: "In-app alerts only",
+    description: "Email alerts are off right now, but OnlyHulls still tracks fresh boats for you here.",
+    nextStep: "Turn on instant or weekly email alerts from your account page whenever you are ready.",
+  };
+}
+
 function formatTimestamp(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -170,19 +205,7 @@ export default function SavedSearchesPage() {
 
   const searchesWithUpdates = searches.filter((search) => search.newResults > 0).length;
   const totalNewResults = searches.reduce((sum, search) => sum + search.newResults, 0);
-  const alertCadenceLabel =
-    alertSettings?.email_alerts === "instant"
-      ? "Instant email alerts"
-      : alertSettings?.email_alerts === "weekly"
-        ? "Weekly email digest"
-        : "In-app alerts only";
-  const alertCadenceDescription = !alertSettings?.email_enabled
-    ? "Email delivery is not active on this environment yet, so fresh boats are tracked here inside the app."
-    : alertSettings?.email_alerts === "instant"
-      ? "Every newly matched boat can trigger an email as soon as the alert job finds it."
-      : alertSettings?.email_alerts === "weekly"
-        ? "New boats are bundled into a weekly digest while your searches keep updating here in-app."
-        : "Email alerts are off right now, but OnlyHulls is still tracking fresh boats for you here.";
+  const deliveryStatus = getDeliveryStatus(alertSettings);
 
   if (loading) {
     return (
@@ -217,8 +240,8 @@ export default function SavedSearchesPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
             Alert delivery
           </p>
-          <p className="mt-2 text-lg font-semibold text-foreground">{alertCadenceLabel}</p>
-          <p className="mt-1 text-sm text-text-secondary">{alertCadenceDescription}</p>
+          <p className="mt-2 text-lg font-semibold text-foreground">{deliveryStatus.label}</p>
+          <p className="mt-1 text-sm text-text-secondary">{deliveryStatus.description}</p>
           <Link
             href="/account"
             className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary-light"
@@ -229,19 +252,25 @@ export default function SavedSearchesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/boats"
-          className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
-        >
-          Browse Boats
-        </Link>
-        <button
-          onClick={() => void loadSavedSearches()}
-          className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh Alerts
-        </button>
+          <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+              What happens next
+            </p>
+            <p className="mt-2 text-sm text-text-secondary">{deliveryStatus.nextStep}</p>
+          </div>
+          <Link
+            href="/boats"
+            className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+          >
+            Browse Boats
+          </Link>
+          <button
+            onClick={() => void loadSavedSearches()}
+            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh Alerts
+          </button>
         </div>
       </div>
 
@@ -288,6 +317,9 @@ export default function SavedSearchesPage() {
                     {search.newResults > 0
                       ? `${search.newResults} new since ${formatTimestamp(search.lastCheckedAt)}.`
                       : `Watching for new boats since ${formatTimestamp(search.lastCheckedAt)}.`}
+                  </p>
+                  <p className="mt-2 text-xs text-text-tertiary">
+                    Delivery: {deliveryStatus.label}. {deliveryStatus.nextStep}
                   </p>
                   {search.latestNewBoats.length > 0 && (
                     <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">

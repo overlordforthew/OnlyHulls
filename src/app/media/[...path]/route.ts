@@ -4,6 +4,8 @@ import { getStorageBackend } from "@/lib/storage-config";
 import { resolveLocalMediaPath } from "@/lib/storage-local";
 import { logger } from "@/lib/logger";
 
+export const runtime = "nodejs";
+
 const CONTENT_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",

@@ -97,6 +97,23 @@ interface PendingListing {
   quality_score: number;
 }
 
+type ActivityFilter =
+  | "all"
+  | "signup_created"
+  | "saved_search_created"
+  | "match_interested"
+  | "connect_requested"
+  | "seller_listing_created";
+
+const ACTIVITY_FILTER_OPTIONS: Array<{ value: ActivityFilter; label: string }> = [
+  { value: "all", label: "All activity" },
+  { value: "signup_created", label: "Signups" },
+  { value: "saved_search_created", label: "Saved searches" },
+  { value: "match_interested", label: "Shortlists" },
+  { value: "connect_requested", label: "Connects" },
+  { value: "seller_listing_created", label: "Seller listings" },
+];
+
 function formatActivityTitle(activity: Stats["recentActivity"][number]) {
   switch (activity.eventType) {
     case "signup_created":
@@ -184,6 +201,7 @@ export default function AdminPage() {
   const [moderationSearch, setModerationSearch] = useState("");
   const [moderationSource, setModerationSource] = useState("all");
   const [moderationIssue, setModerationIssue] = useState("all");
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const hasLoadedRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -328,8 +346,14 @@ export default function AdminPage() {
   const sourceOptions = Array.from(new Set((stats?.sourceHealth || []).map((row) => row.source))).sort(
     (a, b) => a.localeCompare(b)
   );
-  const ownerAttention = (stats?.recentActivity || []).filter((activity) =>
+  const recentActivity = (stats?.recentActivity || []).filter((activity) =>
+    activityFilter === "all" ? true : activity.eventType === activityFilter
+  );
+  const ownerAttention = recentActivity.filter((activity) =>
     ["signup_created", "seller_listing_created", "connect_requested"].includes(activity.eventType)
+  );
+  const recentConnections = (stats?.recentActivity || []).filter(
+    (activity) => activity.eventType === "connect_requested"
   );
   const recentUnverifiedSignups = (stats?.recentSignups || []).filter((signup) => !signup.emailVerified).length;
 
@@ -429,6 +453,7 @@ export default function AdminPage() {
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
+                <div id="owner-pulse" />
                 <h2 className="text-lg font-semibold">Owner Pulse</h2>
                 <p className="mt-1 text-sm text-foreground/60">
                   The fastest read on whether the marketplace is moving right now and what deserves attention first.
@@ -446,33 +471,45 @@ export default function AdminPage() {
                 value={stats.ownerPulse.signups24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSignupAt)}`}
                 highlight={stats.ownerPulse.signups24h > 0}
+                actionHref="#recent-signups"
+                actionLabel="Open signups"
               />
               <StatCard
                 label="Connects (24h)"
                 value={stats.ownerPulse.connectRequests24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastConnectRequestAt)}`}
                 highlight={stats.ownerPulse.connectRequests24h > 0}
+                actionHref="#recent-connections"
+                actionLabel="Open connects"
               />
               <StatCard
                 label="Saved Searches (24h)"
                 value={stats.ownerPulse.savedSearches24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSavedSearchAt)}`}
+                actionHref="#recent-activity"
+                actionLabel="Open activity"
               />
               <StatCard
                 label="Shortlists (24h)"
                 value={stats.ownerPulse.shortlists24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastShortlistAt)}`}
+                actionHref="#recent-activity"
+                actionLabel="Open activity"
               />
               <StatCard
                 label="Seller Listings (24h)"
                 value={stats.ownerPulse.sellerListings24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSellerListingAt)}`}
+                actionHref="#owner-attention"
+                actionLabel="Open supply"
               />
               <StatCard
                 label="Needs Verification"
                 value={recentUnverifiedSignups}
                 detail="Recent signups without a verified email yet."
                 highlight={recentUnverifiedSignups > 0}
+                actionHref="#recent-signups"
+                actionLabel="Review signups"
               />
             </div>
           </div>
@@ -552,6 +589,7 @@ export default function AdminPage() {
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div id="recent-signups" />
             <h2 className="text-lg font-semibold">Recent Signups</h2>
             <p className="mt-1 text-sm text-foreground/60">
               The newest live user accounts, so you can quickly confirm whether people are joining.
@@ -584,15 +622,32 @@ export default function AdminPage() {
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div id="recent-activity" />
             <h2 className="text-lg font-semibold">Recent Activity</h2>
             <p className="mt-1 text-sm text-foreground/60">
               Live product activity across signups, saved searches, shortlists, and connect requests.
             </p>
-            {stats.recentActivity.length === 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {ACTIVITY_FILTER_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setActivityFilter(option.value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    activityFilter === option.value
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {recentActivity.length === 0 ? (
               <p className="mt-4 text-sm text-foreground/60">No recent activity recorded yet.</p>
             ) : (
               <div className="mt-4 space-y-3">
-                {stats.recentActivity.map((activity) => (
+                {recentActivity.map((activity) => (
                   <div
                     key={activity.id}
                     className="flex flex-col justify-between gap-2 rounded-lg border border-border px-4 py-3 sm:flex-row sm:items-center"
@@ -611,6 +666,7 @@ export default function AdminPage() {
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div id="owner-attention" />
             <h2 className="text-lg font-semibold">Owner Attention</h2>
             <p className="mt-1 text-sm text-foreground/60">
               The recent events most likely to matter to you directly: new accounts, fresh seller supply, and active connect requests.
@@ -626,6 +682,35 @@ export default function AdminPage() {
                   >
                     <div>
                       <p className="font-medium">{formatActivityTitle(activity)}</p>
+                      <p className="text-sm text-foreground/70">{formatActivityDetail(activity)}</p>
+                    </div>
+                    <div className="text-sm text-foreground/60 sm:text-right">
+                      <p>{new Date(activity.createdAt).toLocaleString()}</p>
+                      <p>{formatRelativeTime(activity.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div id="recent-connections" />
+            <h2 className="text-lg font-semibold">Recent Connections</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              The newest buyer-to-seller connection requests, separated out so real demand is easy to spot.
+            </p>
+            {recentConnections.length === 0 ? (
+              <p className="mt-4 text-sm text-foreground/60">No connection requests recorded yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {recentConnections.slice(0, 6).map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex flex-col justify-between gap-2 rounded-lg border border-border px-4 py-3 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <p className="font-medium">{activity.boatTitle || "Boat connection request"}</p>
                       <p className="text-sm text-foreground/70">{formatActivityDetail(activity)}</p>
                     </div>
                     <div className="text-sm text-foreground/60 sm:text-right">
@@ -835,12 +920,16 @@ function StatCard({
   highlight,
   info,
   detail,
+  actionHref,
+  actionLabel,
 }: {
   label: string;
   value: number;
   highlight?: boolean;
   info?: string;
   detail?: string;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
     <div
@@ -854,6 +943,14 @@ function StatCard({
         {info && <InfoBubble text={info} />}
       </div>
       {detail && <p className="mt-2 text-xs text-foreground/55">{detail}</p>}
+      {actionHref && actionLabel && (
+        <Link
+          href={actionHref}
+          className="mt-3 inline-flex text-xs font-medium text-primary transition-colors hover:text-primary-light"
+        >
+          {actionLabel}
+        </Link>
+      )}
     </div>
   );
 }

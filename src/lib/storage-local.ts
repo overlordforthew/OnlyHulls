@@ -1,13 +1,20 @@
 import { mkdir, writeFile } from "fs/promises";
-import os from "os";
 import path from "path";
 import { LOCAL_MEDIA_BASE_PATH } from "@/lib/media";
 
-const LOCAL_MEDIA_ROOT =
-  process.env.LOCAL_MEDIA_ROOT ||
-  (process.env.NODE_ENV === "production"
-    ? "/media-data"
-    : path.join(/* turbopackIgnore: true */ os.tmpdir(), "onlyhulls-media"));
+function getDefaultLocalMediaRoot() {
+  if (process.env.NODE_ENV === "production") {
+    return "/media-data";
+  }
+
+  // Keep development media under a stable project-relative folder so Turbopack
+  // does not trace the whole filesystem while resolving local uploads.
+  return path.join(/* turbopackIgnore: true */ process.cwd(), ".local-media");
+}
+
+function getLocalMediaRoot() {
+  return process.env.LOCAL_MEDIA_ROOT || getDefaultLocalMediaRoot();
+}
 
 export function getLocalMediaPublicUrl(key: string): string {
   return `${LOCAL_MEDIA_BASE_PATH}/${key}`;
@@ -15,7 +22,7 @@ export function getLocalMediaPublicUrl(key: string): string {
 
 export function resolveLocalMediaPath(key: string): string {
   const normalizedKey = key.replace(/^\/+/, "").replace(/\\/g, "/");
-  const root = path.resolve(/* turbopackIgnore: true */ LOCAL_MEDIA_ROOT);
+  const root = path.resolve(getLocalMediaRoot());
   const resolved = path.resolve(path.join(/* turbopackIgnore: true */ root, normalizedKey));
 
   if (!resolved.startsWith(root + path.sep) && resolved !== root) {
