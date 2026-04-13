@@ -475,6 +475,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Van De Stadt", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "North",
+      model: "American Yachts Spirit 28",
+      sourceSite: "sailboatlistings",
+      slug: "1980-north-american-yachts-spirit-28-connecticut",
+    }),
+    { make: "North American Yachts", model: "Spirit 28" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "North",
+      model: "American Yachts",
+      sourceSite: "sailboatlistings",
+      slug: "1980-north-american-yachts-",
+    }),
+    { make: "North American Yachts", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
@@ -534,6 +552,15 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
       slug: "1968-e-g-van-de-stadt-rebel-41-washington",
     }),
     { make: "E G", model: "Van De Stadt Rebel 41" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "North",
+      model: "Wind 50",
+      sourceSite: "theyachtmarket",
+      slug: "1996-north-wind-50-",
+    }),
+    { make: "North", model: "Wind 50" }
   );
 });
 
