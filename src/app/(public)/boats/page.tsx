@@ -153,6 +153,8 @@ function BoatsPageInner() {
 
   const BATCH_SIZE = 30;
   const isLoggedIn = status === "authenticated";
+  const compareReady = compareCount > 0;
+  const compareCountLabel = `${compareCount} filled`;
 
   useEffect(() => {
     const savedView = window.localStorage.getItem("boats_view_mode");
@@ -391,9 +393,38 @@ function BoatsPageInner() {
                   {saveMessage}
                 </p>
               )}
-              <p className="mt-2 text-xs text-text-secondary">
-                Compare shortlist: {compareCount}/{maxCompareBoats} boats selected.
-              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <p className="text-xs text-text-secondary">
+                  Compare shortlist: {compareCount}/{maxCompareBoats} boats selected.
+                </p>
+                <Link
+                  href="/compare"
+                  data-testid="compare-open-link"
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-all ${
+                    compareReady
+                      ? "border-amber-400/60 bg-amber-300/10 text-amber-200 shadow-[0_0_0_1px_rgba(251,191,36,0.18)] hover:border-amber-300 hover:text-amber-100"
+                      : "border-border text-text-secondary hover:border-primary/40 hover:text-primary"
+                  }`}
+                  aria-label={
+                    compareReady
+                      ? `Open compare with ${compareCount} selected boats`
+                      : "Open compare page"
+                  }
+                >
+                  <GitCompareArrows className="h-3.5 w-3.5" />
+                  {compareReady ? "Open compare" : "Compare page"}
+                  {compareReady && (
+                    <>
+                      <span className="inline-flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full border-2 border-amber-300 bg-amber-300/15 px-1.5 text-[10px] font-bold text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.25)]">
+                        {compareCount}
+                      </span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200/85">
+                        {compareCountLabel}
+                      </span>
+                    </>
+                  )}
+                </Link>
+              </div>
             </div>
 
             <form onSubmit={handleSearch} className="flex max-w-md flex-1 gap-2 sm:justify-end">

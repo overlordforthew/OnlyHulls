@@ -328,6 +328,11 @@ test("boats can be added to compare and rendered side by side", async ({ page })
   await expect(compareButtons.nth(0)).toBeVisible();
   await compareButtons.nth(0).click();
   await compareButtons.nth(1).click();
+  await expect(page.getByTestId("compare-nav-link")).toContainText("2");
+  await expect(page.getByTestId("compare-nav-link")).toContainText("filled");
+  await expect(page.getByTestId("compare-open-link")).toContainText("Open compare");
+  await expect(page.getByTestId("compare-open-link")).toContainText("2");
+  await expect(page.getByTestId("compare-open-link")).toContainText("filled");
 
   await page.goto("/compare");
   await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();

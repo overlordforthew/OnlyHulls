@@ -60,6 +60,8 @@ export default function SiteNav() {
   }, [isLoggedIn]);
 
   const visibleSearchesWithUpdates = isLoggedIn ? searchesWithUpdates : 0;
+  const compareReady = compareCount > 0;
+  const compareCountLabel = `${compareCount} filled`;
 
   return (
     <>
@@ -91,17 +93,35 @@ export default function SiteNav() {
             <Link href="/sell" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
               Sell
             </Link>
-            <Link href="/compare" className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-primary">
+            <Link
+              href="/compare"
+              data-testid="compare-nav-link"
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                compareReady
+                  ? "border-amber-400/60 bg-amber-300/10 text-amber-200 shadow-[0_0_0_1px_rgba(251,191,36,0.18)] hover:border-amber-300 hover:text-amber-100"
+                  : "border-transparent text-text-secondary hover:border-primary/30 hover:text-primary"
+              }`}
+              aria-label={
+                compareReady
+                  ? `Compare boats, ${compareCount} selected`
+                  : "Compare boats"
+              }
+            >
               <GitCompareArrows className="h-4 w-4" />
               Compare
-              {compareCount > 0 && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  {compareCount}
-                </span>
+              {compareReady && (
+                <>
+                  <span className="inline-flex h-6 min-w-6 animate-pulse items-center justify-center rounded-full border-2 border-amber-300 bg-amber-300/15 px-2 text-[11px] font-bold text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.28)]">
+                    {compareCount}
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/85">
+                    {compareCountLabel}
+                  </span>
+                </>
               )}
             </Link>
           </nav>
-
+ 
           {/* Desktop Actions */}
           <div className="hidden items-center gap-4 md:flex">
             {isLoggedIn ? (
