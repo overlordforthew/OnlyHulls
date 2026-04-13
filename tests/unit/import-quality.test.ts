@@ -176,6 +176,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Camper & Nicholsons", model: "60 Riviera" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Island",
+      model: "Packet 460",
+      sourceSite: "theyachtmarket",
+      slug: "2008-island-packet-460-",
+    }),
+    { make: "Island Packet", model: "460" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Island",
+      model: "Packet Ip-420",
+      sourceSite: "sailboatlistings",
+      slug: "2001-island-packet-ip-420-maryland",
+    }),
+    { make: "Island Packet", model: "Ip-420" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Island",
+      model: "Packet Estero",
+      sourceSite: "sailboatlistings",
+      slug: "2012-island-packet-estero-connecticut",
+    }),
+    { make: "Island Packet", model: "Estero" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {

@@ -566,6 +566,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^(?:&\s*|and\s+)?nicholsons?\b[\s-]*/i, "").trim();
   }
 
+  if (/^island$/i.test(make) && modelStartsWith(/^packet\b[\s-]*/i)) {
+    make = "Island Packet";
+    model = model.replace(/^packet\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
