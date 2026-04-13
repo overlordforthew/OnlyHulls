@@ -65,10 +65,14 @@ export async function GET() {
       shortlists_24h: string;
       connect_requests_24h: string;
       seller_listings_24h: string;
+      paid_checkouts_24h: string;
+      payment_failures_24h: string;
       last_saved_search_at: string | null;
       last_shortlist_at: string | null;
       last_connect_request_at: string | null;
       last_seller_listing_at: string | null;
+      last_paid_checkout_at: string | null;
+      last_payment_failure_at: string | null;
     };
     type SignupPulseRow = {
       signups_24h: string;
@@ -188,10 +192,14 @@ export async function GET() {
            COUNT(*) FILTER (WHERE event_type = 'match_interested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS shortlists_24h,
            COUNT(*) FILTER (WHERE event_type = 'connect_requested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS connect_requests_24h,
            COUNT(*) FILTER (WHERE event_type = 'seller_listing_created' AND created_at >= NOW() - INTERVAL '24 hours')::text AS seller_listings_24h,
+           COUNT(*) FILTER (WHERE event_type = 'checkout_completed' AND created_at >= NOW() - INTERVAL '24 hours')::text AS paid_checkouts_24h,
+           COUNT(*) FILTER (WHERE event_type = 'invoice_payment_failed' AND created_at >= NOW() - INTERVAL '24 hours')::text AS payment_failures_24h,
            MAX(created_at) FILTER (WHERE event_type = 'saved_search_created') AS last_saved_search_at,
            MAX(created_at) FILTER (WHERE event_type = 'match_interested') AS last_shortlist_at,
            MAX(created_at) FILTER (WHERE event_type = 'connect_requested') AS last_connect_request_at,
-           MAX(created_at) FILTER (WHERE event_type = 'seller_listing_created') AS last_seller_listing_at
+           MAX(created_at) FILTER (WHERE event_type = 'seller_listing_created') AS last_seller_listing_at,
+           MAX(created_at) FILTER (WHERE event_type = 'checkout_completed') AS last_paid_checkout_at,
+           MAX(created_at) FILTER (WHERE event_type = 'invoice_payment_failed') AS last_payment_failure_at
          FROM funnel_events`
       ),
       queryOne<SignupPulseRow>(
@@ -252,11 +260,15 @@ export async function GET() {
         shortlists24h: parseInt(ownerPulse?.shortlists_24h || "0", 10),
         connectRequests24h: parseInt(ownerPulse?.connect_requests_24h || "0", 10),
         sellerListings24h: parseInt(ownerPulse?.seller_listings_24h || "0", 10),
+        paidCheckouts24h: parseInt(ownerPulse?.paid_checkouts_24h || "0", 10),
+        paymentFailures24h: parseInt(ownerPulse?.payment_failures_24h || "0", 10),
         lastSignupAt: signupPulse?.last_signup_at || null,
         lastSavedSearchAt: ownerPulse?.last_saved_search_at || null,
         lastShortlistAt: ownerPulse?.last_shortlist_at || null,
         lastConnectRequestAt: ownerPulse?.last_connect_request_at || null,
         lastSellerListingAt: ownerPulse?.last_seller_listing_at || null,
+        lastPaidCheckoutAt: ownerPulse?.last_paid_checkout_at || null,
+        lastPaymentFailureAt: ownerPulse?.last_payment_failure_at || null,
       },
       serviceStatus: {
         billingEnabled: billingEnabled(),

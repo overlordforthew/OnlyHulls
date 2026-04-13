@@ -6,6 +6,7 @@ import { getPublicAppUrl } from "@/lib/config/urls";
 import type { SubscriptionTier } from "@/lib/config/plans";
 import { getPlanByTier, PLANS } from "@/lib/config/plans";
 import { sendBillingIssueEmail, sendOwnerAlertEmail } from "@/lib/email/resend";
+import { trackFunnelEvent } from "@/lib/funnel";
 
 function tierFromPriceId(priceId: string): SubscriptionTier | null {
   for (const plan of Object.values(PLANS)) {
@@ -53,6 +54,21 @@ export async function POST(req: Request) {
               `UPDATE users SET subscription_tier = $1, stripe_subscription_id = $2 WHERE stripe_customer_id = $3`,
               [tier, subscriptionId, customerId]
             );
+
+            const user = await queryOne<{ id: string | null }>(
+              "SELECT id FROM users WHERE stripe_customer_id = $1",
+              [customerId]
+            );
+
+            await trackFunnelEvent({
+              eventType: "checkout_completed",
+              userId: user?.id || null,
+              payload: {
+                tier,
+                subscriptionId,
+                priceId: priceId || null,
+              },
+            });
             logger.info({ tier, customerId }, "User tier updated from checkout");
           }
         }
@@ -97,8 +113,25 @@ export async function POST(req: Request) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
+        const customerId = invoice.customer as string;
+        const user = customerId
+          ? await queryOne<{
+              id: string | null;
+              subscription_tier: SubscriptionTier | null;
+            }>("SELECT id, subscription_tier FROM users WHERE stripe_customer_id = $1", [customerId])
+          : null;
+
+        await trackFunnelEvent({
+          eventType: "invoice_payment_succeeded",
+          userId: user?.id || null,
+          payload: {
+            amountPaid: typeof invoice.amount_paid === "number" ? invoice.amount_paid : null,
+            currency: invoice.currency || null,
+            planTier: user?.subscription_tier || null,
+          },
+        });
         logger.info(
-          { customerId: invoice.customer, amount: invoice.amount_paid, currency: invoice.currency },
+          { customerId, amount: invoice.amount_paid, currency: invoice.currency },
           "Invoice payment succeeded"
         );
         break;
@@ -113,15 +146,28 @@ export async function POST(req: Request) {
         );
 
         const user = await queryOne<{
+          id: string | null;
           email: string;
           display_name: string | null;
           subscription_tier: SubscriptionTier | null;
         }>(
-          "SELECT email, display_name, subscription_tier FROM users WHERE stripe_customer_id = $1",
+          "SELECT id, email, display_name, subscription_tier FROM users WHERE stripe_customer_id = $1",
           [customerId]
         );
 
         const planName = getPlanByTier(user?.subscription_tier || "free").name;
+
+        await trackFunnelEvent({
+          eventType: "invoice_payment_failed",
+          userId: user?.id || null,
+          payload: {
+            amountDue: typeof invoice.amount_due === "number" ? invoice.amount_due : null,
+            currency: invoice.currency || null,
+            planTier: user?.subscription_tier || null,
+            planName,
+            invoiceId: invoice.id || null,
+          },
+        });
 
         if (user?.email) {
           try {

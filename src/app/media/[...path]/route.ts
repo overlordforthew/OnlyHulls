@@ -29,7 +29,7 @@ function getLocalMediaRoot() {
     return "/media-data";
   }
 
-  return null;
+  return ".local-media";
 }
 
 function normalizeMediaSegments(key: string) {
@@ -51,17 +51,14 @@ function normalizeMediaSegments(key: string) {
 
 function resolveRouteLocalMediaPath(key: string) {
   const segments = normalizeMediaSegments(key);
-  const configuredRoot = getLocalMediaRoot();
+  const root = path.resolve(getLocalMediaRoot());
+  const resolved = path.resolve(root, ...segments);
 
-  if (configuredRoot) {
-    return path.join(configuredRoot, ...segments);
+  if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+    throw new Error("Invalid media path");
   }
 
-  return path.join(
-    /* turbopackIgnore: true */ process.cwd(),
-    ".local-media",
-    ...segments
-  );
+  return resolved;
 }
 
 export async function GET(req: Request) {

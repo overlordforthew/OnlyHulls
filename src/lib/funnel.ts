@@ -8,7 +8,10 @@ export type FunnelEventType =
   | "seller_listing_created"
   | "match_interested"
   | "match_passed"
-  | "connect_requested";
+  | "connect_requested"
+  | "checkout_completed"
+  | "invoice_payment_succeeded"
+  | "invoice_payment_failed";
 
 export async function trackFunnelEvent(input: {
   eventType: FunnelEventType;

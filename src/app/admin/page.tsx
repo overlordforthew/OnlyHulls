@@ -41,11 +41,15 @@ interface Stats {
     shortlists24h: number;
     connectRequests24h: number;
     sellerListings24h: number;
+    paidCheckouts24h: number;
+    paymentFailures24h: number;
     lastSignupAt: string | null;
     lastSavedSearchAt: string | null;
     lastShortlistAt: string | null;
     lastConnectRequestAt: string | null;
     lastSellerListingAt: string | null;
+    lastPaidCheckoutAt: string | null;
+    lastPaymentFailureAt: string | null;
   };
   importQualitySummary: {
     activeCount: number;
@@ -107,7 +111,10 @@ type ActivityFilter =
   | "saved_search_created"
   | "match_interested"
   | "connect_requested"
-  | "seller_listing_created";
+  | "seller_listing_created"
+  | "checkout_completed"
+  | "invoice_payment_succeeded"
+  | "invoice_payment_failed";
 
 const ACTIVITY_FILTER_OPTIONS: Array<{ value: ActivityFilter; label: string }> = [
   { value: "all", label: "All activity" },
@@ -116,6 +123,9 @@ const ACTIVITY_FILTER_OPTIONS: Array<{ value: ActivityFilter; label: string }> =
   { value: "match_interested", label: "Shortlists" },
   { value: "connect_requested", label: "Connects" },
   { value: "seller_listing_created", label: "Seller listings" },
+  { value: "checkout_completed", label: "Paid starts" },
+  { value: "invoice_payment_succeeded", label: "Paid renewals" },
+  { value: "invoice_payment_failed", label: "Payment failures" },
 ];
 
 function formatActivityTitle(activity: Stats["recentActivity"][number]) {
@@ -132,6 +142,12 @@ function formatActivityTitle(activity: Stats["recentActivity"][number]) {
       return "Boat added to shortlist";
     case "connect_requested":
       return "Connect request sent";
+    case "checkout_completed":
+      return "Paid checkout completed";
+    case "invoice_payment_succeeded":
+      return "Invoice payment succeeded";
+    case "invoice_payment_failed":
+      return "Invoice payment failed";
     default:
       return activity.eventType.replace(/_/g, " ");
   }
@@ -164,6 +180,38 @@ function formatActivityDetail(activity: Stats["recentActivity"][number]) {
       return activity.boatTitle
         ? `${person} requested a connection for ${activity.boatTitle}.`
         : `${person} requested a seller connection.`;
+    case "checkout_completed": {
+      const tier = typeof activity.payload.tier === "string" ? activity.payload.tier : "paid";
+      return `${person} started the ${tier.replace(/[-_]+/g, " ")} plan checkout successfully.`;
+    }
+    case "invoice_payment_succeeded": {
+      const amountPaid = typeof activity.payload.amountPaid === "number" ? activity.payload.amountPaid : null;
+      const currency =
+        typeof activity.payload.currency === "string"
+          ? activity.payload.currency.toUpperCase()
+          : "USD";
+      const planTier =
+        typeof activity.payload.planTier === "string"
+          ? activity.payload.planTier.replace(/[-_]+/g, " ")
+          : "paid";
+      return amountPaid !== null
+        ? `${person} successfully paid ${currency} ${(amountPaid / 100).toFixed(2)} for the ${planTier} plan.`
+        : `${person} had a successful invoice payment on the ${planTier} plan.`;
+    }
+    case "invoice_payment_failed": {
+      const amountDue = typeof activity.payload.amountDue === "number" ? activity.payload.amountDue : null;
+      const currency =
+        typeof activity.payload.currency === "string"
+          ? activity.payload.currency.toUpperCase()
+          : "USD";
+      const planName =
+        typeof activity.payload.planName === "string"
+          ? activity.payload.planName
+          : "paid plan";
+      return amountDue !== null
+        ? `${person} has a failed payment for ${planName} worth ${currency} ${(amountDue / 100).toFixed(2)}.`
+        : `${person} has a failed payment for ${planName}.`;
+    }
     default:
       return `${person} triggered ${activity.eventType.replace(/_/g, " ")}.`;
   }
@@ -382,7 +430,13 @@ export default function AdminPage() {
     activityFilter === "all" ? true : activity.eventType === activityFilter
   );
   const ownerAttention = recentActivity.filter((activity) =>
-    ["signup_created", "seller_listing_created", "connect_requested"].includes(activity.eventType)
+    [
+      "signup_created",
+      "seller_listing_created",
+      "connect_requested",
+      "checkout_completed",
+      "invoice_payment_failed",
+    ].includes(activity.eventType)
   );
   const recentConnections = (stats?.recentActivity || []).filter(
     (activity) => activity.eventType === "connect_requested"
@@ -562,6 +616,22 @@ export default function AdminPage() {
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastSellerListingAt)}`}
                 actionHref="#owner-attention"
                 actionLabel="Open supply"
+              />
+              <StatCard
+                label="Paid Starts (24h)"
+                value={stats.ownerPulse.paidCheckouts24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastPaidCheckoutAt)}`}
+                highlight={stats.ownerPulse.paidCheckouts24h > 0}
+                actionHref="#owner-attention"
+                actionLabel="Open billing events"
+              />
+              <StatCard
+                label="Payment Failures (24h)"
+                value={stats.ownerPulse.paymentFailures24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastPaymentFailureAt)}`}
+                highlight={stats.ownerPulse.paymentFailures24h > 0}
+                actionHref="#owner-attention"
+                actionLabel="Review failures"
               />
               <StatCard
                 label="Needs Verification"
