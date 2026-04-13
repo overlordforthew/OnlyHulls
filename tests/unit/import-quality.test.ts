@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeImportedLocation } from "../../src/lib/import-quality";
+import {
+  normalizeImportedLocation,
+  normalizeImportedMakeModel,
+} from "../../src/lib/import-quality";
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
   assert.equal(
@@ -115,5 +118,65 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
   assert.equal(
     normalizeImportedLocation("Hodge'S Creek Marina Hotel, Parham Town, ???Les Vierges Britanniques"),
     "Hodge's Creek Marina Hotel, Parham Town, British Virgin Islands"
+  );
+});
+
+test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fountaine",
+      model: "Pajot Helia 44",
+      sourceSite: "theyachtmarket",
+      slug: "2014-fountaine-pajot-helia-44-nova-scotia",
+    }),
+    { make: "Fountaine Pajot", model: "Helia 44" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hallberg",
+      model: "Rassy 42",
+      sourceSite: "theyachtmarket",
+      slug: "1997-hallberg-rassy-42-balearic-islands",
+    }),
+    { make: "Hallberg-Rassy", model: "42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Robertson",
+      model: "And Caine Leopard 40",
+      sourceSite: "theyachtmarket",
+      slug: "2018-robertson-and-caine-leopard-40-",
+    }),
+    { make: "Robertson and Caine", model: "Leopard 40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Robertson&caine",
+      model: "Leopard 47",
+      sourceSite: "sailboatlistings",
+      slug: "2000-robertson-caine-leopard-47-outside-united-states",
+    }),
+    { make: "Robertson and Caine", model: "Leopard 47" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Camper",
+      model: "And Nicholsons 60 Riviera",
+      sourceSite: "theyachtmarket",
+      slug: "1987-camper-and-nicholsons-60-riviera-",
+    }),
+    { make: "Camper & Nicholsons", model: "60 Riviera" }
+  );
+});
+
+test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated boats", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Beneteau",
+      model: "Oceanis 45",
+      sourceSite: "theyachtmarket",
+      slug: "2017-beneteau-oceanis-45-",
+    }),
+    { make: "Beneteau", model: "Oceanis 45" }
   );
 });

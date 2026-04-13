@@ -497,6 +497,14 @@ function canonicalizeMakeName(make: string) {
   if (/^o\s+day$/i.test(normalized)) return "O'Day";
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
+  if (/^fountaine\s+pajot$/i.test(normalized)) return "Fountaine Pajot";
+  if (/^hallberg(?:\s+|-)rassy$/i.test(normalized)) return "Hallberg-Rassy";
+  if (/^robertson(?:\s*(?:&|and)\s*caine|&caine|\s+caine)$/i.test(normalized)) {
+    return "Robertson and Caine";
+  }
+  if (/^camper(?:\s*(?:&|and)\s*nicholsons?|\s*-\s*nicholsons?)$/i.test(normalized)) {
+    return "Camper & Nicholsons";
+  }
   return normalized;
 }
 
@@ -520,6 +528,48 @@ function splitEmbeddedModelFromMake(make: string, model: string) {
   }
 
   return { make, model };
+}
+
+// Rejoin compound builders that some source feeds split across make/model fields.
+function repairCompoundBrandMakeModel(input: {
+  make: string;
+  model: string;
+  sourceSite?: string | null;
+}) {
+  const sourceSite = normalizeSpacing(input.sourceSite).toLowerCase();
+  if (sourceSite !== "theyachtmarket" && sourceSite !== "sailboatlistings") {
+    return { make: input.make, model: input.model };
+  }
+
+  let make = input.make;
+  let model = input.model;
+
+  const modelStartsWith = (pattern: RegExp) => pattern.test(model);
+
+  if (/^fountaine$/i.test(make) && modelStartsWith(/^pajot\b[\s-]*/i)) {
+    make = "Fountaine Pajot";
+    model = model.replace(/^pajot\b[\s-]*/i, "").trim();
+  }
+
+  if (/^hallberg$/i.test(make) && modelStartsWith(/^rassy\b[\s-]*/i)) {
+    make = "Hallberg-Rassy";
+    model = model.replace(/^rassy\b[\s-]*/i, "").trim();
+  }
+
+  if (/^robertson$/i.test(make) && modelStartsWith(/^(?:&\s*|and\s+)?caine\b[\s-]*/i)) {
+    make = "Robertson and Caine";
+    model = model.replace(/^(?:&\s*|and\s+)?caine\b[\s-]*/i, "").trim();
+  }
+
+  if (/^camper$/i.test(make) && modelStartsWith(/^(?:&\s*|and\s+)?nicholsons?\b[\s-]*/i)) {
+    make = "Camper & Nicholsons";
+    model = model.replace(/^(?:&\s*|and\s+)?nicholsons?\b[\s-]*/i, "").trim();
+  }
+
+  return {
+    make: canonicalizeMakeName(make),
+    model,
+  };
 }
 
 function normalizeRomanSuffixes(value: string) {
@@ -634,6 +684,11 @@ export function normalizeImportedMakeModel(input: {
     .map(titleCaseToken)
     .filter(Boolean)
     .join(" ");
+  ({ make, model } = repairCompoundBrandMakeModel({
+    make,
+    model,
+    sourceSite: input.sourceSite,
+  }));
   model = stripSourceSpecificNoise(input.sourceSite, make, model);
   model = stripRepeatedMakeFromModel(make, model);
   model = dedupeAdjacentModelTokens(model);
