@@ -203,6 +203,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Island Packet", model: "Estero" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cape",
+      model: "Dory 36",
+      sourceSite: "sailboatlistings",
+      slug: "1988-cape-dory-36-florida",
+    }),
+    { make: "Cape Dory", model: "36" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cape",
+      model: "Dory Cape Dory 25",
+      sourceSite: "sailboatlistings",
+      slug: "1976-cape-dory-cape-dory-25-louisiana",
+    }),
+    { make: "Cape Dory", model: "25" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cape",
+      model: "Dory 1974 Cruiser",
+      sourceSite: "sailboatlistings",
+      slug: "1974-cape-dory-1974-cruiser-new-york",
+    }),
+    { make: "Cape Dory", model: "Cruiser" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {

@@ -571,6 +571,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^packet\b[\s-]*/i, "").trim();
   }
 
+  if (/^cape$/i.test(make) && modelStartsWith(/^dory\b[\s-]*/i)) {
+    make = "Cape Dory";
+    model = model.replace(/^dory\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
