@@ -45,6 +45,9 @@ export async function getFunnelSnapshot(days = 30) {
     listings: string;
     interested: string;
     connects: string;
+    paid_checkouts: string;
+    payment_renewals: string;
+    payment_failures: string;
   }>(
     `SELECT
         COUNT(*) FILTER (WHERE event_type = 'signup_created')::text AS signups,
@@ -52,7 +55,10 @@ export async function getFunnelSnapshot(days = 30) {
         COUNT(*) FILTER (WHERE event_type = 'saved_search_created')::text AS saved_searches,
         COUNT(*) FILTER (WHERE event_type = 'seller_listing_created')::text AS listings,
         COUNT(*) FILTER (WHERE event_type = 'match_interested')::text AS interested,
-        COUNT(*) FILTER (WHERE event_type = 'connect_requested')::text AS connects
+        COUNT(*) FILTER (WHERE event_type = 'connect_requested')::text AS connects,
+        COUNT(*) FILTER (WHERE event_type = 'checkout_completed')::text AS paid_checkouts,
+        COUNT(*) FILTER (WHERE event_type = 'invoice_payment_succeeded')::text AS payment_renewals,
+        COUNT(*) FILTER (WHERE event_type = 'invoice_payment_failed')::text AS payment_failures
      FROM funnel_events
      WHERE created_at >= NOW() - ($1::text || ' days')::interval`,
     [days]
@@ -65,5 +71,8 @@ export async function getFunnelSnapshot(days = 30) {
     sellerListings: parseInt(result?.listings || "0", 10),
     matchInterested: parseInt(result?.interested || "0", 10),
     connectRequests: parseInt(result?.connects || "0", 10),
+    paidCheckouts: parseInt(result?.paid_checkouts || "0", 10),
+    paymentRenewals: parseInt(result?.payment_renewals || "0", 10),
+    paymentFailures: parseInt(result?.payment_failures || "0", 10),
   };
 }

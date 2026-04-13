@@ -18,6 +18,9 @@ interface Stats {
     sellerListings: number;
     matchInterested: number;
     connectRequests: number;
+    paidCheckouts: number;
+    paymentRenewals: number;
+    paymentFailures: number;
   };
   recentSignups: Array<{
     id: string;
@@ -541,7 +544,7 @@ export default function AdminPage() {
           <div className="mt-4 rounded-lg border border-border bg-surface p-4">
             <p className="text-sm font-medium text-foreground">Owner alerts destination</p>
             <p className="mt-1 text-sm text-foreground/70">
-              New signups, connect requests, and digests currently route to{" "}
+              New signups, billing alerts, connect requests, and digests currently route to{" "}
               <span className="font-medium text-foreground">
                 {stats.serviceStatus.ownerAlertRecipients.join(", ")}
               </span>
@@ -712,15 +715,21 @@ export default function AdminPage() {
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
             <h2 className="text-lg font-semibold">Funnel - Last 30 Days</h2>
             <p className="mt-1 text-sm text-foreground/60">
-              This is the actual product flow, not just raw account or listing totals.
+              This is the actual product flow, including paid conversion and billing friction, not just raw account or listing totals.
             </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-8">
               <StatCard label="Signups" value={stats.funnel30d.signups} />
               <StatCard label="Buyer Profiles" value={stats.funnel30d.buyerProfiles} />
               <StatCard label="Saved Searches" value={stats.funnel30d.savedSearches} />
               <StatCard label="Seller Listings" value={stats.funnel30d.sellerListings} />
               <StatCard label="Shortlist Saves" value={stats.funnel30d.matchInterested} />
               <StatCard label="Connect Requests" value={stats.funnel30d.connectRequests} highlight />
+              <StatCard label="Paid Starts" value={stats.funnel30d.paidCheckouts} />
+              <StatCard
+                label="Payment Failures"
+                value={stats.funnel30d.paymentFailures}
+                highlight={stats.funnel30d.paymentFailures > 0}
+              />
             </div>
           </div>
 
@@ -761,7 +770,7 @@ export default function AdminPage() {
             <div id="recent-activity" />
             <h2 className="text-lg font-semibold">Recent Activity</h2>
             <p className="mt-1 text-sm text-foreground/60">
-              Live product activity across signups, saved searches, shortlists, and connect requests.
+              Live product activity across signups, saved searches, shortlists, connects, and billing events.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {ACTIVITY_FILTER_OPTIONS.map((option) => (
@@ -805,7 +814,7 @@ export default function AdminPage() {
             <div id="owner-attention" />
             <h2 className="text-lg font-semibold">Owner Attention</h2>
             <p className="mt-1 text-sm text-foreground/60">
-              The recent events most likely to matter to you directly: new accounts, fresh seller supply, and active connect requests.
+              The recent events most likely to matter to you directly: new accounts, paid starts, payment failures, fresh seller supply, and active connect requests.
             </p>
             {ownerAttention.length === 0 ? (
               <p className="mt-4 text-sm text-foreground/60">No owner-priority events recorded yet.</p>
