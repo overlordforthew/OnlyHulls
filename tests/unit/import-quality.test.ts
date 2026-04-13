@@ -414,6 +414,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Leonardo",
+      model: "Yachts Eagle 44",
+      sourceSite: "sailboatlistings",
+      slug: "2015-leonardo-yachts-eagle-44-california",
+    }),
+    { make: "Leonardo Yachts", model: "Eagle 44" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Leonardo",
+      model: "Yachts Eagle 38",
+      sourceSite: "theyachtmarket",
+      slug: "2024-leonardo-yachts-eagle-38-balearic-islands",
+    }),
+    { make: "Leonardo Yachts", model: "Eagle 38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Leonardo",
+      model: "Yachts",
+      sourceSite: "theyachtmarket",
+      slug: "1980-leonardo-yachts-",
+    }),
+    { make: "Leonardo Yachts", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Van",
       model: "De Stadt 74",
       sourceSite: "sailboatlistings",
