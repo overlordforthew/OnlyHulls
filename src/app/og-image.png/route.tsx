@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET() {
   return new ImageResponse(
@@ -18,7 +18,7 @@ export async function GET() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
-          <span style={{ fontSize: 64, marginRight: 16 }}>⛵</span>
+          <span style={{ fontSize: 64, marginRight: 16 }}>Sail</span>
           <span style={{ fontSize: 64, fontWeight: 800, color: "#0ea5e9" }}>Only</span>
           <span style={{ fontSize: 64, fontWeight: 800, color: "#f97316" }}>Hulls</span>
         </div>
@@ -26,7 +26,7 @@ export async function GET() {
           The boat marketplace that doesn&apos;t suck.
         </div>
         <div style={{ fontSize: 22, color: "#64748b" }}>
-          AI-powered matching · Zero commission · 14,000+ sailboats
+          AI-powered matching | Zero commission | 14,000+ sailboats
         </div>
       </div>
     ),
