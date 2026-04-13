@@ -605,6 +605,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
   }
 
+  if (/^van$/i.test(make) && modelStartsWith(/^de\s+stadt\b[\s-]*/i)) {
+    make = "Van De Stadt";
+    model = model.replace(/^de\s+stadt\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,

@@ -410,6 +410,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Spirit Yachts", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Van",
+      model: "De Stadt 74",
+      sourceSite: "sailboatlistings",
+      slug: "1993-van-de-stadt-74-outside-united-states",
+    }),
+    { make: "Van De Stadt", model: "74" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Van",
+      model: "De Stadt 30 Vita",
+      sourceSite: "theyachtmarket",
+      slug: "1995-van-de-stadt-30-vita-",
+    }),
+    { make: "Van De Stadt", model: "30 Vita" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Van",
+      model: "De Stadt Van De Stadt 44",
+      sourceSite: "sailboatlistings",
+      slug: "1993-van-de-stadt-van-de-stadt-44-florida",
+    }),
+    { make: "Van De Stadt", model: "44" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Van",
+      model: "De Stadt",
+      sourceSite: "sailboatlistings",
+      slug: "1980-van-de-stadt-florida",
+    }),
+    { make: "Van De Stadt", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
@@ -460,5 +496,14 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
       slug: "2017-beneteau-oceanis-45-",
     }),
     { make: "Beneteau", model: "Oceanis 45" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "E G",
+      model: "Van De Stadt Rebel 41",
+      sourceSite: "sailboatlistings",
+      slug: "1968-e-g-van-de-stadt-rebel-41-washington",
+    }),
+    { make: "E G", model: "Van De Stadt Rebel 41" }
   );
 });
