@@ -585,6 +585,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^lee\b[\s-]*/i, "").trim();
   }
 
+  if (/^grand$/i.test(make) && modelStartsWith(/^soleil\b[\s-]*/i)) {
+    make = "Grand Soleil";
+    model = model.replace(/^soleil\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,

@@ -275,6 +275,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Cheoy Lee", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Grand",
+      model: "Soleil 42 Lc",
+      sourceSite: "theyachtmarket",
+      slug: "2024-grand-soleil-42-lc-",
+    }),
+    { make: "Grand Soleil", model: "42 Lc" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Grand",
+      model: "Soleil 43f Maletto",
+      sourceSite: "sailboatlistings",
+      slug: "2014-grand-soleil-43f-maletto-california",
+    }),
+    { make: "Grand Soleil", model: "43f Maletto" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Grand",
+      model: "Soleil",
+      sourceSite: "sailboatlistings",
+      slug: "1980-grand-soleil-florida",
+    }),
+    { make: "Grand Soleil", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
