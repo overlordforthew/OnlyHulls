@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const DEFAULT_BROWSER_ENV: Record<string, string> = {
+export const DEFAULT_BROWSER_ENV: Record<string, string> = {
   PLAYWRIGHT_SELLER_EMAIL: "browser-seller@onlyhulls.test",
   PLAYWRIGHT_SELLER_PASSWORD: "OnlyHullsBrowser!2026",
   PLAYWRIGHT_SELLER_NAME: "Browser Seller",

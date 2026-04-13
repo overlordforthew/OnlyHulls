@@ -16,6 +16,9 @@ export async function GET(req: Request) {
     const search = (url.searchParams.get("q") || "").trim();
     const source = (url.searchParams.get("source") || "").trim();
     const issue = (url.searchParams.get("issue") || "").trim();
+    const sort = (url.searchParams.get("sort") || "newest").trim();
+    const requestedLimit = Number.parseInt(url.searchParams.get("limit") || "50", 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
     const params: unknown[] = [];
     const where: string[] = [];
 
@@ -41,6 +44,13 @@ export async function GET(req: Request) {
         where.push(`NULLIF(TRIM(COALESCE(d.ai_summary, '')), '') IS NULL`);
       } else if (issue === "low_condition") {
         where.push(`COALESCE(d.condition_score, 0) < 6`);
+      } else if (issue === "cleanup_needed") {
+        where.push(`(
+          COALESCE((d.documentation_status->>'import_quality_score')::int, 100) < 90
+          OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) <> '[]'::jsonb
+          OR NULLIF(TRIM(COALESCE(d.ai_summary, '')), '') IS NULL
+          OR COALESCE(d.condition_score, 0) < 6
+        )`);
       } else {
         params.push(issue);
         where.push(
@@ -50,6 +60,12 @@ export async function GET(req: Request) {
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+    const qualityScoreSql = `COALESCE((d.documentation_status->>'import_quality_score')::int, 100)`;
+    const imageCountSql = `COALESCE(media_counts.image_count, 0)::int`;
+    const orderBy =
+      sort === "quality"
+        ? `${qualityScoreSql} ASC, ${imageCountSql} ASC, b.created_at DESC`
+        : "b.created_at DESC";
 
     const listings = await query<Record<string, unknown>>(
       `SELECT b.id, b.slug, b.make, b.model, b.year, b.asking_price, b.currency,
@@ -73,8 +89,8 @@ export async function GET(req: Request) {
          GROUP BY boat_id
        ) media_counts ON media_counts.boat_id = b.id
        ${whereClause}
-       ORDER BY b.created_at DESC
-       LIMIT 50`,
+       ORDER BY ${orderBy}
+       LIMIT ${limit}`,
       params
     );
 

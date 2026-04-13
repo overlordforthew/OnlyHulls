@@ -192,6 +192,7 @@ function formatRelativeTime(value: string | null) {
 export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<PendingListing[]>([]);
+  const [cleanupQueue, setCleanupQueue] = useState<PendingListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -213,21 +214,32 @@ export default function AdminPage() {
     }
     try {
       const moderationParams = new URLSearchParams({ status: "pending_review" });
+      const cleanupParams = new URLSearchParams({
+        status: "active",
+        issue: moderationIssue === "all" ? "cleanup_needed" : moderationIssue,
+        sort: "quality",
+        limit: "12",
+      });
       if (moderationSearch.trim()) moderationParams.set("q", moderationSearch.trim());
       if (moderationSource !== "all") moderationParams.set("source", moderationSource);
       if (moderationIssue !== "all") moderationParams.set("issue", moderationIssue);
+      if (moderationSearch.trim()) cleanupParams.set("q", moderationSearch.trim());
+      if (moderationSource !== "all") cleanupParams.set("source", moderationSource);
 
-      const [statsRes, pendingRes] = await Promise.all([
+      const [statsRes, pendingRes, cleanupRes] = await Promise.all([
         fetch("/api/admin/stats"),
         fetch(`/api/admin/listings?${moderationParams.toString()}`),
+        fetch(`/api/admin/listings?${cleanupParams.toString()}`),
       ]);
-      const [statsData, pendingData] = await Promise.all([
+      const [statsData, pendingData, cleanupData] = await Promise.all([
         statsRes.json(),
         pendingRes.json(),
+        cleanupRes.json(),
       ]);
 
       setStats(statsData);
       setPending(pendingData.listings || []);
+      setCleanupQueue(cleanupData.listings || []);
       setLastUpdatedAt(new Date().toISOString());
       hasLoadedRef.current = true;
     } finally {
@@ -790,6 +802,85 @@ export default function AdminPage() {
             </button>
           </ActionWithInfo>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Active Cleanup Queue ({cleanupQueue.length})</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              The active imported listings most likely to hurt buyer trust right now, ranked by weakest quality first.
+            </p>
+          </div>
+          <div className="text-sm text-foreground/60">
+            Uses the same source and issue filters as the moderation queue.
+          </div>
+        </div>
+        {cleanupQueue.length === 0 ? (
+          <p className="mt-4 text-foreground/60">No active listings currently need cleanup for these filters.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {cleanupQueue.map((listing) => (
+              <div
+                key={`cleanup-${listing.id}`}
+                className="flex flex-col gap-4 rounded-lg border border-border p-4 lg:flex-row lg:items-start lg:justify-between"
+              >
+                <div>
+                  <p className="font-medium">
+                    {listing.year} {listing.make} {listing.model}
+                  </p>
+                  <p className="text-sm text-foreground/60">
+                    ${listing.asking_price.toLocaleString()} {listing.currency}
+                    {listing.location_text ? ` - ${listing.location_text}` : ""}
+                  </p>
+                  <p className="text-xs text-foreground/40">
+                    {listing.source_name} source by {listing.seller_email} -{" "}
+                    {new Date(listing.created_at).toLocaleDateString()}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">
+                      Cleanup score {listing.quality_score}/100
+                    </span>
+                    <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                      {listing.image_count} photo{listing.image_count === 1 ? "" : "s"}
+                    </span>
+                    {listing.video_count > 0 && (
+                      <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                        {listing.video_count} video{listing.video_count === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {!listing.has_description && (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">
+                        Missing description
+                      </span>
+                    )}
+                    {listing.condition_score < 6 && (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">
+                        Low condition
+                      </span>
+                    )}
+                    {listing.quality_flags.map((flag) => (
+                      <span
+                        key={`cleanup-${listing.id}-${flag}`}
+                        className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200"
+                      >
+                        {formatQualityFlag(flag)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/boats/${listing.slug || listing.id}`}
+                    className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary"
+                  >
+                    Open Listing
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-12">
