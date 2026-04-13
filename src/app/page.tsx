@@ -15,6 +15,7 @@ import {
   Search,
   ArrowRight,
   Flame,
+  Clock3,
 } from "lucide-react";
 import BoatCard from "@/components/BoatCard";
 import { ListBoatCTA } from "@/components/MatchCTA";
@@ -77,6 +78,33 @@ const VALUES = [
   },
 ];
 
+const HERO_PROOF = [
+  "Browse without signing up",
+  "Free account to save and compare",
+  "Direct seller contact with no broker commission",
+];
+
+const PATHS = [
+  {
+    title: "I want to buy",
+    description:
+      "Browse the market, save contenders, compare side by side, or let the AI build your buyer profile first.",
+    primaryHref: "/match",
+    primaryLabel: "Start AI Matching",
+    secondaryHref: "/boats",
+    secondaryLabel: "Browse Boats",
+  },
+  {
+    title: "I want to sell",
+    description:
+      "List your boat, present it cleanly, and get direct buyer leads without paying commission on the sale.",
+    primaryHref: null,
+    primaryLabel: "List Your Boat Free",
+    secondaryHref: "/sell",
+    secondaryLabel: "See Seller Plans",
+  },
+];
+
 export default async function Home() {
   const [count, boats] = await Promise.all([
     getBoatCount(),
@@ -100,9 +128,9 @@ export default async function Home() {
               <span className="text-primary">Hull</span>
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg text-text-secondary sm:text-xl">
-              The boat marketplace that actually doesn&apos;t suck.{" "}
+              Search the real market, save contenders, and connect directly with sellers.{" "}
               <br className="hidden sm:block" />
-              AI-powered. Zero commission. Built for boat lovers.
+              AI-powered. Zero commission. Built to get you to the right boat faster.
             </p>
 
             {/* Search bar */}
@@ -143,6 +171,17 @@ export default async function Home() {
               </Link>
             </div>
 
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary">
+              {HERO_PROOF.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-border bg-surface/70 px-3 py-1.5"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+
             {/* Stats strip */}
             <div className="mx-auto mt-12 flex max-w-md justify-center gap-8 sm:gap-12">
               <div className="text-center">
@@ -157,6 +196,41 @@ export default async function Home() {
                 <p className="text-2xl font-bold text-primary sm:text-3xl">AI</p>
                 <p className="mt-1 text-xs text-text-secondary">Matching</p>
               </div>
+            </div>
+
+            <div className="mx-auto mt-10 grid max-w-4xl gap-4 text-left lg:grid-cols-2">
+              {PATHS.map((path) => (
+                <div
+                  key={path.title}
+                  className="rounded-2xl border border-border bg-surface/80 p-6 shadow-lg shadow-black/10"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                    Fastest path
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold">{path.title}</h2>
+                  <p className="mt-3 text-sm leading-6 text-text-secondary">{path.description}</p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {path.primaryHref ? (
+                      <Link
+                        href={path.primaryHref}
+                        className="rounded-full bg-primary-btn px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                      >
+                        {path.primaryLabel}
+                      </Link>
+                    ) : (
+                      <ListBoatCTA className="rounded-full bg-primary-btn px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-light">
+                        {path.primaryLabel}
+                      </ListBoatCTA>
+                    )}
+                    <Link
+                      href={path.secondaryHref}
+                      className="rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+                    >
+                      {path.secondaryLabel}
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -271,6 +345,10 @@ export default async function Home() {
               List your boat for free. Our AI connects you with qualified buyers
               worldwide. No commission, no brokers, no middlemen.
             </p>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-text-secondary">
+              <Clock3 className="h-4 w-4 text-primary" />
+              Free listing live in minutes. Upgrade later only if you want more exposure.
+            </div>
             <ListBoatCTA
               className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
             />

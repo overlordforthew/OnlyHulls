@@ -10,6 +10,7 @@ const buyerPlans = [
     price: 0,
     billingLabel: "",
     priceNote: "",
+    ctaLabel: "Start Free Buyer Account",
     features: [
       "Browse all listings",
       "10 saves/day",
@@ -22,7 +23,8 @@ const buyerPlans = [
     name: "Plus",
     price: 25,
     billingLabel: "every 90 days",
-    priceNote: "Works out to about $8.33/month.",
+    priceNote: "One upfront 90-day payment. Works out to about $8.33/month.",
+    ctaLabel: "Upgrade to Buyer Plus",
     popular: true,
     features: [
       "Unlimited saves and matching",
@@ -41,6 +43,7 @@ const sellerPlans = [
     price: 0,
     billingLabel: "",
     priceNote: "",
+    ctaLabel: "Start Free Seller Account",
     features: [
       "1 active listing",
       "Manual text-based entry",
@@ -54,7 +57,8 @@ const sellerPlans = [
     name: "Creator",
     price: 30,
     billingLabel: "every 90 days",
-    priceNote: "Works out to about $10/month.",
+    priceNote: "One upfront 90-day payment. Works out to about $10/month.",
+    ctaLabel: "Start Creator Plan",
     popular: true,
     features: [
       "Unlimited active listings",
@@ -69,7 +73,8 @@ const sellerPlans = [
     name: "Featured Creator",
     price: 60,
     billingLabel: "every 90 days",
-    priceNote: "Works out to about $20/month.",
+    priceNote: "One upfront 90-day payment. Works out to about $20/month.",
+    ctaLabel: "Start Featured Creator",
     features: [
       "Everything in Creator",
       "External video embeds (YouTube/Vimeo)",
@@ -88,6 +93,7 @@ type Plan = {
   price: number;
   billingLabel?: string;
   priceNote?: string;
+  ctaLabel?: string;
   popular?: boolean;
   features: string[];
 };
@@ -142,7 +148,7 @@ function PlanCard({
             : "border border-border text-foreground hover:border-primary hover:text-primary"
         }`}
       >
-        {plan.price === 0 ? "Get Started Free" : "Subscribe"}
+        {plan.ctaLabel || (plan.price === 0 ? "Get Started Free" : "Subscribe")}
       </button>
     </div>
   );
@@ -219,6 +225,9 @@ export function BuyerPricing() {
         ))}
       </div>
       {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
+      <p className="mt-4 text-center text-sm text-text-secondary">
+        Start free any time. Upgrade only if you want longer-running alerts and deeper AI matching.
+      </p>
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
           Paid billing is not live yet on this environment. Free browsing still works.
@@ -248,6 +257,9 @@ export function SellerPricing() {
         ))}
       </div>
       {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
+      <p className="mt-4 text-center text-sm text-text-secondary">
+        All paid seller plans are billed once for 90 days. No commissions and no surprise monthly charges.
+      </p>
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
           Free seller onboarding is live. Paid seller billing will unlock once Stripe is configured.

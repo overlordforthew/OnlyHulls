@@ -103,6 +103,7 @@ test("public pages expose the WhatsApp contact button", async ({ page }) => {
 
 test("match CTA preserves auth callback for guests", async ({ page }) => {
   await page.goto("/match");
+  await expect(page.getByTestId("match-start-signals")).toBeVisible();
   await page.getByRole("button", { name: "Get Matched - It's Free" }).click();
   await expect(page).toHaveURL(/\/sign-in\?callbackUrl=/);
 

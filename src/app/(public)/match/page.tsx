@@ -79,6 +79,21 @@ const FEATURES = [
 
 const MATCH_SCORES = [97, 91, 84];
 
+const START_SIGNALS = [
+  {
+    title: "Takes a couple of minutes",
+    description: "Start with a short chat instead of a long form. The AI builds your buyer profile from that conversation.",
+  },
+  {
+    title: "Your results stay saved",
+    description: "Matches, shortlist signals, and your buyer profile stay attached to your account when you come back.",
+  },
+  {
+    title: "Direct seller contact",
+    description: "When you are ready, you connect directly with the seller. No broker commission is added by OnlyHulls.",
+  },
+];
+
 const FAQS = [
   {
     question: "How does OnlyHulls decide what is a good match?",
@@ -212,6 +227,23 @@ export default async function MatchPage() {
                 so you can come back later and keep narrowing the field without
                 starting over.
               </p>
+
+              <div
+                className="mt-6 grid gap-3 sm:grid-cols-3"
+                data-testid="match-start-signals"
+              >
+                {START_SIGNALS.map((signal) => (
+                  <div
+                    key={signal.title}
+                    className="rounded-2xl border border-border bg-surface/70 p-4"
+                  >
+                    <p className="text-sm font-semibold">{signal.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-text-secondary">
+                      {signal.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
 
               <div
                 className="mt-6 grid gap-3 sm:grid-cols-3"

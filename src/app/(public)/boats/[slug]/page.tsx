@@ -265,6 +265,17 @@ export default async function BoatDetailPage({
   const trustSourceLabel = boat.source_url
     ? `Imported from ${formatSourceSite(boat.source_site)}`
     : "Exclusive to OnlyHulls";
+  const contactSteps = boat.source_url
+    ? [
+        "We keep this boat in your browsing flow so you can return and compare later.",
+        `You will review the original ${formatSourceSite(boat.source_site)} listing in a new tab before reaching out.`,
+        "You still avoid broker commission from OnlyHulls itself.",
+      ]
+    : [
+        "Your request goes directly toward the seller of this listing.",
+        "OnlyHulls does not add broker commission to the introduction.",
+        "You can come back to this listing later because your interest stays attached to your account.",
+      ];
   const imageUrls = media
     .filter((mediaItem) => mediaItem.type === "image")
     .slice(0, 8)
@@ -498,6 +509,18 @@ export default async function BoatDetailPage({
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
               <p className="mt-3 text-center text-xs text-text-tertiary">Free to message sellers.</p>
+
+              <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
+                <p className="text-sm font-semibold text-foreground">What happens next</p>
+                <div className="mt-3 space-y-2 text-sm text-text-secondary">
+                  {contactSteps.map((step) => (
+                    <div key={step} className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="rounded-xl border border-border bg-surface p-6">
