@@ -230,6 +230,15 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Cape Dory", model: "Cruiser" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cape",
+      model: "Dory 36",
+      sourceSite: "apolloduck_us",
+      slug: "1979-cape-dory-36-",
+    }),
+    { make: "Cape Dory", model: "36" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {

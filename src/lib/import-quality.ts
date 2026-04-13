@@ -537,7 +537,11 @@ function repairCompoundBrandMakeModel(input: {
   sourceSite?: string | null;
 }) {
   const sourceSite = normalizeSpacing(input.sourceSite).toLowerCase();
-  if (sourceSite !== "theyachtmarket" && sourceSite !== "sailboatlistings") {
+  if (
+    sourceSite !== "theyachtmarket" &&
+    sourceSite !== "sailboatlistings" &&
+    sourceSite !== "apolloduck_us"
+  ) {
     return { make: input.make, model: input.model };
   }
 
