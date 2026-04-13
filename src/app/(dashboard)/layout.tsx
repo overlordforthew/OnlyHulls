@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import DashboardStatusBanner from "@/components/dashboard/DashboardStatusBanner";
 
 export default async function DashboardLayout({
   children,
@@ -12,5 +13,10 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <DashboardStatusBanner userId={session.user.id} />
+      {children}
+    </>
+  );
 }
