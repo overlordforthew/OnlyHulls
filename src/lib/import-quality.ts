@@ -591,6 +591,12 @@ function dedupeAdjacentModelTokens(value: string) {
   return deduped.join(" ");
 }
 
+function stripLeadingSlugYearFromModel(model: string, slug?: string | null) {
+  const slugYear = String(slug || "").match(/^(\d{4})-/)?.[1];
+  if (!slugYear) return model;
+  return model.replace(new RegExp(`^${slugYear}\\s+(?=\\S)`), "").trim();
+}
+
 function stripRepeatedMakeFromModel(make: string, model: string) {
   const makeTokens = make.toLowerCase().split(/\s+/).filter(Boolean);
   const modelTokens = model.split(/\s+/).filter(Boolean);
@@ -690,6 +696,7 @@ export function normalizeImportedMakeModel(input: {
     sourceSite: input.sourceSite,
   }));
   model = stripSourceSpecificNoise(input.sourceSite, make, model);
+  model = stripLeadingSlugYearFromModel(model, input.slug);
   model = stripRepeatedMakeFromModel(make, model);
   model = dedupeAdjacentModelTokens(model);
   model = normalizeRomanSuffixes(model);

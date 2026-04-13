@@ -160,6 +160,15 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Robertson",
+      model: "& Caine 2016 Leopard 40",
+      sourceSite: "sailboatlistings",
+      slug: "2016-robertson-caine-2016-leopard-40-outside-united-states",
+    }),
+    { make: "Robertson and Caine", model: "Leopard 40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Camper",
       model: "And Nicholsons 60 Riviera",
       sourceSite: "theyachtmarket",
