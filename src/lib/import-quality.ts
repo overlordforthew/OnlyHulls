@@ -590,6 +590,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^soleil\b[\s-]*/i, "").trim();
   }
 
+  if (/^pacific$/i.test(make) && modelStartsWith(/^seacraft\b[\s-]*/i)) {
+    make = "Pacific Seacraft";
+    model = model.replace(/^seacraft\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,

@@ -302,6 +302,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Grand Soleil", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Seacraft Crealock 34",
+      sourceSite: "sailboatlistings",
+      slug: "1996-pacific-seacraft-crealock-34-maine",
+    }),
+    { make: "Pacific Seacraft", model: "Crealock 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Seacraft 40",
+      sourceSite: "theyachtmarket",
+      slug: "2002-pacific-seacraft-40-",
+    }),
+    { make: "Pacific Seacraft", model: "40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Seacraft",
+      sourceSite: "apolloduck_us",
+      slug: "1980-pacific-seacraft-",
+    }),
+    { make: "Pacific Seacraft", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
