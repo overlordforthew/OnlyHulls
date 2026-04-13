@@ -239,6 +239,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Cape Dory", model: "36" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheoy",
+      model: "Lee 47 Offshore",
+      sourceSite: "theyachtmarket",
+      slug: "1974-cheoy-lee-47-offshore-",
+    }),
+    { make: "Cheoy Lee", model: "47 Offshore" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheoy",
+      model: "Lee Cheoy Lee 41 Offshore",
+      sourceSite: "sailboatlistings",
+      slug: "1977-cheoy-lee-cheoy-lee-41-offshore-south-carolina",
+    }),
+    { make: "Cheoy Lee", model: "41 Offshore" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheoy",
+      model: "Lee 42 Ketch",
+      sourceSite: "apolloduck_us",
+      slug: "1987-cheoy-lee-42-ketch-",
+    }),
+    { make: "Cheoy Lee", model: "42 Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheoy",
+      model: "Lee",
+      sourceSite: "sailboatlistings",
+      slug: "1977-cheoy-lee-florida",
+    }),
+    { make: "Cheoy Lee", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {

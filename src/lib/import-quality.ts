@@ -580,6 +580,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^dory\b[\s-]*/i, "").trim();
   }
 
+  if (/^cheoy$/i.test(make) && modelStartsWith(/^lee\b[\s-]*/i)) {
+    make = "Cheoy Lee";
+    model = model.replace(/^lee\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
