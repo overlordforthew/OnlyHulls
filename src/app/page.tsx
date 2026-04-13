@@ -86,22 +86,30 @@ const HERO_PROOF = [
 
 const PATHS = [
   {
+    eyebrow: "For buyers",
     title: "I want to buy",
-    description:
-      "Browse the market, save contenders, compare side by side, or let the AI build your buyer profile first.",
+    description: "Browse the market, save contenders, compare side by side, or let the AI narrow the shortlist for you.",
+    bullets: [
+      "Start free and save boats right away",
+      "Use AI matching when you want help narrowing the field",
+    ],
     primaryHref: "/match",
     primaryLabel: "Start AI Matching",
     secondaryHref: "/boats",
-    secondaryLabel: "Browse Boats",
+    secondaryLabel: "Or browse boats",
   },
   {
+    eyebrow: "For sellers",
     title: "I want to sell",
-    description:
-      "List your boat, present it cleanly, and get direct buyer leads without paying commission on the sale.",
+    description: "List your boat, present it cleanly, and get direct buyer leads without paying commission on the sale.",
+    bullets: [
+      "Free listing live in minutes",
+      "Upgrade later only if you want more visibility",
+    ],
     primaryHref: null,
     primaryLabel: "List Your Boat Free",
     secondaryHref: "/sell",
-    secondaryLabel: "See Seller Plans",
+    secondaryLabel: "Or see seller plans",
   },
 ];
 
@@ -114,7 +122,7 @@ export default async function Home() {
   return (
     <div>
       {/* ─── Hero ─── */}
-      <section className="relative overflow-hidden pb-16 pt-12 sm:pb-24 sm:pt-20">
+      <section className="relative overflow-hidden pb-12 pt-10 sm:pb-20 sm:pt-16">
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
@@ -136,7 +144,7 @@ export default async function Home() {
             {/* Search bar */}
             <form
               action="/boats"
-              className="mx-auto mt-10 flex max-w-lg overflow-hidden rounded-full border border-border-bright bg-surface shadow-lg shadow-black/20"
+              className="mx-auto mt-8 flex max-w-lg overflow-hidden rounded-full border border-border-bright bg-surface shadow-lg shadow-black/20"
             >
               <div className="flex flex-1 items-center gap-3 px-5">
                 <Search className="h-5 w-5 shrink-0 text-text-tertiary" />
@@ -156,7 +164,7 @@ export default async function Home() {
             </form>
 
             {/* CTA buttons */}
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/boats"
                 className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
@@ -171,7 +179,7 @@ export default async function Home() {
               </Link>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary">
               {HERO_PROOF.map((item) => (
                 <span
                   key={item}
@@ -183,33 +191,41 @@ export default async function Home() {
             </div>
 
             {/* Stats strip */}
-            <div className="mx-auto mt-12 flex max-w-md justify-center gap-8 sm:gap-12">
-              <div className="text-center">
+            <div className="mx-auto mt-8 grid max-w-2xl grid-cols-3 gap-4 rounded-2xl border border-border bg-surface/55 p-4 text-center">
+              <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">{count}</p>
                 <p className="mt-1 text-xs text-text-secondary">Boats Listed</p>
               </div>
-              <div className="text-center">
+              <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">$0</p>
                 <p className="mt-1 text-xs text-text-secondary">Commission</p>
               </div>
-              <div className="text-center">
+              <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">AI</p>
                 <p className="mt-1 text-xs text-text-secondary">Matching</p>
               </div>
             </div>
 
-            <div className="mx-auto mt-10 grid max-w-4xl gap-4 text-left lg:grid-cols-2">
+            <div className="mx-auto mt-8 grid max-w-4xl gap-4 text-left lg:grid-cols-2">
               {PATHS.map((path) => (
                 <div
                   key={path.title}
-                  className="rounded-2xl border border-border bg-surface/80 p-6 shadow-lg shadow-black/10"
+                  className="flex h-full flex-col rounded-2xl border border-border bg-surface/80 p-6 shadow-lg shadow-black/10"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
-                    Fastest path
+                    {path.eyebrow}
                   </p>
                   <h2 className="mt-2 text-2xl font-bold">{path.title}</h2>
                   <p className="mt-3 text-sm leading-6 text-text-secondary">{path.description}</p>
-                  <div className="mt-5 flex flex-wrap gap-3">
+                  <div className="mt-4 space-y-2 text-sm text-text-secondary">
+                    {path.bullets.map((bullet) => (
+                      <div key={bullet} className="flex items-start gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span>{bullet}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 flex flex-col items-start gap-3">
                     {path.primaryHref ? (
                       <Link
                         href={path.primaryHref}
@@ -224,7 +240,7 @@ export default async function Home() {
                     )}
                     <Link
                       href={path.secondaryHref}
-                      className="rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+                      className="text-sm font-medium text-text-secondary transition-all hover:text-primary"
                     >
                       {path.secondaryLabel}
                     </Link>
