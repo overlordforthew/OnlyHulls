@@ -595,6 +595,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^seacraft\b[\s-]*/i, "").trim();
   }
 
+  if (/^hunter$/i.test(make) && modelStartsWith(/^marine\b[\s-]*/i)) {
+    make = "Hunter Marine";
+    model = model.replace(/^marine\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
@@ -650,6 +655,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
     if (/^Leopard$/i.test(make)) {
       cleaned = cleaned.replace(/^South Africa\s+/i, "");
     }
+  }
+
+  if (/^hunter marine$/i.test(make)) {
+    cleaned = cleaned.replace(/^hunter\b[\s-]*/i, "");
   }
 
   return cleaned.trim();

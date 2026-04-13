@@ -329,6 +329,51 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Pacific Seacraft", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "Marine 33",
+      sourceSite: "sailboatlistings",
+      slug: "2008-hunter-marine-33-oklahoma",
+    }),
+    { make: "Hunter Marine", model: "33" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "Marine Hunter 31",
+      sourceSite: "sailboatlistings",
+      slug: "1985-hunter-marine-hunter-31-new-york",
+    }),
+    { make: "Hunter Marine", model: "31" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "Marine Hunter Legend 375",
+      sourceSite: "sailboatlistings",
+      slug: "1993-hunter-marine-hunter-legend-375-michigan",
+    }),
+    { make: "Hunter Marine", model: "Legend 375" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "Marine 31",
+      sourceSite: "apolloduck_us",
+      slug: "1983-hunter-marine-31-",
+    }),
+    { make: "Hunter Marine", model: "31" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "Marine",
+      sourceSite: "apolloduck_us",
+      slug: "1980-hunter-marine-",
+    }),
+    { make: "Hunter Marine", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
