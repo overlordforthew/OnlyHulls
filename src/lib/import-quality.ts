@@ -626,6 +626,16 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
   return cleaned.trim();
 }
 
+function canonicalizeKnownModelCodes(make: string, model: string) {
+  let cleaned = model;
+
+  if (/^saffier$/i.test(make)) {
+    cleaned = cleaned.replace(/^(S[CEL])\b(?=\s+\d)/i, (prefix) => prefix.toUpperCase());
+  }
+
+  return cleaned;
+}
+
 function inferModelFromSlug(slug?: string | null, make?: string | null) {
   const tokens = String(slug || "")
     .split("-")
@@ -696,6 +706,7 @@ export function normalizeImportedMakeModel(input: {
     sourceSite: input.sourceSite,
   }));
   model = stripSourceSpecificNoise(input.sourceSite, make, model);
+  model = canonicalizeKnownModelCodes(make, model);
   model = stripLeadingSlugYearFromModel(model, input.slug);
   model = stripRepeatedMakeFromModel(make, model);
   model = dedupeAdjacentModelTokens(model);

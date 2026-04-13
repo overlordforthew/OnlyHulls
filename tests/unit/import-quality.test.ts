@@ -178,6 +178,45 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
 });
 
+test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Saffier",
+      model: "Se 37 Lounge",
+      sourceSite: "theyachtmarket",
+      slug: "2025-saffier-se-37-lounge-france",
+    }),
+    { make: "Saffier", model: "SE 37 Lounge" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Saffier",
+      model: "Sc 8 Cabin",
+      sourceSite: "theyachtmarket",
+      slug: "2025-saffier-sc-8-cabin-france",
+    }),
+    { make: "Saffier", model: "SC 8 Cabin" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Saffier",
+      model: "Sl 46",
+      sourceSite: "theyachtmarket",
+      slug: "2025-saffier-sl-46-france",
+    }),
+    { make: "Saffier", model: "SL 46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Saffier",
+      model: "32",
+      sourceSite: "theyachtmarket",
+      slug: "2018-saffier-32-",
+    }),
+    { make: "Saffier", model: "32" }
+  );
+});
+
 test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated boats", () => {
   assert.deepEqual(
     normalizeImportedMakeModel({
