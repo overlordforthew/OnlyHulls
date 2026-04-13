@@ -5,7 +5,11 @@ import { cookies } from "next/headers";
 import { ArrowLeft, MapPin, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { buildVisibleImportQualitySql, hasUsableImportedLocation } from "@/lib/import-quality";
+import {
+  buildVisibleImportQualitySql,
+  hasUsableImportedLocation,
+  sanitizeImportedBoatRecord,
+} from "@/lib/import-quality";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
@@ -71,7 +75,7 @@ function buildBoatMetaDescription(boat: BoatDetail, priceStr: string) {
 }
 
 async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
-  return queryOne<BoatDetail>(
+  const boat = await queryOne<BoatDetail>(
     `SELECT b.id, b.seller_id, b.make, b.model, b.year, b.asking_price, b.currency, b.status, b.asking_price_usd,
             b.location_text, b.slug, b.is_sample, b.source_url, b.source_site,
             u.display_name as seller_name,
@@ -88,6 +92,7 @@ async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
        AND ${buildVisibleImportQualitySql("b")}`,
     [slug]
   );
+  return boat ? (sanitizeImportedBoatRecord(boat) as BoatDetail) : null;
 }
 
 async function getBoatForViewer(
@@ -115,23 +120,25 @@ async function getBoatForViewer(
     return null;
   }
 
-  if (boat.status === "active") {
+  const normalizedBoat = sanitizeImportedBoatRecord(boat) as BoatDetail;
+
+  if (normalizedBoat.status === "active") {
     if (
-      boat.source_url &&
+      normalizedBoat.source_url &&
       (
-        !boat.hero_url ||
-        !boat.model.trim() ||
-        !hasUsableImportedLocation(boat.location_text) ||
-        Number(boat.asking_price_usd || boat.asking_price) < 3000
+        !normalizedBoat.hero_url ||
+        !normalizedBoat.model.trim() ||
+        !hasUsableImportedLocation(normalizedBoat.location_text) ||
+        Number(normalizedBoat.asking_price_usd || normalizedBoat.asking_price) < 3000
       )
     ) {
       return null;
     }
-    return boat;
+    return normalizedBoat;
   }
 
-  if (viewerRole === "admin" || boat.seller_id === viewerId) {
-    return boat;
+  if (viewerRole === "admin" || normalizedBoat.seller_id === viewerId) {
+    return normalizedBoat;
   }
 
   return null;

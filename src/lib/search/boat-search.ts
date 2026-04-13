@@ -33,6 +33,26 @@ const PRICE_USD_SQL = `CASE
   WHEN b.currency = 'GBP' THEN b.asking_price / ${USD_TO_CURRENCY_RATE.GBP}
   ELSE b.asking_price
 END`;
+const LOA_SQL =
+  "CAST(NULLIF(REGEXP_REPLACE(d.specs->>'loa', '[^0-9.]', '', 'g'), '') AS float)";
+const NORMALIZED_MODEL_LOA_SQL = `CAST(
+  NULLIF(
+    SUBSTRING(
+      REGEXP_REPLACE(LOWER(COALESCE(b.model, '')), '^(\\d)\\s+(\\d)(?=$|\\s)', '\\1.\\2')
+      FROM '([0-9]+(?:\\.[0-9]+)?)'
+    ),
+    ''
+  ) AS float
+)`;
+const SANITIZED_LOA_SQL = `CASE
+  WHEN LOWER(COALESCE(b.make, '')) = 'bali'
+    AND ${LOA_SQL} IS NOT NULL
+    AND ${NORMALIZED_MODEL_LOA_SQL} IS NOT NULL
+    AND ${LOA_SQL} > (${NORMALIZED_MODEL_LOA_SQL} * 1.6)
+    AND ABS((${LOA_SQL} / 3.28084) - ${NORMALIZED_MODEL_LOA_SQL}) <= 2.5
+    THEN ROUND(((${LOA_SQL} / 3.28084)::numeric), 1)::float
+  ELSE ${LOA_SQL}
+END`;
 const QUALITY_SCORE_SQL = "COALESCE((d.documentation_status->>'import_quality_score')::int, 100)";
 const IMAGE_COUNT_SQL =
   "(SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')";
@@ -138,7 +158,7 @@ export function buildBoatSearchUrl(filters: Partial<BoatSearchFilters>) {
 export function buildOrderBy(sort: string, dir: string) {
   const SORT_MAP: Record<string, string> = {
     price: PRICE_USD_SQL,
-    size: "CAST(NULLIF(REGEXP_REPLACE(d.specs->>'loa', '[^0-9.]', '', 'g'), '') AS float)",
+    size: SANITIZED_LOA_SQL,
     year: "b.year",
     newest: "b.created_at",
   };

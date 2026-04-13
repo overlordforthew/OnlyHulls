@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   normalizeImportedLocation,
   normalizeImportedMakeModel,
+  sanitizeImportedBoatRecord,
+  sanitizeImportedDimensions,
 } from "../../src/lib/import-quality";
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
@@ -506,4 +508,78 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
     }),
     { make: "E G", model: "Van De Stadt Rebel 41" }
   );
+});
+
+test("normalizeImportedMakeModel restores dotted Bali model codes", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bali",
+      model: "5 2",
+      sourceSite: "theyachtmarket",
+      slug: "2026-bali-5-2-catalonia",
+    }),
+    { make: "Bali", model: "5.2" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bali",
+      model: "5 8 Open Space",
+      sourceSite: "theyachtmarket",
+      slug: "2026-bali-5-8-catalonia",
+    }),
+    { make: "Bali", model: "5.8 Open Space" }
+  );
+});
+
+test("sanitizeImportedDimensions repairs Bali values inflated by bad source units", () => {
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Bali",
+      model: "5.2",
+      sourceSite: "theyachtmarket",
+      loa: 170.6,
+      beam: 88.6,
+      draft: 6.6,
+    }),
+    { loa: 52, beam: 27, draft: 6.6 }
+  );
+});
+
+test("sanitizeImportedDimensions drops impossible Bali draft after conversion check fails", () => {
+  assert.deepEqual(
+    sanitizeImportedDimensions({
+      make: "Bali",
+      model: "5.4",
+      sourceSite: "theyachtmarket",
+      loa: 55.6,
+      beam: 28.7,
+      draft: 53.8,
+    }),
+    { loa: 55.6, beam: 28.7, draft: null }
+  );
+});
+
+test("sanitizeImportedBoatRecord normalizes make model, location, and specs together", () => {
+  const normalized = sanitizeImportedBoatRecord({
+    make: "Bali",
+    model: "5 2",
+    slug: "2026-bali-5-2-catalonia",
+    source_site: "theyachtmarket",
+    location_text: "San Juan Puerto Rico",
+    specs: {
+      loa: 170.6,
+      beam: 88.6,
+      draft: 6.6,
+      rig_type: "catamaran",
+    },
+  });
+
+  assert.equal(normalized.model, "5.2");
+  assert.equal(normalized.location_text, "San Juan, Puerto Rico");
+  assert.deepEqual(normalized.specs, {
+    loa: 52,
+    beam: 27,
+    draft: 6.6,
+    rig_type: "catamaran",
+  });
 });

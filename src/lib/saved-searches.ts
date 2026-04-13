@@ -1,4 +1,5 @@
 import { query, queryOne } from "@/lib/db";
+import { sanitizeImportedBoatRecord } from "@/lib/import-quality";
 import {
   buildBoatSearchUrl,
   buildSavedSearchName,
@@ -156,15 +157,23 @@ async function listMatchingBoats(
     queryParams
   );
 
-  return rows.map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    title: `${row.year} ${row.make} ${row.model}`,
-    price: Number(row.asking_price),
-    currency: row.currency,
-    locationText: row.location_text,
-    heroUrl: row.hero_url,
-  }));
+  return rows.map((row) => {
+    const normalized = sanitizeImportedBoatRecord({
+      ...row,
+      source_site: null,
+      specs: {},
+    });
+
+    return {
+      id: row.id,
+      slug: row.slug,
+      title: `${row.year} ${normalized.make} ${normalized.model}`.trim(),
+      price: Number(row.asking_price),
+      currency: row.currency,
+      locationText: normalized.location_text,
+      heroUrl: row.hero_url,
+    };
+  });
 }
 
 async function hydrateSavedSearch(row: SavedSearchRow): Promise<SavedSearchRecord> {

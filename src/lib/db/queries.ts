@@ -1,5 +1,5 @@
 import { query, queryOne } from "@/lib/db";
-import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { buildVisibleImportQualitySql, sanitizeImportedBoatRecord } from "@/lib/import-quality";
 
 export interface BoatRow {
   id: string;
@@ -45,9 +45,18 @@ const DIRECT_LISTING_BOOST_SQL =
   "CASE WHEN b.source_url IS NULL AND COALESCE(u.subscription_tier::text, '') IN ('featured', 'broker') THEN 2 WHEN b.source_url IS NULL THEN 1 ELSE 0 END";
 const DISCOVERY_ORDER_SQL = `${DIRECT_LISTING_BOOST_SQL} DESC, ${QUALITY_SCORE_SQL} DESC, ${LOCATION_READY_SQL} DESC, ${IMAGE_COUNT_SQL} DESC, b.view_count DESC NULLS LAST, b.updated_at DESC, b.created_at DESC`;
 
+function sanitizeBoatRows(rows: BoatRow[]) {
+  return rows.map((row) =>
+    sanitizeImportedBoatRecord({
+      ...row,
+      specs: row.specs as Record<string, unknown>,
+    }) as BoatRow
+  );
+}
+
 export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
   // Trending = most viewed, but only boats with 2+ images (no empty showcases)
-  return query<BoatRow>(
+  const rows = await query<BoatRow>(
     `${BOAT_SELECT}
        AND ${IMAGE_COUNT_SQL} >= 2
        AND COALESCE(b.asking_price_usd, b.asking_price) >= 3000
@@ -55,6 +64,7 @@ export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
      LIMIT $1`,
     [limit]
   );
+  return sanitizeBoatRows(rows);
 }
 
 export async function getRecentBoats(
@@ -62,20 +72,22 @@ export async function getRecentBoats(
   excludeIds: string[] = []
 ): Promise<BoatRow[]> {
   if (excludeIds.length > 0) {
-    return query<BoatRow>(
+    const rows = await query<BoatRow>(
       `${BOAT_SELECT}
          AND b.id != ALL($1)
        ORDER BY ${DIRECT_LISTING_BOOST_SQL} DESC, ${QUALITY_SCORE_SQL} DESC, ${IMAGE_COUNT_SQL} DESC, b.created_at DESC
        LIMIT $2`,
       [excludeIds, limit]
     );
+    return sanitizeBoatRows(rows);
   }
-  return query<BoatRow>(
+  const rows = await query<BoatRow>(
     `${BOAT_SELECT}
      ORDER BY ${DIRECT_LISTING_BOOST_SQL} DESC, ${QUALITY_SCORE_SQL} DESC, ${IMAGE_COUNT_SQL} DESC, b.created_at DESC
      LIMIT $1`,
     [limit]
   );
+  return sanitizeBoatRows(rows);
 }
 
 export async function getBoatCount(): Promise<number> {
@@ -90,13 +102,14 @@ export async function getSeoHubBoats(
   params: unknown[] = [],
   limit = 24
 ): Promise<BoatRow[]> {
-  return query<BoatRow>(
+  const rows = await query<BoatRow>(
     `${BOAT_SELECT}
        AND (${whereSql})
      ORDER BY ${DISCOVERY_ORDER_SQL}
      LIMIT $${params.length + 1}`,
     [...params, limit]
   );
+  return sanitizeBoatRows(rows);
 }
 
 export async function getSeoHubBoatCount(
@@ -121,12 +134,13 @@ export async function getBoatsByIds(ids: string[]): Promise<BoatRow[]> {
     return [];
   }
 
-  return query<BoatRow>(
+  const rows = await query<BoatRow>(
     `${BOAT_SELECT}
        AND b.id = ANY($1::uuid[])
      ORDER BY array_position($1::uuid[], b.id)`,
     [ids]
   );
+  return sanitizeBoatRows(rows);
 }
 
 export async function getRelatedBoats(input: {
@@ -144,7 +158,7 @@ export async function getRelatedBoats(input: {
   const characterTags = (input.characterTags || []).filter(Boolean);
   const priceUsd = Number(input.priceUsd ?? 0);
 
-  return query<BoatRow>(
+  const rows = await query<BoatRow>(
     `${BOAT_SELECT}
        AND b.id <> $1
        AND (
@@ -171,4 +185,5 @@ export async function getRelatedBoats(input: {
      LIMIT $6`,
     [input.boatId, input.make, locationPattern, characterTags, priceUsd, limit]
   );
+  return sanitizeBoatRows(rows);
 }

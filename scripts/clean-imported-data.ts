@@ -11,6 +11,7 @@ import {
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
+  sanitizeImportedSpecs,
 } from "../src/lib/import-quality";
 import { ensureBoatSearchIndex, getActiveBoatSearchDocuments } from "../src/lib/search/boat-index";
 
@@ -222,10 +223,15 @@ async function main() {
       sourceSite: row.source_site,
     });
     const normalizedLocation = normalizeImportedLocation(row.location_text);
+    const normalizedSpecs = sanitizeImportedSpecs(row.specs, {
+      make: normalized.make,
+      model: normalized.model,
+      sourceSite: row.source_site,
+    });
     const normalizedTags = buildImportedCharacterTags({
       priceUsd: row.asking_price_usd,
-      loa: typeof row.specs?.loa === "number" ? row.specs.loa : null,
-      rigType: typeof row.specs?.rig_type === "string" ? row.specs.rig_type : null,
+      loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
+      rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
       existingTags: row.character_tags,
     });
     const cleanedSourceSummary = normalizeImportedSummary(row.ai_summary);
@@ -240,19 +246,38 @@ async function main() {
         locationText: normalizedLocation,
         price: Number(row.asking_price),
         currency: row.currency,
-        loa: typeof row.specs?.loa === "number" ? row.specs.loa : null,
-        rigType: typeof row.specs?.rig_type === "string" ? row.specs.rig_type : null,
-        hullMaterial: typeof row.specs?.hull_material === "string" ? row.specs.hull_material : null,
-        berths: typeof row.specs?.berths === "number" ? row.specs.berths : null,
-        heads: typeof row.specs?.heads === "number" ? row.specs.heads : null,
+        loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
+        rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
+        hullMaterial: typeof normalizedSpecs.hull_material === "string" ? normalizedSpecs.hull_material : null,
+        berths: typeof normalizedSpecs.berths === "number" ? normalizedSpecs.berths : null,
+        heads: typeof normalizedSpecs.heads === "number" ? normalizedSpecs.heads : null,
         sourceName: row.source_name,
       });
     }
 
-    if (shouldUseLlm({ ...row, make: normalized.make, model: normalized.model, ai_summary: summary }, llmLimit - llmUsed)) {
+    if (
+      shouldUseLlm(
+        {
+          ...row,
+          make: normalized.make,
+          model: normalized.model,
+          ai_summary: summary,
+          location_text: normalizedLocation,
+          specs: normalizedSpecs,
+        },
+        llmLimit - llmUsed
+      )
+    ) {
       try {
         const llmResult = await maybeGenerateLlmSummary(
-          { ...row, make: normalized.make, model: normalized.model, ai_summary: summary },
+          {
+            ...row,
+            make: normalized.make,
+            model: normalized.model,
+            ai_summary: summary,
+            location_text: normalizedLocation,
+            specs: normalizedSpecs,
+          },
           summary
         );
         if (llmResult) {
@@ -293,7 +318,7 @@ async function main() {
       asking_price: row.asking_price,
       currency: row.currency,
       location_text: normalizedLocation,
-      specs: row.specs,
+      specs: normalizedSpecs,
       character_tags: normalizedTags,
       ai_summary: summary,
     });
@@ -362,7 +387,7 @@ async function main() {
            documentation_status = EXCLUDED.documentation_status`,
         [
           row.id,
-          JSON.stringify(row.specs || {}),
+          JSON.stringify(normalizedSpecs),
           normalizedTags,
           summary,
           JSON.stringify(documentationStatus),

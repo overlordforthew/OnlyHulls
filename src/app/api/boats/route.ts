@@ -7,7 +7,7 @@ import {
   filtersFromSearchParams,
   type BoatSearchFilters,
 } from "@/lib/search/boat-search";
-import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { buildVisibleImportQualitySql, sanitizeImportedBoatRecord } from "@/lib/import-quality";
 import { NextResponse } from "next/server";
 
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
@@ -18,6 +18,47 @@ const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     COALESCE(d.specs, '{}') as specs,
     COALESCE(d.character_tags, '{}') as character_tags,
     d.condition_score`;
+
+function sanitizeBoatResults(rows: Record<string, unknown>[]) {
+  return rows.map((row) =>
+    sanitizeImportedBoatRecord({
+      ...row,
+      make: String(row.make || ""),
+      model: String(row.model || ""),
+      slug: typeof row.slug === "string" ? row.slug : null,
+      source_site: typeof row.source_site === "string" ? row.source_site : null,
+      location_text: typeof row.location_text === "string" ? row.location_text : null,
+      specs:
+        row.specs && typeof row.specs === "object"
+          ? (row.specs as Record<string, unknown>)
+          : {},
+    })
+  );
+}
+
+function getSanitizedLoa(row: Record<string, unknown>) {
+  const specs =
+    row.specs && typeof row.specs === "object"
+      ? (row.specs as Record<string, unknown>)
+      : null;
+  return typeof specs?.loa === "number" ? specs.loa : null;
+}
+
+function sortSanitizedRows(rows: Record<string, unknown>[], filters: BoatSearchFilters) {
+  if (filters.sort !== "size") return rows;
+
+  const direction = filters.dir === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const leftLoa = getSanitizedLoa(left);
+    const rightLoa = getSanitizedLoa(right);
+
+    if (leftLoa === null && rightLoa === null) return 0;
+    if (leftLoa === null) return 1;
+    if (rightLoa === null) return -1;
+
+    return (leftLoa - rightLoa) * direction;
+  });
+}
 
 export async function GET(req: Request) {
   try {
@@ -102,7 +143,7 @@ async function runMeiliSearch(filters: BoatSearchFilters) {
 
 async function runDatabaseSearch(filters: BoatSearchFilters, orderBy: string) {
   const { where, params } = buildWhereClause(filters);
-  const boats = await query<Record<string, unknown>>(
+  const rows = await query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
      FROM boats b
      LEFT JOIN users u ON u.id = b.seller_id
@@ -112,6 +153,7 @@ async function runDatabaseSearch(filters: BoatSearchFilters, orderBy: string) {
      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, filters.limit, (filters.page - 1) * filters.limit]
   );
+  const boats = sortSanitizedRows(sanitizeBoatResults(rows), filters);
 
   const countResult = await queryOne<{ count: string }>(
     `SELECT COUNT(*)
@@ -132,7 +174,7 @@ async function runDatabaseSearch(filters: BoatSearchFilters, orderBy: string) {
 
 async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: string) {
   if (preserveHitOrder) {
-    return query<Record<string, unknown>>(
+    const rows = await query<Record<string, unknown>>(
       `SELECT ${BOAT_FIELDS}
        FROM boats b
        LEFT JOIN users u ON u.id = b.seller_id
@@ -143,9 +185,10 @@ async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: str
        ORDER BY array_position($1::text[], b.id::text) ASC`,
       [ids]
     );
+    return sanitizeBoatResults(rows);
   }
 
-  return query<Record<string, unknown>>(
+  const rows = await query<Record<string, unknown>>(
     `SELECT ${BOAT_FIELDS}
      FROM boats b
      LEFT JOIN users u ON u.id = b.seller_id
@@ -156,4 +199,5 @@ async function fetchBoats(ids: string[], preserveHitOrder: boolean, orderBy: str
      ORDER BY ${orderBy}`,
     [ids]
   );
+  return sanitizeBoatResults(rows);
 }

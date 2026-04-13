@@ -681,11 +681,159 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 function canonicalizeKnownModelCodes(make: string, model: string) {
   let cleaned = model;
 
+  if (/^bali$/i.test(make)) {
+    cleaned = cleaned.replace(/^(\d)\s+(\d)(?=$|\s)/, "$1.$2");
+  }
+
   if (/^saffier$/i.test(make)) {
     cleaned = cleaned.replace(/^(S[CEL])\b(?=\s+\d)/i, (prefix) => prefix.toUpperCase());
   }
 
   return cleaned;
+}
+
+const METERS_TO_FEET = 3.28084;
+
+function toFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function roundDimension(value: number | null) {
+  if (value === null) return null;
+  return Math.round(value * 10) / 10;
+}
+
+function getExpectedLoaFromModel(make: string, model: string) {
+  if (!/^bali$/i.test(make)) return null;
+
+  const match = model.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+
+  let expectedLoa = Number.parseFloat(match[1]);
+  if (expectedLoa < 10 && /^\d\.\d$/.test(match[1])) {
+    expectedLoa *= 10;
+  }
+  return Number.isFinite(expectedLoa) ? expectedLoa : null;
+}
+
+function repairLoaFromExpected(rawLoa: number | null, expectedLoa: number | null) {
+  if (rawLoa === null || expectedLoa === null) return rawLoa;
+
+  const converted = rawLoa / METERS_TO_FEET;
+  if (rawLoa > expectedLoa * 1.6 && Math.abs(converted - expectedLoa) <= 2.5) {
+    return roundDimension(converted);
+  }
+
+  return rawLoa;
+}
+
+function repairBeamFromLoa(rawBeam: number | null, candidateLoa: number | null) {
+  if (rawBeam === null || candidateLoa === null) return rawBeam;
+
+  const maxPlausibleBeam = Math.max(16, candidateLoa * 0.72);
+  if (rawBeam <= maxPlausibleBeam) return rawBeam;
+
+  const converted = rawBeam / METERS_TO_FEET;
+  return converted <= maxPlausibleBeam ? roundDimension(converted) : rawBeam;
+}
+
+function repairDraftFromLoa(rawDraft: number | null, candidateLoa: number | null) {
+  if (rawDraft === null || candidateLoa === null) return rawDraft;
+
+  const maxPlausibleDraft = Math.max(12, candidateLoa * 0.2);
+  if (rawDraft <= maxPlausibleDraft) return rawDraft;
+
+  const converted = rawDraft / METERS_TO_FEET;
+  if (converted <= maxPlausibleDraft) {
+    return roundDimension(converted);
+  }
+
+  return null;
+}
+
+export function sanitizeImportedDimensions(input: {
+  make?: string | null;
+  model?: string | null;
+  sourceSite?: string | null;
+  loa?: number | null;
+  beam?: number | null;
+  draft?: number | null;
+}) {
+  const make = normalizeSpacing(input.make);
+  const model = normalizeSpacing(input.model);
+  const expectedLoa = getExpectedLoaFromModel(make, model);
+
+  const loa = repairLoaFromExpected(toFiniteNumber(input.loa), expectedLoa);
+  const beam = repairBeamFromLoa(toFiniteNumber(input.beam), loa ?? expectedLoa);
+  const draft = repairDraftFromLoa(toFiniteNumber(input.draft), loa ?? expectedLoa);
+
+  return {
+    loa: roundDimension(loa),
+    beam: roundDimension(beam),
+    draft: roundDimension(draft),
+  };
+}
+
+export function sanitizeImportedSpecs(
+  specs: Record<string, unknown> | null | undefined,
+  context: {
+    make?: string | null;
+    model?: string | null;
+    sourceSite?: string | null;
+  }
+) {
+  const normalizedSpecs = { ...(specs || {}) };
+  const { loa, beam, draft } = sanitizeImportedDimensions({
+    make: context.make,
+    model: context.model,
+    sourceSite: context.sourceSite,
+    loa: toFiniteNumber(normalizedSpecs.loa),
+    beam: toFiniteNumber(normalizedSpecs.beam),
+    draft: toFiniteNumber(normalizedSpecs.draft),
+  });
+
+  if (loa === null) delete normalizedSpecs.loa;
+  else normalizedSpecs.loa = loa;
+
+  if (beam === null) delete normalizedSpecs.beam;
+  else normalizedSpecs.beam = beam;
+
+  if (draft === null) delete normalizedSpecs.draft;
+  else normalizedSpecs.draft = draft;
+
+  return normalizedSpecs;
+}
+
+type SanitizableBoatRecord = {
+  make: string;
+  model: string;
+  slug?: string | null;
+  source_site?: string | null;
+  location_text?: string | null;
+  specs?: Record<string, unknown> | null;
+};
+
+export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat: T): T {
+  const normalizedMakeModel = normalizeImportedMakeModel({
+    make: boat.make,
+    model: boat.model,
+    slug: boat.slug,
+    sourceSite: boat.source_site,
+  });
+  const normalizedLocation = normalizeImportedLocation(boat.location_text);
+  const normalizedSpecs = sanitizeImportedSpecs(boat.specs, {
+    make: normalizedMakeModel.make || boat.make,
+    model: normalizedMakeModel.model || boat.model,
+    sourceSite: boat.source_site,
+  });
+
+  return {
+    ...boat,
+    make: normalizedMakeModel.make || boat.make,
+    model: normalizedMakeModel.model || boat.model,
+    location_text: normalizedLocation || boat.location_text || null,
+    specs: normalizedSpecs,
+  };
 }
 
 function inferModelFromSlug(slug?: string | null, make?: string | null) {

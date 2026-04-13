@@ -27,6 +27,7 @@ import {
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
+  sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
 
 // Source registry — add new sources here
@@ -232,10 +233,16 @@ function buildSpecsAndSummary(input: {
   currency: string;
   location: string;
   sourceName: string;
+  sourceSite: string;
 }) {
-  const loa = parseNumber(input.boat.length || input.boat.loa);
-  const beam = parseNumber(input.boat.beam);
-  const draft = parseNumber(input.boat.draft);
+  const { loa, beam, draft } = sanitizeImportedDimensions({
+    make: input.make,
+    model: input.model,
+    sourceSite: input.sourceSite,
+    loa: parseNumber(input.boat.length || input.boat.loa),
+    beam: parseNumber(input.boat.beam),
+    draft: parseNumber(input.boat.draft),
+  });
   const rigType = input.boat.rigging || input.boat.type || "";
   const hullMaterial = input.boat.hull || "";
   const engine = input.boat.engine || "";
@@ -352,7 +359,12 @@ async function importBoats(filePath: string, sourceSite: string) {
       });
 
       // Minimum 25ft, maximum 300ft — no dinghies, no parse errors
-      const loa = parseNumber(b.length || b.loa);
+      const { loa } = sanitizeImportedDimensions({
+        make,
+        model,
+        sourceSite,
+        loa: parseNumber(b.length || b.loa),
+      });
       if (loa !== null && (loa < 25 || loa > 300)) {
         skipped++;
         continue;
@@ -416,6 +428,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         currency,
         location,
         sourceName: source.name,
+        sourceSite,
       });
       const images = b.images || [];
       const priceUsd = toUsd(price, currency);
@@ -577,6 +590,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
         currency,
         location,
         sourceName: source.name,
+        sourceSite,
       });
 
       // Upsert boat_dna
