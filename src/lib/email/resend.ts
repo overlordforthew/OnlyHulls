@@ -261,7 +261,7 @@ export async function sendSellerNotification(params: {
           <a href="${params.acceptUrl}" style="background: #0369a1; color: white; padding: 12px 24px; border-radius: 24px; text-decoration: none; display: inline-block;">Accept & Connect</a>
           <a href="${params.declineUrl}" style="color: #64748b; padding: 12px 24px; text-decoration: none; display: inline-block;">Decline</a>
         </div>
-        <p style="color: #94a3b8; font-size: 12px;">OnlyHulls — AI-Powered Boat Matchmaking</p>
+        <p style="color: #94a3b8; font-size: 12px;">OnlyHulls - AI-Powered Boat Matchmaking</p>
       </div>
     `,
   });
@@ -291,7 +291,7 @@ export async function sendIntroductionEmail(params: {
         <p><strong>Buyer:</strong> ${esc(params.buyerName)} (${esc(params.buyerEmail)})</p>
         <p><strong>Seller:</strong> ${esc(params.sellerName)} (${esc(params.sellerEmail)})</p>
         <p>You're now connected! Reply to this email or reach out directly to start your conversation.</p>
-        <p style="color: #94a3b8; font-size: 12px;">OnlyHulls — Be the matchmaker, not the broker.</p>
+        <p style="color: #94a3b8; font-size: 12px;">OnlyHulls - Be the matchmaker, not the broker.</p>
       </div>
     `,
   });

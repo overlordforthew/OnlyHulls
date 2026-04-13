@@ -96,6 +96,16 @@ async function getSourceHealth(limit: number) {
   );
 }
 
+function renderRecentSignup(signup: RecentSignupRow) {
+  const createdAt = new Date(signup.created_at).toLocaleString("en-US", {
+    timeZone: "UTC",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  return `<li><strong>${esc(signup.display_name?.trim() || "Unnamed user")}</strong> - ${esc(signup.email)} <span style="color:#64748b;">(${createdAt} UTC)</span></li>`;
+}
+
 async function main() {
   const days = parseArgValue("--days", 1);
   const sourceLimit = parseArgValue("--limit", 8);
@@ -131,12 +141,7 @@ async function main() {
       <div style="margin-top: 18px;">
         <h3 style="margin-bottom: 10px;">Recent signups</h3>
         <ul style="padding-left: 18px; color: #0f172a;">
-          ${recentSignups
-            .map(
-              (signup) =>
-                `<li><strong>${esc(signup.display_name?.trim() || "Unnamed user")}</strong> — ${esc(signup.email)} <span style="color:#64748b;">(${new Date(signup.created_at).toLocaleString("en-US", { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" })} UTC)</span></li>`
-            )
-            .join("")}
+          ${recentSignups.map(renderRecentSignup).join("")}
         </ul>
       </div>
     `
