@@ -580,6 +580,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Hans",
+      model: "Christian 38t",
+      sourceSite: "sailboatlistings",
+      slug: "1976-hans-christian-38t-puerto-rico",
+    }),
+    { make: "Hans Christian", model: "38t" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hans",
+      model: "Christian Yachts Hans Christian 43",
+      sourceSite: "sailboatlistings",
+      slug: "1984-hans-christian-yachts-hans-christian-43-maine",
+    }),
+    { make: "Hans Christian", model: "43" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hans",
+      model: "Christan 34 Ft",
+      sourceSite: "sailboatlistings",
+      slug: "1978-hans-christan-34-ft-trinidad",
+    }),
+    { make: "Hans Christian", model: "34 Ft" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hans",
+      model: "Christian",
+      sourceSite: "sailboatlistings",
+      slug: "1986-hans-christian-maryland",
+    }),
+    { make: "Hans Christian", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Bruce",
       model: "Roberts 65",
       sourceSite: "theyachtmarket",
@@ -700,6 +736,15 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
       slug: "1996-north-wind-50-",
     }),
     { make: "North", model: "Wind 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hans",
+      model: "Alma 42",
+      sourceSite: "theyachtmarket",
+      slug: "2004-hans-alma-42-kissamos",
+    }),
+    { make: "Hans", model: "Alma 42" }
   );
   assert.deepEqual(
     normalizeImportedMakeModel({

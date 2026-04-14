@@ -742,6 +742,14 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^collingwood\s+boatbuilders\b[\s-]*/i, "").trim();
   }
 
+  if (/^hans$/i.test(make) && modelStartsWith(/^christ(?:ian|an)\b[\s-]*/i)) {
+    make = "Hans Christian";
+    model = model
+      .replace(/^christ(?:ian|an)\b[\s-]*/i, "")
+      .replace(/^yachts?\b[\s-]*/i, "")
+      .trim();
+  }
+
   if (/^bruce$/i.test(make) && modelStartsWith(/^roberts?\b[\s-]*/i)) {
     make = "Bruce Roberts";
     model = model.replace(/^roberts?\b[\s-]*/i, "").trim();
