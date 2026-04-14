@@ -86,7 +86,7 @@ async function gotoWithRetry(page: Page, path: string, attempts = 3) {
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      await page.goto(path, { waitUntil: "domcontentloaded" });
+      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 15_000 });
       return;
     } catch (error) {
       lastError = error;
@@ -95,7 +95,9 @@ async function gotoWithRetry(page: Page, path: string, attempts = 3) {
         message.includes("net::ERR_NETWORK_CHANGED")
         || message.includes("net::ERR_ABORTED")
         || message.includes("chrome-error://chromewebdata/")
-        || message.includes("interrupted by another navigation");
+        || message.includes("interrupted by another navigation")
+        || message.includes("page.goto: Timeout")
+        || message.includes("Timeout 15000ms exceeded");
 
       if (!isTransientNetworkReset || attempt === attempts) {
         throw error;
@@ -228,7 +230,15 @@ test("boats search hubs stay visible until a draft query is submitted", async ({
   await page.getByPlaceholder("Search boats...").fill("lagoon");
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.ok()
+        && url.pathname === "/api/boats"
+        && url.searchParams.get("q") === "lagoon";
+    }),
+    page.getByRole("button", { name: "Search", exact: true }).click(),
+  ]);
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
   await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
 });
@@ -390,8 +400,13 @@ test("boats page filters by normalized boat type", async ({ page }) => {
   });
 
   await page.goto("/boats");
-  await page.getByTestId("boats-filter-toggle").click();
-  await page.getByTestId("boats-filter-boat-type").selectOption("catamaran");
+  const filterToggle = page.getByTestId("boats-filter-toggle");
+  await expect(filterToggle).toBeVisible();
+  await filterToggle.click();
+
+  const boatTypeSelect = page.getByTestId("boats-filter-boat-type");
+  await expect(boatTypeSelect).toBeVisible();
+  await boatTypeSelect.selectOption("catamaran");
 
   await Promise.all([
     page.waitForResponse((response) => {
@@ -409,13 +424,15 @@ test("boats page filters by normalized boat type", async ({ page }) => {
 
 test("boats currency selection persists after reload", async ({ page }) => {
   await gotoWithRetry(page, "/boats");
-  await expect(page.locator("#boats-currency")).toBeEnabled();
-  await page.locator("#boats-currency").selectOption("EUR");
-  await expect(page.locator("#boats-currency")).toHaveValue("EUR");
+  const currencySelector = page.locator("#boats-currency:not([disabled])").first();
+  await expect(currencySelector).toBeEnabled();
+  await currencySelector.selectOption("EUR");
+  await expect(currencySelector).toHaveValue("EUR");
 
   await page.reload();
-  await expect(page.locator("#boats-currency")).toBeEnabled();
-  await expect(page.locator("#boats-currency")).toHaveValue("EUR");
+  const reloadedCurrencySelector = page.locator("#boats-currency:not([disabled])").first();
+  await expect(reloadedCurrencySelector).toBeEnabled();
+  await expect(reloadedCurrencySelector).toHaveValue("EUR");
 });
 
 test("boats no-results state offers recovery paths", async ({ page }) => {
@@ -427,13 +444,13 @@ test("boats no-results state offers recovery paths", async ({ page }) => {
     });
   });
 
-  await Promise.all([
-    page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.ok() && url.pathname === "/api/boats";
-    }),
-    page.goto("/boats?q=not-a-real-match"),
-  ]);
+  const noResultsResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.ok() && url.pathname === "/api/boats";
+  });
+
+  await gotoWithRetry(page, "/boats?q=not-a-real-match");
+  await noResultsResponse;
   await expect(page.getByText("No hulls found", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toBeVisible();
   await expect(page.getByText("Try these live markets", { exact: true })).toBeVisible();
