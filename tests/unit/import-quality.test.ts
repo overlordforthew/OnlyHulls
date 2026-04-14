@@ -549,6 +549,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Bruce Roberts", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce Roberts",
+      model: "Roberts Ketch",
+      sourceSite: "sailboatlistings",
+      slug: "1986-bruce-roberts-ketch-florida",
+    }),
+    { make: "Bruce Roberts", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce Roberts",
+      model: "Roberts",
+      sourceSite: "sailboatlistings",
+      slug: "2005-bruce-roberts-ohio",
+    }),
+    { make: "Bruce Roberts", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {

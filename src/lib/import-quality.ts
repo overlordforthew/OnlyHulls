@@ -782,6 +782,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
     cleaned = cleaned.replace(/^spirit\b[\s-]*/i, "");
   }
 
+  if (/^bruce roberts$/i.test(make)) {
+    cleaned = cleaned.replace(/^roberts?\b[\s-]*/i, "");
+  }
+
   return cleaned.trim();
 }
 
