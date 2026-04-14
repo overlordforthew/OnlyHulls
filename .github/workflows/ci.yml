@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://onlyhulls:changeme@127.0.0.1:5433/onlyhulls
+  REDIS_URL: redis://127.0.0.1:6380
+  MEILISEARCH_URL: http://127.0.0.1:7701
+  MEILISEARCH_API_KEY: ci-meili-key
+  AUTH_SECRET: ci-auth-secret-please-replace-in-production
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+  NEXTAUTH_URL: http://127.0.0.1:3100
+  PLAYWRIGHT_LOCAL_BASE_URL: http://127.0.0.1:3100
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:unit
+
+  browser-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

@@ -60,7 +60,35 @@ function sortSanitizedRows(rows: Record<string, unknown>[], filters: BoatSearchF
   });
 }
 
+function buildServerTimingHeader(metrics: Array<{ name: string; durationMs: number }>) {
+  return metrics
+    .filter((metric) => Number.isFinite(metric.durationMs))
+    .map((metric) => `${metric.name};dur=${metric.durationMs.toFixed(1)}`)
+    .join(", ");
+}
+
+function jsonWithTiming<T>(
+  body: T,
+  input: {
+    searchMode: string;
+    totalDurationMs: number;
+    searchDurationMs: number;
+  }
+) {
+  return NextResponse.json(body, {
+    headers: {
+      "Server-Timing": buildServerTimingHeader([
+        { name: "app", durationMs: input.totalDurationMs },
+        { name: "search", durationMs: input.searchDurationMs },
+      ]),
+      "X-OnlyHulls-Search-Mode": input.searchMode,
+    },
+  });
+}
+
 export async function GET(req: Request) {
+  const requestStartedAt = Date.now();
+
   try {
     const url = new URL(req.url);
     const filters = filtersFromSearchParams(url.searchParams);
@@ -80,20 +108,50 @@ export async function GET(req: Request) {
       Boolean(filters.search) &&
       !hasStructuredFilters &&
       !isExplicitSort;
+    let searchMode = "database";
+    let searchDurationMs = 0;
 
     if (shouldUseMeili) {
       try {
+        const meiliStartedAt = Date.now();
         const meiliResults = await runMeiliSearch(filters);
         if (meiliResults.hits.length) {
           const ids = meiliResults.hits.map((hit) => String(hit.id));
           const boats = await fetchBoats(ids, true, orderBy);
+          searchDurationMs = Date.now() - meiliStartedAt;
 
           if (boats.length === ids.length) {
-            return NextResponse.json({
+            searchMode = "meili";
+            const payload = {
               boats,
               total: meiliResults.estimatedTotalHits || boats.length,
               page: filters.page,
               limit: filters.limit,
+            };
+            const totalDurationMs = Date.now() - requestStartedAt;
+
+            logger.info(
+              {
+                searchMode,
+                totalDurationMs,
+                searchDurationMs,
+                resultCount: boats.length,
+                total: payload.total,
+                hasSearchQuery: Boolean(filters.search),
+                hasStructuredFilters,
+                isExplicitSort,
+                page: filters.page,
+                limit: filters.limit,
+                sort: filters.sort,
+                dir: filters.dir,
+              },
+              "Served /api/boats"
+            );
+
+            return jsonWithTiming(payload, {
+              searchMode,
+              totalDurationMs,
+              searchDurationMs,
             });
           }
 
@@ -106,15 +164,43 @@ export async function GET(req: Request) {
             "Meilisearch returned stale boat ids; falling back to Postgres"
           );
         }
+        searchMode = "database_fallback";
       } catch (err) {
+        searchMode = "database_fallback";
         logger.warn({ err, query: filters.search }, "Meilisearch search failed; falling back to Postgres");
       }
     }
 
+    const databaseStartedAt = Date.now();
     const databaseResults = await runDatabaseSearch(filters, orderBy);
-    return NextResponse.json(databaseResults);
+    searchDurationMs = Date.now() - databaseStartedAt;
+    const totalDurationMs = Date.now() - requestStartedAt;
+
+    logger.info(
+      {
+        searchMode,
+        totalDurationMs,
+        searchDurationMs,
+        resultCount: databaseResults.boats.length,
+        total: databaseResults.total,
+        hasSearchQuery: Boolean(filters.search),
+        hasStructuredFilters,
+        isExplicitSort,
+        page: filters.page,
+        limit: filters.limit,
+        sort: filters.sort,
+        dir: filters.dir,
+      },
+      "Served /api/boats"
+    );
+
+    return jsonWithTiming(databaseResults, {
+      searchMode,
+      totalDurationMs,
+      searchDurationMs,
+    });
   } catch (err) {
-    logger.error({ err }, "GET /api/boats error");
+    logger.error({ err, totalDurationMs: Date.now() - requestStartedAt }, "GET /api/boats error");
     return NextResponse.json(
       { error: "Failed to load boats. Please try again." },
       { status: 500 }

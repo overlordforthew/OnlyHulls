@@ -15,6 +15,7 @@ import {
 import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import { getBuildInfo } from "@/lib/build-info";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -25,6 +26,9 @@ export async function GET() {
   }
 
   try {
+    const buildInfo = getBuildInfo();
+    const servedAt = new Date().toISOString();
+
     type RecentSignupRow = {
       id: string;
       email: string;
@@ -281,6 +285,11 @@ export async function GET() {
         storageEnabled: storageEnabled(),
         meiliDocuments: meiliStats?.numberOfDocuments || 0,
         ownerAlertRecipients: getOwnerAlertRecipients(),
+      },
+      deployStatus: {
+        ...buildInfo,
+        servedAt,
+        healthPath: "/api/public/deploy-health",
       },
     });
   } catch (err) {

@@ -760,6 +760,20 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
 });
 
+test("sanitizeImportedBoatRecord drops unsafe imported source and hero urls", () => {
+  const sanitized = sanitizeImportedBoatRecord({
+    make: "Lagoon",
+    model: "42",
+    source_site: "theyachtmarket",
+    source_url: "javascript:alert(1)",
+    hero_url: "data:text/html,<script>alert(1)</script>",
+    specs: {},
+  });
+
+  assert.equal(sanitized.source_url, null);
+  assert.equal(sanitized.hero_url, null);
+});
+
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
   assert.deepEqual(
     normalizeImportedMakeModel({

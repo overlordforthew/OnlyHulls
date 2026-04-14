@@ -167,14 +167,15 @@ test("boats currency selection persists after reload locally", async ({ page }) 
   await mockBoatsResponse(page);
 
   await page.goto("/boats");
-  const currencySelector = page.locator("#boats-currency");
+  const currencySelector = page.locator("#boats-currency:not([disabled])").first();
   await expect(currencySelector).toBeEnabled();
   await currencySelector.selectOption("EUR");
   await expect(currencySelector).toHaveValue("EUR");
 
   await page.reload();
-  await expect(currencySelector).toBeEnabled();
-  await expect(currencySelector).toHaveValue("EUR");
+  const reloadedCurrencySelector = page.locator("#boats-currency:not([disabled])").first();
+  await expect(reloadedCurrencySelector).toBeEnabled();
+  await expect(reloadedCurrencySelector).toHaveValue("EUR");
 });
 
 test("boats no-results state still offers recovery paths", async ({ page }) => {

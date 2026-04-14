@@ -85,6 +85,17 @@ interface Stats {
     meiliDocuments: number;
     ownerAlertRecipients: string[];
   };
+  deployStatus: {
+    version: string;
+    buildSha: string;
+    buildShaShort: string;
+    buildBranch: string;
+    buildShaSource: string;
+    buildBranchSource: string;
+    nodeEnv: string;
+    servedAt: string;
+    healthPath: string;
+  };
 }
 
 interface PendingListing {
@@ -539,6 +550,50 @@ export default function AdminPage() {
               value={`${stats.serviceStatus.meiliDocuments}`}
               healthy={stats.serviceStatus.meiliDocuments >= stats.activeListings}
             />
+          </div>
+
+          <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Deploy status</p>
+                <p className="mt-1 text-sm text-foreground/70">
+                  Admin is currently serving build <span className="font-medium text-foreground">{stats.deployStatus.buildShaShort}</span>
+                  {" "}from <span className="font-medium text-foreground">{stats.deployStatus.buildBranch}</span>.
+                </p>
+              </div>
+              <Link
+                href={stats.deployStatus.healthPath}
+                className="text-sm font-medium text-primary transition-colors hover:text-primary-light"
+              >
+                Open deploy diagnostics
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <HealthCard
+                label="Build SHA"
+                value={stats.deployStatus.buildShaShort}
+                healthy={stats.deployStatus.buildSha !== "unknown"}
+              />
+              <HealthCard
+                label="Branch"
+                value={stats.deployStatus.buildBranch}
+                healthy={stats.deployStatus.buildBranch !== "unknown"}
+              />
+              <HealthCard
+                label="Version"
+                value={stats.deployStatus.version}
+                healthy={true}
+              />
+              <HealthCard
+                label="Runtime"
+                value={stats.deployStatus.nodeEnv}
+                healthy={stats.deployStatus.nodeEnv === "production"}
+              />
+            </div>
+            <p className="mt-3 text-sm text-foreground/60">
+              Stats snapshot served {new Date(stats.deployStatus.servedAt).toLocaleString()}.
+              Build sources: SHA from {stats.deployStatus.buildShaSource}, branch from {stats.deployStatus.buildBranchSource}.
+            </p>
           </div>
 
           <div className="mt-4 rounded-lg border border-border bg-surface p-4">

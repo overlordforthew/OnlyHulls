@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getSafeExternalUrl, isSafeExternalUrl } from "../../src/lib/url-safety";
+import {
+  getSafeExternalUrl,
+  getSafeExternalUrlList,
+  isSafeExternalUrl,
+} from "../../src/lib/url-safety";
 
 test("getSafeExternalUrl keeps valid http and https urls", () => {
   assert.equal(
@@ -28,4 +32,18 @@ test("getSafeExternalUrl rejects non-http protocols and malformed values", () =>
 test("isSafeExternalUrl matches the sanitized result", () => {
   assert.equal(isSafeExternalUrl("https://onlyhulls.com/boats"), true);
   assert.equal(isSafeExternalUrl("javascript:alert(1)"), false);
+});
+
+test("getSafeExternalUrlList keeps order, removes invalid values, and de-dupes repeats", () => {
+  assert.deepEqual(
+    getSafeExternalUrlList([
+      "https://example.com/a",
+      " javascript:alert(1)",
+      "https://example.com/a",
+      "http://example.com/b",
+      "",
+      "/relative",
+    ]),
+    ["https://example.com/a", "http://example.com/b"]
+  );
 });

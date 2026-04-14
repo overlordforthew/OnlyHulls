@@ -33,7 +33,7 @@ import {
   sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
-import { getSafeExternalUrl } from "../src/lib/url-safety";
+import { getSafeExternalUrl, getSafeExternalUrlList } from "../src/lib/url-safety";
 
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
@@ -350,6 +350,7 @@ async function importBoats(filePath: string, sourceSite: string) {
   let skipped = 0;
   let errors = 0;
   let invalidSourceUrls = 0;
+  let invalidImageUrls = 0;
   const pendingEmbeddings: PendingEmbedding[] = [];
 
   for (const b of boats) {
@@ -459,7 +460,9 @@ async function importBoats(filePath: string, sourceSite: string) {
         sourceName: source.name,
         sourceSite,
       });
-      const images = b.images || [];
+      const rawImages = b.images || [];
+      const images = getSafeExternalUrlList(rawImages);
+      invalidImageUrls += rawImages.length - images.length;
       const priceUsd = toUsd(price, currency);
       const qualityFlags = buildImportQualityFlags({
         model,
@@ -558,7 +561,7 @@ async function importBoats(filePath: string, sourceSite: string) {
   }
 
   console.log(
-    `\nImport complete: ${imported} imported, ${skipped} skipped, ${invalidSourceUrls} invalid source URLs, ${errors} errors`
+    `\nImport complete: ${imported} imported, ${skipped} skipped, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${errors} errors`
   );
   await pool.end();
 }
@@ -581,6 +584,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
   let errors = 0;
   let duplicateSkips = 0;
   let invalidSourceUrls = 0;
+  let invalidImageUrls = 0;
 
   for (const b of boats) {
     try {
@@ -644,7 +648,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
       });
 
       // Upsert boat_dna
-      const images = b.images || [];
+      const rawImages = b.images || [];
+      const images = getSafeExternalUrlList(rawImages);
+      invalidImageUrls += rawImages.length - images.length;
       const priceUsd = price ? toUsd(price, currency) : null;
       const qualityFlags = buildImportQualityFlags({
         model,
@@ -803,7 +809,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
   }
 
   console.log(
-    `\nUpdate complete: ${updated} updated, ${notFound} not found, ${invalidSourceUrls} invalid source URLs, ${duplicateSkips} duplicate skips, ${errors} errors`
+    `\nUpdate complete: ${updated} updated, ${notFound} not found, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${duplicateSkips} duplicate skips, ${errors} errors`
   );
   await pool.end();
 }

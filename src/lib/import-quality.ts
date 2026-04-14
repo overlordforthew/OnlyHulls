@@ -1188,13 +1188,17 @@ export function sanitizeImportedSpecs(
   return normalizedSpecs;
 }
 
+import { getSafeExternalUrl } from "@/lib/url-safety";
+
 type SanitizableBoatRecord = {
   year?: number | null;
   make: string;
   model: string;
   slug?: string | null;
   source_site?: string | null;
+  source_url?: string | null;
   location_text?: string | null;
+  hero_url?: string | null;
   specs?: Record<string, unknown> | null;
 };
 
@@ -1219,9 +1223,12 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     ...boat,
     make: normalizedMake,
     model: normalizedModel,
+    source_url:
+      "source_url" in boat ? getSafeExternalUrl(boat.source_url) : boat.source_url,
     location_text: normalizedLocation || boat.location_text || null,
+    hero_url: "hero_url" in boat ? getSafeExternalUrl(boat.hero_url) : boat.hero_url,
     specs: normalizedSpecs,
-  };
+  } as T;
 }
 
 export function buildImportedSlug(

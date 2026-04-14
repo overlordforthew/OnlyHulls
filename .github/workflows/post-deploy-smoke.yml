@@ -1,0 +1,90 @@
+name: Post-Deploy Smoke
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-deploy-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://onlyhulls:changeme@127.0.0.1:5433/onlyhulls
+  REDIS_URL: redis://127.0.0.1:6380
+  MEILISEARCH_URL: http://127.0.0.1:7701
+  MEILISEARCH_API_KEY: ci-meili-key
+  AUTH_SECRET: ci-auth-secret-please-replace-in-production
+  NEXT_PUBLIC_APP_URL: https://onlyhulls.com
+  NEXTAUTH_URL: https://onlyhulls.com
+
+jobs:
+  smoke-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Wait for production deploy health to match this commit
+        env:
+          DEPLOY_HEALTH_URL: https://onlyhulls.com/api/public/deploy-health
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          (async () => {
+            const url = process.env.DEPLOY_HEALTH_URL;
+            const expectedSha = process.env.EXPECTED_SHA;
+            const timeoutMs = 10 * 60 * 1000;
+            const intervalMs = 15 * 1000;
+            const startedAt = Date.now();
+
+            function sleep(ms) {
+              return new Promise((resolve) => setTimeout(resolve, ms));
+            }
+
+            while (Date.now() - startedAt < timeoutMs) {
+              try {
+                const response = await fetch(url, {
+                  headers: { "cache-control": "no-cache" },
+                });
+
+                if (response.ok) {
+                  const payload = await response.json();
+                  const buildSha = typeof payload.buildSha === "string" ? payload.buildSha : "";
+                  console.log(
+                    `deploy-health build=${payload.buildShaShort || "unknown"} branch=${payload.buildBranch || "unknown"} servedAt=${payload.servedAt || "unknown"}`
+                  );
+
+                  if (buildSha && buildSha.startsWith(expectedSha)) {
+                    process.exit(0);
+                  }
+                } else {
+                  console.log(`deploy-health returned HTTP ${response.status}`);
+                }
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.log(`deploy-health poll failed: ${message}`);
+              }
+
+              await sleep(intervalMs);
+            }
+
+            console.error(`Timed out waiting for production to serve ${expectedSha} from ${url}`);
+            process.exit(1);
+          })();
+          NODE
+
+      - run: npm run test:browser:prod

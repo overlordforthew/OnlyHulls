@@ -1,5 +1,6 @@
 import { query, queryOne } from "@/lib/db";
 import { buildVisibleImportQualitySql, sanitizeImportedBoatRecord } from "@/lib/import-quality";
+import { logger } from "@/lib/logger";
 
 export interface BoatRow {
   id: string;
@@ -70,17 +71,52 @@ function sanitizeBoatRows(rows: BoatRow[]) {
   );
 }
 
-export async function getFeaturedBoats(limit = 6): Promise<BoatRow[]> {
+export async function getFeaturedBoats(
+  limit = 6,
+  options?: { context?: string }
+): Promise<BoatRow[]> {
   // Trending = most viewed, but only boats with 2+ images (no empty showcases)
-  const rows = await query<BoatRow>(
-    `${BOAT_SELECT}
-       AND ${IMAGE_COUNT_SQL} >= 2
-       AND COALESCE(b.asking_price_usd, b.asking_price) >= 3000
-     ORDER BY ${DISCOVERY_ORDER_SQL}
-     LIMIT $1`,
-    [limit]
-  );
-  return sanitizeBoatRows(rows);
+  const startedAt = Date.now();
+
+  try {
+    const rows = await query<BoatRow>(
+      `${BOAT_SELECT}
+         AND ${IMAGE_COUNT_SQL} >= 2
+         AND COALESCE(b.asking_price_usd, b.asking_price) >= 3000
+       ORDER BY ${DISCOVERY_ORDER_SQL}
+       LIMIT $1`,
+      [limit]
+    );
+    const boats = sanitizeBoatRows(rows);
+
+    if (options?.context) {
+      logger.info(
+        {
+          context: options.context,
+          featuredBoatCount: boats.length,
+          limit,
+          durationMs: Date.now() - startedAt,
+        },
+        "Loaded featured boats"
+      );
+    }
+
+    return boats;
+  } catch (err) {
+    if (options?.context) {
+      logger.error(
+        {
+          err,
+          context: options.context,
+          limit,
+          durationMs: Date.now() - startedAt,
+        },
+        "Failed to load featured boats"
+      );
+    }
+
+    throw err;
+  }
 }
 
 export async function getRecentBoats(

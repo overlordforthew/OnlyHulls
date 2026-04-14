@@ -153,11 +153,11 @@ function formatProviderLabel(provider: string): string {
 }
 
 export default async function MatchPage() {
-  const boats = await getFeaturedBoats(3);
   const intelligenceEnabled = matchIntelligenceConfigured();
   const semanticEnabled = semanticMatchingEnabled();
   const intelligenceProviderLabel = formatProviderLabel(matchIntelligenceProvider());
   const embeddingProviderLabel = formatProviderLabel(embeddingProvider());
+  const boats = await getFeaturedBoats(3, { context: "/match" });
 
   const stackSignals = [
     intelligenceEnabled

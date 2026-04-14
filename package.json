@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "node ./node_modules/eslint/bin/eslint.js .",
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "test:browser": "playwright test tests/browser/local-smoke.spec.ts",
     "test:browser:all": "playwright test",
     "test:browser:headed": "playwright test tests/browser/local-smoke.spec.ts --headed",
