@@ -62,6 +62,11 @@ export interface ActionRecommendation {
   detail: string;
 }
 
+export interface BestFitSignal {
+  label: string;
+  reason: string;
+}
+
 const SOURCE_NAMES: Record<string, string> = {
   sailboatlistings: "Sailboat Listings",
   theyachtmarket: "The Yacht Market",
@@ -416,6 +421,72 @@ export function buildBoatInsights(boats: CompareBoat[]) {
   }
 
   return insights;
+}
+
+export function buildBestFitSignals(boat: CompareBoat): BestFitSignal[] {
+  const fits: BestFitSignal[] = [];
+  const tags = new Set(boat.character_tags.map((tag) => tag.toLowerCase()));
+  const loa = toFiniteNumber(boat.specs.loa);
+  const draft = toFiniteNumber(boat.specs.draft);
+  const cabins = toFiniteNumber(boat.specs.cabins);
+  const berths = toFiniteNumber(boat.specs.berths);
+  const heads = toFiniteNumber(boat.specs.heads);
+  const condition = toFiniteNumber(boat.condition_score);
+  const imageCount = toFiniteNumber(boat.image_count);
+  const pricePerFoot = getPricePerFootUsd(boat);
+
+  if (tags.has("bluewater") || (loa !== null && loa >= 45)) {
+    fits.push({
+      label: "Bluewater cruising",
+      reason:
+        loa !== null && loa >= 45
+          ? `${formatFeet(loa)} overall length gives it a stronger offshore posture.`
+          : "Its bluewater tags make it a more natural offshore shortlist candidate.",
+    });
+  }
+
+  if (tags.has("liveaboard-ready") || ((cabins ?? 0) >= 3 && (heads ?? 0) >= 2)) {
+    fits.push({
+      label: "Liveaboard setup",
+      reason:
+        (cabins ?? 0) >= 3
+          ? `${formatCount(cabins)} cabins and ${formatCount(heads)} heads support longer stays aboard.`
+          : "The liveaboard-ready signals point to an easier onboard setup.",
+    });
+  }
+
+  if (draft !== null && draft <= 4.5) {
+    fits.push({
+      label: "Shallow-water cruising",
+      reason: `${formatFeet(draft)} draft opens up thinner anchorages and coastal routes.`,
+    });
+  }
+
+  if (tags.has("family-friendly") || (berths ?? 0) >= 6) {
+    fits.push({
+      label: "Family crew",
+      reason:
+        (berths ?? 0) >= 6
+          ? `${formatCount(berths)} berths give a family or guest crew more sleeping flexibility.`
+          : "Family-friendly signals suggest an easier cruising setup with guests aboard.",
+    });
+  }
+
+  if (!boat.source_url && condition !== null && condition >= 8 && (imageCount ?? 0) >= 6) {
+    fits.push({
+      label: "Fast first contact",
+      reason: "Direct listing, strong condition signal, and healthy photo depth make this easier to act on.",
+    });
+  }
+
+  if (pricePerFoot !== null && pricePerFoot <= 9000) {
+    fits.push({
+      label: "Value-first shortlist",
+      reason: "The current price per foot keeps this one in the stronger value conversation.",
+    });
+  }
+
+  return fits.slice(0, 2);
 }
 
 function createQuickFactor(input: {

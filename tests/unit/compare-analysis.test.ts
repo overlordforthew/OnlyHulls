@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildActionRecommendation,
+  buildBestFitSignals,
   buildBoatInsights,
   buildQuickFactors,
   type CompareBoat,
@@ -88,4 +89,11 @@ test("buildBoatInsights flags both strengths and watchouts", () => {
 
   assert.ok((insights.get("boat-a")?.strengths.length || 0) > 0);
   assert.ok((insights.get("boat-b")?.watchouts.length || 0) > 0);
+});
+
+test("buildBestFitSignals turns specs into buyer-facing fit labels", () => {
+  const fits = buildBestFitSignals(mockBoats[0]);
+
+  assert.ok(fits.length > 0);
+  assert.match(fits.map((fit) => fit.label).join(" | "), /Liveaboard setup|Family crew|Fast first contact/);
 });

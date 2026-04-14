@@ -6,9 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
+  Check,
   ExternalLink,
   GitCompareArrows,
   MapPin,
+  Share2,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -24,6 +26,7 @@ import {
 } from "@/lib/currency";
 import {
   buildActionRecommendation,
+  buildBestFitSignals,
   buildBoatInsights,
   buildQuickFactors,
   formatBoatTitle,
@@ -241,6 +244,7 @@ function ComparePageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dismissedUrlSeed, setDismissedUrlSeed] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "error">("idle");
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     readPreferredCurrencyFromBrowser()
   );
@@ -269,6 +273,18 @@ function ComparePageContent() {
       setCompareBoatIds(compareIdsFromUrl);
     }
   }, [compareIds.length, compareIdsFromUrl, dismissedUrlSeed]);
+
+  useEffect(() => {
+    if (shareState === "idle") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShareState("idle");
+    }, 2200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [shareState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -348,6 +364,22 @@ function ComparePageContent() {
     removeBoat(boatId);
   }
 
+  async function shareCompareView() {
+    if (activeCompareIds.length === 0 || typeof window === "undefined") {
+      return;
+    }
+
+    const shareUrl = new URL("/compare", window.location.origin);
+    shareUrl.searchParams.set("ids", activeCompareIds.join(","));
+
+    try {
+      await navigator.clipboard.writeText(shareUrl.toString());
+      setShareState("copied");
+    } catch {
+      setShareState("error");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -370,6 +402,20 @@ function ComparePageContent() {
           />
           <button
             type="button"
+            onClick={() => void shareCompareView()}
+            disabled={activeCompareCount === 0}
+            data-testid="compare-share-button"
+            className="inline-flex items-center gap-2 rounded-full border border-accent/35 bg-accent/10 px-4 py-2 text-sm font-medium text-accent transition-all hover:border-accent hover:bg-accent/15 disabled:opacity-50"
+          >
+            {shareState === "copied" ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+            {shareState === "copied" ? "Link copied" : "Copy compare link"}
+          </button>
+          <button
+            type="button"
             onClick={clearCompareView}
             disabled={activeCompareCount === 0}
             className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary disabled:opacity-50"
@@ -379,6 +425,21 @@ function ComparePageContent() {
           </button>
         </div>
       </div>
+
+      {activeCompareCount > 0 ? (
+        <p
+          className={`mt-3 text-sm ${
+            shareState === "error" ? "text-red-300" : "text-text-secondary"
+          }`}
+          data-testid="compare-share-status"
+        >
+          {shareState === "copied"
+            ? "This shortlist link is ready to send."
+            : shareState === "error"
+              ? "Could not copy the compare link on this browser."
+              : "Copy this shortlist link to send the same compare set to a partner or your future self."}
+        </p>
+      ) : null}
 
       {activeCompareCount === 0 ? (
         <EmptyState />
@@ -632,7 +693,10 @@ function MobileCompareSummary({
       : `${compareCount} boats ready to compare`;
 
   return (
-    <div className="fixed inset-x-4 bottom-24 z-40 rounded-2xl border border-primary/20 bg-background/95 p-4 shadow-2xl shadow-black/30 backdrop-blur md:hidden">
+    <div
+      className="fixed inset-x-4 bottom-24 z-40 rounded-2xl border border-primary/20 bg-background/95 p-4 shadow-2xl shadow-black/30 backdrop-blur md:hidden"
+      data-testid="compare-mobile-summary"
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
         {compareCount} boats loaded
       </p>
@@ -662,6 +726,7 @@ function CompareBoatPanel({
   onRemove: () => void;
 }) {
   const href = `/boats/${boat.slug || boat.id}`;
+  const bestFitSignals = buildBestFitSignals(boat);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -735,6 +800,25 @@ function CompareBoatPanel({
             <CompareMetric key={metric.label} label={metric.label} value={metric.value} />
           ))}
         </div>
+
+        {bestFitSignals.length > 0 ? (
+          <div
+            className="mt-5 rounded-2xl border border-accent/20 bg-accent/10 p-4"
+            data-testid="compare-best-fit"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+              Best for
+            </p>
+            <div className="mt-3 space-y-3">
+              {bestFitSignals.map((signal) => (
+                <div key={signal.label}>
+                  <p className="text-sm font-semibold text-foreground">{signal.label}</p>
+                  <p className="mt-1 text-sm text-text-secondary">{signal.reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <InsightBlock title="Why it stands out" tone="positive" items={insight.strengths} />

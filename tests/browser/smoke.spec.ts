@@ -56,6 +56,31 @@ const mockBrowseBoats = [
   },
 ];
 
+async function mockCompareResponse(page: Page) {
+  await page.route("**/api/boats/compare**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockBrowseBoats.map((boat, index) => ({
+          ...boat,
+          image_count: 6 - index,
+          condition_score: 8 - index,
+          specs: {
+            ...boat.specs,
+            beam: index === 0 ? 24 : 27,
+            draft: index === 0 ? 4.5 : 5.2,
+            cabins: index === 0 ? 3 : 4,
+            berths: index === 0 ? 6 : 8,
+            heads: index === 0 ? 2 : 3,
+            hull_material: "Fiberglass",
+          },
+        })),
+      }),
+    });
+  });
+}
+
 async function expectHealthyPublicPage(page: Page, path: string, heading: string) {
   await page.goto(path);
   await page.waitForLoadState("networkidle");
@@ -323,36 +348,30 @@ test("boats card opens detail page", async ({ page }) => {
 });
 
 test("boats can be added to compare and rendered side by side", async ({ page }) => {
-  await page.route("**/api/boats/compare**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        boats: mockBrowseBoats.map((boat, index) => ({
-          ...boat,
-          image_count: 6 - index,
-          condition_score: 8 - index,
-          specs: {
-            ...boat.specs,
-            beam: index === 0 ? 24 : 27,
-            draft: index === 0 ? 4.5 : 5.2,
-            cabins: index === 0 ? 3 : 4,
-            berths: index === 0 ? 6 : 8,
-            heads: index === 0 ? 2 : 3,
-            hull_material: "Fiberglass",
-          },
-        })),
-      }),
-    });
-  });
+  await mockCompareResponse(page);
 
   await page.goto("/compare?ids=mock-lagoon-1,mock-lagoon-2");
   await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();
   await expect(page.getByTestId("compare-quick-read")).toBeVisible();
   await expect(page.getByTestId("compare-factor-heading")).toBeVisible();
+  await expect(page.getByTestId("compare-best-fit").first()).toBeVisible();
   await expect(page.getByText("Price per foot", { exact: true })).toBeVisible();
   await expect(page.getByText("Suggested first move", { exact: true })).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
+  await page.getByTestId("compare-share-button").click();
+  await expect(page.getByTestId("compare-share-status")).toContainText("ready to send");
   await expect(page.getByRole("link", { name: /Start browsing/i })).toHaveCount(0);
+});
+
+test("compare page shows the mobile summary rail", async ({ page }) => {
+  await mockCompareResponse(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.goto("/compare?ids=mock-lagoon-1,mock-lagoon-2");
+  await expect(page.getByTestId("compare-mobile-summary")).toBeVisible();
+  await expect(page.getByText("Jump to factors", { exact: true })).toBeVisible();
 });
 
 test("make SEO hub loads", async ({ page }) => {
