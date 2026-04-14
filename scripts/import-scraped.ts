@@ -31,6 +31,7 @@ import {
   normalizeImportedSummary,
   sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
+import { assertSourceImportAllowed } from "../src/lib/source-policy";
 
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
@@ -311,6 +312,8 @@ async function importBoats(filePath: string, sourceSite: string) {
     process.exit(1);
   }
 
+  assertSourceImportAllowed(sourceSite, source.name);
+
   const raw = readFileSync(filePath, "utf-8");
   const boats: ScrapedBoat[] = JSON.parse(raw);
   console.log(`Loaded ${boats.length} boats from ${filePath} (source: ${source.name})`);
@@ -534,6 +537,8 @@ async function updateBoats(filePath: string, sourceSite: string) {
     console.error(`Unknown source: ${sourceSite}`);
     process.exit(1);
   }
+
+  assertSourceImportAllowed(sourceSite, source.name);
 
   const raw = readFileSync(filePath, "utf-8");
   const boats: ScrapedBoat[] = JSON.parse(raw);

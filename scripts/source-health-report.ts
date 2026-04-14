@@ -1,5 +1,6 @@
 import { pool, query } from "../src/lib/db";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
+import { getSourceDecisionByName } from "../src/lib/source-policy";
 
 type SourceHealthRow = {
   source: string;
@@ -64,12 +65,15 @@ async function main() {
   const report = rows.map((row) => {
     const active = Number.parseInt(row.active_count, 10);
     const visible = Number.parseInt(row.visible_count, 10);
+    const decision = getSourceDecisionByName(row.source);
 
     return {
       source: row.source,
       active,
       visible,
       visibleRate: pct(visible, active),
+      decisionStatus: decision?.status ?? "undecided",
+      decisionReason: decision?.reason ?? null,
       missingModel: Number.parseInt(row.missing_model_count, 10),
       missingLocation: Number.parseInt(row.missing_location_count, 10),
       missingImage: Number.parseInt(row.missing_image_count, 10),
@@ -84,10 +88,10 @@ async function main() {
   }
 
   console.log("Source health (active imported inventory)");
-  console.log("source | active | visible | visible rate | miss model | miss location | miss image | thin summary | low price");
+  console.log("source | active | visible | visible rate | decision | miss model | miss location | miss image | thin summary | low price");
   for (const row of report) {
     console.log(
-      `${row.source} | ${row.active} | ${row.visible} | ${row.visibleRate} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
+      `${row.source} | ${row.active} | ${row.visible} | ${row.visibleRate} | ${row.decisionStatus} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
     );
   }
 }
