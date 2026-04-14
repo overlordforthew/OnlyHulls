@@ -323,6 +323,39 @@ test("boats card opens detail page", async ({ page }) => {
 });
 
 test("boats can be added to compare and rendered side by side", async ({ page }) => {
+  await page.route("**/api/boats/compare**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockBrowseBoats.map((boat, index) => ({
+          ...boat,
+          image_count: 6 - index,
+          condition_score: 8 - index,
+          specs: {
+            ...boat.specs,
+            beam: index === 0 ? 24 : 27,
+            draft: index === 0 ? 4.5 : 5.2,
+            cabins: index === 0 ? 3 : 4,
+            berths: index === 0 ? 6 : 8,
+            heads: index === 0 ? 2 : 3,
+            hull_material: "Fiberglass",
+          },
+        })),
+      }),
+    });
+  });
+  await page.route("**/api/boats**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockBrowseBoats,
+        total: mockBrowseBoats.length,
+      }),
+    });
+  });
+
   await page.goto("/boats?q=lagoon");
   const compareButtons = page.getByTestId("boat-compare-toggle");
   await expect(compareButtons.nth(0)).toBeVisible();
@@ -331,7 +364,9 @@ test("boats can be added to compare and rendered side by side", async ({ page })
 
   await page.goto("/compare");
   await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();
-  await expect(page.getByText("Decision signal", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("compare-quick-read")).toBeVisible();
+  await expect(page.getByTestId("compare-factor-heading")).toBeVisible();
+  await expect(page.getByText("Price per foot", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Start browsing/i })).toHaveCount(0);
 });
 

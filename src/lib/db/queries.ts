@@ -12,15 +12,32 @@ export interface BoatRow {
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
-  specs: { loa?: number; rig_type?: string };
+  image_count: number;
+  specs: {
+    loa?: number;
+    rig_type?: string;
+    beam?: number;
+    draft?: number;
+    hull_material?: string;
+    engine?: string;
+    cabins?: number;
+    berths?: number;
+    heads?: number;
+    fuel_type?: string;
+    keel_type?: string;
+    displacement?: number;
+  };
   character_tags: string[];
   source_site: string | null;
   source_name: string | null;
   source_url: string | null;
   asking_price_usd: number | null;
   seller_subscription_tier: string | null;
+  condition_score: number | null;
 }
 
+const IMAGE_COUNT_SQL =
+  "(SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')";
 const BOAT_SELECT = `
   SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
          b.asking_price_usd,
@@ -28,6 +45,7 @@ const BOAT_SELECT = `
          b.source_site, b.source_name, b.source_url,
          COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
          (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
+         ${IMAGE_COUNT_SQL} as image_count,
          COALESCE(d.specs, '{}') as specs,
          COALESCE(d.character_tags, '{}') as character_tags,
          d.condition_score
@@ -36,8 +54,6 @@ const BOAT_SELECT = `
   LEFT JOIN boat_dna d ON d.boat_id = b.id
   WHERE b.status = 'active'
     AND ${buildVisibleImportQualitySql("b")}`;
-const IMAGE_COUNT_SQL =
-  "(SELECT count(*) FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image')";
 const QUALITY_SCORE_SQL = "COALESCE((d.documentation_status->>'import_quality_score')::int, 100)";
 const LOCATION_READY_SQL =
   "CASE WHEN COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> '' THEN 1 ELSE 0 END";
