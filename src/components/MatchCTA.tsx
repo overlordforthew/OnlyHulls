@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ContactGateModal from "./ContactGateModal";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 const BUYER_MATCH_FLOW_CALLBACK = "/matches";
 const BUYER_ONBOARDING_DESTINATION = `/onboarding/profile?callbackUrl=${encodeURIComponent(
@@ -74,6 +75,7 @@ export function ContactOwnerCTA({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const safeSourceUrl = getSafeExternalUrl(sourceUrl);
   const [gateOpen, setGateOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export function ContactOwnerCTA({
     }
   }
 
-  if (sourceUrl && boatId) {
+  if (safeSourceUrl && boatId) {
     return (
       <>
         <button
@@ -145,7 +147,7 @@ export function ContactOwnerCTA({
           isOpen={gateOpen}
           onClose={() => setGateOpen(false)}
           boatId={boatId}
-          sourceUrl={sourceUrl}
+          sourceUrl={safeSourceUrl}
           sourceName={sourceName ?? null}
           boatTitle={boatTitle ?? "this boat"}
           boatSlug={boatSlug}
@@ -154,9 +156,9 @@ export function ContactOwnerCTA({
     );
   }
 
-  if (sourceUrl) {
+  if (safeSourceUrl) {
     return (
-      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
+      <a href={safeSourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
         Contact Owner
       </a>
     );

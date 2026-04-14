@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { X, ExternalLink, Bookmark, Sparkles, Bell } from "lucide-react";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface ContactGateModalProps {
   isOpen: boolean;
@@ -23,15 +24,6 @@ function getSessionId(): string {
     localStorage.setItem("oh_session_id", id);
   }
   return id;
-}
-
-function isSafeUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function logClick(boatId: string, clickType: "guest" | "save_and_continue") {
@@ -55,6 +47,7 @@ export default function ContactGateModal({
   const { data: session } = useSession();
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
+  const safeSourceUrl = getSafeExternalUrl(sourceUrl);
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -78,7 +71,7 @@ export default function ContactGateModal({
   const handleSaveAndContinue = () => {
     if (session?.user) {
       logClick(boatId, "save_and_continue");
-      if (isSafeUrl(sourceUrl)) window.open(sourceUrl, "_blank");
+      if (safeSourceUrl) window.open(safeSourceUrl, "_blank");
       onClose();
     } else {
       const callback = boatSlug ? `/boats/${boatSlug}` : `/boats`;
@@ -88,7 +81,7 @@ export default function ContactGateModal({
 
   const handleGuestContinue = () => {
     logClick(boatId, "guest");
-    if (isSafeUrl(sourceUrl)) window.open(sourceUrl, "_blank");
+    if (safeSourceUrl) window.open(safeSourceUrl, "_blank");
     onClose();
   };
 

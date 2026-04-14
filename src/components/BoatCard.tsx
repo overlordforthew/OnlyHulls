@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink, GitCompareArrows, Heart, MapPin, MessageCircle, X } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface BoatCardProps {
   boat: {
@@ -50,6 +51,7 @@ export default function BoatCard({
   compareDisabled,
 }: BoatCardProps) {
   const href = `/boats/${boat.slug || boat.id}`;
+  const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const listingBadge = getListingBadge(boat);
   const trustSignal = getTrustSignal(boat);
   const displayedPrice = getDisplayedPrice({
@@ -170,9 +172,9 @@ export default function BoatCard({
         {boat.source_name && (
           <div className="mt-2 flex items-center gap-1 text-xs text-text-tertiary">
             <span>Found on</span>
-            {boat.source_url && /^https?:\/\//i.test(boat.source_url) ? (
+            {safeSourceUrl ? (
               <a
-                href={boat.source_url}
+                href={safeSourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-0.5 font-medium text-text-secondary transition-colors hover:text-primary"

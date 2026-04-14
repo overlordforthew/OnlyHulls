@@ -47,6 +47,7 @@ import {
   type QuickFactor,
 } from "@/lib/compare-analysis";
 import { isLocalMediaUrl } from "@/lib/media";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface CompareRow {
   label: string;
@@ -730,6 +731,7 @@ function CompareBoatPanel({
   onRemove: () => void;
 }) {
   const href = `/boats/${boat.slug || boat.id}`;
+  const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const bestFitSignals = buildBestFitSignals(boat);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
@@ -859,9 +861,9 @@ function CompareBoatPanel({
             Open listing
             <ArrowRight className="h-4 w-4" />
           </Link>
-          {boat.source_url ? (
+          {safeSourceUrl ? (
             <a
-              href={boat.source_url}
+              href={safeSourceUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
@@ -938,4 +940,3 @@ function EmptyState() {
     </div>
   );
 }
-

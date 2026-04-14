@@ -19,6 +19,7 @@ import { getPublicAppUrl } from "@/lib/config/urls";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { getRelatedBoats } from "@/lib/db/queries";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface BoatDetail {
   id: string;
@@ -288,6 +289,7 @@ export default async function BoatDetailPage({
     .slice(0, 8)
     .map((mediaItem) => toAbsoluteUrl(mediaItem.url, appUrl))
     .filter((url): url is string => Boolean(url));
+  const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const listingSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -557,9 +559,9 @@ export default async function BoatDetailPage({
                   </span>
                 </div>
               </div>
-              {boat.source_url && (
+              {safeSourceUrl && (
                 <a
-                  href={boat.source_url}
+                  href={safeSourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary-light"

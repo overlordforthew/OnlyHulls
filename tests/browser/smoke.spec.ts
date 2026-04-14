@@ -81,8 +81,35 @@ async function mockCompareResponse(page: Page) {
   });
 }
 
+async function gotoWithRetry(page: Page, path: string, attempts = 3) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const isTransientNetworkReset =
+        message.includes("net::ERR_NETWORK_CHANGED")
+        || message.includes("net::ERR_ABORTED")
+        || message.includes("chrome-error://chromewebdata/")
+        || message.includes("interrupted by another navigation");
+
+      if (!isTransientNetworkReset || attempt === attempts) {
+        throw error;
+      }
+
+      await page.waitForTimeout(400 * attempt);
+    }
+  }
+
+  throw lastError;
+}
+
 async function expectHealthyPublicPage(page: Page, path: string, heading: string) {
-  await page.goto(path);
+  await gotoWithRetry(page, path);
   await page.waitForLoadState("networkidle");
 
   expect(new URL(page.url()).pathname).toBe(path);
@@ -103,7 +130,7 @@ for (const pageCase of publicPages) {
 }
 
 test("pricing redirects to sell section", async ({ page }) => {
-  await page.goto("/pricing");
+  await gotoWithRetry(page, "/pricing");
   await expect(page).toHaveURL(/\/sell#pricing$/);
   await expect(page.getByRole("heading", { name: "Seller Plans", exact: false })).toBeVisible();
 });
@@ -113,13 +140,13 @@ test("sign in page loads", async ({ page }) => {
 });
 
 test("sign up page loads", async ({ page }) => {
-  await page.goto("/sign-up");
+  await gotoWithRetry(page, "/sign-up");
   await expect(page).toHaveURL(/\/sign-up$/);
   await expect(page.getByRole("heading", { name: "Create your account", exact: false })).toBeVisible();
 });
 
 test("public pages expose the WhatsApp contact button", async ({ page }) => {
-  await page.goto("/");
+  await gotoWithRetry(page, "/");
   const button = page.getByTestId("whatsapp-contact-button");
   await expect(button).toBeVisible();
   await expect(button).toHaveAttribute("href", /wa\.me\/18587794588/);
@@ -127,7 +154,7 @@ test("public pages expose the WhatsApp contact button", async ({ page }) => {
 });
 
 test("match CTA preserves auth callback for guests", async ({ page }) => {
-  await page.goto("/match");
+  await gotoWithRetry(page, "/match");
   await expect(page.getByTestId("match-start-signals")).toBeVisible();
   await page.getByRole("button", { name: "Get Matched - It's Free" }).click();
   await expect(page).toHaveURL(/\/sign-in\?callbackUrl=/);
@@ -138,7 +165,7 @@ test("match CTA preserves auth callback for guests", async ({ page }) => {
 });
 
 test("seller onboarding route redirects guests to sign in", async ({ page }) => {
-  await page.goto("/onboarding?role=seller");
+  await gotoWithRetry(page, "/onboarding?role=seller");
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole("heading", { name: "Welcome back", exact: false })).toBeVisible();
 });
@@ -160,14 +187,14 @@ test("boats search returns results and renders the page", async ({ page, request
   const payload = await api.json();
   expect(payload.total).toBeGreaterThan(0);
 
-  await page.goto("/boats?q=Leopard");
+  await gotoWithRetry(page, "/boats?q=Leopard");
   await expect(page).toHaveURL(/\/boats\?q=Leopard$/);
   await expect(page.getByText("Leopard", { exact: false }).first()).toBeVisible();
   await expect(page.getByTestId("boat-location").first()).toBeVisible();
 });
 
 test("boats search hides SEO hub links once a real query is active", async ({ page }) => {
-  await page.goto("/boats?q=catana");
+  await gotoWithRetry(page, "/boats?q=catana");
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Catana", { exact: false }).first()).toBeVisible();
 });
@@ -184,7 +211,7 @@ test("boats search hubs stay visible until a draft query is submitted", async ({
     });
   });
 
-  await page.goto("/boats");
+  await gotoWithRetry(page, "/boats");
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
 
   await page.getByPlaceholder("Search boats...").fill("lagoon");
@@ -273,7 +300,7 @@ test("boats page shows ascending prices when sorting by price", async ({ page })
 });
 
 test("boats page load more appends additional cards", async ({ page }) => {
-  await page.goto("/boats");
+  await gotoWithRetry(page, "/boats");
   const cards = page.locator("div.group.card-hover");
   await expect(cards.first()).toBeVisible();
   const initialCount = await cards.count();
@@ -298,7 +325,7 @@ test("boats page can switch to row view and persist it", async ({ page }) => {
     });
   });
 
-  await page.goto("/boats?q=lagoon");
+  await gotoWithRetry(page, "/boats?q=lagoon");
 
   await expect(page.locator("div.group.card-hover").first()).toBeVisible();
   await page.getByTestId("boats-view-toggle-rows").click();
@@ -370,7 +397,7 @@ test("boats page filters by normalized boat type", async ({ page }) => {
 });
 
 test("boats currency selection persists after reload", async ({ page }) => {
-  await page.goto("/boats");
+  await gotoWithRetry(page, "/boats");
   await page.locator("#boats-currency").selectOption("EUR");
   await expect(page.locator("#boats-currency")).toHaveValue("EUR");
 
@@ -394,7 +421,7 @@ test("boats no-results state offers recovery paths", async ({ page }) => {
 });
 
 test("boats card opens detail page", async ({ page }) => {
-  await page.goto("/boats?q=lagoon");
+  await gotoWithRetry(page, "/boats?q=lagoon");
 
   const firstCardTitle = page.locator("div.group.card-hover h3").first();
   await expect(firstCardTitle).toBeVisible();
@@ -409,7 +436,7 @@ test("boats card opens detail page", async ({ page }) => {
 test("boats can be added to compare and rendered side by side", async ({ page }) => {
   await mockCompareResponse(page);
 
-  await page.goto("/compare?ids=mock-lagoon-1,mock-lagoon-2");
+  await gotoWithRetry(page, "/compare?ids=mock-lagoon-1,mock-lagoon-2");
   await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();
   await expect(page.getByTestId("compare-quick-read")).toBeVisible();
   await expect(page.getByTestId("compare-factor-heading")).toBeVisible();
@@ -428,25 +455,25 @@ test("compare page shows the mobile summary rail", async ({ page }) => {
   await mockCompareResponse(page);
   await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.goto("/compare?ids=mock-lagoon-1,mock-lagoon-2");
+  await gotoWithRetry(page, "/compare?ids=mock-lagoon-1,mock-lagoon-2");
   await expect(page.getByTestId("compare-mobile-summary")).toBeVisible();
   await expect(page.getByText("Jump to factors", { exact: true })).toBeVisible();
 });
 
 test("make SEO hub loads", async ({ page }) => {
-  await page.goto("/boats/make/lagoon");
+  await gotoWithRetry(page, "/boats/make/lagoon");
   await expect(page.getByRole("heading", { name: "Lagoon Boats for Sale", exact: false })).toBeVisible();
   await expect(page.getByText("Related boat searches", { exact: false })).toBeVisible();
 });
 
 test("location SEO hub loads", async ({ page }) => {
-  await page.goto("/boats/location/florida");
+  await gotoWithRetry(page, "/boats/location/florida");
   await expect(page.getByRole("heading", { name: "Boats for Sale in Florida", exact: false })).toBeVisible();
   await expect(page.getByText("live Florida listings", { exact: false })).toBeVisible();
 });
 
 test("match page renders buyer faq content", async ({ page }) => {
-  await page.goto("/match");
+  await gotoWithRetry(page, "/match");
   await expect(page.getByRole("heading", { name: "Questions buyers usually ask before they start matching", exact: false })).toBeVisible();
   await expect(page.getByText("How does OnlyHulls decide what is a good match?", { exact: false })).toBeVisible();
 });
@@ -456,7 +483,7 @@ test("match page surfaces current matching stack status", async ({ page, request
   expect(response.ok()).toBeTruthy();
   const capabilities = await response.json();
 
-  await page.goto("/match");
+  await gotoWithRetry(page, "/match");
   await expect(page.getByTestId("match-stack-status")).toBeVisible();
 
   if (capabilities.matchIntelligenceEnabled) {
@@ -475,13 +502,13 @@ test("match page surfaces current matching stack status", async ({ page, request
 });
 
 test("sell page renders seller faq content", async ({ page }) => {
-  await page.goto("/sell");
+  await gotoWithRetry(page, "/sell");
   await expect(page.getByRole("heading", { name: "The practical questions sellers ask before they list", exact: false })).toBeVisible();
   await expect(page.getByText("How long does a paid seller plan last?", { exact: false })).toBeVisible();
 });
 
 test("boat detail page shows related discovery sections", async ({ page }) => {
-  await page.goto("/boats?q=lagoon");
+  await gotoWithRetry(page, "/boats?q=lagoon");
 
   const firstCardTitle = page.locator("div.group.card-hover h3").first();
   await expect(firstCardTitle).toBeVisible();

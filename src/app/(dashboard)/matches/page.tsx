@@ -24,6 +24,7 @@ import {
   type SupportedCurrency,
 } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface MatchProfileSummaryItem {
   label: string;
@@ -440,6 +441,7 @@ function MatchRow({
   compareDisabled: boolean;
 }) {
   const href = `/boats/${match.slug || match.boat_id}`;
+  const safeSourceUrl = getSafeExternalUrl(match.source_url);
   const displayedPrice = getDisplayedPrice({
     amount: match.asking_price,
     nativeCurrency: match.currency,
@@ -562,9 +564,9 @@ function MatchRow({
             {match.source_name && (
               <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
                 <span>Found on</span>
-                {match.source_url ? (
+                {safeSourceUrl ? (
                   <a
-                    href={match.source_url}
+                    href={safeSourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 font-medium text-foreground/75 hover:text-primary"

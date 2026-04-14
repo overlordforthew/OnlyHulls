@@ -17,6 +17,7 @@ import {
   type SupportedCurrency,
 } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 import {
   Search,
   SlidersHorizontal,
@@ -754,6 +755,7 @@ function BoatBrowseRow({
   compareDisabled: boolean;
 }) {
   const href = `/boats/${boat.slug || boat.id}`;
+  const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -845,9 +847,9 @@ function BoatBrowseRow({
             {boat.source_name && (
               <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
                 <span>Found on</span>
-                {boat.source_url && /^https?:\/\//i.test(boat.source_url) ? (
+                {safeSourceUrl ? (
                   <a
-                    href={boat.source_url}
+                    href={safeSourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 font-medium text-foreground/75 hover:text-primary"
