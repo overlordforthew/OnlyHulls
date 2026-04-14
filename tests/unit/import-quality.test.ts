@@ -562,6 +562,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Sweden",
+      model: "Yachts 45",
+      sourceSite: "theyachtmarket",
+      slug: "2000-sweden-yachts-45-loftahammar",
+    }),
+    { make: "Sweden Yachts", model: "45" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sweden Yachts",
+      model: "Yachts C34",
+      sourceSite: "theyachtmarket",
+      slug: "1983-sweden-yachts-c34-penarth-marina",
+    }),
+    { make: "Sweden Yachts", model: "C34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sweden",
+      model: "Yachts",
+      sourceSite: "theyachtmarket",
+      slug: "1985-sweden-yachts-stockholm",
+    }),
+    { make: "Sweden Yachts", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Van",
       model: "De Stadt 74",
       sourceSite: "sailboatlistings",
