@@ -1,11 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
-import {
-  embeddingsEnabled,
-  generateEmbedding,
-  profileToEmbeddingText,
-} from "@/lib/ai/embeddings";
-import { computeMatchesForBuyer } from "@/lib/matching/engine";
+import { refreshBuyerProfileMatches } from "@/lib/matching/refresh-buyer-profile-matches";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
@@ -85,26 +80,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (embeddingsEnabled()) {
-      const embedding = await generateEmbedding(profileToEmbeddingText(profile));
-      await query("UPDATE buyer_profiles SET dna_embedding = $1 WHERE id = $2", [
-        `[${embedding.join(",")}]`,
-        buyerProfileId,
-      ]);
-    } else {
-      await query("UPDATE buyer_profiles SET dna_embedding = NULL WHERE id = $1", [
-        buyerProfileId,
-      ]);
-    }
-  } catch (err) {
-    logger.warn({ err, buyerProfileId }, "Failed to refresh buyer embedding");
-    await query("UPDATE buyer_profiles SET dna_embedding = NULL WHERE id = $1", [
-      buyerProfileId,
-    ]);
-  }
-
-  try {
-    const matches = await computeMatchesForBuyer(buyerProfileId);
+    const matches = await refreshBuyerProfileMatches(buyerProfileId, profile);
     await trackFunnelEvent({
       eventType: "buyer_profile_saved",
       userId: session.user.id,

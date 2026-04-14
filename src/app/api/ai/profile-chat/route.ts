@@ -5,6 +5,7 @@ import { getClaudeProxyUrl } from "@/lib/config/urls";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { refreshBuyerProfileMatches } from "@/lib/matching/refresh-buyer-profile-matches";
 import { z } from "zod";
 
 const chatSchema = z.object({
@@ -160,6 +161,7 @@ export async function POST(req: Request) {
             "SELECT id FROM buyer_profiles WHERE user_id = $1",
             [user.id]
           );
+          let buyerProfileId = existing?.id ?? null;
 
           const toPgArray = (v: unknown): string => {
             const arr = Array.isArray(v) ? v.map(String) : v ? [String(v)] : [];
@@ -190,14 +192,16 @@ export async function POST(req: Request) {
               [...profileFields, user.id]
             );
           } else {
-            await query(
+            const inserted = await queryOne<{ id: string }>(
               `INSERT INTO buyer_profiles
                 (user_id, use_case, budget_range, boat_type_prefs, spec_preferences,
                  location_prefs, experience_level, deal_breakers, timeline,
                  refit_tolerance, ai_conversation_id)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              RETURNING id`,
               [user.id, ...profileFields]
             );
+            buyerProfileId = inserted?.id ?? null;
           }
 
           await query(
@@ -205,9 +209,25 @@ export async function POST(req: Request) {
             [JSON.stringify(profile), convId]
           );
 
+          let matchCount = 0;
+          if (buyerProfileId) {
+            try {
+              const matches = await refreshBuyerProfileMatches(
+                buyerProfileId,
+                profile
+              );
+              matchCount = matches.length;
+            } catch (err) {
+              logger.error(
+                { err, buyerProfileId },
+                "Failed to recompute matches after AI profile completion"
+              );
+            }
+          }
+
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ profileComplete: true, profile })}\n\n`
+              `data: ${JSON.stringify({ profileComplete: true, profile, matches: matchCount })}\n\n`
             )
           );
         }
