@@ -580,6 +580,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Cornish",
+      model: "Crabbers 26",
+      sourceSite: "theyachtmarket",
+      slug: "2013-cornish-crabbers-26-bangor",
+    }),
+    { make: "Cornish Crabbers", model: "26" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cornish",
+      model: "Crabbers Crabber 24 Mkv",
+      sourceSite: "theyachtmarket",
+      slug: "2019-cornish-crabbers-crabber-24-mkv-plymouth",
+    }),
+    { make: "Cornish Crabbers", model: "Crabber 24 Mkv" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cornish Crabbers",
+      model: "Crabbers Pilot Cutter 30",
+      sourceSite: "theyachtmarket",
+      slug: "2006-cornish-crabbers-pilot-cutter-30-maliano",
+    }),
+    { make: "Cornish Crabbers", model: "Pilot Cutter 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cornish",
+      model: "Crabbers",
+      sourceSite: "theyachtmarket",
+      slug: "2005-cornish-crabbers-hampshire",
+    }),
+    { make: "Cornish Crabbers", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hans",
       model: "Christian 38t",
       sourceSite: "sailboatlistings",
