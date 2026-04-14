@@ -225,10 +225,13 @@ test("boats search hubs stay visible until a draft query is submitted", async ({
   });
 
   await gotoWithRetry(page, "/boats");
-  await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
+  const searchHubsHeading = page
+    .getByRole("heading", { name: "Explore Search Hubs", exact: true })
+    .first();
+  await expect(searchHubsHeading).toBeVisible();
 
   await page.getByPlaceholder("Search boats...").fill("lagoon");
-  await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
+  await expect(searchHubsHeading).toBeVisible();
 
   await Promise.all([
     page.waitForResponse((response) => {
@@ -400,7 +403,7 @@ test("boats page filters by normalized boat type", async ({ page }) => {
   });
 
   await page.goto("/boats");
-  const filterToggle = page.getByTestId("boats-filter-toggle");
+  const filterToggle = page.getByTestId("boats-filter-toggle").first();
   await expect(filterToggle).toBeVisible();
   await filterToggle.click();
 
@@ -471,9 +474,17 @@ test("boats card opens detail page", async ({ page }) => {
 
 test("boats can be added to compare and rendered side by side", async ({ page }) => {
   await mockCompareResponse(page);
+  const compareResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.ok() && url.pathname === "/api/boats/compare";
+  });
 
-  await gotoWithRetry(page, "/compare?ids=mock-lagoon-1,mock-lagoon-2");
+  await Promise.all([
+    gotoWithRetry(page, "/compare?ids=mock-lagoon-1,mock-lagoon-2"),
+    compareResponse,
+  ]);
   await expect(page.getByRole("heading", { name: "Side-by-side boat comparison", exact: false })).toBeVisible();
+  await expect(page.getByText("Loading comparison...", { exact: false })).toHaveCount(0);
   await expect(page.getByTestId("compare-quick-read")).toBeVisible();
   await expect(page.getByTestId("compare-factor-heading")).toBeVisible();
   await expect(page.getByTestId("compare-best-fit").first()).toBeVisible();
