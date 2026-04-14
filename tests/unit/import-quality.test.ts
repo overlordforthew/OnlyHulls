@@ -616,6 +616,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Hans Christian",
+      model: "Christian",
+      sourceSite: "sailboatlistings",
+      slug: "1986-hans-christian-maryland",
+    }),
+    { make: "Hans Christian", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hans Christian",
+      model: "Christian 43",
+      sourceSite: "theyachtmarket",
+      slug: "1989-hans-christian-43-contact-de-valk-corfu",
+    }),
+    { make: "Hans Christian", model: "43" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Bruce",
       model: "Roberts 65",
       sourceSite: "theyachtmarket",
