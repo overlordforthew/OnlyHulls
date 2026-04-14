@@ -310,6 +310,60 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Chris",
+      model: "Craft Apache",
+      sourceSite: "sailboatlistings",
+      slug: "1968-chris-craft-apache-connecticut",
+    }),
+    { make: "Chris Craft", model: "Apache" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Chris",
+      model: "Craft",
+      sourceSite: "sailboatlistings",
+      slug: "1971-chris-craft-maryland",
+    }),
+    { make: "Chris Craft", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Chris",
+      model: "Craft Chris Craft Sail Yacht 35",
+      sourceSite: "sailboatlistings",
+      slug: "1963-chris-craft-chris-craft-sail-yacht-35-texas",
+    }),
+    { make: "Chris Craft", model: "Sail Yacht 35" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Chriscraft",
+      model: "Sparkman & Stephens Designed Sailyacht",
+      sourceSite: "sailboatlistings",
+      slug: "1964-chriscraft-sparkman-stephens-designed-sailyacht-florida",
+    }),
+    { make: "Chris Craft", model: "Sparkman & Stephens Designed Sailyacht" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Criscraft",
+      model: "Carribean",
+      sourceSite: "sailboatlistings",
+      slug: "1974-criscraft-carribean-south-carolina",
+    }),
+    { make: "Chris Craft", model: "Carribean" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Chris",
+      model: "White Atlantic 42",
+      sourceSite: "sailboatlistings",
+      slug: "2005-chris-white-atlantic-42-florida",
+    }),
+    { make: "Chris", model: "White Atlantic 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Cheoy",
       model: "Lee 47 Offshore",
       sourceSite: "theyachtmarket",

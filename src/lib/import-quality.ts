@@ -543,6 +543,7 @@ function canonicalizeMakeName(make: string) {
   if (/^o\s+day$/i.test(normalized)) return "O'Day";
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
+  if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^fountaine\s+pajot$/i.test(normalized)) return "Fountaine Pajot";
   if (/^hallberg(?:\s+|-)rassy$/i.test(normalized)) return "Hallberg-Rassy";
   if (/^robertson(?:\s*(?:&|and)\s*caine|&caine|\s+caine)$/i.test(normalized)) {
@@ -692,6 +693,11 @@ function repairCompoundBrandMakeModel(input: {
   if (/^cape$/i.test(make) && modelStartsWith(/^dory\b[\s-]*/i)) {
     make = "Cape Dory";
     model = model.replace(/^dory\b[\s-]*/i, "").trim();
+  }
+
+  if (/^chris$/i.test(make) && modelStartsWith(/^craft\b[\s-]*/i)) {
+    make = "Chris Craft";
+    model = model.replace(/^craft\b[\s-]*/i, "").trim();
   }
 
   if (/^cheoy$/i.test(make) && modelStartsWith(/^lee\b[\s-]*/i)) {
@@ -857,6 +863,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^cabo rico$/i.test(make)) {
     cleaned = cleaned.replace(/^rico\b[\s-]*/i, "");
+  }
+
+  if (/^chris craft$/i.test(make)) {
+    cleaned = cleaned.replace(/^craft\b[\s-]*/i, "");
   }
 
   if (/^spirit yachts$/i.test(make)) {
