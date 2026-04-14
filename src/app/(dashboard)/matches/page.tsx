@@ -222,7 +222,7 @@ export default function MatchesPage() {
             }}
             className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground"
           >
-            <option value="match:desc">Best match</option>
+            <option value="match:desc">Best match, then price</option>
             <option value="price:asc">Price: low to high</option>
             <option value="price:desc">Price: high to low</option>
             <option value="size:asc">Size: small to large</option>

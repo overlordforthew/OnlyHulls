@@ -3,38 +3,13 @@ import { query, queryOne } from "@/lib/db";
 import { ensureMatchExplanation } from "@/lib/ai/match-explanations";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { computeMatchesForBuyer } from "@/lib/matching/engine";
+import {
+  buildMatchOrderBy,
+  parseMatchDir,
+  parseMatchSort,
+} from "@/lib/matching/match-sort";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
-
-type MatchSort = "match" | "price" | "year" | "size" | "newest";
-type SortDir = "asc" | "desc";
-
-function parseSort(value: string | null): MatchSort {
-  return value === "price" || value === "year" || value === "size" || value === "newest"
-    ? value
-    : "match";
-}
-
-function parseDir(value: string | null, sort: MatchSort): SortDir {
-  if (value === "asc" || value === "desc") return value;
-  return sort === "price" || sort === "size" ? "asc" : "desc";
-}
-
-function buildOrderBy(sort: MatchSort, dir: SortDir) {
-  switch (sort) {
-    case "price":
-      return `COALESCE(b.asking_price_usd, b.asking_price) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
-    case "year":
-      return `b.year ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
-    case "size":
-      return `COALESCE((d.specs->>'loa')::numeric, 0) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
-    case "newest":
-      return `COALESCE(b.listing_date, DATE(b.created_at)) ${dir.toUpperCase()} NULLS LAST, m.score DESC`;
-    case "match":
-    default:
-      return `m.score ${dir.toUpperCase()} NULLS LAST`;
-  }
-}
 
 export async function GET(req: Request) {
   try {
@@ -47,9 +22,9 @@ export async function GET(req: Request) {
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
     const offset = (page - 1) * limit;
-    const sort = parseSort(url.searchParams.get("sort"));
-    const dir = parseDir(url.searchParams.get("dir"), sort);
-    const orderBy = buildOrderBy(sort, dir);
+    const sort = parseMatchSort(url.searchParams.get("sort"));
+    const dir = parseMatchDir(url.searchParams.get("dir"), sort);
+    const orderBy = buildMatchOrderBy(sort, dir);
 
     const user = await queryOne<{ id: string }>(
       "SELECT id FROM users WHERE id = $1",
