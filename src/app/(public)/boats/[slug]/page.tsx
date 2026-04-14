@@ -128,7 +128,6 @@ async function getBoatForViewer(
       normalizedBoat.source_url &&
       (
         !normalizedBoat.hero_url ||
-        !normalizedBoat.model.trim() ||
         !hasUsableImportedLocation(normalizedBoat.location_text) ||
         Number(normalizedBoat.asking_price_usd || normalizedBoat.asking_price) < 3000
       )
