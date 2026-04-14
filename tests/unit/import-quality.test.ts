@@ -616,6 +616,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Cabo",
+      model: "Rico 38",
+      sourceSite: "sailboatlistings",
+      slug: "1987-cabo-rico-38-florida",
+    }),
+    { make: "Cabo Rico", model: "38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cabo",
+      model: "Rico Cabo Rico 34",
+      sourceSite: "sailboatlistings",
+      slug: "1989-cabo-rico-cabo-rico-34-north-carolina",
+    }),
+    { make: "Cabo Rico", model: "34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cabo",
+      model: "Rico",
+      sourceSite: "sailboatlistings",
+      slug: "1989-cabo-rico-mississippi",
+    }),
+    { make: "Cabo Rico", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cabo Rico",
+      model: "Rico Pilothouse Cutter 42",
+      sourceSite: "sailboatlistings",
+      slug: "2003-cabo-rico-pilothouse-cutter-42-washington",
+    }),
+    { make: "Cabo Rico", model: "Pilothouse Cutter 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hans",
       model: "Christian 38t",
       sourceSite: "sailboatlistings",

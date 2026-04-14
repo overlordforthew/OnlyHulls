@@ -747,6 +747,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^crabbers\b[\s-]*/i, "").trim();
   }
 
+  if (/^cabo$/i.test(make) && modelStartsWith(/^rico\b[\s-]*/i)) {
+    make = "Cabo Rico";
+    model = model.replace(/^rico\b[\s-]*/i, "").trim();
+  }
+
   if (/^hans$/i.test(make) && modelStartsWith(/^christ(?:ian|an)\b[\s-]*/i)) {
     make = "Hans Christian";
     model = model
@@ -848,6 +853,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^cornish crabbers$/i.test(make)) {
     cleaned = cleaned.replace(/^crabbers\b[\s-]*/i, "");
+  }
+
+  if (/^cabo rico$/i.test(make)) {
+    cleaned = cleaned.replace(/^rico\b[\s-]*/i, "");
   }
 
   if (/^spirit yachts$/i.test(make)) {
