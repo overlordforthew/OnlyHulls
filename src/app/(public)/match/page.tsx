@@ -20,6 +20,7 @@ import {
   semanticMatchingEnabled,
 } from "@/lib/capabilities";
 import { BuyerPricing } from "@/components/PricingCards";
+import JsonLdScript from "@/components/JsonLdScript";
 import { MatchCTAPrimary, MatchCTASecondary } from "@/components/MatchCTA";
 
 export const dynamic = "force-dynamic";
@@ -185,12 +186,7 @@ export default async function MatchPage() {
 
   return (
     <div>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqSchema).replace(/</g, "\\u003c"),
-        }}
-      />
+      <JsonLdScript data={faqSchema} />
 
       <section className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16">
         <div className="absolute inset-0 -z-10">

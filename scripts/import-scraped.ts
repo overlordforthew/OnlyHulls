@@ -33,6 +33,7 @@ import {
   sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
+import { getSafeExternalUrl } from "../src/lib/url-safety";
 
 // Source registry — add new sources here
 const SOURCES: Record<string, { name: string; domain: string }> = {
@@ -348,6 +349,7 @@ async function importBoats(filePath: string, sourceSite: string) {
   let imported = 0;
   let skipped = 0;
   let errors = 0;
+  let invalidSourceUrls = 0;
   const pendingEmbeddings: PendingEmbedding[] = [];
 
   for (const b of boats) {
@@ -361,6 +363,13 @@ async function importBoats(filePath: string, sourceSite: string) {
       const year = parseYear(b.year);
       const price = parsePrice(b.price);
       const parsedName = parseMakeModel(b.name, year ?? undefined);
+      const sourceUrl = getSafeExternalUrl(b.url);
+
+      if (!sourceUrl) {
+        invalidSourceUrls++;
+        skipped++;
+        continue;
+      }
 
       // Skip if missing critical fields or suspiciously low price
       if (!year || !price || price < 500) {
@@ -369,7 +378,6 @@ async function importBoats(filePath: string, sourceSite: string) {
       }
 
       const location = normalizeImportedLocation(b.location);
-      const sourceUrl = b.url || "";
       const preNormalizedSlug = buildImportedSlug(year, parsedName.make, parsedName.model, location);
       const { make, model } = normalizeImportedMakeModel({
         year,
@@ -515,7 +523,9 @@ async function importBoats(filePath: string, sourceSite: string) {
   // Bump last_seen_at for ALL boats in this scrape batch (new + existing)
   // This is how we track freshness — boats that stop appearing in scrapes
   // will have stale last_seen_at and get expired after 14 days
-  const sourceUrls = boats.map((b) => b.url).filter(Boolean);
+  const sourceUrls = boats
+    .map((b) => getSafeExternalUrl(b.url))
+    .filter((url): url is string => Boolean(url));
   if (sourceUrls.length > 0) {
     const updated = await query<{ id: string }>(
       `UPDATE boats SET last_seen_at = NOW(), updated_at = NOW()
@@ -547,7 +557,9 @@ async function importBoats(filePath: string, sourceSite: string) {
     console.log(`Embeddings: generated ${embedded} boat vectors`);
   }
 
-  console.log(`\nImport complete: ${imported} imported, ${skipped} skipped, ${errors} errors`);
+  console.log(
+    `\nImport complete: ${imported} imported, ${skipped} skipped, ${invalidSourceUrls} invalid source URLs, ${errors} errors`
+  );
   await pool.end();
 }
 
@@ -568,10 +580,16 @@ async function updateBoats(filePath: string, sourceSite: string) {
   let notFound = 0;
   let errors = 0;
   let duplicateSkips = 0;
+  let invalidSourceUrls = 0;
 
   for (const b of boats) {
     try {
-      if (!b.url) { notFound++; continue; }
+      const sourceUrl = getSafeExternalUrl(b.url);
+      if (!sourceUrl) {
+        invalidSourceUrls++;
+        notFound++;
+        continue;
+      }
 
       // Find existing boat by source_url
       const existing = await queryOne<{
@@ -583,7 +601,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
         slug: string | null;
       }>(
         "SELECT id, make, model, year, location_text, slug FROM boats WHERE source_url = $1",
-        [b.url]
+        [sourceUrl]
       );
       if (!existing) { notFound++; continue; }
 
@@ -670,7 +688,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
             [boatId]
           );
           duplicateSkips++;
-          console.warn(`  [~] Duplicate normalized row skipped for ${b.url}`);
+          console.warn(`  [~] Duplicate normalized row skipped for ${sourceUrl}`);
           continue;
         }
       }
@@ -744,7 +762,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
           [boatId]
         );
         duplicateSkips++;
-        console.warn(`  [~] Duplicate normalized row skipped for ${b.url}`);
+        console.warn(`  [~] Duplicate normalized row skipped for ${sourceUrl}`);
         continue;
       }
 
@@ -780,12 +798,12 @@ async function updateBoats(filePath: string, sourceSite: string) {
       }
     } catch (err) {
       errors++;
-      console.error(`  [!] Error updating ${b.url}: ${err}`);
+      console.error(`  [!] Error updating ${b.url || "(missing url)"}: ${err}`);
     }
   }
 
   console.log(
-    `\nUpdate complete: ${updated} updated, ${notFound} not found, ${duplicateSkips} duplicate skips, ${errors} errors`
+    `\nUpdate complete: ${updated} updated, ${notFound} not found, ${invalidSourceUrls} invalid source URLs, ${duplicateSkips} duplicate skips, ${errors} errors`
   );
   await pool.end();
 }

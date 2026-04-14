@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BoatCard from "@/components/BoatCard";
+import JsonLdScript from "@/components/JsonLdScript";
 import type { BoatRow } from "@/lib/db/queries";
 import {
   buildHubBreadcrumbSchema,
@@ -20,18 +21,8 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
 
   return (
     <div className="pb-16">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(collectionSchema).replace(/</g, "\\u003c"),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
-        }}
-      />
+      <JsonLdScript data={collectionSchema} />
+      <JsonLdScript data={breadcrumbSchema} />
 
       <section className="border-b border-border bg-surface/40 py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-5">

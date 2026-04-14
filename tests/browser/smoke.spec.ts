@@ -181,6 +181,17 @@ test("capabilities endpoint reports live systems", async ({ request }) => {
   expect(body.semanticMatchingEnabled).toBe(true);
 });
 
+test("deploy health endpoint exposes build metadata", async ({ request }) => {
+  const response = await request.get("/api/public/deploy-health");
+  expect(response.ok()).toBeTruthy();
+
+  const body = await response.json();
+  expect(body.status).toBe("ok");
+  expect(typeof body.version).toBe("string");
+  expect(typeof body.buildSha).toBe("string");
+  expect(body.buildSha.length).toBeGreaterThan(0);
+});
+
 test("boats search returns results and renders the page", async ({ page, request }) => {
   const api = await request.get("/api/boats?q=Leopard");
   expect(api.ok()).toBeTruthy();

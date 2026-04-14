@@ -14,6 +14,7 @@ import { ContactOwnerCTA } from "@/components/MatchCTA";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { ImageGallery } from "@/components/ImageGallery";
+import JsonLdScript from "@/components/JsonLdScript";
 import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
@@ -352,18 +353,8 @@ export default async function BoatDetailPage({
 
   return (
     <div className="pb-16">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(listingSchema).replace(/</g, "\\u003c"),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
-        }}
-      />
+      <JsonLdScript data={listingSchema} />
+      <JsonLdScript data={breadcrumbSchema} />
 
       <div className="border-b border-border bg-surface/50">
         <div className="mx-auto max-w-6xl px-5 py-3">
