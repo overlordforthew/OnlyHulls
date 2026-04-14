@@ -409,10 +409,12 @@ test("boats page filters by normalized boat type", async ({ page }) => {
 
 test("boats currency selection persists after reload", async ({ page }) => {
   await gotoWithRetry(page, "/boats");
+  await expect(page.locator("#boats-currency")).toBeEnabled();
   await page.locator("#boats-currency").selectOption("EUR");
   await expect(page.locator("#boats-currency")).toHaveValue("EUR");
 
   await page.reload();
+  await expect(page.locator("#boats-currency")).toBeEnabled();
   await expect(page.locator("#boats-currency")).toHaveValue("EUR");
 });
 

@@ -163,6 +163,20 @@ test("boats page search flow stays deterministic with mocked API data", async ({
   await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
 });
 
+test("boats currency selection persists after reload locally", async ({ page }) => {
+  await mockBoatsResponse(page);
+
+  await page.goto("/boats");
+  const currencySelector = page.locator("#boats-currency");
+  await expect(currencySelector).toBeEnabled();
+  await currencySelector.selectOption("EUR");
+  await expect(currencySelector).toHaveValue("EUR");
+
+  await page.reload();
+  await expect(currencySelector).toBeEnabled();
+  await expect(currencySelector).toHaveValue("EUR");
+});
+
 test("boats no-results state still offers recovery paths", async ({ page }) => {
   await page.route("**/api/boats**", async (route) => {
     await route.fulfill({

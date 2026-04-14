@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_CURRENCY, normalizeSupportedCurrency, persistPreferredCurrency, type SupportedCurrency } from "@/lib/currency";
 
@@ -9,6 +10,7 @@ interface CurrencySelectorProps {
   id?: string;
   label?: string;
   className?: string;
+  disabled?: boolean;
   refreshOnChange?: boolean;
 }
 
@@ -18,9 +20,16 @@ export default function CurrencySelector({
   id = "currency-selector",
   label = "Currency",
   className = "rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground",
+  disabled = false,
   refreshOnChange = false,
 }: CurrencySelectorProps) {
   const router = useRouter();
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
+  const isDisabled = disabled || !hydrated;
 
   function handleChange(nextValue: string) {
     const nextCurrency = normalizeSupportedCurrency(nextValue);
@@ -41,7 +50,8 @@ export default function CurrencySelector({
         id={id}
         value={value || DEFAULT_CURRENCY}
         onChange={(event) => handleChange(event.target.value)}
-        className={className}
+        disabled={isDisabled}
+        className={`${className} ${isDisabled ? "opacity-60" : ""}`.trim()}
       >
         <option value="USD">USD</option>
         <option value="EUR">EUR</option>
