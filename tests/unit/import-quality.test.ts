@@ -513,6 +513,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "Graham Collingwood Boatbuilders", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Roberts 65",
+      sourceSite: "theyachtmarket",
+      slug: "1994-bruce-roberts-65-at-request",
+    }),
+    { make: "Bruce Roberts", model: "65" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Roberts Bruce Roberts 37 Cutter",
+      sourceSite: "sailboatlistings",
+      slug: "1985-bruce-roberts-bruce-roberts-37-cutter-trinidad",
+    }),
+    { make: "Bruce Roberts", model: "37 Cutter" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Robert 53 Pilot House Ketch",
+      sourceSite: "sailboatlistings",
+      slug: "1982-bruce-robert-53-pilot-house-ketch-bali-serangan-harbour",
+    }),
+    { make: "Bruce Roberts", model: "53 Pilot House Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Roberts",
+      sourceSite: "sailboatlistings",
+      slug: "2005-bruce-roberts-ohio",
+    }),
+    { make: "Bruce Roberts", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
@@ -590,6 +626,24 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
       slug: "1988-graham-schlageter-g-s-35-ohio",
     }),
     { make: "Graham", model: "& Schlageter G&s 35" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Askew Steel Pilothouse Expedition World Cruiser",
+      sourceSite: "sailboatlistings",
+      slug: "1999-bruce-askew-steel-pilothouse-expedition-world-cruiser-kota-kinabalu-malaysia",
+    }),
+    { make: "Bruce", model: "Askew Steel Pilothouse Expedition World Cruiser" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bruce",
+      model: "Farr Libera",
+      sourceSite: "sailboatlistings",
+      slug: "1983-bruce-farr-libera-hungary",
+    }),
+    { make: "Bruce", model: "Farr Libera" }
   );
 });
 
