@@ -124,6 +124,26 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
     normalizeImportedLocation("Hodge'S Creek Marina Hotel, Parham Town, ???Les Vierges Britanniques"),
     "Hodge's Creek Marina Hotel, Parham Town, British Virgin Islands"
   );
+  assert.equal(
+    normalizeImportedLocation("Batamindonesia"),
+    "Batam, Indonesia"
+  );
+  assert.equal(
+    normalizeImportedLocation("Denpasarbali Indonesia"),
+    "Denpasar, Bali, Indonesia"
+  );
+  assert.equal(
+    normalizeImportedLocation("Luperon Sailing South"),
+    "Luperon"
+  );
+  assert.equal(
+    normalizeImportedLocation("(2) Horse Shoe Buoys"),
+    "Horse Shoe Buoys"
+  );
+  assert.equal(
+    normalizeImportedLocation("Southampton United Kingdom"),
+    "Southampton, United Kingdom"
+  );
 });
 
 test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {

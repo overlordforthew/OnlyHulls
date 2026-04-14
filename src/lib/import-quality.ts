@@ -63,6 +63,13 @@ const COUNTRY_ALIASES: Record<string, string> = {
   "dutch antilles": "Dutch Antilles",
 };
 
+const LOCATION_NORMALIZATION_OVERRIDES: Record<string, string> = {
+  batamindonesia: "Batam, Indonesia",
+  "denpasarbali indonesia": "Denpasar, Bali, Indonesia",
+  "luperon sailing south": "Luperon",
+  "horse shoe buoys": "Horse Shoe Buoys",
+};
+
 const COMMON_LOCATION_SUFFIXES = [
   "Puerto Rico",
   "Bahamas",
@@ -83,6 +90,8 @@ const COMMON_LOCATION_SUFFIXES = [
   "Greece",
   "Croatia",
   "Turkey",
+  "Indonesia",
+  "United Kingdom",
   "Australia",
   "New Zealand",
 ];
@@ -339,6 +348,10 @@ function lookupCountryAlias(value: string) {
   return COUNTRY_ALIASES[value.toLowerCase()] ?? COUNTRY_ALIASES[normalizeAliasKey(value)];
 }
 
+function lookupLocationOverride(value: string) {
+  return LOCATION_NORMALIZATION_OVERRIDES[normalizeAliasKey(value)];
+}
+
 function titleCaseTokenCore(token: string): string {
   const exact = TITLE_CASE_EXACT[token.toLowerCase()];
   if (exact) return exact;
@@ -404,10 +417,14 @@ function titleCaseToken(token: string) {
 
 function normalizeLocationPart(value: string) {
   const normalized = normalizeSpacing(repairUtf8Mojibake(value))
+    .replace(/^\(\d+\)\s*/g, "")
     .replace(/\p{Regional_Indicator}+/gu, " ")
     .replace(/^[./?-]+|[./?-]+$/g, "")
     .trim();
   if (!normalized) return "";
+
+  const override = lookupLocationOverride(normalized);
+  if (override) return override;
 
   const alias = lookupCountryAlias(normalized);
   if (alias) return alias;
@@ -459,6 +476,9 @@ export function normalizeImportedLocation(value?: string | null) {
   if (!normalized) return "";
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
+
+  const exactOverride = lookupLocationOverride(normalized);
+  if (exactOverride) return exactOverride;
 
   const exactLocationAlias = lookupCountryAlias(normalized);
   if (exactLocationAlias) return exactLocationAlias;
