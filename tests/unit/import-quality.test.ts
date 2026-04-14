@@ -791,6 +791,56 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
     }),
     { make: "Fountaine Pajot", model: "Salina" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1986,
+      make: "O'Day",
+      model: "Sold",
+      sourceSite: "sailboatlistings",
+      slug: "1986-o-day-sold-new-york",
+    }),
+    { make: "O'Day", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 2007,
+      make: "Beneteau",
+      model: "343 Deal Pending 10/05/18",
+      sourceSite: "sailboatlistings",
+      slug: "2007-beneteau-343-deal-pending-10-05-18-shediac-new-brunswick",
+    }),
+    { make: "Beneteau", model: "343" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1980,
+      make: "Downeaster",
+      model: "Ketch New",
+      sourceSite: "sailboatlistings",
+      slug: "1980-downeaster-ketch-new-new-york",
+    }),
+    { make: "Downeaster", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 2004,
+      make: "Beneteau",
+      model: "Sold 473",
+      sourceSite: "sailboatlistings",
+      slug: "2004-beneteau-sold-473-texas",
+    }),
+    { make: "Beneteau", model: "473" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1974,
+      make: "Prout",
+      model: "Sale Pending Sold 35",
+      sourceSite: "sailboatlistings",
+      slug: "1974-prout-sale-pending-sold-35-texas",
+    }),
+    { make: "Prout", model: "35" }
+  );
 });
 
 test("normalizeImportedMakeModel restores dotted Bali model codes", () => {

@@ -577,6 +577,8 @@ const PROMOTION_STOPWORDS = new Set([
   "yacht",
   "yachts",
 ]);
+const SALE_STATUS_PATTERN =
+  /(?:sale\s+pending|deal\s+pending(?:\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})*|sold|new)/i;
 
 function promoteSpecificSourceMakeModel(input: {
   make: string;
@@ -815,6 +817,15 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
     }
     if (/^hinckley$/i.test(make)) {
       cleaned = cleaned.replace(/^boat builders\s+/i, "");
+    }
+
+    for (let pass = 0; pass < 4; pass += 1) {
+      const next = cleaned
+        .replace(new RegExp(`^${SALE_STATUS_PATTERN.source}(?:\\s+|$)`, "i"), "")
+        .replace(new RegExp(`(?:^|\\s+)${SALE_STATUS_PATTERN.source}$`, "i"), "")
+        .trim();
+      if (next === cleaned) break;
+      cleaned = next;
     }
   }
 
