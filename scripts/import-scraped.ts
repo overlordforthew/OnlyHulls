@@ -26,6 +26,7 @@ import {
   buildImportedSummary,
   buildImportQualityFlags,
   calculateImportQualityScore,
+  inferImportedVesselType,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
@@ -244,6 +245,12 @@ function buildSpecsAndSummary(input: {
   });
   const hullMaterial = input.boat.hull || "";
   const engine = input.boat.engine || "";
+  const vesselType = inferImportedVesselType({
+    make: input.make,
+    model: input.model,
+    rigType,
+    existingType: input.boat.type,
+  });
 
   const specs: Record<string, unknown> = {
     loa,
@@ -251,6 +258,7 @@ function buildSpecsAndSummary(input: {
     draft,
     rig_type: rigType,
     hull_material: hullMaterial,
+    vessel_type: vesselType,
     engine,
   };
 
@@ -285,10 +293,22 @@ function buildSpecsAndSummary(input: {
     priceUsd: toUsd(input.price, input.currency),
     loa,
     rigType,
+    vesselType,
     existingTags: [],
   });
 
-  return { loa, beam, draft, rigType, hullMaterial, engine, specs, summary, summarySource, tags };
+  return {
+    loa,
+    beam,
+    draft,
+    rigType,
+    hullMaterial,
+    engine,
+    specs,
+    summary,
+    summarySource,
+    tags,
+  };
 }
 
 async function ensureSystemSeller(): Promise<string> {

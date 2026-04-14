@@ -8,6 +8,7 @@ import {
   normalizeImportedMakeModel,
   sanitizeImportedBoatRecord,
   sanitizeImportedDimensions,
+  sanitizeImportedSpecs,
 } from "../../src/lib/import-quality";
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
@@ -841,6 +842,36 @@ test("sanitizeImportedDimensions can infer sailboatlistings loa from model for c
   );
 });
 
+test("sanitizeImportedSpecs persists normalized vessel type for matching", () => {
+  assert.equal(
+    sanitizeImportedSpecs(
+      {
+        rig_type: "masthead sloop",
+      },
+      {
+        make: "Dufour",
+        model: "390 Grand Large",
+        sourceSite: "theyachtmarket",
+      }
+    ).vessel_type,
+    "monohull"
+  );
+
+  assert.equal(
+    sanitizeImportedSpecs(
+      {
+        rig_type: "sloop",
+      },
+      {
+        make: "Lagoon",
+        model: "380",
+        sourceSite: "theyachtmarket",
+      }
+    ).vessel_type,
+    "catamaran"
+  );
+});
+
 test("sanitizeImportedBoatRecord normalizes make model, location, and specs together", () => {
   const normalized = sanitizeImportedBoatRecord({
     make: "Bali",
@@ -863,6 +894,7 @@ test("sanitizeImportedBoatRecord normalizes make model, location, and specs toge
     beam: 27,
     draft: 6.6,
     rig_type: "catamaran",
+    vessel_type: "catamaran",
   });
 });
 

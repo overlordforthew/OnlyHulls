@@ -268,35 +268,43 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
     : [];
   if (desiredTypes.length) {
     const typeClauses: string[] = [];
+    const vesselTypeSql = "LOWER(COALESCE(d.specs->>'vessel_type', ''))";
+    const typeHaystackSql =
+      "LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' ')))";
     for (const desiredType of desiredTypes.slice(0, 2)) {
       const normalizedType = String(desiredType).toLowerCase();
       if (normalizedType === "catamaran") {
         typeClauses.push(
-          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++})`
+          `(${vesselTypeSql} = 'catamaran' OR (${vesselTypeSql} = '' AND ${typeHaystackSql} LIKE $${paramIdx++}))`
         );
         params.push("%catamaran%");
         continue;
       }
       if (normalizedType === "trimaran") {
         typeClauses.push(
-          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++})`
+          `(${vesselTypeSql} = 'trimaran' OR (${vesselTypeSql} = '' AND ${typeHaystackSql} LIKE $${paramIdx++}))`
         );
         params.push("%trimaran%");
         continue;
       }
       if (normalizedType === "powerboat") {
         typeClauses.push(
-          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) LIKE $${paramIdx++}
-            OR LOWER(COALESCE(d.specs->>'rig_type', '')) IN ('motor', 'power', 'powerboat'))`
+          `(${vesselTypeSql} = 'powerboat'
+            OR (${vesselTypeSql} = '' AND (
+              ${typeHaystackSql} LIKE $${paramIdx++}
+              OR LOWER(COALESCE(d.specs->>'rig_type', '')) IN ('motor', 'power', 'powerboat')
+            )))`
         );
         params.push("%powerboat%");
         continue;
       }
       if (normalizedType === "monohull") {
         typeClauses.push(
-          `(LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++}
-            AND LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++}
-            AND LOWER(CONCAT_WS(' ', b.make, b.model, COALESCE(d.ai_summary, ''), array_to_string(COALESCE(d.character_tags, '{}'), ' '))) NOT LIKE $${paramIdx++})`
+          `(${vesselTypeSql} = 'monohull'
+            OR (${vesselTypeSql} = '' AND
+              ${typeHaystackSql} NOT LIKE $${paramIdx++}
+              AND ${typeHaystackSql} NOT LIKE $${paramIdx++}
+              AND ${typeHaystackSql} NOT LIKE $${paramIdx++}))`
         );
         params.push("%catamaran%", "%trimaran%", "%powerboat%");
       }

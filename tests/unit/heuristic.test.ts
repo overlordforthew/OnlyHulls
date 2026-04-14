@@ -37,3 +37,20 @@ test("boatMatchesDesiredTypes rejects monohulls when buyer only wants catamarans
 
   assert.equal(result, false);
 });
+
+test("inferBoatTypes prefers normalized stored vessel type", () => {
+  const lagoon = {
+    ...dufour,
+    id: "lagoon-380",
+    make: "Lagoon",
+    model: "380",
+    ai_summary: "A family-friendly cruiser.",
+    specs: {
+      loa: 38.1,
+      rig_type: "sloop",
+      vessel_type: "catamaran",
+    },
+  };
+
+  assert.deepEqual(inferBoatTypes(lagoon), ["catamaran"]);
+});

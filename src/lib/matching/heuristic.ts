@@ -45,6 +45,7 @@ function normalizedHaystack(boat: BoatForMatching): string {
     boat.model,
     boat.ai_summary || "",
     boat.location_text || "",
+    boat.specs.vessel_type,
     boat.specs.rig_type,
     boat.specs.hull_material,
     ...boat.character_tags,
@@ -54,6 +55,31 @@ function normalizedHaystack(boat: BoatForMatching): string {
     .toLowerCase();
 }
 
+function explicitBoatTypes(boat: BoatForMatching): string[] {
+  const raw = String(boat.specs.vessel_type || "")
+    .trim()
+    .toLowerCase();
+  if (!raw) return [];
+
+  const detected = new Set<string>();
+  if (/\btrimaran\b/.test(raw)) detected.add("trimaran");
+  if (/\bpower\s*cat\b|\bpowercat\b/.test(raw)) {
+    detected.add("powerboat");
+    detected.add("catamaran");
+  }
+  if (/\bpowerboat\b|\bmotor yacht\b|\bmotoryacht\b|\btrawler\b/.test(raw)) {
+    detected.add("powerboat");
+  }
+  if (/\bcatamaran\b|\bcat boat\b|\bcatboat\b|\bmultihull\b/.test(raw)) {
+    detected.add("catamaran");
+  }
+  if (/\bmonohull\b|\bsailboat\b|\bsloop\b|\bcutter\b|\bketch\b|\byawl\b/.test(raw)) {
+    detected.add("monohull");
+  }
+
+  return Array.from(detected);
+}
+
 function normalizeDesiredTypes(value: unknown): string[] {
   return toStringArray(value)
     .map((item) => item.trim().toLowerCase())
@@ -61,6 +87,11 @@ function normalizeDesiredTypes(value: unknown): string[] {
 }
 
 export function inferBoatTypes(boat: BoatForMatching): string[] {
+  const explicitTypes = explicitBoatTypes(boat);
+  if (explicitTypes.length) {
+    return explicitTypes;
+  }
+
   const haystack = normalizedHaystack(boat);
   const detected = new Set<string>();
 

@@ -822,6 +822,50 @@ function isLikelyMultihull(make: string, model: string, rigType?: string | null)
   return /\b(cat|catamaran|trimaran|multihull)\b/.test(haystack);
 }
 
+function normalizeStoredVesselType(value: unknown) {
+  const normalized = normalizeSpacing(typeof value === "string" ? value : null).toLowerCase();
+  if (!normalized) return null;
+
+  if (/\btrimaran\b/.test(normalized)) return "trimaran";
+  if (/\bpower\s*cat\b|\bpowercat\b/.test(normalized)) return "powerboat";
+  if (/\bpowerboat\b|\bmotor yacht\b|\bmotoryacht\b|\btrawler\b/.test(normalized)) {
+    return "powerboat";
+  }
+  if (/\bcatamaran\b|\bcat boat\b|\bcatboat\b|\bmultihull\b/.test(normalized)) {
+    return "catamaran";
+  }
+  if (/\bmonohull\b|\bsailboat\b|\bsloop\b|\bcutter\b|\bketch\b|\byawl\b/.test(normalized)) {
+    return "monohull";
+  }
+
+  return null;
+}
+
+export function inferImportedVesselType(input: {
+  make?: string | null;
+  model?: string | null;
+  rigType?: string | null;
+  existingType?: unknown;
+}) {
+  const stored = normalizeStoredVesselType(input.existingType);
+  if (stored) return stored;
+
+  const make = normalizeSpacing(input.make);
+  const model = normalizeSpacing(input.model);
+  const rigType = normalizeSpacing(input.rigType);
+  const haystack = `${make} ${model} ${rigType}`.toLowerCase();
+
+  if (/\btrimaran\b/.test(haystack)) return "trimaran";
+  if (/\bpower\s*cat\b|\bpowercat\b/.test(haystack)) return "powerboat";
+  if (/\bpowerboat\b|\bmotor yacht\b|\bmotoryacht\b|\btrawler\b/.test(haystack)) {
+    return "powerboat";
+  }
+  if (/\bcatamaran\b|\bcat boat\b|\bcatboat\b/.test(haystack)) return "catamaran";
+  if (isLikelyMultihull(make, model, rigType)) return "catamaran";
+
+  return "monohull";
+}
+
 function getExpectedLoaFromModel(make: string, model: string, sourceSite?: string | null) {
   const match = model.match(/(\d+(?:\.\d+)?)/);
   if (!match) return null;
@@ -1049,6 +1093,13 @@ export function sanitizeImportedSpecs(
   if (draft === null) delete normalizedSpecs.draft;
   else normalizedSpecs.draft = draft;
 
+  normalizedSpecs.vessel_type = inferImportedVesselType({
+    make: context.make,
+    model: context.model,
+    rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
+    existingType: normalizedSpecs.vessel_type,
+  });
+
   return normalizedSpecs;
 }
 
@@ -1214,10 +1265,12 @@ export function buildImportedCharacterTags(input: {
   priceUsd: number | null;
   loa: number | null;
   rigType?: string | null;
+  vesselType?: string | null;
   existingTags?: string[] | null;
 }) {
   const tags = new Set((input.existingTags || []).filter(Boolean));
   const rig = String(input.rigType || "").toLowerCase();
+  const vesselType = String(input.vesselType || "").toLowerCase();
 
   if (input.priceUsd !== null && input.priceUsd < 50000) tags.add("budget-friendly");
   if (input.priceUsd !== null && input.priceUsd >= 250000) tags.add("premium");
@@ -1225,7 +1278,9 @@ export function buildImportedCharacterTags(input: {
   if (input.loa !== null && input.loa <= 32) tags.add("weekender");
   if (rig.includes("cutter")) tags.add("bluewater");
   if (rig.includes("ketch")) tags.add("classic");
-  if (rig.includes("cat")) tags.add("catamaran");
+  if (rig.includes("cat") || vesselType === "catamaran") tags.add("catamaran");
+  if (vesselType === "trimaran") tags.add("trimaran");
+  if (vesselType === "powerboat") tags.add("powerboat");
 
   return Array.from(tags).slice(0, 8);
 }

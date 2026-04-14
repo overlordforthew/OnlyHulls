@@ -241,6 +241,8 @@ async function main() {
       priceUsd: row.asking_price_usd,
       loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
       rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
+      vesselType:
+        typeof normalizedSpecs.vessel_type === "string" ? normalizedSpecs.vessel_type : null,
       existingTags: row.character_tags,
     });
     const cleanedSourceSummary = normalizeImportedSummary(row.ai_summary);

@@ -159,6 +159,7 @@ export function boatToEmbeddingText(boat: Record<string, unknown>): string {
   const specs = boat.specs as Record<string, unknown> | undefined;
   if (specs) {
     const specParts: string[] = [];
+    if (specs.vessel_type) specParts.push(`${specs.vessel_type} vessel type`);
     if (specs.loa) specParts.push(`LOA ${specs.loa}ft`);
     if (specs.beam) specParts.push(`beam ${specs.beam}ft`);
     if (specs.draft) specParts.push(`draft ${specs.draft}ft`);
