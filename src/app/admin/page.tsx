@@ -892,11 +892,11 @@ export default function AdminPage() {
               {actionLoading === "approve-all" ? "Approving..." : "Approve All Pending"}
             </button>
           </ActionWithInfo>
-          <ActionWithInfo info="Rebuilds the Meilisearch boat index from the current active inventory. Use after large imports, cleanup, or moderation changes.">
-            <button
-              onClick={() =>
-                runMaintenanceAction(
-                  "reindex-search",
+            <ActionWithInfo info="Rebuilds the Meilisearch boat index from the current active inventory. Use after large imports, cleanup, or moderation changes.">
+              <button
+                onClick={() =>
+                  runMaintenanceAction(
+                    "reindex-search",
                   "/api/admin/maintenance/reindex-search",
                   {},
                   (data) => `Reindexed ${data.indexed || 0} active boats into search.`
@@ -904,15 +904,32 @@ export default function AdminPage() {
               }
               disabled={actionLoading === "reindex-search"}
               className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-            >
-              {actionLoading === "reindex-search" ? "Reindexing..." : "Rebuild Search Index"}
-            </button>
-          </ActionWithInfo>
-          <ActionWithInfo info="Recomputes saved buyer matches against the current inventory and matching rules. Use after major profile, inventory, or matching logic changes.">
-            <button
-              onClick={() =>
-                runMaintenanceAction(
-                  "backfill-matches",
+              >
+                {actionLoading === "reindex-search" ? "Reindexing..." : "Rebuild Search Index"}
+              </button>
+            </ActionWithInfo>
+            <ActionWithInfo info="Runs the imported-listing cleanup pass on the live server for the top active imported rows. Use this when source data needs normalization or trust cleanup.">
+              <button
+                onClick={() =>
+                  runMaintenanceAction(
+                    "clean-imports",
+                    "/api/admin/maintenance/clean-imports",
+                    { limit: 500 },
+                    (data) =>
+                      `Cleaned ${data.processed || 0} imported rows. ${data.hiddenInBatch || 0} hidden, ${data.visibleInBatch || 0} visible in batch.`
+                  )
+                }
+                disabled={actionLoading === "clean-imports"}
+                className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
+              >
+                {actionLoading === "clean-imports" ? "Cleaning..." : "Clean Imported Data"}
+              </button>
+            </ActionWithInfo>
+            <ActionWithInfo info="Recomputes saved buyer matches against the current inventory and matching rules. Use after major profile, inventory, or matching logic changes.">
+              <button
+                onClick={() =>
+                  runMaintenanceAction(
+                    "backfill-matches",
                   "/api/admin/maintenance/backfill-matches",
                   {},
                   (data) =>
