@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   ExternalLink,
@@ -15,54 +16,34 @@ import {
 } from "lucide-react";
 import CurrencySelector from "@/components/CurrencySelector";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
+import { setCompareBoatIds } from "@/lib/compare";
 import {
-  convertCurrencyToUsd,
-  convertUsdToCurrency,
-  formatCurrencyAmount,
   getDisplayedPrice,
   readPreferredCurrencyFromBrowser,
   type SupportedCurrency,
 } from "@/lib/currency";
+import {
+  buildActionRecommendation,
+  buildBoatInsights,
+  buildQuickFactors,
+  formatBoatTitle,
+  formatCount,
+  formatFeet,
+  formatKilograms,
+  formatPricePerFoot,
+  formatTextValue,
+  getBoatPriceUsd,
+  getListingPathLabel,
+  getPricePerFootUsd,
+  getWinningNumericBoatIds,
+  toFiniteNumber,
+  type ActionRecommendation,
+  type BoatInsight,
+  type CompareBoat,
+  type NumericPreference,
+  type QuickFactor,
+} from "@/lib/compare-analysis";
 import { isLocalMediaUrl } from "@/lib/media";
-
-interface CompareSpecs {
-  loa?: number;
-  rig_type?: string;
-  beam?: number;
-  draft?: number;
-  hull_material?: string;
-  engine?: string;
-  cabins?: number;
-  berths?: number;
-  heads?: number;
-  fuel_type?: string;
-  keel_type?: string;
-  displacement?: number;
-}
-
-interface CompareBoat {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  asking_price: number;
-  currency: string;
-  asking_price_usd?: number | null;
-  location_text: string | null;
-  slug: string | null;
-  is_sample: boolean;
-  hero_url: string | null;
-  image_count?: number;
-  specs: CompareSpecs;
-  character_tags: string[];
-  source_site?: string | null;
-  source_name?: string | null;
-  source_url?: string | null;
-  seller_subscription_tier?: string | null;
-  condition_score?: number | null;
-}
-
-type NumericPreference = "high" | "low";
 
 interface CompareRow {
   label: string;
@@ -78,35 +59,7 @@ interface CompareSection {
   rows: CompareRow[];
 }
 
-interface QuickFactor {
-  label: string;
-  winnerId: string;
-  winnerTitle: string;
-  detail: string;
-}
-
-interface BoatInsight {
-  strengths: string[];
-  watchouts: string[];
-}
-
 const CURRENT_YEAR = 2026;
-
-const SOURCE_NAMES: Record<string, string> = {
-  sailboatlistings: "Sailboat Listings",
-  theyachtmarket: "The Yacht Market",
-  catamarans_com: "Catamarans.com",
-  catamaransite: "Catamaran Site",
-  camperandnicholsons: "Camper & Nicholsons",
-  denison: "Denison Yachting",
-  dreamyacht: "Dream Yacht Sales",
-  moorings: "The Moorings",
-  multihullcompany: "Multihull Company",
-  multihullworld: "Multihull World",
-  apolloduck_us: "Apollo Duck",
-  boote_yachten: "Boote & Yachten",
-  vi_yachtbroker: "VI Yacht Broker",
-};
 
 const compareSections: CompareSection[] = [
   {
@@ -273,19 +226,55 @@ const compareSections: CompareSection[] = [
 ];
 
 export default function ComparePage() {
-  const { compareIds, compareCount, clear, removeBoat, maxCompareBoats } = useCompareBoats();
+  return (
+    <Suspense fallback={<ComparePageFallback />}>
+      <ComparePageContent />
+    </Suspense>
+  );
+}
+
+function ComparePageContent() {
+  const { compareIds, clear, removeBoat, maxCompareBoats } = useCompareBoats();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [boats, setBoats] = useState<CompareBoat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dismissedUrlSeed, setDismissedUrlSeed] = useState(false);
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     readPreferredCurrencyFromBrowser()
   );
+  const compareIdsFromUrl = useMemo(
+    () =>
+      (searchParams.get("ids") || "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .slice(0, maxCompareBoats),
+    [maxCompareBoats, searchParams]
+  );
+  const activeCompareIds = useMemo(
+    () =>
+      compareIds.length > 0
+        ? compareIds
+        : dismissedUrlSeed
+          ? []
+          : compareIdsFromUrl,
+    [compareIds, compareIdsFromUrl, dismissedUrlSeed]
+  );
+  const activeCompareCount = activeCompareIds.length;
+
+  useEffect(() => {
+    if (compareIds.length === 0 && compareIdsFromUrl.length > 0 && !dismissedUrlSeed) {
+      setCompareBoatIds(compareIdsFromUrl);
+    }
+  }, [compareIds.length, compareIdsFromUrl, dismissedUrlSeed]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      if (compareIds.length === 0) {
+      if (activeCompareIds.length === 0) {
         setBoats([]);
         setLoading(false);
         setError(null);
@@ -295,7 +284,9 @@ export default function ComparePage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/boats/compare?ids=${encodeURIComponent(compareIds.join(","))}`);
+        const res = await fetch(
+          `/api/boats/compare?ids=${encodeURIComponent(activeCompareIds.join(","))}`
+        );
         if (!res.ok) throw new Error("Failed to load comparison.");
         const data = await res.json();
         if (!cancelled) {
@@ -316,11 +307,11 @@ export default function ComparePage() {
     return () => {
       cancelled = true;
     };
-  }, [compareIds]);
+  }, [activeCompareIds]);
 
   const missingCount = useMemo(
-    () => Math.max(compareCount - boats.length, 0),
-    [boats.length, compareCount]
+    () => Math.max(activeCompareCount - boats.length, 0),
+    [activeCompareCount, boats.length]
   );
 
   const comparisonGridStyle = useMemo(
@@ -335,7 +326,27 @@ export default function ComparePage() {
     [boats, displayCurrency]
   );
 
+  const actionRecommendation = useMemo(
+    () => buildActionRecommendation(boats, displayCurrency),
+    [boats, displayCurrency]
+  );
   const boatInsights = useMemo(() => buildBoatInsights(boats), [boats]);
+
+  function clearCompareView() {
+    clear();
+    if (compareIdsFromUrl.length > 0) {
+      setDismissedUrlSeed(true);
+      router.replace("/compare", { scroll: false });
+    }
+  }
+
+  function removeBoatFromCompare(boatId: string) {
+    if (compareIdsFromUrl.length > 0 && compareIds.length <= 1) {
+      setDismissedUrlSeed(true);
+      router.replace("/compare", { scroll: false });
+    }
+    removeBoat(boatId);
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
@@ -359,8 +370,8 @@ export default function ComparePage() {
           />
           <button
             type="button"
-            onClick={clear}
-            disabled={compareCount === 0}
+            onClick={clearCompareView}
+            disabled={activeCompareCount === 0}
             className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -369,7 +380,7 @@ export default function ComparePage() {
         </div>
       </div>
 
-      {compareCount === 0 ? (
+      {activeCompareCount === 0 ? (
         <EmptyState />
       ) : loading ? (
         <div className="mt-10 text-sm text-text-secondary">Loading comparison...</div>
@@ -394,14 +405,14 @@ export default function ComparePage() {
           {boats.length > 0 && (
             <div className="mt-8 overflow-x-auto pb-2">
               <div className="grid min-w-[1140px] gap-4" style={comparisonGridStyle}>
-                <QuickReadRail factors={quickFactors} />
+                <QuickReadRail factors={quickFactors} recommendation={actionRecommendation} />
                 {boats.map((boat) => (
                   <CompareBoatPanel
                     key={boat.id}
                     boat={boat}
                     displayCurrency={displayCurrency}
                     insight={boatInsights.get(boat.id) || { strengths: [], watchouts: [] }}
-                    onRemove={() => removeBoat(boat.id)}
+                    onRemove={() => removeBoatFromCompare(boat.id)}
                   />
                 ))}
               </div>
@@ -409,8 +420,19 @@ export default function ComparePage() {
           )}
 
           {boats.length > 0 && (
+            <MobileCompareSummary
+              compareCount={boats.length}
+              quickFactor={quickFactors[0] || null}
+              recommendation={actionRecommendation}
+            />
+          )}
+
+          {boats.length > 0 && (
             <div className="mt-10 overflow-x-auto">
-              <div className="min-w-[1140px] overflow-hidden rounded-3xl border border-border bg-surface">
+              <div
+                id="compare-factor-matrix"
+                className="min-w-[1140px] overflow-hidden rounded-3xl border border-border bg-surface"
+              >
                 <div
                   className="grid border-b border-border bg-background/40"
                   style={comparisonGridStyle}
@@ -459,7 +481,14 @@ export default function ComparePage() {
                     </div>
 
                     {section.rows.map((row) => {
-                      const winnerIds = getWinningBoatIds(row, boats);
+                      const winnerIds =
+                        row.numericValue && row.numericPreference
+                          ? getWinningNumericBoatIds(
+                              boats,
+                              row.numericValue,
+                              row.numericPreference
+                            )
+                          : new Set<string>();
                       return (
                         <div
                           key={`${section.title}-${row.label}`}
@@ -511,7 +540,13 @@ export default function ComparePage() {
   );
 }
 
-function QuickReadRail({ factors }: { factors: QuickFactor[] }) {
+function QuickReadRail({
+  factors,
+  recommendation,
+}: {
+  factors: QuickFactor[];
+  recommendation: ActionRecommendation | null;
+}) {
   return (
     <aside
       className="rounded-3xl border border-primary/15 bg-gradient-to-b from-primary/12 via-surface to-surface p-5"
@@ -547,7 +582,71 @@ function QuickReadRail({ factors }: { factors: QuickFactor[] }) {
       <p className="mt-5 text-xs leading-5 text-text-tertiary">
         Then use the matrix below for the exact numbers, layout details, and listing trust cues.
       </p>
+
+      {recommendation ? (
+        <div className="mt-5 rounded-2xl border border-accent/20 bg-accent/10 p-4 text-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+            Suggested first move
+          </p>
+          <p className="mt-2 font-medium text-foreground">{recommendation.winnerTitle}</p>
+          <p className="mt-1 text-text-secondary">{recommendation.detail}</p>
+        </div>
+      ) : null}
     </aside>
+  );
+}
+
+function ComparePageFallback() {
+  return (
+    <div className="mx-auto max-w-7xl px-5 py-10">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            Compare Boats
+          </div>
+          <h1 className="mt-4 text-3xl font-bold">Side-by-side boat comparison</h1>
+          <p className="mt-2 max-w-3xl text-sm text-text-secondary">
+            Loading your compare set...
+          </p>
+        </div>
+      </div>
+      <div className="mt-10 text-sm text-text-secondary">Preparing the compare workspace...</div>
+    </div>
+  );
+}
+
+function MobileCompareSummary({
+  compareCount,
+  quickFactor,
+  recommendation,
+}: {
+  compareCount: number;
+  quickFactor: QuickFactor | null;
+  recommendation: ActionRecommendation | null;
+}) {
+  const summary = recommendation
+    ? `${recommendation.winnerTitle} is the cleaner first call.`
+    : quickFactor
+      ? `${quickFactor.label}: ${quickFactor.winnerTitle}`
+      : `${compareCount} boats ready to compare`;
+
+  return (
+    <div className="fixed inset-x-4 bottom-24 z-40 rounded-2xl border border-primary/20 bg-background/95 p-4 shadow-2xl shadow-black/30 backdrop-blur md:hidden">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+        {compareCount} boats loaded
+      </p>
+      <p className="mt-1 text-sm font-medium text-foreground">{summary}</p>
+      <div className="mt-3 flex items-center gap-2">
+        <a
+          href="#compare-factor-matrix"
+          className="inline-flex items-center justify-center rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+        >
+          Jump to factors
+        </a>
+        <span className="text-xs text-text-secondary">Swipe sideways for full columns.</span>
+      </div>
+    </div>
   );
 }
 
@@ -752,390 +851,3 @@ function EmptyState() {
   );
 }
 
-function formatBoatTitle(boat: Pick<CompareBoat, "year" | "make" | "model">) {
-  return `${boat.year} ${boat.make} ${boat.model}`.replace(/\s+/g, " ").trim();
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function formatTextValue(value: string | null | undefined, fallback = "—") {
-  const normalized = value?.trim();
-  return normalized ? normalized : fallback;
-}
-
-function formatCount(value: unknown) {
-  const count = toFiniteNumber(value);
-  return count !== null ? String(count) : "—";
-}
-
-function formatFeet(value: unknown) {
-  const feet = toFiniteNumber(value);
-  return feet !== null ? `${feet}ft` : "—";
-}
-
-function formatKilograms(value: unknown) {
-  const kilograms = toFiniteNumber(value);
-  return kilograms !== null ? `${Math.round(kilograms).toLocaleString("en-US")} kg` : "—";
-}
-
-function getBoatPriceUsd(boat: CompareBoat) {
-  if (toFiniteNumber(boat.asking_price_usd) !== null) {
-    return boat.asking_price_usd as number;
-  }
-
-  if (boat.currency === "USD") {
-    return boat.asking_price;
-  }
-
-  return convertCurrencyToUsd(boat.asking_price, boat.currency as SupportedCurrency);
-}
-
-function getPricePerFootUsd(boat: CompareBoat) {
-  const loa = toFiniteNumber(boat.specs.loa);
-  if (!loa || loa <= 0) {
-    return null;
-  }
-
-  return getBoatPriceUsd(boat) / loa;
-}
-
-function formatPriceFromUsd(amountUsd: number, currency: SupportedCurrency) {
-  return formatCurrencyAmount(convertUsdToCurrency(amountUsd, currency), currency);
-}
-
-function formatPricePerFoot(boat: CompareBoat, currency: SupportedCurrency) {
-  const amountUsd = getPricePerFootUsd(boat);
-  if (amountUsd === null) {
-    return "—";
-  }
-
-  return `${formatPriceFromUsd(amountUsd, currency)}/ft`;
-}
-
-function getListingPathLabel(boat: CompareBoat) {
-  if (boat.source_url) {
-    return `Imported via ${formatSourceSite(boat.source_site)}`;
-  }
-
-  if (
-    boat.seller_subscription_tier === "featured" ||
-    boat.seller_subscription_tier === "broker"
-  ) {
-    return "Direct featured listing";
-  }
-
-  return "Direct OnlyHulls listing";
-}
-
-function formatSourceSite(source: string | null | undefined) {
-  if (!source) {
-    return "partner";
-  }
-
-  return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function getWinningBoatIds(row: CompareRow, boats: CompareBoat[]) {
-  if (!row.numericValue || !row.numericPreference) {
-    return new Set<string>();
-  }
-
-  const entries = boats
-    .map((boat) => {
-      const value = row.numericValue?.(boat);
-      return value !== null && Number.isFinite(value) ? { id: boat.id, value } : null;
-    })
-    .filter((entry): entry is { id: string; value: number } => entry !== null);
-
-  if (entries.length < 2) {
-    return new Set<string>();
-  }
-
-  const distinctValues = new Set(entries.map((entry) => entry.value));
-  if (distinctValues.size === 1) {
-    return new Set<string>();
-  }
-
-  const target =
-    row.numericPreference === "low"
-      ? Math.min(...entries.map((entry) => entry.value))
-      : Math.max(...entries.map((entry) => entry.value));
-
-  return new Set(entries.filter((entry) => entry.value === target).map((entry) => entry.id));
-}
-
-function buildQuickFactors(boats: CompareBoat[], currency: SupportedCurrency): QuickFactor[] {
-  const factors = [
-    createQuickFactor({
-      boats,
-      label: "Lowest buy-in",
-      numericPreference: "low",
-      value: getBoatPriceUsd,
-      detail: (winner, runnerUp) => {
-        if (!runnerUp) {
-          return `${formatPriceFromUsd(getBoatPriceUsd(winner), currency)} gets you into this compare set first.`;
-        }
-
-        const savings = Math.abs(getBoatPriceUsd(runnerUp) - getBoatPriceUsd(winner));
-        return `${formatPriceFromUsd(savings, currency)} less than ${formatBoatTitle(runnerUp)}.`;
-      },
-    }),
-    createQuickFactor({
-      boats,
-      label: "Price per foot edge",
-      numericPreference: "low",
-      value: getPricePerFootUsd,
-      detail: (winner) => `${formatPricePerFoot(winner, currency)} based on current asking price and LOA.`,
-    }),
-    createQuickFactor({
-      boats,
-      label: "Newest build",
-      numericPreference: "high",
-      value: (boat) => boat.year,
-      detail: (winner, runnerUp) => {
-        if (!runnerUp) {
-          return `${winner.year} is the newest build in this compare set.`;
-        }
-
-        return `${winner.year - runnerUp.year} years newer than ${formatBoatTitle(runnerUp)}.`;
-      },
-    }),
-    createQuickFactor({
-      boats,
-      label: "Longest hull",
-      numericPreference: "high",
-      value: (boat) => toFiniteNumber(boat.specs.loa),
-      detail: (winner, runnerUp) => {
-        if (!runnerUp || toFiniteNumber(runnerUp.specs.loa) === null) {
-          return `${formatFeet(winner.specs.loa)} overall length.`;
-        }
-
-        const advantage = (winner.specs.loa as number) - (runnerUp.specs.loa as number);
-        return `${formatFeet(winner.specs.loa)} LOA, about ${advantage.toFixed(1)}ft longer than ${formatBoatTitle(runnerUp)}.`;
-      },
-    }),
-    createQuickFactor({
-      boats,
-      label: "Shallower draft",
-      numericPreference: "low",
-      value: (boat) => toFiniteNumber(boat.specs.draft),
-      detail: (winner, runnerUp) => {
-        if (!runnerUp || toFiniteNumber(runnerUp.specs.draft) === null) {
-          return `${formatFeet(winner.specs.draft)} draft.`;
-        }
-
-        const margin = (runnerUp.specs.draft as number) - (winner.specs.draft as number);
-        return `${formatFeet(winner.specs.draft)} draft, roughly ${margin.toFixed(1)}ft shallower than ${formatBoatTitle(runnerUp)}.`;
-      },
-    }),
-    createQuickFactor({
-      boats,
-      label: "Accommodation edge",
-      numericPreference: "high",
-      value: (boat) =>
-        scoreAccommodation(boat.specs.cabins, boat.specs.berths, boat.specs.heads),
-      detail: (winner) =>
-        [
-          toFiniteNumber(winner.specs.cabins) ? `${winner.specs.cabins} cabins` : null,
-          toFiniteNumber(winner.specs.berths) ? `${winner.specs.berths} berths` : null,
-          toFiniteNumber(winner.specs.heads) ? `${winner.specs.heads} heads` : null,
-        ]
-          .filter(Boolean)
-          .join(" / "),
-    }),
-  ].filter((factor): factor is QuickFactor => factor !== null);
-
-  return factors.slice(0, 4);
-}
-
-function createQuickFactor(input: {
-  boats: CompareBoat[];
-  label: string;
-  numericPreference: NumericPreference;
-  value: (boat: CompareBoat) => number | null;
-  detail: (winner: CompareBoat, runnerUp: CompareBoat | null) => string;
-}): QuickFactor | null {
-  const entries = input.boats
-    .map((boat) => {
-      const value = input.value(boat);
-      return value !== null && Number.isFinite(value) ? { boat, value } : null;
-    })
-    .filter((entry): entry is { boat: CompareBoat; value: number } => entry !== null);
-
-  if (entries.length < 2) {
-    return null;
-  }
-
-  const sorted = [...entries].sort((a, b) =>
-    input.numericPreference === "low" ? a.value - b.value : b.value - a.value
-  );
-
-  if (sorted[0].value === sorted[1].value) {
-    return null;
-  }
-
-  return {
-    label: input.label,
-    winnerId: sorted[0].boat.id,
-    winnerTitle: formatBoatTitle(sorted[0].boat),
-    detail: input.detail(sorted[0].boat, sorted[1]?.boat || null),
-  };
-}
-
-function buildBoatInsights(boats: CompareBoat[]) {
-  const insights = new Map<string, BoatInsight>();
-
-  for (const boat of boats) {
-    insights.set(boat.id, { strengths: [], watchouts: [] });
-  }
-
-  const comparativeSignals: Array<{
-    value: (boat: CompareBoat) => number | null;
-    preference: NumericPreference;
-    strength: string;
-    watchout: string;
-  }> = [
-    {
-      value: getBoatPriceUsd,
-      preference: "low",
-      strength: "Lowest buy-in in this compare",
-      watchout: "Highest asking price in this compare",
-    },
-    {
-      value: getPricePerFootUsd,
-      preference: "low",
-      strength: "Lower price per foot",
-      watchout: "Higher price per foot",
-    },
-    {
-      value: (boat) => boat.year,
-      preference: "high",
-      strength: "Newest build year here",
-      watchout: "Oldest build year here",
-    },
-    {
-      value: (boat) => toFiniteNumber(boat.specs.loa),
-      preference: "high",
-      strength: "Longer LOA in this shortlist",
-      watchout: "Smaller overall footprint",
-    },
-    {
-      value: (boat) => toFiniteNumber(boat.specs.draft),
-      preference: "low",
-      strength: "Shallower draft",
-      watchout: "Deeper draft to account for",
-    },
-    {
-      value: (boat) => scoreAccommodation(boat.specs.cabins, boat.specs.berths, boat.specs.heads),
-      preference: "high",
-      strength: "Stronger accommodation layout",
-      watchout: "Lighter accommodation spec sheet",
-    },
-    {
-      value: (boat) => toFiniteNumber(boat.condition_score),
-      preference: "high",
-      strength: "Better condition signal",
-      watchout: "Weaker condition signal",
-    },
-  ];
-
-  for (const signal of comparativeSignals) {
-    const entries = boats
-      .map((boat) => {
-        const value = signal.value(boat);
-        return value !== null && Number.isFinite(value) ? { boat, value } : null;
-      })
-      .filter((entry): entry is { boat: CompareBoat; value: number } => entry !== null);
-
-    if (entries.length < 2) {
-      continue;
-    }
-
-    const sorted = [...entries].sort((a, b) =>
-      signal.preference === "low" ? a.value - b.value : b.value - a.value
-    );
-
-    if (sorted[0].value === sorted[1].value) {
-      continue;
-    }
-
-    addInsight(insights, sorted[0].boat.id, "strengths", signal.strength);
-    addInsight(insights, sorted[sorted.length - 1].boat.id, "watchouts", signal.watchout);
-  }
-
-  for (const boat of boats) {
-    if (!boat.source_url) {
-      addInsight(insights, boat.id, "strengths", "Direct listing inside OnlyHulls");
-    } else {
-      addInsight(insights, boat.id, "watchouts", "Imported listing; confirm the source details before acting");
-    }
-
-    if (!boat.location_text) {
-      addInsight(insights, boat.id, "watchouts", "Location still being refined");
-    }
-
-    if (countFilledSpecs(boat) < 4) {
-      addInsight(insights, boat.id, "watchouts", "Thin spec sheet for a clean decision");
-    }
-  }
-
-  for (const [boatId, value] of insights.entries()) {
-    insights.set(boatId, {
-      strengths: value.strengths.slice(0, 2),
-      watchouts: value.watchouts.slice(0, 2),
-    });
-  }
-
-  return insights;
-}
-
-function addInsight(
-  insights: Map<string, BoatInsight>,
-  boatId: string,
-  key: keyof BoatInsight,
-  value: string
-) {
-  const existing = insights.get(boatId);
-  if (!existing) {
-    return;
-  }
-
-  if (!existing[key].includes(value)) {
-    existing[key].push(value);
-  }
-}
-
-function countFilledSpecs(boat: CompareBoat) {
-  const trackedSpecs = [
-    boat.specs.loa,
-    boat.specs.beam,
-    boat.specs.draft,
-    boat.specs.rig_type,
-    boat.specs.hull_material,
-    boat.specs.engine,
-    boat.specs.cabins,
-    boat.specs.berths,
-    boat.specs.heads,
-  ];
-
-  return trackedSpecs.filter((value) => {
-    if (typeof value === "number") {
-      return Number.isFinite(value);
-    }
-
-    return typeof value === "string" && value.trim().length > 0;
-  }).length;
-}
-
-function scoreAccommodation(cabins: unknown, berths: unknown, heads: unknown) {
-  const cabinValue = toFiniteNumber(cabins);
-  const berthValue = toFiniteNumber(berths);
-  const headValue = toFiniteNumber(heads);
-  if (cabinValue === null && berthValue === null && headValue === null) {
-    return null;
-  }
-
-  return (cabinValue ?? 0) * 100 + (berthValue ?? 0) * 10 + (headValue ?? 0);
-}
