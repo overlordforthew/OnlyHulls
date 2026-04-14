@@ -52,7 +52,7 @@ interface Boat {
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
-  specs: { loa?: number; rig_type?: string };
+  specs: { loa?: number; rig_type?: string; vessel_type?: string };
   character_tags: string[];
   source_site?: string | null;
   source_name?: string | null;
@@ -65,6 +65,7 @@ interface FilterState {
   minYear: string;
   maxYear: string;
   rigType: string;
+  hullType: string;
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -73,6 +74,7 @@ const EMPTY_FILTERS: FilterState = {
   minYear: "",
   maxYear: "",
   rigType: "",
+  hullType: "",
 };
 
 function normalizeSortField(value: string | null): SortField {
@@ -93,7 +95,17 @@ function filtersFromParams(searchParams: SearchParamReader): FilterState {
     minYear: searchParams.get("minYear") || "",
     maxYear: searchParams.get("maxYear") || "",
     rigType: searchParams.get("rigType") || "",
+    hullType: searchParams.get("hullType") || "",
   };
+}
+
+function formatBoatType(value?: string | null) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+
+  return normalized
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export default function BoatsPage() {
@@ -216,12 +228,13 @@ function BoatsPageInner() {
     if (searchTag) params.set("tag", searchTag);
     params.set("page", String(pageNum || page));
     params.set("limit", String(BATCH_SIZE));
-    if (currentFilters.minPrice) params.set("minPrice", currentFilters.minPrice);
-    if (currentFilters.maxPrice) params.set("maxPrice", currentFilters.maxPrice);
-    if (currentFilters.minYear) params.set("minYear", currentFilters.minYear);
-    if (currentFilters.maxYear) params.set("maxYear", currentFilters.maxYear);
-    if (currentFilters.rigType) params.set("rigType", currentFilters.rigType);
-    if (displayCurrency !== "USD") params.set("currency", displayCurrency);
+      if (currentFilters.minPrice) params.set("minPrice", currentFilters.minPrice);
+      if (currentFilters.maxPrice) params.set("maxPrice", currentFilters.maxPrice);
+      if (currentFilters.minYear) params.set("minYear", currentFilters.minYear);
+      if (currentFilters.maxYear) params.set("maxYear", currentFilters.maxYear);
+      if (currentFilters.rigType) params.set("rigType", currentFilters.rigType);
+      if (currentFilters.hullType) params.set("hullType", currentFilters.hullType);
+      if (displayCurrency !== "USD") params.set("currency", displayCurrency);
     params.set("sort", sortField);
     params.set("dir", sortDir);
     return params;
@@ -302,6 +315,7 @@ function BoatsPageInner() {
     minYear: appliedFilters.minYear || null,
     maxYear: appliedFilters.maxYear || null,
     rigType: appliedFilters.rigType || null,
+    hullType: appliedFilters.hullType || null,
     currency: displayCurrency,
     sort: sortField,
     dir: sortDir,
@@ -310,12 +324,13 @@ function BoatsPageInner() {
     search.trim().length > 0 ||
     activeTag.trim().length > 0 ||
     Boolean(
-      appliedFilters.minPrice ||
-      appliedFilters.maxPrice ||
-      appliedFilters.minYear ||
-      appliedFilters.maxYear ||
-      appliedFilters.rigType
-    );
+        appliedFilters.minPrice ||
+        appliedFilters.maxPrice ||
+        appliedFilters.minYear ||
+        appliedFilters.maxYear ||
+        appliedFilters.rigType ||
+        appliedFilters.hullType
+      );
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
@@ -501,6 +516,17 @@ function BoatsPageInner() {
                 onChange={(e) => setFilters((f) => ({ ...f, maxYear: e.target.value }))}
                 className={`${inputClass} w-28 min-w-[7rem]`}
               />
+              <select
+                value={filters.hullType}
+                onChange={(e) => setFilters((f) => ({ ...f, hullType: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="">All boat types</option>
+                <option value="catamaran">Catamaran</option>
+                <option value="trimaran">Trimaran</option>
+                <option value="monohull">Monohull</option>
+                <option value="powerboat">Powerboat</option>
+              </select>
               <select
                 value={filters.rigType}
                 onChange={(e) => setFilters((f) => ({ ...f, rigType: e.target.value }))}
@@ -732,6 +758,7 @@ function BoatBrowseRow({
     amountUsd: boat.asking_price_usd,
     preferredCurrency: displayCurrency,
   });
+  const vesselType = formatBoatType(boat.specs.vessel_type);
 
   return (
     <div
@@ -776,6 +803,12 @@ function BoatBrowseRow({
                     <span className="inline-flex items-center gap-1.5">
                       <Ruler className="h-4 w-4 text-primary" />
                       {boat.specs.loa}ft
+                    </span>
+                  )}
+                  {vesselType && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Sailboat className="h-4 w-4 text-primary" />
+                      {vesselType}
                     </span>
                   )}
                   {boat.specs.rig_type && (

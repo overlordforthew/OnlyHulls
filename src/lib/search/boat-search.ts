@@ -225,7 +225,7 @@ export function buildWhereClause(filters: BoatSearchFilters) {
     params.push(filters.rigType);
   }
   if (filters.hullType) {
-    conditions.push(`LOWER(COALESCE(d.specs->>'hull_material', '')) = LOWER($${paramIdx++})`);
+    conditions.push(`LOWER(COALESCE(d.specs->>'vessel_type', '')) = LOWER($${paramIdx++})`);
     params.push(filters.hullType);
   }
   if (filters.tag) {
