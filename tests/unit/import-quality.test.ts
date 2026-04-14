@@ -144,6 +144,50 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
     normalizeImportedLocation("Southampton United Kingdom"),
     "Southampton, United Kingdom"
   );
+  assert.equal(
+    normalizeImportedLocation("Thunder Bay Ontario"),
+    "Thunder Bay, Ontario"
+  );
+  assert.equal(
+    normalizeImportedLocation("Kota Kinabalu Malaysia"),
+    "Kota Kinabalu, Malaysia"
+  );
+  assert.equal(
+    normalizeImportedLocation("Central Vancouver Island British Columbia"),
+    "Central Vancouver Island, British Columbia"
+  );
+  assert.equal(
+    normalizeImportedLocation("Roatan Bay Islands Honduras"),
+    "Roatan Bay Islands, Honduras"
+  );
+  assert.equal(
+    normalizeImportedLocation("San Blas Panama"),
+    "San Blas, Panama"
+  );
+  assert.equal(
+    normalizeImportedLocation("Grenada West Indies"),
+    "Grenada, West Indies"
+  );
+  assert.equal(
+    normalizeImportedLocation("Papeete Tahiti French Polynesia"),
+    "Papeete, Tahiti, French Polynesia"
+  );
+  assert.equal(
+    normalizeImportedLocation("La Paz Bcs"),
+    "La Paz, BCS"
+  );
+  assert.equal(
+    normalizeImportedLocation("Isla Mujerescancunmexico"),
+    "Isla Mujeres, Cancun, Mexico"
+  );
+  assert.equal(
+    normalizeImportedLocation("St Maarten Ducht Antilles"),
+    "St Maarten, Dutch Antilles"
+  );
+  assert.equal(
+    normalizeImportedLocation("Roatan Hn"),
+    "Roatan, Honduras"
+  );
 });
 
 test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
