@@ -46,7 +46,7 @@ interface BoatDetail {
 }
 
 function buildBoatTitle(boat: Pick<BoatDetail, "year" | "make" | "model">) {
-  return `${boat.year} ${boat.make} ${boat.model}`;
+  return [boat.year, boat.make, boat.model].filter(Boolean).join(" ");
 }
 
 function trimMetaDescription(text: string, maxLength = 160) {

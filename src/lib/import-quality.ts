@@ -1188,17 +1188,19 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     slug: boat.slug,
     sourceSite: boat.source_site,
   });
+  const normalizedMake = normalizedMakeModel.make || boat.make;
+  const normalizedModel = normalizedMakeModel.model;
   const normalizedLocation = normalizeImportedLocation(boat.location_text);
   const normalizedSpecs = sanitizeImportedSpecs(boat.specs, {
-    make: normalizedMakeModel.make || boat.make,
-    model: normalizedMakeModel.model || boat.model,
+    make: normalizedMake,
+    model: normalizedModel,
     sourceSite: boat.source_site,
   });
 
   return {
     ...boat,
-    make: normalizedMakeModel.make || boat.make,
-    model: normalizedMakeModel.model || boat.model,
+    make: normalizedMake,
+    model: normalizedModel,
     location_text: normalizedLocation || boat.location_text || null,
     specs: normalizedSpecs,
   };

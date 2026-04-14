@@ -1075,6 +1075,50 @@ test("sanitizeImportedBoatRecord normalizes make model, location, and specs toge
   });
 });
 
+test("sanitizeImportedBoatRecord keeps intentionally blank normalized models blank", () => {
+  const hansChristian = sanitizeImportedBoatRecord({
+    year: 1986,
+    make: "Hans Christian",
+    model: "Christian",
+    slug: "1986-hans-christian-maryland",
+    source_site: "sailboatlistings",
+    location_text: "Maryland",
+    specs: {
+      loa: 38,
+      rig_type: "other",
+    },
+  });
+
+  assert.equal(hansChristian.make, "Hans Christian");
+  assert.equal(hansChristian.model, "");
+  assert.deepEqual(hansChristian.specs, {
+    loa: 38,
+    rig_type: "other",
+    vessel_type: "monohull",
+  });
+
+  const bruceRoberts = sanitizeImportedBoatRecord({
+    year: 2005,
+    make: "Bruce Roberts",
+    model: "Roberts",
+    slug: "2005-bruce-roberts-ohio",
+    source_site: "sailboatlistings",
+    location_text: "Ohio",
+    specs: {
+      loa: 53,
+      rig_type: "ketch",
+    },
+  });
+
+  assert.equal(bruceRoberts.make, "Bruce Roberts");
+  assert.equal(bruceRoberts.model, "");
+  assert.deepEqual(bruceRoberts.specs, {
+    loa: 53,
+    rig_type: "ketch",
+    vessel_type: "monohull",
+  });
+});
+
 test("buildImportedSlug uses cleaned location lead token", () => {
   assert.equal(
     buildImportedSlug(2003, "Robertson and Caine", "Leopard 47 Catamaran", "British Virgin Islands"),
