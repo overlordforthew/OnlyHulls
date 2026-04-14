@@ -30,7 +30,7 @@ const mockBrowseBoats = [
     slug: "2018-lagoon-450-f",
     is_sample: false,
     hero_url: null,
-    specs: { loa: 45, rig_type: "catamaran" },
+    specs: { loa: 45, rig_type: "catamaran", vessel_type: "catamaran" },
     character_tags: ["bluewater", "liveaboard-ready"],
     source_site: "onlyhulls",
     source_name: "OnlyHulls",
@@ -48,7 +48,7 @@ const mockBrowseBoats = [
     slug: "2016-lagoon-42",
     is_sample: false,
     hero_url: null,
-    specs: { loa: 42, rig_type: "catamaran" },
+    specs: { loa: 42, rig_type: "catamaran", vessel_type: "catamaran" },
     character_tags: ["family-friendly"],
     source_site: "onlyhulls",
     source_name: "OnlyHulls",
@@ -308,6 +308,65 @@ test("boats page can switch to row view and persist it", async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId("boats-view-toggle-rows")).toHaveClass(/bg-primary-btn/);
   await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
+});
+
+test("boats page filters by normalized boat type", async ({ page }) => {
+  const mixedBoats = [
+    ...mockBrowseBoats,
+    {
+      id: "mock-dufour-1",
+      make: "Dufour",
+      model: "390 Grand Large",
+      year: 2023,
+      asking_price: 179000,
+      currency: "USD",
+      asking_price_usd: 179000,
+      location_text: "Tortola",
+      slug: "2023-dufour-390-grand-large",
+      is_sample: false,
+      hero_url: null,
+      specs: { loa: 39.2, rig_type: "masthead sloop", vessel_type: "monohull" },
+      character_tags: ["coastal-cruiser", "family-friendly"],
+      source_site: "onlyhulls",
+      source_name: "OnlyHulls",
+      source_url: "https://onlyhulls.com/boats/2023-dufour-390-grand-large",
+    },
+  ];
+
+  await page.route("**/api/boats**", async (route) => {
+    const url = new URL(route.request().url());
+    const hullType = url.searchParams.get("hullType");
+    const boats =
+      hullType === "catamaran"
+        ? mixedBoats.filter((boat) => boat.specs.vessel_type === "catamaran")
+        : mixedBoats;
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats,
+        total: boats.length,
+      }),
+    });
+  });
+
+  await page.goto("/boats");
+  await page.getByTestId("boats-filter-toggle").click();
+  await page.getByTestId("boats-filter-boat-type").selectOption("catamaran");
+
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.ok()
+        && url.pathname === "/api/boats"
+        && url.searchParams.get("hullType") === "catamaran";
+    }),
+    page.getByRole("button", { name: "Apply", exact: true }).click(),
+  ]);
+
+  await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
+  await expect(page.getByText("2023 Dufour 390 Grand Large", { exact: false })).toHaveCount(0);
 });
 
 test("boats currency selection persists after reload", async ({ page }) => {

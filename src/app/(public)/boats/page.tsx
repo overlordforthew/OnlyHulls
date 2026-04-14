@@ -462,6 +462,7 @@ function BoatsPageInner() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
+                data-testid="boats-filter-toggle"
                 className={`rounded-lg border px-3 py-2 transition-colors ${
                   showFilters
                     ? "border-primary bg-primary/10 text-primary"
@@ -519,6 +520,7 @@ function BoatsPageInner() {
               <select
                 value={filters.hullType}
                 onChange={(e) => setFilters((f) => ({ ...f, hullType: e.target.value }))}
+                data-testid="boats-filter-boat-type"
                 className={inputClass}
               >
                 <option value="">All boat types</option>
