@@ -4,7 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Grid2X2, Heart, List, MapPin, MessageCircle, Ruler, Sailboat, X } from "lucide-react";
+import {
+  ExternalLink,
+  Grid2X2,
+  Heart,
+  List,
+  MapPin,
+  MessageCircle,
+  Ruler,
+  Sailboat,
+  X,
+} from "lucide-react";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
@@ -14,6 +24,15 @@ import {
   type SupportedCurrency,
 } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
+
+interface MatchProfileSummaryItem {
+  label: string;
+  value: string;
+}
+
+interface MatchProfileSummary {
+  items: MatchProfileSummaryItem[];
+}
 
 interface Match {
   match_id: string;
@@ -67,6 +86,7 @@ export default function MatchesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsProfile, setNeedsProfile] = useState(false);
+  const [profileSummary, setProfileSummary] = useState<MatchProfileSummary | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [sort, setSort] = useState<MatchSort>("match");
@@ -109,6 +129,7 @@ export default function MatchesPage() {
       setMatches((prev) => (reset ? nextMatches : [...prev, ...nextMatches]));
       setTotal(data.total || 0);
       setNeedsProfile(data.needsProfile || false);
+      setProfileSummary(data.profileSummary || null);
       setPage(nextPage);
     } catch {
       setError("Failed to load matches. Please try again.");
@@ -163,7 +184,7 @@ export default function MatchesPage() {
           you with boats.
         </p>
         <button
-          onClick={() => router.push("/onboarding/profile")}
+          onClick={() => router.push("/onboarding/profile?callbackUrl=/matches")}
           className="mt-8 rounded-full bg-primary-btn px-8 py-3 text-lg font-medium text-white hover:bg-primary-dark"
         >
           Build Buyer Profile
@@ -259,11 +280,58 @@ export default function MatchesPage() {
         </div>
       )}
 
+      {profileSummary?.items?.length ? (
+        <div className="mt-5 rounded-2xl border border-border bg-surface-elevated/70 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your saved buyer profile</p>
+              <p className="mt-1 text-sm text-foreground/60">
+                These matches are ranked against the preferences below. When scores tie, lower-priced
+                boats show first.
+              </p>
+            </div>
+            <Link
+              href="/onboarding/profile?callbackUrl=/matches"
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              Refine profile
+            </Link>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            {profileSummary.items.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-full border border-border bg-surface px-3.5 py-2 text-sm text-foreground/80"
+              >
+                <span className="mr-1.5 text-foreground/50">{item.label}:</span>
+                <span className="font-medium text-foreground">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {matches.length === 0 ? (
-        <div className="mt-16 text-center">
-          <p className="text-lg text-foreground/60">
-            No matches yet. Check back once sellers list their boats.
+        <div className="mt-10 rounded-2xl border border-border bg-surface-elevated/70 p-8 text-center">
+          <h2 className="text-xl font-semibold text-foreground">No live matches yet</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-foreground/60">
+            Your current profile is saved. Try widening the budget, boat type, or sailing area, or
+            browse the market directly while new listings come in.
           </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/onboarding/profile?callbackUrl=/matches"
+              className="rounded-full bg-primary-btn px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+            >
+              Refine profile
+            </Link>
+            <Link
+              href="/boats"
+              className="rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              Browse boats
+            </Link>
+          </div>
         </div>
       ) : (
         <>
@@ -340,7 +408,9 @@ export default function MatchesPage() {
                 disabled={loadingMore}
                 className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {loadingMore ? "Loading more..." : `See more matches (${Math.max(total - matches.length, 0)} left)`}
+                {loadingMore
+                  ? "Loading more..."
+                  : `See more matches (${Math.max(total - matches.length, 0)} left)`}
               </button>
             </div>
           )}
@@ -400,7 +470,7 @@ function MatchRow({
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated text-5xl opacity-20">
-              ⛵
+              <Sailboat className="h-12 w-12" />
             </div>
           )}
           <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
@@ -419,7 +489,10 @@ function MatchRow({
           <div>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <Link href={href} className="text-xl font-semibold text-foreground hover:text-primary">
+                <Link
+                  href={href}
+                  className="text-xl font-semibold text-foreground hover:text-primary"
+                >
                   {`${match.year} ${match.make} ${match.model}`}
                 </Link>
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-foreground/65">
@@ -453,7 +526,9 @@ function MatchRow({
               {match.ai_verdict && (
                 <div className="rounded-full bg-foreground/5 px-3 py-1 text-xs font-medium text-foreground/75">
                   AI {match.ai_verdict.replace(/_/g, " ")}
-                  {typeof match.ai_score === "number" ? ` · ${Math.round(match.ai_score * 100)}%` : ""}
+                  {typeof match.ai_score === "number"
+                    ? ` / ${Math.round(match.ai_score * 100)}%`
+                    : ""}
                 </div>
               )}
             </div>

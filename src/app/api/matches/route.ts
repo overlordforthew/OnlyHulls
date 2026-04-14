@@ -9,6 +9,7 @@ import {
   parseMatchDir,
   parseMatchSort,
 } from "@/lib/matching/match-sort";
+import { buildBuyerProfileSummary } from "@/lib/matching/profile-summary";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -138,13 +139,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const buyerProfile = await queryOne<{ id: string; boat_type_prefs: Record<string, unknown> }>(
-      "SELECT id, boat_type_prefs FROM buyer_profiles WHERE user_id = $1",
+    const buyerProfile = await queryOne<{
+      id: string;
+      use_case: string[] | null;
+      budget_range: Record<string, unknown> | null;
+      boat_type_prefs: Record<string, unknown>;
+      spec_preferences: Record<string, unknown> | null;
+      location_prefs: Record<string, unknown> | null;
+      timeline: string | null;
+    }>(
+      `SELECT id, use_case, budget_range, boat_type_prefs, spec_preferences, location_prefs, timeline
+       FROM buyer_profiles
+       WHERE user_id = $1`,
       [user.id]
     );
     if (!buyerProfile) {
       return NextResponse.json({ matches: [], total: 0, needsProfile: true });
     }
+    const profileSummary = buildBuyerProfileSummary(buyerProfile);
 
     let countResult = await countVisibleMatches(buyerProfile.id);
 
@@ -199,6 +211,7 @@ export async function GET(req: Request) {
       limit,
       sort,
       dir,
+      profileSummary,
     });
   } catch (err) {
     logger.error({ err }, "GET /api/matches error");
