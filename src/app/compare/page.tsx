@@ -125,7 +125,11 @@ const compareSections: CompareSection[] = [
         numericPreference: "low",
       },
       {
-        label: "Rig / boat type",
+        label: "Boat type",
+        render: (boat) => formatTextValue(boat.specs.vessel_type),
+      },
+      {
+        label: "Rig type",
         render: (boat) => formatTextValue(boat.specs.rig_type),
       },
       {

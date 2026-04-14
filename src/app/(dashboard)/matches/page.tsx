@@ -42,7 +42,7 @@ interface Match {
   source_url?: string | null;
   seller_subscription_tier?: string | null;
   hero_url: string | null;
-  specs: { loa?: number; rig_type?: string };
+  specs: { loa?: number; rig_type?: string; vessel_type?: string };
   character_tags: string[];
 }
 
@@ -51,6 +51,15 @@ type SortDir = "asc" | "desc";
 type ViewMode = "grid" | "rows";
 
 const MATCHES_PAGE_SIZE = 12;
+
+function formatVesselType(value?: string | null) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+
+  return normalized
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -373,6 +382,7 @@ function MatchRow({
       : typeof match.specs.loa === "string"
         ? match.specs.loa
         : null;
+  const vesselType = formatVesselType(match.specs.vessel_type);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-surface">
@@ -417,6 +427,12 @@ function MatchRow({
                     <span className="inline-flex items-center gap-1.5">
                       <Ruler className="h-4 w-4" />
                       {sizeLabel}
+                    </span>
+                  )}
+                  {vesselType && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Sailboat className="h-4 w-4" />
+                      {vesselType}
                     </span>
                   )}
                   {match.specs.rig_type && (

@@ -440,6 +440,7 @@ export default async function BoatDetailPage({
                 {specs.loa ? <SpecRow label="LOA" value={`${specs.loa}ft`} /> : null}
                 {specs.beam ? <SpecRow label="Beam" value={`${specs.beam}ft`} /> : null}
                 {specs.draft ? <SpecRow label="Draft" value={`${specs.draft}ft`} /> : null}
+                {specs.vessel_type ? <SpecRow label="Boat Type" value={String(specs.vessel_type)} /> : null}
                 {specs.rig_type ? <SpecRow label="Rig Type" value={String(specs.rig_type)} /> : null}
                 {specs.hull_material ? <SpecRow label="Hull" value={String(specs.hull_material)} /> : null}
                 {specs.engine ? <SpecRow label="Engine" value={String(specs.engine)} /> : null}

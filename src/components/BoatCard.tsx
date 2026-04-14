@@ -18,7 +18,7 @@ interface BoatCardProps {
     slug: string | null;
     is_sample: boolean;
     hero_url: string | null;
-    specs: { loa?: number; rig_type?: string };
+    specs: { loa?: number; rig_type?: string; vessel_type?: string };
     character_tags: string[];
     source_site?: string | null;
     source_name?: string | null;
@@ -58,6 +58,7 @@ export default function BoatCard({
     amountUsd: boat.asking_price_usd,
     preferredCurrency: displayCurrency,
   });
+  const vesselType = formatVesselType(boat.specs.vessel_type);
 
   return (
     <div className="group card-hover overflow-hidden rounded-xl border border-border bg-surface">
@@ -139,6 +140,12 @@ export default function BoatCard({
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
           {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
+          {vesselType && (
+            <>
+              <span className="text-text-tertiary">/</span>
+              <span>{vesselType}</span>
+            </>
+          )}
           {boat.specs.rig_type && (
             <>
               <span className="text-text-tertiary">/</span>
@@ -244,6 +251,15 @@ export default function BoatCard({
       </div>
     </div>
   );
+}
+
+function formatVesselType(value?: string | null) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+
+  return normalized
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getListingBadge(boat: BoatCardProps["boat"]) {

@@ -7,6 +7,7 @@ import {
 
 export interface CompareSpecs {
   loa?: number;
+  vessel_type?: string;
   rig_type?: string;
   beam?: number;
   draft?: number;
