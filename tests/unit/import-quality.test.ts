@@ -495,6 +495,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
     }),
     { make: "North American Yachts", model: "" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Graham",
+      model: "Collingwood Boatbuilders Dixon 47",
+      sourceSite: "theyachtmarket",
+      slug: "2002-graham-collingwood-boatbuilders-dixon-47-falmouth",
+    }),
+    { make: "Graham Collingwood Boatbuilders", model: "Dixon 47" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Graham",
+      model: "Collingwood Boatbuilders",
+      sourceSite: "theyachtmarket",
+      slug: "1980-graham-collingwood-boatbuilders-",
+    }),
+    { make: "Graham Collingwood Boatbuilders", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel preserves live Saffier model code casing", () => {
@@ -563,6 +581,15 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
       slug: "1996-north-wind-50-",
     }),
     { make: "North", model: "Wind 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Graham",
+      model: "& Schlageter G&s 35",
+      sourceSite: "sailboatlistings",
+      slug: "1988-graham-schlageter-g-s-35-ohio",
+    }),
+    { make: "Graham", model: "& Schlageter G&s 35" }
   );
 });
 

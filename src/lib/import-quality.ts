@@ -688,6 +688,14 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^american\s+yachts\b[\s-]*/i, "").trim();
   }
 
+  if (
+    /^graham$/i.test(make) &&
+    modelStartsWith(/^collingwood\s+boatbuilders\b[\s-]*/i)
+  ) {
+    make = "Graham Collingwood Boatbuilders";
+    model = model.replace(/^collingwood\s+boatbuilders\b[\s-]*/i, "").trim();
+  }
+
   return {
     make: canonicalizeMakeName(make),
     model,
