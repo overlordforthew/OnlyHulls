@@ -48,6 +48,12 @@ log "Resolving imported duplicate listings..."
   npm run db:resolve-import-duplicates -- --limit "$IMPORT_LIMIT"
 ) | tee -a "$LOG_FILE"
 
+log "Refreshing stale Sailboat Listings detail locations..."
+(
+  cd "$PROJECT_DIR"
+  npm run db:refresh-sailboatlistings -- --scope location --skip-reindex
+) | tee -a "$LOG_FILE"
+
 log "Running deterministic cleanup and reindex..."
 (
   cd "$PROJECT_DIR"
