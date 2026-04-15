@@ -92,6 +92,11 @@ export default async function RootLayout({
   const locale = await getLocale();
   const copy = getRootLayoutCopy(locale);
   const messages = await getMessages();
+  const themeInitScript = `
+    try {
+      document.documentElement.classList.toggle("light", localStorage.getItem("oh-theme") === "light");
+    } catch (error) {}
+  `;
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -126,6 +131,11 @@ export default async function RootLayout({
       <head>
         <JsonLdScript data={organizationSchema} />
         <JsonLdScript data={websiteSchema} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
         {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
           <script
             nonce={nonce}

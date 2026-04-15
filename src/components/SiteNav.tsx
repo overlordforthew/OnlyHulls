@@ -237,6 +237,7 @@ export default function SiteNav() {
             ) : (
               <>
                 <LocaleSwitcher compact />
+                <ThemeSwitcher variant="inline" />
                 <Link
                   href="/sign-in"
                   className="text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
