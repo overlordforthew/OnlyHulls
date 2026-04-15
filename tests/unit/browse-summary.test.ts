@@ -27,6 +27,18 @@ test("buildBoatBrowseSummary keeps the useful middle sentence from source-style 
   );
 });
 
+test("buildBoatBrowseSummary trims mixed title, location, and asking boilerplate", () => {
+  assert.equal(
+    buildBoatBrowseSummary({
+      title: "1978 Islander 32 Mk II Shoal Draft",
+      locationText: "Georgetown Exuma, Bahamas",
+      summary:
+        "1978 Islander 32 Mk II Shoal Draft with masthead sloop rig, 32' LOA, 10' beam, and 4' draft. Located in Georgetown Exuma, Bahamas; asking $25,000.",
+    }),
+    "Masthead sloop rig, 32' LOA, 10' beam, and 4' draft."
+  );
+});
+
 test("buildBoatBrowseSummary preserves already-useful summaries", () => {
   assert.equal(
     buildBoatBrowseSummary({

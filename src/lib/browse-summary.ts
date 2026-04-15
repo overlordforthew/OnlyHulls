@@ -10,6 +10,11 @@ function normalizeSentence(value: string) {
     .trim();
 }
 
+function ensureSentencePunctuation(value: string) {
+  if (!value) return "";
+  return /[.!?]$/.test(value) ? value : `${value}.`;
+}
+
 function trimSummary(value: string, maxLength: number) {
   if (value.length <= maxLength) return value;
 
@@ -41,11 +46,40 @@ export function buildBoatBrowseSummary(input: {
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean)
-    .map((sentence) => normalizeSentence(sentence))
+    .map((sentence) => {
+      let cleaned = normalizeSentence(sentence)
+        .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
+        .replace(/\s*\bImported from\s+[^.]+\.?/gi, "")
+        .trim();
+
+      if (titlePattern && titlePattern.test(cleaned)) {
+        cleaned = cleaned
+          .replace(titlePattern, "")
+          .replace(/^[\s,:-]+/, "")
+          .replace(/^(?:with|featuring)\s+/i, "")
+          .trim();
+      }
+
+      if (locationText) {
+        const leadingLocationPattern = new RegExp(
+          `^(?:listed in|located in|in)\\s+${escapeRegExp(locationText)}(?:[;,:-]|$)`,
+          "i"
+        );
+        cleaned = cleaned.replace(leadingLocationPattern, "").trim();
+      }
+
+      if (/^(?:listed in|located in|in)\b/i.test(cleaned)) {
+        cleaned = "";
+      }
+
+      cleaned = cleaned.replace(/^[\s,:-]+/, "").trim();
+      if (!cleaned) return "";
+
+      cleaned = `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
+      return ensureSentencePunctuation(cleaned);
+    })
     .filter((sentence) => {
       if (!sentence) return false;
-      if (/^Asking\b/i.test(sentence)) return false;
-      if (/^Imported from\b/i.test(sentence)) return false;
       if (titlePattern && titlePattern.test(sentence) && /\b(listed|located)\b/i.test(sentence)) {
         return false;
       }
@@ -66,7 +100,7 @@ export function buildBoatBrowseSummary(input: {
   }
 
   const fallback = normalized
-    .replace(/\bAsking\s+[A-Z]{3}\s+[\d,]+(?:\.\d+)?\.?/gi, "")
+    .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
     .replace(/\bImported from\s+[^.]+\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
