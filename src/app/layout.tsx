@@ -8,8 +8,8 @@ import JsonLdScript from "@/components/JsonLdScript";
 import Providers from "@/components/Providers";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
-import ThemeSwitcher from "@/components/ThemeSwitcher";
 import WhatsAppContactButton from "@/components/WhatsAppContactButton";
+import { getRootLayoutCopy } from "@/i18n/copy/layouts";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,62 +24,64 @@ const geistMono = Geist_Mono({
 
 const appUrl = getPublicAppUrl();
 
-export const metadata: Metadata = {
-  title: {
-    default: "OnlyHulls | AI-Powered Boat Marketplace",
-    template: "%s | OnlyHulls",
-  },
-  description:
-    "AI-powered boat marketplace for catamarans, sailboats, and serious buyers. Better matching, cleaner listings, and direct seller connections.",
-  metadataBase: new URL(appUrl),
-  applicationName: "OnlyHulls",
-  category: "marketplace",
-  creator: "OnlyHulls",
-  publisher: "OnlyHulls",
-  keywords: [
-    "boats for sale",
-    "catamarans for sale",
-    "sailboats for sale",
-    "AI boat marketplace",
-    "boat matching",
-    "boat listings",
-  ],
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  openGraph: {
-    type: "website",
-    siteName: "OnlyHulls",
-    url: appUrl,
-    title: "OnlyHulls | AI-Powered Boat Marketplace",
-    description:
-      "Discover catamarans and sailboats with AI-powered matching, cleaner inventory, and direct seller connections.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "OnlyHulls - AI-Powered Boat Marketplace",
-      },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const copy = getRootLayoutCopy(locale);
+
+  return {
+    title: {
+      default: copy.defaultTitle,
+      template: "%s | OnlyHulls",
+    },
+    description: copy.description,
+    metadataBase: new URL(appUrl),
+    applicationName: "OnlyHulls",
+    category: "marketplace",
+    creator: "OnlyHulls",
+    publisher: "OnlyHulls",
+    keywords: [
+      "boats for sale",
+      "catamarans for sale",
+      "sailboats for sale",
+      "AI boat marketplace",
+      "boat matching",
+      "boat listings",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "OnlyHulls | AI-Powered Boat Marketplace",
-    description:
-      "AI-powered boat matching, cleaner listings, and direct seller connections.",
-    images: ["/og-image.png"],
-  },
-  alternates: {
-    canonical: appUrl,
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    openGraph: {
+      type: "website",
+      siteName: "OnlyHulls",
+      url: appUrl,
+      title: copy.ogTitle,
+      description: copy.ogDescription,
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: copy.ogAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.ogTitle,
+      description: copy.twitterDescription,
+      images: ["/og-image.png"],
+    },
+    alternates: {
+      canonical: appUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -88,15 +90,20 @@ export default async function RootLayout({
 }>) {
   const nonce = await getCspNonce();
   const locale = await getLocale();
+  const copy = getRootLayoutCopy(locale);
   const messages = await getMessages();
+  const themeInitScript = `
+    try {
+      document.documentElement.classList.toggle("light", localStorage.getItem("oh-theme") === "light");
+    } catch (error) {}
+  `;
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "OnlyHulls",
     url: appUrl,
     logo: `${appUrl}/og-image.png`,
-    description:
-      "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
+    description: copy.organizationDescription,
     contactPoint: [
       {
         "@type": "ContactPoint",
@@ -111,8 +118,7 @@ export default async function RootLayout({
     "@type": "WebSite",
     name: "OnlyHulls",
     url: appUrl,
-    description:
-      "AI-powered boat marketplace for catamarans, sailboats, and serious buyers.",
+    description: copy.websiteDescription,
     potentialAction: {
       "@type": "SearchAction",
       target: `${appUrl}/boats?q={search_term_string}`,
@@ -125,6 +131,11 @@ export default async function RootLayout({
       <head>
         <JsonLdScript data={organizationSchema} />
         <JsonLdScript data={websiteSchema} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
         {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
           <script
             nonce={nonce}
@@ -144,7 +155,6 @@ export default async function RootLayout({
             <main className="min-h-screen">{children}</main>
             <SiteFooter />
             <WhatsAppContactButton />
-            <ThemeSwitcher />
           </NextIntlClientProvider>
         </Providers>
       </body>

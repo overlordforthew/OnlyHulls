@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import CurrencySelector from "@/components/CurrencySelector";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
+import { getComparePageCopy, type ComparePageCopy } from "@/i18n/copy/compare";
 import { setCompareBoatIds } from "@/lib/compare";
 import {
   getDisplayedPrice,
@@ -65,173 +67,180 @@ interface CompareSection {
 
 const CURRENT_YEAR = 2026;
 
-const compareSections: CompareSection[] = [
-  {
-    title: "Money",
-    subtitle: "This is where budget fit and value separate fast.",
-    rows: [
-      {
-        label: "Asking price",
-        render: (boat, displayCurrency) =>
-          getDisplayedPrice({
-            amount: boat.asking_price,
-            nativeCurrency: boat.currency,
-            amountUsd: boat.asking_price_usd,
-            preferredCurrency: displayCurrency,
-          }).primary,
-        numericValue: getBoatPriceUsd,
-        numericPreference: "low",
-      },
-      {
-        label: "Price per foot",
-        helper: "Uses displayed currency and LOA when available.",
-        render: (boat, displayCurrency) => formatPricePerFoot(boat, displayCurrency),
-        numericValue: getPricePerFootUsd,
-        numericPreference: "low",
-      },
-      {
-        label: "Model year",
-        render: (boat) => String(boat.year),
-        numericValue: (boat) => boat.year,
-        numericPreference: "high",
-      },
-      {
-        label: "Approx. age",
-        render: (boat) => `${Math.max(CURRENT_YEAR - boat.year, 0)} yrs`,
-        numericValue: (boat) => CURRENT_YEAR - boat.year,
-        numericPreference: "low",
-      },
-    ],
-  },
-  {
-    title: "Boat & handling",
-    subtitle: "Hull size, beam, and draft are usually the first hard filters.",
-    rows: [
-      {
-        label: "Length overall",
-        render: (boat) => formatFeet(boat.specs.loa),
-        numericValue: (boat) => toFiniteNumber(boat.specs.loa),
-        numericPreference: "high",
-      },
-      {
-        label: "Beam",
-        render: (boat) => formatFeet(boat.specs.beam),
-        numericValue: (boat) => toFiniteNumber(boat.specs.beam),
-        numericPreference: "high",
-      },
-      {
-        label: "Draft",
-        render: (boat) => formatFeet(boat.specs.draft),
-        numericValue: (boat) => toFiniteNumber(boat.specs.draft),
-        numericPreference: "low",
-      },
-      {
-        label: "Boat type",
-        render: (boat) => formatTextValue(boat.specs.vessel_type),
-      },
-      {
-        label: "Rig type",
-        render: (boat) => formatTextValue(boat.specs.rig_type),
-      },
-      {
-        label: "Hull material",
-        render: (boat) => formatTextValue(boat.specs.hull_material),
-      },
-      {
-        label: "Keel",
-        render: (boat) => formatTextValue(boat.specs.keel_type),
-      },
-    ],
-  },
-  {
-    title: "Liveability & systems",
-    subtitle: "Useful for deciding whether the boat fits how you will actually use it.",
-    rows: [
-      {
-        label: "Cabins",
-        render: (boat) => formatCount(boat.specs.cabins),
-        numericValue: (boat) => toFiniteNumber(boat.specs.cabins),
-        numericPreference: "high",
-      },
-      {
-        label: "Berths",
-        render: (boat) => formatCount(boat.specs.berths),
-        numericValue: (boat) => toFiniteNumber(boat.specs.berths),
-        numericPreference: "high",
-      },
-      {
-        label: "Heads",
-        render: (boat) => formatCount(boat.specs.heads),
-        numericValue: (boat) => toFiniteNumber(boat.specs.heads),
-        numericPreference: "high",
-      },
-      {
-        label: "Engine",
-        render: (boat) => formatTextValue(boat.specs.engine),
-      },
-      {
-        label: "Fuel",
-        render: (boat) => formatTextValue(boat.specs.fuel_type),
-      },
-      {
-        label: "Displacement",
-        render: (boat) => formatKilograms(boat.specs.displacement),
-        numericValue: (boat) => toFiniteNumber(boat.specs.displacement),
-        numericPreference: "low",
-      },
-    ],
-  },
-  {
-    title: "Listing context",
-    subtitle: "These signals help a buyer judge trust, freshness, and how direct the path is.",
-    rows: [
-      {
-        label: "Location",
-        render: (boat) => formatTextValue(boat.location_text, "Location being refined"),
-      },
-      {
-        label: "Listing path",
-        render: (boat) => getListingPathLabel(boat),
-      },
-      {
-        label: "Condition signal",
-        render: (boat) =>
-          boat.condition_score
-            ? `${Math.round(boat.condition_score)}/10`
-            : "Not scored yet",
-        numericValue: (boat) => toFiniteNumber(boat.condition_score),
-        numericPreference: "high",
-      },
-      {
-        label: "Photos on file",
-        render: (boat) =>
-          boat.image_count && boat.image_count > 0
-            ? `${boat.image_count} image${boat.image_count === 1 ? "" : "s"}`
-            : "Photo count still syncing",
-        numericValue: (boat) => toFiniteNumber(boat.image_count),
-        numericPreference: "high",
-      },
-      {
-        label: "Character tags",
-        render: (boat) =>
-          boat.character_tags.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {boat.character_tags.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : (
-            "Not tagged yet"
-          ),
-      },
-    ],
-  },
-];
+function buildCompareSections(
+  copy: ComparePageCopy,
+  formatNumber: (value: number) => string
+): CompareSection[] {
+  return [
+    {
+      title: copy.sections.money.title,
+      subtitle: copy.sections.money.subtitle,
+      rows: [
+        {
+          label: copy.sections.money.askingPrice,
+          render: (boat, displayCurrency) =>
+            getDisplayedPrice({
+              amount: boat.asking_price,
+              nativeCurrency: boat.currency,
+              amountUsd: boat.asking_price_usd,
+              preferredCurrency: displayCurrency,
+            }).primary,
+          numericValue: getBoatPriceUsd,
+          numericPreference: "low",
+        },
+        {
+          label: copy.sections.money.pricePerFoot,
+          helper: copy.sections.money.pricePerFootHelper,
+          render: (boat, displayCurrency) =>
+            formatPricePerFoot(boat, displayCurrency, copy.analysis),
+          numericValue: getPricePerFootUsd,
+          numericPreference: "low",
+        },
+        {
+          label: copy.sections.money.modelYear,
+          render: (boat) => String(boat.year),
+          numericValue: (boat) => boat.year,
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.money.approximateAge,
+          render: (boat) =>
+            copy.sections.money.approximateAgeValue(Math.max(CURRENT_YEAR - boat.year, 0)),
+          numericValue: (boat) => CURRENT_YEAR - boat.year,
+          numericPreference: "low",
+        },
+      ],
+    },
+    {
+      title: copy.sections.boatHandling.title,
+      subtitle: copy.sections.boatHandling.subtitle,
+      rows: [
+        {
+          label: copy.sections.boatHandling.lengthOverall,
+          render: (boat) => formatFeet(boat.specs.loa),
+          numericValue: (boat) => toFiniteNumber(boat.specs.loa),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.boatHandling.beam,
+          render: (boat) => formatFeet(boat.specs.beam),
+          numericValue: (boat) => toFiniteNumber(boat.specs.beam),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.boatHandling.draft,
+          render: (boat) => formatFeet(boat.specs.draft),
+          numericValue: (boat) => toFiniteNumber(boat.specs.draft),
+          numericPreference: "low",
+        },
+        {
+          label: copy.sections.boatHandling.boatType,
+          render: (boat) => formatTextValue(boat.specs.vessel_type),
+        },
+        {
+          label: copy.sections.boatHandling.rigType,
+          render: (boat) => formatTextValue(boat.specs.rig_type),
+        },
+        {
+          label: copy.sections.boatHandling.hullMaterial,
+          render: (boat) => formatTextValue(boat.specs.hull_material),
+        },
+        {
+          label: copy.sections.boatHandling.keel,
+          render: (boat) => formatTextValue(boat.specs.keel_type),
+        },
+      ],
+    },
+    {
+      title: copy.sections.liveability.title,
+      subtitle: copy.sections.liveability.subtitle,
+      rows: [
+        {
+          label: copy.sections.liveability.cabins,
+          render: (boat) => formatCount(boat.specs.cabins),
+          numericValue: (boat) => toFiniteNumber(boat.specs.cabins),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.liveability.berths,
+          render: (boat) => formatCount(boat.specs.berths),
+          numericValue: (boat) => toFiniteNumber(boat.specs.berths),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.liveability.heads,
+          render: (boat) => formatCount(boat.specs.heads),
+          numericValue: (boat) => toFiniteNumber(boat.specs.heads),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.liveability.engine,
+          render: (boat) => formatTextValue(boat.specs.engine),
+        },
+        {
+          label: copy.sections.liveability.fuel,
+          render: (boat) => formatTextValue(boat.specs.fuel_type),
+        },
+        {
+          label: copy.sections.liveability.displacement,
+          render: (boat) => formatKilograms(boat.specs.displacement, formatNumber),
+          numericValue: (boat) => toFiniteNumber(boat.specs.displacement),
+          numericPreference: "low",
+        },
+      ],
+    },
+    {
+      title: copy.sections.listingContext.title,
+      subtitle: copy.sections.listingContext.subtitle,
+      rows: [
+        {
+          label: copy.sections.listingContext.location,
+          render: (boat) => formatTextValue(boat.location_text, copy.locationBeingRefined),
+        },
+        {
+          label: copy.sections.listingContext.listingPath,
+          render: (boat) => getListingPathLabel(boat, copy.analysis),
+        },
+        {
+          label: copy.sections.listingContext.conditionSignal,
+          render: (boat) =>
+            boat.condition_score
+              ? `${Math.round(boat.condition_score)}/10`
+              : copy.conditionNotScored,
+          numericValue: (boat) => toFiniteNumber(boat.condition_score),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.listingContext.photosOnFile,
+          render: (boat) =>
+            boat.image_count && boat.image_count > 0
+              ? copy.photosOnFile(boat.image_count)
+              : copy.photoCountSyncing,
+          numericValue: (boat) => toFiniteNumber(boat.image_count),
+          numericPreference: "high",
+        },
+        {
+          label: copy.sections.listingContext.characterTags,
+          render: (boat) =>
+            boat.character_tags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {boat.character_tags.slice(0, 4).map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              copy.notTaggedYet
+            ),
+        },
+      ],
+    },
+  ];
+}
 
 export default function ComparePage() {
   return (
@@ -245,6 +254,8 @@ function ComparePageContent() {
   const { compareIds, clear, removeBoat, maxCompareBoats } = useCompareBoats();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const copy = getComparePageCopy(locale);
   const [boats, setBoats] = useState<CompareBoat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -315,7 +326,7 @@ function ComparePageContent() {
         }
       } catch {
         if (!cancelled) {
-          setError("Unable to load the compare view right now.");
+          setError(copy.loadError);
         }
       } finally {
         if (!cancelled) {
@@ -328,7 +339,16 @@ function ComparePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [activeCompareIds]);
+  }, [activeCompareIds, copy.loadError]);
+
+  const formatNumber = useMemo(
+    () => (value: number) => value.toLocaleString(locale),
+    [locale]
+  );
+  const compareSections = useMemo(
+    () => buildCompareSections(copy, formatNumber),
+    [copy, formatNumber]
+  );
 
   const missingCount = useMemo(
     () => Math.max(activeCompareCount - boats.length, 0),
@@ -343,15 +363,15 @@ function ComparePageContent() {
   );
 
   const quickFactors = useMemo(
-    () => buildQuickFactors(boats, displayCurrency),
-    [boats, displayCurrency]
+    () => buildQuickFactors(boats, displayCurrency, copy.analysis),
+    [boats, copy.analysis, displayCurrency]
   );
 
   const actionRecommendation = useMemo(
-    () => buildActionRecommendation(boats, displayCurrency),
-    [boats, displayCurrency]
+    () => buildActionRecommendation(boats, displayCurrency, copy.analysis),
+    [boats, copy.analysis, displayCurrency]
   );
-  const boatInsights = useMemo(() => buildBoatInsights(boats), [boats]);
+  const boatInsights = useMemo(() => buildBoatInsights(boats, copy.analysis), [boats, copy.analysis]);
 
   function clearCompareView() {
     clear();
@@ -391,12 +411,11 @@ function ComparePageContent() {
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
             <GitCompareArrows className="h-3.5 w-3.5" />
-            Compare Boats
+            {copy.badge}
           </div>
-          <h1 className="mt-4 text-3xl font-bold">Side-by-side boat comparison</h1>
+          <h1 className="mt-4 text-3xl font-bold">{copy.heading}</h1>
           <p className="mt-2 max-w-3xl text-sm text-text-secondary">
-            Compare up to {maxCompareBoats} boats on the factors that actually change a buying decision:
-            price, size, draft, layout, and listing trust.
+            {copy.subtitle(maxCompareBoats)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -417,7 +436,7 @@ function ComparePageContent() {
             ) : (
               <Share2 className="h-4 w-4" />
             )}
-            {shareState === "copied" ? "Link copied" : "Copy compare link"}
+            {shareState === "copied" ? copy.shareButtonCopied : copy.shareButtonDefault}
           </button>
           <button
             type="button"
@@ -426,7 +445,7 @@ function ComparePageContent() {
             className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
-            Clear compare
+            {copy.clearCompare}
           </button>
         </div>
       </div>
@@ -439,17 +458,17 @@ function ComparePageContent() {
           data-testid="compare-share-status"
         >
           {shareState === "copied"
-            ? "This shortlist link is ready to send."
+            ? copy.shareStatusCopied
             : shareState === "error"
-              ? "Could not copy the compare link on this browser."
-              : "Copy this shortlist link to send the same compare set to a partner or your future self."}
+              ? copy.shareStatusError
+              : copy.shareStatusDefault}
         </p>
       ) : null}
 
       {activeCompareCount === 0 ? (
         <EmptyState />
       ) : loading ? (
-        <div className="mt-10 text-sm text-text-secondary">Loading comparison...</div>
+        <div className="mt-10 text-sm text-text-secondary">{copy.loading}</div>
       ) : error ? (
         <div className="mt-10 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-300">
           {error}
@@ -458,13 +477,13 @@ function ComparePageContent() {
         <>
           {missingCount > 0 && (
             <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/10 px-5 py-4 text-sm text-foreground/80">
-              {missingCount} selected boat{missingCount === 1 ? "" : "s"} could not be compared because the listing is no longer public.
+              {copy.missingSelected(missingCount)}
             </div>
           )}
 
           {boats.length < 2 && (
             <div className="mt-6 rounded-2xl border border-border bg-surface px-5 py-4 text-sm text-text-secondary">
-              Add one more boat from browse or matches so the side-by-side view can surface real tradeoffs.
+              {copy.addOneMore}
             </div>
           )}
 
@@ -508,10 +527,10 @@ function ComparePageContent() {
                       className="text-xs font-semibold uppercase tracking-[0.22em] text-text-tertiary"
                       data-testid="compare-factor-heading"
                     >
-                      Compare factors
+                      {copy.factorHeading}
                     </p>
                     <p className="mt-1 text-sm text-text-secondary">
-                      Start with money and draft, then use the rows below to compare layout and trust.
+                      {copy.factorDescription}
                     </p>
                   </div>
                   {boats.map((boat) => (
@@ -523,7 +542,7 @@ function ComparePageContent() {
                         {formatBoatTitle(boat)}
                       </Link>
                       <p className="mt-1 text-sm text-text-secondary">
-                        {boat.location_text || "Location being refined"}
+                        {boat.location_text || copy.locationBeingRefined}
                       </p>
                     </div>
                   ))}
@@ -596,7 +615,7 @@ function ComparePageContent() {
               href="/boats"
               className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-light"
             >
-              Add more boats
+              {copy.addMoreBoats}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -613,6 +632,8 @@ function QuickReadRail({
   factors: QuickFactor[];
   recommendation: ActionRecommendation | null;
 }) {
+  const copy = getComparePageCopy(useLocale());
+
   return (
     <aside
       className="rounded-3xl border border-primary/15 bg-gradient-to-b from-primary/12 via-surface to-surface p-5"
@@ -620,11 +641,11 @@ function QuickReadRail({
     >
       <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
         <Sparkles className="h-3.5 w-3.5" />
-        Quick read
+        {copy.quickRead.badge}
       </div>
-      <h2 className="mt-4 text-xl font-semibold text-foreground">Where the shortlist really separates</h2>
+      <h2 className="mt-4 text-xl font-semibold text-foreground">{copy.quickRead.heading}</h2>
       <p className="mt-2 text-sm leading-6 text-text-secondary">
-        These are the clearest decision edges in the current compare set.
+        {copy.quickRead.description}
       </p>
 
       <div className="mt-5 space-y-3">
@@ -640,19 +661,19 @@ function QuickReadRail({
           ))
         ) : (
           <div className="rounded-2xl border border-border bg-background/45 p-4 text-sm text-text-secondary">
-            Add a couple of well-specified boats and this panel will call out the biggest differences immediately.
+            {copy.quickRead.empty}
           </div>
         )}
       </div>
 
       <p className="mt-5 text-xs leading-5 text-text-tertiary">
-        Then use the matrix below for the exact numbers, layout details, and listing trust cues.
+        {copy.quickRead.footnote}
       </p>
 
       {recommendation ? (
         <div className="mt-5 rounded-2xl border border-accent/20 bg-accent/10 p-4 text-sm">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-            Suggested first move
+            {copy.quickRead.suggestedFirstMove}
           </p>
           <p className="mt-2 font-medium text-foreground">{recommendation.winnerTitle}</p>
           <p className="mt-1 text-text-secondary">{recommendation.detail}</p>
@@ -663,21 +684,23 @@ function QuickReadRail({
 }
 
 function ComparePageFallback() {
+  const copy = getComparePageCopy(useLocale());
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
             <GitCompareArrows className="h-3.5 w-3.5" />
-            Compare Boats
+            {copy.badge}
           </div>
-          <h1 className="mt-4 text-3xl font-bold">Side-by-side boat comparison</h1>
+          <h1 className="mt-4 text-3xl font-bold">{copy.heading}</h1>
           <p className="mt-2 max-w-3xl text-sm text-text-secondary">
-            Loading your compare set...
+            {copy.fallback.loadingCompareSet}
           </p>
         </div>
       </div>
-      <div className="mt-10 text-sm text-text-secondary">Preparing the compare workspace...</div>
+      <div className="mt-10 text-sm text-text-secondary">{copy.fallback.preparingWorkspace}</div>
     </div>
   );
 }
@@ -691,11 +714,12 @@ function MobileCompareSummary({
   quickFactor: QuickFactor | null;
   recommendation: ActionRecommendation | null;
 }) {
+  const copy = getComparePageCopy(useLocale());
   const summary = recommendation
-    ? `${recommendation.winnerTitle} is the cleaner first call.`
+    ? copy.mobile.recommendationSummary(recommendation.winnerTitle)
     : quickFactor
-      ? `${quickFactor.label}: ${quickFactor.winnerTitle}`
-      : `${compareCount} boats ready to compare`;
+      ? copy.mobile.quickFactorSummary(quickFactor.label, quickFactor.winnerTitle)
+      : copy.mobile.readySummary(compareCount);
 
   return (
     <div
@@ -703,7 +727,7 @@ function MobileCompareSummary({
       data-testid="compare-mobile-summary"
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-        {compareCount} boats loaded
+        {copy.mobile.loaded(compareCount)}
       </p>
       <p className="mt-1 text-sm font-medium text-foreground">{summary}</p>
       <div className="mt-3 flex items-center gap-2">
@@ -711,9 +735,9 @@ function MobileCompareSummary({
           href="#compare-factor-matrix"
           className="inline-flex items-center justify-center rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
         >
-          Jump to factors
+          {copy.mobile.jumpToFactors}
         </a>
-        <span className="text-xs text-text-secondary">Swipe sideways for full columns.</span>
+        <span className="text-xs text-text-secondary">{copy.mobile.swipeHint}</span>
       </div>
     </div>
   );
@@ -730,9 +754,10 @@ function CompareBoatPanel({
   insight: BoatInsight;
   onRemove: () => void;
 }) {
+  const copy = getComparePageCopy(useLocale());
   const href = `/boats/${boat.slug || boat.id}`;
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
-  const bestFitSignals = buildBestFitSignals(boat);
+  const bestFitSignals = buildBestFitSignals(boat, copy.analysis);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -740,10 +765,10 @@ function CompareBoatPanel({
     preferredCurrency: displayCurrency,
   });
   const headlineMetrics = [
-    { label: "Ask", value: displayedPrice.primary },
-    { label: "Price / ft", value: formatPricePerFoot(boat, displayCurrency) },
-    { label: "Length", value: formatFeet(boat.specs.loa) },
-    { label: "Draft", value: formatFeet(boat.specs.draft) },
+    { label: copy.metrics.ask, value: displayedPrice.primary },
+    { label: copy.metrics.pricePerFoot, value: formatPricePerFoot(boat, displayCurrency, copy.analysis) },
+    { label: copy.metrics.length, value: formatFeet(boat.specs.loa) },
+    { label: copy.metrics.draft, value: formatFeet(boat.specs.draft) },
   ];
 
   return (
@@ -761,7 +786,7 @@ function CompareBoatPanel({
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-surface-elevated text-sm text-text-secondary">
-            Photo unavailable
+            {copy.photoUnavailable}
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent" />
@@ -773,7 +798,7 @@ function CompareBoatPanel({
             ) : null}
           </div>
           <span className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-            {getListingPathLabel(boat)}
+            {getListingPathLabel(boat, copy.analysis)}
           </span>
         </div>
       </Link>
@@ -788,14 +813,14 @@ function CompareBoatPanel({
             </Link>
             <div className="mt-2 flex items-center gap-2 text-sm text-text-secondary">
               <MapPin className="h-4 w-4 text-primary" />
-              <span>{boat.location_text || "Location being refined"}</span>
+              <span>{boat.location_text || copy.locationBeingRefined}</span>
             </div>
           </div>
           <button
             type="button"
             onClick={onRemove}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-secondary transition-colors hover:border-primary hover:text-primary"
-            aria-label={`Remove ${formatBoatTitle(boat)} from compare`}
+            aria-label={copy.removeFromCompare(formatBoatTitle(boat))}
           >
             <X className="h-4 w-4" />
           </button>
@@ -813,7 +838,7 @@ function CompareBoatPanel({
             data-testid="compare-best-fit"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-              Best for
+              {copy.bestFor}
             </p>
             <div className="mt-3 space-y-3">
               {bestFitSignals.map((signal) => (
@@ -827,20 +852,20 @@ function CompareBoatPanel({
         ) : null}
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <InsightBlock title="Why it stands out" tone="positive" items={insight.strengths} />
-          <InsightBlock title="Watchouts" tone="neutral" items={insight.watchouts} />
+          <InsightBlock title={copy.whyItStandsOut} tone="positive" items={insight.strengths} />
+          <InsightBlock title={copy.watchouts} tone="neutral" items={insight.watchouts} />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
           {boat.condition_score ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-medium text-primary">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Condition {Math.round(boat.condition_score)}/10
+              {copy.conditionBadge(Math.round(boat.condition_score))}
             </span>
           ) : null}
           {boat.image_count && boat.image_count > 0 ? (
             <span className="rounded-full border border-border px-2.5 py-1 text-text-secondary">
-              {boat.image_count} image{boat.image_count === 1 ? "" : "s"}
+              {copy.photosOnFile(boat.image_count)}
             </span>
           ) : null}
           {boat.character_tags.slice(0, 2).map((tag) => (
@@ -858,7 +883,7 @@ function CompareBoatPanel({
             href={href}
             className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
           >
-            Open listing
+            {copy.openListing}
             <ArrowRight className="h-4 w-4" />
           </Link>
           {safeSourceUrl ? (
@@ -868,7 +893,7 @@ function CompareBoatPanel({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
             >
-              Original source
+              {copy.originalSource}
               <ExternalLink className="h-4 w-4" />
             </a>
           ) : null}
@@ -898,6 +923,7 @@ function InsightBlock({
   tone: "positive" | "neutral";
   items: string[];
 }) {
+  const copy = getComparePageCopy(useLocale());
   const toneClass =
     tone === "positive"
       ? "border-primary/20 bg-primary/10 text-primary"
@@ -917,7 +943,7 @@ function InsightBlock({
             </div>
           ))
         ) : (
-          <p>No strong separator surfaced yet.</p>
+          <p>{copy.noStrongSeparator}</p>
         )}
       </div>
     </div>
@@ -925,17 +951,19 @@ function InsightBlock({
 }
 
 function EmptyState() {
+  const copy = getComparePageCopy(useLocale());
+
   return (
     <div className="mt-10 rounded-3xl border border-dashed border-border px-8 py-16 text-center">
-      <p className="text-lg font-semibold">No boats in compare yet</p>
+      <p className="text-lg font-semibold">{copy.emptyState.title}</p>
       <p className="mt-2 text-sm text-text-secondary">
-        Use the Compare button on browse cards or in your matches to build a shortlist worth deciding between.
+        {copy.emptyState.description}
       </p>
       <Link
         href="/boats"
         className="mt-6 inline-flex rounded-full bg-primary-btn px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary-light"
       >
-        Start browsing
+        {copy.emptyState.cta}
       </Link>
     </div>
   );

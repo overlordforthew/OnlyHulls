@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 import {
   Sailboat,
   MessageSquare,
@@ -27,109 +28,54 @@ export const dynamic = "force-dynamic";
 
 const appUrl = getPublicAppUrl();
 
-export const metadata: Metadata = {
-  title: "AI Boat Matching",
-  metadataBase: new URL(appUrl),
-  description:
-    "Tell us your dream boat and our AI will match you with the best listings, even when you do not know exactly what you are looking for.",
-  alternates: {
-    canonical: `${appUrl}/match`,
-  },
-};
-
-const STEPS = [
+const STEP_CONFIG = [
   {
+    key: "one",
     Icon: MessageSquare,
-    title: "Tell Us Your Dream",
-    desc: "Chat with our AI to build your buyer profile. It learns what you need - budget, size, sailing style, and even the things you have not thought through yet.",
   },
   {
+    key: "two",
     Icon: Target,
-    title: "Get Matched",
-    desc: "Our engine scores every listing against your profile using AI similarity and smart filters. Best matches float to the top.",
   },
   {
+    key: "three",
     Icon: Handshake,
-    title: "Connect Directly",
-    desc: "Found the one? Connect directly with the seller. No brokers, no middlemen, and no 10% commission eating into the deal.",
   },
 ];
 
-const FEATURES = [
+const FEATURE_CONFIG = [
   {
+    key: "one",
     Icon: Sparkles,
-    title: "Learns What You Want",
-    desc: "The AI builds a rich profile from a natural conversation, not a tedious form. It picks up on preferences you might not realize you have.",
   },
   {
+    key: "two",
     Icon: Sailboat,
-    title: "Scores Every Listing",
-    desc: "Every boat gets a match percentage based on your profile. Sort by match score to see what fits you best.",
   },
   {
+    key: "three",
     Icon: Shield,
-    title: "Private and Secure",
-    desc: "Your profile is yours. Sellers see your interest, not your data. You control when and how you connect.",
   },
   {
+    key: "four",
     Icon: DollarSign,
-    title: "Zero Commission",
-    desc: "We do not take a cut of your deal. Matching is free. Premium features are optional.",
   },
 ];
 
 const MATCH_SCORES = [97, 91, 84];
 
-const START_SIGNALS = [
-  {
-    title: "Takes a couple of minutes",
-    description: "Start with a short chat instead of a long form. The AI builds your buyer profile from that conversation.",
-  },
-  {
-    title: "Your results stay saved",
-    description: "Matches, shortlist signals, and your buyer profile stay attached to your account when you come back.",
-  },
-  {
-    title: "Direct seller contact",
-    description: "When you are ready, you connect directly with the seller. No broker commission is added by OnlyHulls.",
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("matchPage");
 
-const FAQS = [
-  {
-    question: "How does OnlyHulls decide what is a good match?",
-    answer:
-      "OnlyHulls combines your buyer profile, boat type, budget, specs, location signals, and AI-assisted ranking to score listings. Stronger matches rise to the top, but you can still browse the full market yourself.",
-  },
-  {
-    question: "Do I have to know the exact make and model I want?",
-    answer:
-      "No. The matching flow is built for buyers who know the lifestyle, budget, and mission more than the exact boat. The AI uses those signals to surface likely fits and explain the tradeoffs.",
-  },
-  {
-    question: "Can I still sort and browse boats manually after I get matched?",
-    answer:
-      "Yes. Your matches are saved, and you can still sort by price, size, year, and listing date while comparing listings across the broader inventory.",
-  },
-  {
-    question: "What do I get with Buyer Plus?",
-    answer:
-      "Buyer Plus unlocks longer-term AI matching, unlimited saves, better shortlist tools, and saved-search alerts over a 90-day period while keeping direct contact with sellers commission-free.",
-  },
-];
-
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQS.map((faq) => ({
-    "@type": "Question",
-    name: faq.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: faq.answer,
+  return {
+    title: t("metadataTitle"),
+    metadataBase: new URL(appUrl),
+    description: t("metadataDescription"),
+    alternates: {
+      canonical: `${appUrl}/match`,
     },
-  })),
-};
+  };
+}
 
 function formatPrice(price: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -153,34 +99,65 @@ function formatProviderLabel(provider: string): string {
 }
 
 export default async function MatchPage() {
+  const t = await getTranslations("matchPage");
   const intelligenceEnabled = matchIntelligenceConfigured();
   const semanticEnabled = semanticMatchingEnabled();
   const intelligenceProviderLabel = formatProviderLabel(matchIntelligenceProvider());
   const embeddingProviderLabel = formatProviderLabel(embeddingProvider());
   const boats = await getFeaturedBoats(3, { context: "/match" });
+  const steps = STEP_CONFIG.map((step) => ({
+    ...step,
+    title: t(`steps.${step.key}.title`),
+    desc: t(`steps.${step.key}.description`),
+  }));
+  const features = FEATURE_CONFIG.map((feature) => ({
+    ...feature,
+    title: t(`features.${feature.key}.title`),
+    desc: t(`features.${feature.key}.description`),
+  }));
+  const startSignals = ["one", "two", "three"].map((key) => ({
+    title: t(`startSignals.${key}.title`),
+    description: t(`startSignals.${key}.description`),
+  }));
+  const faqs = ["one", "two", "three", "four"].map((key) => ({
+    question: t(`faqs.${key}.question`),
+    answer: t(`faqs.${key}.answer`),
+  }));
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
 
   const stackSignals = [
     intelligenceEnabled
       ? {
-          label: "AI matching is live",
-          value: `Reranking is powered by ${intelligenceProviderLabel}.`,
+          label: t("stackSignals.aiLive"),
+          value: t("stackSignals.aiLiveValue", { provider: intelligenceProviderLabel }),
         }
       : {
-          label: "Smart matching is active",
-          value: "Rules, shortlist signals, and buyer filters are still doing the heavy lifting.",
+          label: t("stackSignals.smartMatching"),
+          value: t("stackSignals.smartMatchingValue"),
         },
     semanticEnabled
       ? {
-          label: "Semantic ranking is on",
-          value: `Profile similarity is running through ${embeddingProviderLabel} embeddings.`,
+          label: t("stackSignals.semanticOn"),
+          value: t("stackSignals.semanticOnValue", { provider: embeddingProviderLabel }),
         }
       : {
-          label: "Spec ranking is on",
-          value: "Budget, size, location, and boat-type filters stay in the scoring mix.",
+          label: t("stackSignals.specRanking"),
+          value: t("stackSignals.specRankingValue"),
         },
     {
-      label: "Your matches stay saved",
-      value: "Come back anytime to sort by price, size, year, or newest without starting over.",
+      label: t("stackSignals.saved"),
+      value: t("stackSignals.savedValue"),
     },
   ];
 
@@ -199,15 +176,13 @@ export default async function MatchPage() {
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
                 <Heart className="h-3 w-3" />
-                AI-Powered
+                {t("badge")}
               </div>
               <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                Your Perfect <span className="text-primary">Match</span> is Waiting
+                {t("heroTitleStart")} <span className="text-primary">{t("heroTitleAccent")}</span> {t("heroTitleEnd")}
               </h1>
               <p className="mt-4 text-lg text-text-secondary">
-                Tell us your dream boat and our AI will match you with the best
-                listings, even when you do not know exactly what you are looking
-                for.
+                {t("heroDescription")}
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <MatchCTAPrimary className="rounded-full bg-accent-btn px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
@@ -215,20 +190,18 @@ export default async function MatchPage() {
                   href="/boats"
                   className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
                 >
-                  Browse Boats Instead
+                  {t("browseInstead")}
                 </Link>
               </div>
               <p className="mt-4 max-w-2xl text-sm text-text-secondary">
-                Your buyer profile and shortlist stay attached to your account,
-                so you can come back later and keep narrowing the field without
-                starting over.
+                {t("heroFootnote")}
               </p>
 
               <div
                 className="mt-6 grid gap-3 sm:grid-cols-3"
                 data-testid="match-start-signals"
               >
-                {START_SIGNALS.map((signal) => (
+                {startSignals.map((signal) => (
                   <div
                     key={signal.title}
                     className="rounded-2xl border border-border bg-surface/70 p-4"
@@ -262,7 +235,7 @@ export default async function MatchPage() {
             {boats.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-6">
                 <p className="mb-5 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                  Preview - Example AI Match Results
+                  {t("previewEyebrow")}
                 </p>
                 <div className="flex flex-col gap-3">
                   {boats.map((boat, i) => (
@@ -294,7 +267,7 @@ export default async function MatchPage() {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-gradient-to-r from-success to-primary px-3 py-1 text-xs font-bold text-white">
-                        {MATCH_SCORES[i]}% (example)
+                        {t("exampleMatch", { score: MATCH_SCORES[i] })}
                       </span>
                     </div>
                   ))}
@@ -307,9 +280,9 @@ export default async function MatchPage() {
 
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
-          <h2 className="text-center text-2xl font-bold">How It Works</h2>
+          <h2 className="text-center text-2xl font-bold">{t("howItWorks")}</h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <div
                 key={step.title}
                 className="rounded-2xl border border-border bg-surface p-8 text-center"
@@ -318,7 +291,7 @@ export default async function MatchPage() {
                   <step.Icon className="h-7 w-7" strokeWidth={1.5} />
                 </div>
                 <p className="mt-2 text-xs font-semibold text-text-tertiary">
-                  Step {i + 1}
+                  {t("stepLabel", { number: i + 1 })}
                 </p>
                 <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
                 <p className="mt-2 text-sm text-text-secondary">{step.desc}</p>
@@ -330,9 +303,9 @@ export default async function MatchPage() {
 
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
-          <h2 className="text-center text-2xl font-bold">Why AI Matching?</h2>
+          <h2 className="text-center text-2xl font-bold">{t("whyHeading")}</h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {FEATURES.map((feature) => (
+            {features.map((feature) => (
               <div
                 key={feature.title}
                 className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
@@ -362,19 +335,18 @@ export default async function MatchPage() {
         <div className="mx-auto max-w-7xl px-5">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
-              Buyer FAQ
+              {t("faqEyebrow")}
             </p>
             <h2 className="mt-2 text-2xl font-bold">
-              Questions buyers usually ask before they start matching
+              {t("faqHeading")}
             </h2>
             <p className="mt-3 text-text-secondary">
-              These are the practical questions we see most often from buyers using
-              OnlyHulls to narrow the market quickly.
+              {t("faqSubtitle")}
             </p>
           </div>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {FAQS.map((faq) => (
+            {faqs.map((faq) => (
               <div
                 key={faq.question}
                 className="rounded-2xl border border-border bg-surface p-6"
@@ -390,10 +362,10 @@ export default async function MatchPage() {
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold">
-            Ready to Find <span className="text-primary">The One</span>?
+            {t("finalHeadingStart")} <span className="text-primary">{t("finalHeadingAccent")}</span>{t("finalHeadingEnd")}
           </h2>
           <p className="mx-auto mt-4 max-w-md text-text-secondary">
-            Create a free account, chat with our AI, and see your matches in minutes.
+            {t("finalDescription")}
           </p>
           <MatchCTASecondary className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
         </div>

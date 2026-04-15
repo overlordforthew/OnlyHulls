@@ -2,10 +2,12 @@
 
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 
 function SignInForm() {
+  const t = useTranslations("auth.signIn");
   const router = useRouter();
   const searchParams = useSearchParams();
   // Only allow same-origin relative paths (no protocol-relative URLs like //)
@@ -30,7 +32,7 @@ function SignInForm() {
     setLoading(false);
 
     if (res?.error) {
-      setError("Invalid email or password");
+      setError(t("invalidCredentials"));
       return;
     }
 
@@ -44,9 +46,9 @@ function SignInForm() {
   return (
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <h1 className="text-2xl font-bold">{t("heading")}</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Sign in to OnlyHulls
+          {t("subtitle")}
         </p>
       </div>
 
@@ -59,7 +61,7 @@ function SignInForm() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-text-secondary">
-            Email
+            {t("email")}
           </label>
           <input
             id="email"
@@ -74,10 +76,10 @@ function SignInForm() {
         <div>
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
-              Password
+              {t("password")}
             </label>
             <Link href="/forgot-password" className="text-xs text-primary hover:text-primary-light">
-              Forgot password?
+              {t("forgotPassword")}
             </Link>
           </div>
           <input
@@ -95,14 +97,14 @@ function SignInForm() {
           disabled={loading}
           className="w-full rounded-full bg-accent-btn px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
         >
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? t("signingIn") : t("submit")}
         </button>
       </form>
 
       <p className="text-center text-sm text-text-secondary">
-        Don&apos;t have an account?{" "}
+        {t("noAccount")}{" "}
         <Link href="/sign-up" className="font-medium text-primary hover:text-primary-light">
-          Sign up
+          {t("signUp")}
         </Link>
       </p>
     </div>

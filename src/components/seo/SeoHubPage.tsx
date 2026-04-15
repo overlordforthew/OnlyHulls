@@ -1,5 +1,11 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 import BoatCard from "@/components/BoatCard";
+import {
+  getSeoHubPageCopy,
+  localizeSeoHubDefinition,
+  localizeSeoHubLink,
+} from "@/i18n/copy/seo";
 import JsonLdScript from "@/components/JsonLdScript";
 import type { BoatRow } from "@/lib/db/queries";
 import {
@@ -14,9 +20,15 @@ interface SeoHubPageProps {
   total: number;
 }
 
-export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
-  const collectionSchema = buildHubCollectionSchema(hub, boats, total);
-  const breadcrumbSchema = buildHubBreadcrumbSchema(hub);
+export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
+  const locale = await getLocale();
+  const copy = getSeoHubPageCopy(locale);
+  const localizedHub = localizeSeoHubDefinition(locale, hub);
+  const localizedRelatedLinks = localizedHub.relatedLinks.map((link) =>
+    localizeSeoHubLink(locale, link)
+  );
+  const collectionSchema = buildHubCollectionSchema(localizedHub, boats, total);
+  const breadcrumbSchema = buildHubBreadcrumbSchema(localizedHub);
   const lowInventory = boats.length > 0 && boats.length < 6;
 
   return (
@@ -27,30 +39,30 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
       <section className="border-b border-border bg-surface/40 py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            {hub.eyebrow}
+            {localizedHub.eyebrow}
           </p>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
-            {hub.heading}
+            {localizedHub.heading}
           </h1>
           <p className="mt-4 max-w-3xl text-base text-text-secondary sm:text-lg">
-            {hub.intro}
+            {localizedHub.intro}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
             <span className="rounded-full bg-primary/10 px-3 py-1.5 font-medium text-primary">
-              {total.toLocaleString("en-US")} {hub.countLabel}
+              {copy.liveListings(total)}
             </span>
             <Link
               href="/boats"
               className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
             >
-              Browse all boats
+              {copy.browseAllBoats}
             </Link>
             <Link
               href="/match"
               className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
             >
-              Get AI matched
+              {copy.getAiMatched}
             </Link>
           </div>
         </div>
@@ -59,26 +71,26 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
       <section className="mx-auto max-w-7xl px-5 pt-10">
         {boats.length === 0 ? (
           <div className="rounded-2xl border border-border bg-surface p-8 text-center">
-            <h2 className="text-xl font-semibold">No boats are live on this hub yet</h2>
+            <h2 className="text-xl font-semibold">{copy.noBoatsTitle}</h2>
             <p className="mt-2 text-text-secondary">
-              The page is ready, but the current catalog does not have enough clean live listings here yet.
+              {copy.noBoatsDescription}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/boats"
                 className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
               >
-                Browse all boats
+                {copy.browseAllBoats}
               </Link>
               <Link
                 href="/match"
                 className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
               >
-                Get AI matched
+                {copy.getAiMatched}
               </Link>
             </div>
             <div className="mt-8 grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
-              {hub.relatedLinks.slice(0, 3).map((link) => (
+              {localizedRelatedLinks.slice(0, 3).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -100,33 +112,31 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
 
             {lowInventory && (
               <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
-                <h2 className="text-xl font-semibold">Need a broader search?</h2>
+                <h2 className="text-xl font-semibold">{copy.broaderSearchHeading}</h2>
                 <p className="mt-3 text-sm leading-7 text-text-secondary">
-                  This hub is live but still narrow. If you want more options right now, open a wider browse page or let the matcher fan out to nearby markets.
+                  {copy.broaderSearchDescription}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Link
                     href="/boats"
                     className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
                   >
-                    Browse all boats
+                    {copy.browseAllBoats}
                   </Link>
                   <Link
                     href="/match"
                     className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
                   >
-                    Get AI matched
+                    {copy.getAiMatched}
                   </Link>
                 </div>
               </div>
             )}
 
             <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
-              <h2 className="text-xl font-semibold">Why this page matters</h2>
+              <h2 className="text-xl font-semibold">{copy.whyPageMattersHeading}</h2>
               <p className="mt-3 text-sm leading-7 text-text-secondary">
-                OnlyHulls uses hub pages like this to keep strong inventory clusters in one crawlable place.
-                Buyers can browse cleaner listings faster, and search engines get a stable URL with real market intent
-                instead of a temporary filtered query string.
+                {copy.whyPageMattersDescription}
               </p>
             </div>
           </>
@@ -135,9 +145,9 @@ export default function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
 
       <section className="mx-auto mt-14 max-w-7xl px-5">
         <div className="rounded-2xl border border-border bg-surface/30 p-6">
-          <h2 className="text-xl font-semibold">Related boat searches</h2>
+          <h2 className="text-xl font-semibold">{copy.relatedBoatSearches}</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {hub.relatedLinks.map((link) => (
+            {localizedRelatedLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

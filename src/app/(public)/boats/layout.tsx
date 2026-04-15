@@ -1,38 +1,42 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { getPublicAppUrl } from "@/lib/config/urls";
+import { getBoatsLayoutCopy } from "@/i18n/copy/layouts";
 
 const appUrl = getPublicAppUrl();
 
-export const metadata: Metadata = {
-  title: "Browse Boats for Sale",
-  description:
-    "Browse catamarans and sailboats for sale on OnlyHulls. Search cleaner listings, compare boats, and connect directly with sellers.",
-  alternates: {
-    canonical: `${appUrl}/boats`,
-  },
-  openGraph: {
-    type: "website",
-    url: `${appUrl}/boats`,
-    title: "Browse Boats for Sale | OnlyHulls",
-    description:
-      "Browse catamarans and sailboats for sale on OnlyHulls. Search cleaner listings, compare boats, and connect directly with sellers.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Browse boats for sale on OnlyHulls",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Browse Boats for Sale | OnlyHulls",
-    description:
-      "Browse catamarans and sailboats for sale on OnlyHulls. Search cleaner listings, compare boats, and connect directly with sellers.",
-    images: ["/og-image.png"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const copy = getBoatsLayoutCopy(locale);
+
+  return {
+    title: copy.title,
+    description: copy.description,
+    alternates: {
+      canonical: `${appUrl}/boats`,
+    },
+    openGraph: {
+      type: "website",
+      url: `${appUrl}/boats`,
+      title: copy.ogTitle,
+      description: copy.ogDescription,
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: copy.ogAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.ogTitle,
+      description: copy.twitterDescription,
+      images: ["/og-image.png"],
+    },
+  };
+}
 
 export default function BoatsLayout({
   children,

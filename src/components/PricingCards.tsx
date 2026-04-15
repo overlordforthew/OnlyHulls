@@ -1,91 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, Star } from "lucide-react";
-
-const buyerPlans = [
-  {
-    tier: "free",
-    name: "Free",
-    price: 0,
-    billingLabel: "",
-    priceNote: "",
-    ctaLabel: "Start Free Buyer Account",
-    features: [
-      "Browse all listings",
-      "10 saves/day",
-      "Basic search filters",
-      "View match scores",
-    ],
-  },
-  {
-    tier: "plus",
-    name: "Plus",
-    price: 25,
-    billingLabel: "every 90 days",
-    priceNote: "One upfront 90-day payment. Works out to about $8.33/month.",
-    ctaLabel: "Upgrade to Buyer Plus",
-    popular: true,
-    features: [
-      "Unlimited saves and matching",
-      "AI buyer profile",
-      "Match score breakdowns",
-      "Saved searches and alerts",
-      "Dreamboard",
-    ],
-  },
-];
-
-const sellerPlans = [
-  {
-    tier: "free-seller",
-    name: "Free",
-    price: 0,
-    billingLabel: "",
-    priceNote: "",
-    ctaLabel: "Start Free Seller Account",
-    features: [
-      "1 active listing",
-      "Manual text-based entry",
-      "Up to 10 photos",
-      "Standard visibility",
-      "Match notifications",
-    ],
-  },
-  {
-    tier: "standard",
-    name: "Creator",
-    price: 30,
-    billingLabel: "every 90 days",
-    priceNote: "One upfront 90-day payment. Works out to about $10/month.",
-    ctaLabel: "Start Creator Plan",
-    popular: true,
-    features: [
-      "Unlimited active listings",
-      "AI-assisted listing creation",
-      "Dynamic photo uploads",
-      "Up to 30 photos per listing",
-      "Match notifications",
-    ],
-  },
-  {
-    tier: "featured",
-    name: "Featured Creator",
-    price: 60,
-    billingLabel: "every 90 days",
-    priceNote: "One upfront 90-day payment. Works out to about $20/month.",
-    ctaLabel: "Start Featured Creator",
-    features: [
-      "Everything in Creator",
-      "External video embeds (YouTube/Vimeo)",
-      "Boosted placement in feed",
-      "Featured in buyer email blasts",
-      "Analytics dashboard",
-      "Up to 50 photos per listing",
-      "Priority matching",
-    ],
-  },
-];
 
 type Plan = {
   tier: string;
@@ -98,6 +15,96 @@ type Plan = {
   features: string[];
 };
 
+type PricingTranslator = (key: string, values?: Record<string, string | number>) => string;
+
+function getBuyerPlans(t: PricingTranslator): Plan[] {
+  return [
+    {
+      tier: "free",
+      name: t("buyerPlans.free.name"),
+      price: 0,
+      billingLabel: "",
+      priceNote: "",
+      ctaLabel: t("buyerPlans.free.cta"),
+      features: [
+        t("buyerPlans.free.features.one"),
+        t("buyerPlans.free.features.two"),
+        t("buyerPlans.free.features.three"),
+        t("buyerPlans.free.features.four"),
+      ],
+    },
+    {
+      tier: "plus",
+      name: t("buyerPlans.plus.name"),
+      price: 25,
+      billingLabel: t("buyerPlans.plus.billingLabel"),
+      priceNote: t("buyerPlans.plus.priceNote"),
+      ctaLabel: t("buyerPlans.plus.cta"),
+      popular: true,
+      features: [
+        t("buyerPlans.plus.features.one"),
+        t("buyerPlans.plus.features.two"),
+        t("buyerPlans.plus.features.three"),
+        t("buyerPlans.plus.features.four"),
+        t("buyerPlans.plus.features.five"),
+      ],
+    },
+  ];
+}
+
+function getSellerPlans(t: PricingTranslator): Plan[] {
+  return [
+    {
+      tier: "free-seller",
+      name: t("sellerPlans.freeSeller.name"),
+      price: 0,
+      billingLabel: "",
+      priceNote: "",
+      ctaLabel: t("sellerPlans.freeSeller.cta"),
+      features: [
+        t("sellerPlans.freeSeller.features.one"),
+        t("sellerPlans.freeSeller.features.two"),
+        t("sellerPlans.freeSeller.features.three"),
+        t("sellerPlans.freeSeller.features.four"),
+        t("sellerPlans.freeSeller.features.five"),
+      ],
+    },
+    {
+      tier: "standard",
+      name: t("sellerPlans.standard.name"),
+      price: 30,
+      billingLabel: t("sellerPlans.standard.billingLabel"),
+      priceNote: t("sellerPlans.standard.priceNote"),
+      ctaLabel: t("sellerPlans.standard.cta"),
+      popular: true,
+      features: [
+        t("sellerPlans.standard.features.one"),
+        t("sellerPlans.standard.features.two"),
+        t("sellerPlans.standard.features.three"),
+        t("sellerPlans.standard.features.four"),
+        t("sellerPlans.standard.features.five"),
+      ],
+    },
+    {
+      tier: "featured",
+      name: t("sellerPlans.featured.name"),
+      price: 60,
+      billingLabel: t("sellerPlans.featured.billingLabel"),
+      priceNote: t("sellerPlans.featured.priceNote"),
+      ctaLabel: t("sellerPlans.featured.cta"),
+      features: [
+        t("sellerPlans.featured.features.one"),
+        t("sellerPlans.featured.features.two"),
+        t("sellerPlans.featured.features.three"),
+        t("sellerPlans.featured.features.four"),
+        t("sellerPlans.featured.features.five"),
+        t("sellerPlans.featured.features.six"),
+        t("sellerPlans.featured.features.seven"),
+      ],
+    },
+  ];
+}
+
 function PlanCard({
   plan,
   onSelect,
@@ -107,6 +114,7 @@ function PlanCard({
   onSelect: (tier: string) => void;
   loading: boolean;
 }) {
+  const t = useTranslations("pricing");
   return (
     <div
       className={`relative rounded-2xl border p-8 transition-all ${
@@ -118,7 +126,7 @@ function PlanCard({
       {plan.popular && (
         <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-primary-btn px-3 py-1 text-xs font-semibold text-white">
           <Star className="h-3 w-3" />
-          Most Popular
+          {t("mostPopular")}
         </span>
       )}
       <h3 className="text-xl font-bold">{plan.name}</h3>
@@ -148,13 +156,14 @@ function PlanCard({
             : "border border-border text-foreground hover:border-primary hover:text-primary"
         }`}
       >
-        {plan.ctaLabel || (plan.price === 0 ? "Get Started Free" : "Subscribe")}
+        {plan.ctaLabel || (plan.price === 0 ? t("getStartedFree") : t("subscribe"))}
       </button>
     </div>
   );
 }
 
 function useCheckout() {
+  const t = useTranslations("pricing");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [billingEnabled, setBillingEnabled] = useState(true);
@@ -177,7 +186,7 @@ function useCheckout() {
       return;
     }
     if (!billingEnabled && tier !== "free-seller") {
-      setError("Paid billing is still being configured. Free plans are available now.");
+      setError(t("billingUnavailable"));
       return;
     }
     setLoading(true);
@@ -193,7 +202,7 @@ function useCheckout() {
         return;
       }
       if (!res.ok) {
-        setError(data.error || "Unable to continue right now.");
+        setError(data.error || t("billingUnavailable"));
         return;
       }
       if (data.url) window.location.href = data.url;
@@ -206,13 +215,15 @@ function useCheckout() {
 }
 
 export function BuyerPricing() {
+  const t = useTranslations("pricing");
   const { loading, handleSelect, error, billingEnabled } = useCheckout();
+  const buyerPlans = getBuyerPlans(t);
 
   return (
     <div>
-      <h2 className="text-center text-2xl font-bold">Buyer Plans</h2>
+      <h2 className="text-center text-2xl font-bold">{t("buyerHeading")}</h2>
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
-        Browse for free, or upgrade for unlimited AI matching with simple 90-day pricing.
+        {t("buyerSubtitle")}
       </p>
       <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-2">
         {buyerPlans.map((plan) => (
@@ -226,11 +237,11 @@ export function BuyerPricing() {
       </div>
       {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
       <p className="mt-4 text-center text-sm text-text-secondary">
-        Start free any time. Upgrade only if you want longer-running alerts and deeper AI matching.
+        {t("buyerFootnote")}
       </p>
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
-          Paid billing is not live yet on this environment. Free browsing still works.
+          {t("billingUnavailableEnv")}
         </p>
       )}
     </div>
@@ -238,13 +249,15 @@ export function BuyerPricing() {
 }
 
 export function SellerPricing() {
+  const t = useTranslations("pricing");
   const { loading, handleSelect, error, billingEnabled } = useCheckout();
+  const sellerPlans = getSellerPlans(t);
 
   return (
     <div>
-      <h2 className="text-center text-2xl font-bold">Seller Plans</h2>
+      <h2 className="text-center text-2xl font-bold">{t("sellerHeading")}</h2>
       <p className="mx-auto mt-3 max-w-md text-center text-text-secondary">
-        No commissions, no hidden fees - just simple 90-day pricing.
+        {t("sellerSubtitle")}
       </p>
       <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
         {sellerPlans.map((plan) => (
@@ -258,11 +271,11 @@ export function SellerPricing() {
       </div>
       {error && <p className="mt-4 text-center text-sm text-accent">{error}</p>}
       <p className="mt-4 text-center text-sm text-text-secondary">
-        All paid seller plans are billed once for 90 days. No commissions and no surprise monthly charges.
+        {t("sellerFootnote")}
       </p>
       {!billingEnabled && (
         <p className="mt-2 text-center text-sm text-text-secondary">
-          Free seller onboarding is live. Paid seller billing will unlock once Stripe is configured.
+          {t("sellerBillingUnavailableEnv")}
         </p>
       )}
     </div>

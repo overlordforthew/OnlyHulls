@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { DEFAULT_CURRENCY, normalizeSupportedCurrency, persistPreferredCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface CurrencySelectorProps {
@@ -18,18 +19,20 @@ export default function CurrencySelector({
   value,
   onChange,
   id = "currency-selector",
-  label = "Currency",
+  label,
   className = "rounded-full border border-border bg-surface px-4 py-2 text-sm text-foreground",
   disabled = false,
   refreshOnChange = false,
 }: CurrencySelectorProps) {
   const router = useRouter();
+  const t = useTranslations("currencySelector");
   const hydrated = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false
   );
   const isDisabled = disabled || !hydrated;
+  const resolvedLabel = label || t("label");
 
   function handleChange(nextValue: string) {
     const nextCurrency = normalizeSupportedCurrency(nextValue);
@@ -44,7 +47,7 @@ export default function CurrencySelector({
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={id} className="text-sm text-foreground/60">
-        {label}
+        {resolvedLabel}
       </label>
       <select
         id={id}

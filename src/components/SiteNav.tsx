@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Waves, Menu, X, User, LogOut, Bell, GitCompareArrows } from "lucide-react";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 export default function SiteNav() {
+  const t = useTranslations("siteNav");
+  const commonT = useTranslations("common");
   const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +66,7 @@ export default function SiteNav() {
 
   const visibleSearchesWithUpdates = isLoggedIn ? searchesWithUpdates : 0;
   const compareReady = compareCount > 0;
-  const compareCountLabel = `${compareCount} filled`;
+  const compareCountLabel = t("compareFilled", { count: compareCount });
 
   return (
     <>
@@ -85,13 +90,13 @@ export default function SiteNav() {
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-8 md:flex">
             <Link href="/boats" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
-              Browse
+              {t("browse")}
             </Link>
             <Link href="/match" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
-              Match
+              {t("match")}
             </Link>
             <Link href="/sell" className="text-sm font-medium text-text-secondary transition-colors hover:text-primary">
-              Sell
+              {t("sell")}
             </Link>
             <Link
               href="/compare"
@@ -103,12 +108,12 @@ export default function SiteNav() {
               }`}
               aria-label={
                 compareReady
-                  ? `Compare boats, ${compareCount} selected`
-                  : "Compare boats"
+                  ? t("compareAriaSelected", { count: compareCount })
+                  : t("compareAria")
               }
             >
               <GitCompareArrows className="h-4 w-4" />
-              Compare
+              {t("compare")}
               {compareReady && (
                 <>
                   <span className="inline-flex h-6 min-w-6 animate-pulse items-center justify-center rounded-full border-2 border-amber-300 bg-amber-300/15 px-2 text-[11px] font-bold text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.28)]">
@@ -138,30 +143,33 @@ export default function SiteNav() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                     {session.user.name?.[0]?.toUpperCase() || <User className="h-3.5 w-3.5" />}
                   </div>
-                  <span className="max-w-[100px] truncate">{session.user.name || "Account"}</span>
+                  <span className="max-w-[100px] truncate">{session.user.name || t("account")}</span>
                 </button>
                 {profileOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface p-2 shadow-xl">
+                  <div
+                    className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface p-2 shadow-xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <Link
                       href="/matches"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
                     >
-                      My Matches
+                      {t("myMatches")}
                     </Link>
                     <Link
                       href="/listings"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
                     >
-                      My Listings
+                      {t("myListings")}
                     </Link>
                     <Link
                       href="/listings/new"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
                     >
-                      List a Boat
+                      {t("listBoat")}
                     </Link>
                     <Link
                       href="/compare"
@@ -170,7 +178,7 @@ export default function SiteNav() {
                     >
                       <span className="inline-flex items-center gap-2">
                         <GitCompareArrows className="h-3.5 w-3.5" />
-                        Compare Boats
+                        {t("compareBoats")}
                       </span>
                       {compareCount > 0 && (
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
@@ -185,11 +193,11 @@ export default function SiteNav() {
                     >
                       <span className="inline-flex items-center gap-2">
                         <Bell className="h-3.5 w-3.5" />
-                        Saved Searches
+                        {t("savedSearches")}
                       </span>
                       {visibleSearchesWithUpdates > 0 && (
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          {visibleSearchesWithUpdates} new
+                          {t("savedSearchesNew", { count: visibleSearchesWithUpdates })}
                         </span>
                       )}
                     </Link>
@@ -198,39 +206,49 @@ export default function SiteNav() {
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
                     >
-                      AI Profile
+                      {t("aiProfile")}
                     </Link>
                     <Link
                       href="/account"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
                       onClick={() => setProfileOpen(false)}
                     >
-                      Account & Billing
+                      {t("accountBilling")}
                     </Link>
+                    <LocaleSwitcher
+                      variant="menu"
+                      onChangeComplete={() => setProfileOpen(false)}
+                    />
+                    <ThemeSwitcher
+                      variant="menu"
+                      onToggle={() => setProfileOpen(false)}
+                    />
                     <div className="my-1 h-px bg-border" />
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-muted"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      Sign Out
+                      {commonT("signOut")}
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <>
+                <LocaleSwitcher compact />
+                <ThemeSwitcher variant="inline" />
                 <Link
                   href="/sign-in"
                   className="text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
                 >
-                  Sign In
+                  {commonT("signIn")}
                 </Link>
                 <Link
                   href="/sign-up"
                   className="rounded-full bg-accent-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
                 >
-                  Get Started
+                  {commonT("getStarted")}
                 </Link>
               </>
             )}
@@ -240,7 +258,7 @@ export default function SiteNav() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:text-foreground md:hidden"
-            aria-label="Toggle menu"
+            aria-label={t("toggleMenu")}
           >
             {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -252,46 +270,52 @@ export default function SiteNav() {
         <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl md:hidden">
           <nav className="flex h-full flex-col items-center justify-center gap-8">
             <Link href="/boats" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
-              Browse Boats
+              {t("browseBoats")}
             </Link>
             <Link href="/match" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
-              AI Match
+              {t("aiMatch")}
             </Link>
             <Link href="/sell" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
-              Sell Your Boat
+              {t("sellYourBoat")}
             </Link>
             <Link href="/compare" className="text-2xl font-bold text-foreground transition-colors hover:text-primary" onClick={() => setMenuOpen(false)}>
-              Compare Boats{compareCount > 0 ? ` (${compareCount})` : ""}
+              {t("compareBoats")}{compareCount > 0 ? ` (${compareCount})` : ""}
             </Link>
+            <LocaleSwitcher />
+            <ThemeSwitcher
+              variant="menu"
+              className="justify-center text-lg text-foreground hover:text-primary"
+              onToggle={() => setMenuOpen(false)}
+            />
             <div className="mt-4 flex flex-col items-center gap-4">
               {isLoggedIn ? (
                 <>
                   <Link href="/matches" className="text-lg text-primary transition-colors hover:text-primary-light" onClick={() => setMenuOpen(false)}>
-                    My Matches
+                    {t("myMatches")}
                   </Link>
                   <Link href="/listings" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
-                    My Listings
+                    {t("myListings")}
                   </Link>
                   <Link href="/listings/new" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
-                    List a Boat
+                    {t("listBoat")}
                   </Link>
                   <Link href="/saved-searches" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
-                    Saved Searches{visibleSearchesWithUpdates > 0 ? ` (${visibleSearchesWithUpdates} new)` : ""}
+                    {t("savedSearches")}{visibleSearchesWithUpdates > 0 ? ` (${t("savedSearchesNew", { count: visibleSearchesWithUpdates })})` : ""}
                   </Link>
                   <button
                     onClick={() => { signOut({ callbackUrl: "/" }); setMenuOpen(false); }}
                     className="text-lg text-red-400 transition-colors hover:text-red-300"
                   >
-                    Sign Out
+                    {commonT("signOut")}
                   </button>
                 </>
               ) : (
                 <>
                   <Link href="/sign-in" className="text-lg text-text-secondary transition-colors hover:text-foreground" onClick={() => setMenuOpen(false)}>
-                    Sign In
+                    {commonT("signIn")}
                   </Link>
                   <Link href="/sign-up" className="rounded-full bg-accent-btn px-8 py-3 text-lg font-semibold text-white transition-all hover:bg-accent-light" onClick={() => setMenuOpen(false)}>
-                    Get Started
+                    {commonT("getStarted")}
                   </Link>
                 </>
               )}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import ContactGateModal from "./ContactGateModal";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 
@@ -14,6 +15,7 @@ const BUYER_ONBOARDING_DESTINATION = `/onboarding/profile?callbackUrl=${encodeUR
 export function MatchCTAPrimary({ className = "" }: { className?: string }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const t = useTranslations("matchCta");
 
   function handleClick() {
     if (session?.user) {
@@ -29,7 +31,7 @@ export function MatchCTAPrimary({ className = "" }: { className?: string }) {
       onClick={handleClick}
       className={`cursor-pointer ${className}`}
     >
-      Get Matched - It&apos;s Free
+      {t("primary")}
     </button>
   );
 }
@@ -37,6 +39,7 @@ export function MatchCTAPrimary({ className = "" }: { className?: string }) {
 export function MatchCTASecondary({ className = "" }: { className?: string }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const t = useTranslations("matchCta");
 
   function handleClick() {
     if (session?.user) {
@@ -52,7 +55,7 @@ export function MatchCTASecondary({ className = "" }: { className?: string }) {
       onClick={handleClick}
       className={`cursor-pointer ${className}`}
     >
-      Get Matched - Free
+      {t("secondary")}
     </button>
   );
 }
@@ -75,6 +78,7 @@ export function ContactOwnerCTA({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const t = useTranslations("matchCta");
   const safeSourceUrl = getSafeExternalUrl(sourceUrl);
   const [gateOpen, setGateOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -126,9 +130,9 @@ export function ContactOwnerCTA({
         return;
       }
 
-      setError(data.error || "Failed to contact the seller. Please try again.");
+      setError(data.error || t("contactFailed"));
     } catch {
-      setError("Failed to contact the seller. Please try again.");
+      setError(t("contactFailed"));
     } finally {
       setConnecting(false);
     }
@@ -141,7 +145,7 @@ export function ContactOwnerCTA({
           onClick={() => setGateOpen(true)}
           className={`cursor-pointer ${className}`}
         >
-          Contact Owner
+          {t("contactOwner")}
         </button>
         <ContactGateModal
           isOpen={gateOpen}
@@ -149,7 +153,7 @@ export function ContactOwnerCTA({
           boatId={boatId}
           sourceUrl={safeSourceUrl}
           sourceName={sourceName ?? null}
-          boatTitle={boatTitle ?? "this boat"}
+          boatTitle={boatTitle ?? t("thisBoat")}
           boatSlug={boatSlug}
         />
       </>
@@ -159,7 +163,7 @@ export function ContactOwnerCTA({
   if (safeSourceUrl) {
     return (
       <a href={safeSourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
-        Contact Owner
+        {t("contactOwner")}
       </a>
     );
   }
@@ -169,10 +173,10 @@ export function ContactOwnerCTA({
       <div>
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left">
           <p className="text-sm font-semibold text-primary">
-            {alreadyRequested ? "Request already sent" : "Seller contact unlocked"}
+            {alreadyRequested ? t("requestAlreadySent") : t("sellerContactUnlocked")}
           </p>
           <p className="mt-1 text-sm text-foreground/75">
-            Reach out to {sellerContact.name || "the seller"} at{" "}
+            {t("reachOutTo", { name: sellerContact.name || t("theSeller") })}{" "}
             <a
               href={`mailto:${sellerContact.email}`}
               className="font-medium text-primary underline"
@@ -194,10 +198,10 @@ export function ContactOwnerCTA({
         className={`cursor-pointer disabled:opacity-60 ${className}`}
       >
         {connecting
-          ? "Sending Intro..."
+          ? t("sendingIntro")
           : connectIntent
-            ? "Send Intro Request"
-            : "Contact Owner"}
+            ? t("sendIntroRequest")
+            : t("contactOwner")}
       </button>
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
     </div>
@@ -206,13 +210,14 @@ export function ContactOwnerCTA({
 
 export function ListBoatCTA({
   className = "",
-  children = "List Your Boat - Free",
+  children,
 }: {
   className?: string;
   children?: React.ReactNode;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const t = useTranslations("matchCta");
 
   function handleClick() {
     if (session?.user) {
@@ -225,7 +230,7 @@ export function ListBoatCTA({
 
   return (
     <button onClick={handleClick} className={`cursor-pointer ${className}`}>
-      {children}
+      {children ?? t("listBoatFree")}
     </button>
   );
 }

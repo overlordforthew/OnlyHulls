@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import {
   ClipboardList,
   Camera,
@@ -18,107 +19,91 @@ import { ListBoatCTA } from "@/components/MatchCTA";
 
 const appUrl = getPublicAppUrl();
 
-export const metadata: Metadata = {
-  title: "Sell Your Boat",
-  metadataBase: new URL(appUrl),
-  description:
-    "List your boat on OnlyHulls. No commissions, no brokers, and direct contact with AI-matched buyers worldwide.",
-  alternates: {
-    canonical: `${appUrl}/sell`,
-  },
-};
-
-const STEPS = [
+const STEP_CONFIG = [
   {
+    key: "one",
     Icon: ClipboardList,
-    title: "Create Your Listing",
-    desc: "Enter your boat's details - make, model, specs, condition, and price. Our guided wizard walks you through it step by step.",
   },
   {
+    key: "two",
     Icon: Camera,
-    title: "Add Photos",
-    desc: "Upload photos to showcase your boat. Great photos get more interest, and we help you lead with the strongest ones.",
   },
   {
+    key: "three",
     Icon: Zap,
-    title: "AI Does the Work",
-    desc: "Our AI analyzes your listing, tags it with character traits such as bluewater, liveaboard, and race-ready, and matches it with qualified buyers. Featured and Broker plans also get AI help cleaning up listing copy, structure, and presentation.",
   },
   {
+    key: "four",
     Icon: Users,
-    title: "Connect with Buyers",
-    desc: "When a buyer is interested, you connect directly. No broker in the middle and no commission on the sale.",
   },
 ];
 
-const BENEFITS = [
+const BENEFIT_CONFIG = [
   {
+    key: "one",
     Icon: DollarSign,
-    title: "$0 Commission",
-    desc: "Keep every dollar of your sale. We never take a cut, and listing plus matching start free.",
   },
   {
+    key: "two",
     Icon: Globe,
-    title: "Global Reach",
-    desc: "Your listing is visible to buyers worldwide. AI matching helps the right buyers find you, not just the local ones.",
   },
   {
+    key: "three",
     Icon: Shield,
-    title: "You Stay in Control",
-    desc: "You decide who to talk to and when. No cold calls from brokers and no pressure to accept lowball offers.",
   },
   {
+    key: "four",
     Icon: Clock,
-    title: "List in Minutes",
-    desc: "Our step-by-step wizard makes it fast. Enter the basics, add photos, and go live.",
   },
 ];
 
-const COMPARISON = [
-  { feature: "Commission", us: "$0", them: "8-10% of sale price" },
-  { feature: "Listing Fee", us: "Free", them: "$200-500+" },
-  { feature: "Buyer Matching", us: "AI-powered", them: "Manual, limited" },
-  { feature: "Reach", us: "Global", them: "Local / regional" },
-  { feature: "Time to List", us: "Minutes", them: "Days to weeks" },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("sellPage");
 
-const FAQS = [
-  {
-    question: "Do I need to pay before I can create a listing?",
-    answer:
-      "No. You can create a listing for free, get it into draft or review, and decide later whether to stay on the free tier or upgrade into a 90-day paid seller plan.",
-  },
-  {
-    question: "What does the AI actually do for sellers?",
-    answer:
-      "OnlyHulls analyzes the listing, tags it for buyer intent, and helps route it toward the right buyers. Higher-tier seller plans also include AI help cleaning up listing copy, structure, and presentation.",
-  },
-  {
-    question: "How long does a paid seller plan last?",
-    answer:
-      "Creator and Featured Creator plans are billed for 90 days at a time, which gives sellers a longer listing window without feeling like a month-to-month subscription trap.",
-  },
-  {
-    question: "Do you take a commission when my boat sells?",
-    answer:
-      "No. OnlyHulls does not take a broker-style commission. You keep the sale proceeds and connect directly with buyers.",
-  },
-];
-
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQS.map((faq) => ({
-    "@type": "Question",
-    name: faq.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: faq.answer,
+  return {
+    title: t("metadataTitle"),
+    metadataBase: new URL(appUrl),
+    description: t("metadataDescription"),
+    alternates: {
+      canonical: `${appUrl}/sell`,
     },
-  })),
-};
+  };
+}
 
-export default function SellPage() {
+export default async function SellPage() {
+  const t = await getTranslations("sellPage");
+  const steps = STEP_CONFIG.map((step) => ({
+    ...step,
+    title: t(`steps.${step.key}.title`),
+    desc: t(`steps.${step.key}.description`),
+  }));
+  const benefits = BENEFIT_CONFIG.map((benefit) => ({
+    ...benefit,
+    title: t(`benefits.${benefit.key}.title`),
+    desc: t(`benefits.${benefit.key}.description`),
+  }));
+  const comparison = ["commission", "listingFee", "buyerMatching", "reach", "timeToList"].map((key) => ({
+    feature: t(`comparison.${key}.feature`),
+    us: t(`comparison.${key}.us`),
+    them: t(`comparison.${key}.them`),
+  }));
+  const faqs = ["one", "two", "three", "four"].map((key) => ({
+    question: t(`faqs.${key}.question`),
+    answer: t(`faqs.${key}.answer`),
+  }));
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
     <div>
       <JsonLdScript data={faqSchema} />
@@ -133,15 +118,13 @@ export default function SellPage() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
               <Zap className="h-3 w-3" />
-              For Sellers
+              {t("badge")}
             </div>
             <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Become a <span className="text-primary">Creator</span>
+              {t("heroTitleStart")} <span className="text-primary">{t("heroTitleAccent")}</span>
             </h1>
             <p className="mt-4 text-lg text-text-secondary">
-              Show us your hull. List your boat for free and let our AI connect
-              you with qualified buyers worldwide. No brokers, no middlemen, and
-              no percentage of your sale.
+              {t("heroDescription")}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <ListBoatCTA className="rounded-full bg-accent-btn px-8 py-3 text-center text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
@@ -149,7 +132,7 @@ export default function SellPage() {
                 href="#pricing"
                 className="rounded-full border border-border-bright px-8 py-3 text-center text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
               >
-                See Pricing
+                {t("seePricing")}
               </a>
             </div>
           </div>
@@ -158,9 +141,9 @@ export default function SellPage() {
 
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
-          <h2 className="text-center text-2xl font-bold">How Selling Works</h2>
+          <h2 className="text-center text-2xl font-bold">{t("howHeading")}</h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <div
                 key={step.title}
                 className="rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
@@ -181,7 +164,7 @@ export default function SellPage() {
             ))}
           </div>
           <p className="mt-5 text-center text-sm text-text-secondary">
-            AI-assisted listing polish and presentation cleanup are included on higher-tier seller plans.
+            {t("stepFootnote")}
           </p>
         </div>
       </section>
@@ -189,10 +172,10 @@ export default function SellPage() {
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold">
-            Why Sell on <span className="text-primary">OnlyHulls</span>?
+            {t("whyHeadingStart")} <span className="text-primary">{t("whyHeadingAccent")}</span>{t("whyHeadingEnd") ? ` ${t("whyHeadingEnd")}` : ""}
           </h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {BENEFITS.map((benefit) => (
+            {benefits.map((benefit) => (
               <div
                 key={benefit.title}
                 className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
@@ -215,19 +198,19 @@ export default function SellPage() {
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold">
-            OnlyHulls vs. Traditional Brokers
+            {t("comparisonHeading")}
           </h2>
           <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-2xl border border-border">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface">
-                  <th className="px-6 py-4 font-semibold text-text-secondary"></th>
-                  <th className="px-6 py-4 font-semibold text-primary">OnlyHulls</th>
-                  <th className="px-6 py-4 font-semibold text-text-tertiary">Broker</th>
+                  <th className="px-6 py-4 font-semibold text-text-secondary">{t("table.feature")}</th>
+                  <th className="px-6 py-4 font-semibold text-primary">{t("table.onlyHulls")}</th>
+                  <th className="px-6 py-4 font-semibold text-text-tertiary">{t("table.broker")}</th>
                 </tr>
               </thead>
               <tbody>
-                {COMPARISON.map((row, i) => (
+                {comparison.map((row, i) => (
                   <tr
                     key={row.feature}
                     className={`border-b border-border last:border-0 ${
@@ -265,18 +248,18 @@ export default function SellPage() {
         <div className="mx-auto max-w-7xl px-5">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
-              Seller FAQ
+              {t("faqEyebrow")}
             </p>
             <h2 className="mt-2 text-2xl font-bold">
-              The practical questions sellers ask before they list
+              {t("faqHeading")}
             </h2>
             <p className="mt-3 text-text-secondary">
-              These answers make the commercial model clearer for owners deciding whether to list on OnlyHulls.
+              {t("faqSubtitle")}
             </p>
           </div>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {FAQS.map((faq) => (
+            {faqs.map((faq) => (
               <div
                 key={faq.question}
                 className="rounded-2xl border border-border bg-surface p-6"
@@ -292,10 +275,10 @@ export default function SellPage() {
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold">
-            Ready to Show Us Your <span className="text-primary">Hull(s)</span>?
+            {t("finalHeadingStart")} <span className="text-primary">{t("finalHeadingAccent")}</span>{t("finalHeadingEnd")}
           </h2>
           <p className="mx-auto mt-4 max-w-md text-text-secondary">
-            Create a free account and list your boat in minutes. No credit card required.
+            {t("finalDescription")}
           </p>
           <ListBoatCTA className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20" />
         </div>

@@ -1,0 +1,769 @@
+{
+  "common": {
+    "appName": "OnlyHulls",
+    "tagline": "Búsqueda de barcos con IA",
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "signOut": "Cerrar sesión",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "account": "Cuenta",
+    "getStarted": "Empezar"
+  },
+  "localeSwitcher": {
+    "label": "Idioma",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "themeSwitcher": {
+    "switchToDark": "Cambiar a modo oscuro",
+    "switchToLight": "Cambiar a modo claro"
+  },
+  "seoHubLinks": {
+    "title": "Búsquedas populares de barcos",
+    "subtitle": "Entra en rutas de compra de alta intención con landing pages más limpias e indexables."
+  },
+  "currencySelector": {
+    "label": "Moneda"
+  },
+  "siteNav": {
+    "browse": "Explorar",
+    "match": "Match",
+    "sell": "Vender",
+    "compare": "Comparar",
+    "compareBoats": "Comparar barcos",
+    "compareAria": "Comparar barcos",
+    "compareAriaSelected": "Comparar barcos, {count} seleccionados",
+    "compareFilled": "{count} ocupados",
+    "myMatches": "Mis matches",
+    "myListings": "Mis anuncios",
+    "listBoat": "Publicar barco",
+    "savedSearches": "Búsquedas guardadas",
+    "savedSearchesNew": "{count} nuevas",
+    "aiProfile": "Perfil con IA",
+    "accountBilling": "Cuenta y facturación",
+    "toggleMenu": "Abrir menú",
+    "browseBoats": "Explorar barcos",
+    "aiMatch": "Match con IA",
+    "sellYourBoat": "Vender tu barco",
+    "openComparePage": "Abrir página de comparación",
+    "openCompare": "Abrir comparación",
+    "account": "Cuenta"
+  },
+  "siteFooter": {
+    "browse": "Explorar",
+    "allBoats": "Todos los barcos",
+    "cruising": "Crucero",
+    "liveaboard": "Vivir a bordo",
+    "racing": "Regata",
+    "classic": "Clásico",
+    "sellers": "Vendedores",
+    "listYourBoat": "Publica tu barco",
+    "sellerPricing": "Precios para vendedores",
+    "createAccount": "Crear cuenta",
+    "buyers": "Compradores",
+    "aiMatching": "Match con IA",
+    "buyerPlans": "Planes para compradores",
+    "getStarted": "Empezar",
+    "brandTagline": "Marketplace de barcos con IA.",
+    "about": "Acerca de",
+    "terms": "Términos del servicio",
+    "privacy": "Política de privacidad",
+    "rightsReserved": "Todos los derechos reservados.",
+    "bottomTagline": "Cero comisión. Con IA. Hecho para amantes de los barcos."
+  },
+  "boatCard": {
+    "boatFallbackAlt": "Barco",
+    "matchPercent": "{score}% Match",
+    "locationRefining": "Ubicación en revisión",
+    "foundOn": "Encontrado en",
+    "compare": "Comparar",
+    "addedToCompare": "Añadido a comparar",
+    "save": "Guardar",
+    "pass": "Pasar",
+    "connect": "Contactar",
+    "partnerListing": "anuncio asociado",
+    "sample": "Ejemplo",
+    "featuredSeller": "Vendedor destacado",
+    "exclusive": "Exclusivo de OnlyHulls",
+    "listingBadgeOwner": "Propietario directo",
+    "listingBadgeFeatured": "Vendedor destacado",
+    "listingBadgeBroker": "Anuncio de broker",
+    "listingBadgeImported": "Anuncio importado",
+    "trustFeatured": "Anuncio destacado con contacto directo en OnlyHulls.",
+    "trustOwner": "Anuncio enviado por el propietario con contacto directo en OnlyHulls.",
+    "trustImported": "Anuncio importado del mercado. Los detalles aún pueden estar sincronizándose.",
+    "trustLocationSource": "La ubicación todavía se está refinando a partir del feed de {source}.",
+    "trustLocationSeller": "El vendedor aún debe confirmar la ubicación del barco.",
+    "trustSourceNoLink": "Los detalles de origen se importaron desde {source}; el enlace externo todavía no está disponible."
+  },
+  "matchCta": {
+    "primary": "Recibir matches gratis",
+    "secondary": "Recibir matches gratis",
+    "contactOwner": "Contactar al propietario",
+    "sendingIntro": "Enviando presentación...",
+    "sendIntroRequest": "Enviar solicitud",
+    "requestAlreadySent": "La solicitud ya fue enviada",
+    "sellerContactUnlocked": "Contacto del vendedor desbloqueado",
+    "reachOutTo": "Escribe a {name} en",
+    "theSeller": "el vendedor",
+    "thisBoat": "este barco",
+    "contactFailed": "No se pudo contactar al vendedor. Inténtalo de nuevo.",
+    "listBoatFree": "Publica tu barco gratis"
+  },
+  "contactGate": {
+    "ariaLabel": "Contactar al propietario",
+    "close": "Cerrar",
+    "title": "Antes de visitar {listingName}",
+    "description": "Guarda {boatTitle} en tu lista corta para poder compararlo después y recibir matches con barcos similares.",
+    "benefit1": "Encuentra barcos similares con matching por IA",
+    "benefit2": "Alertas de bajada de precio para barcos guardados",
+    "benefit3": "Guarda y compara tus favoritos",
+    "saveContinue": "Guardar y continuar",
+    "signUpSave": "Crear cuenta y guardar",
+    "continueGuest": "Continuar como invitado",
+    "freeAccountHint": "Cuenta gratis. No se requiere tarjeta.",
+    "originalListing": "el anuncio original"
+  },
+  "pricing": {
+    "mostPopular": "Más popular",
+    "getStartedFree": "Empezar gratis",
+    "subscribe": "Suscribirse",
+    "buyerHeading": "Planes para compradores",
+    "buyerSubtitle": "Explora gratis o mejora tu cuenta para disfrutar de matching ilimitado con IA con precios simples cada 90 días.",
+    "buyerFootnote": "Empieza gratis cuando quieras. Mejora solo si quieres alertas más duraderas y matching con IA más profundo.",
+    "sellerHeading": "Planes para vendedores",
+    "sellerSubtitle": "Sin comisiones ni cargos ocultos: solo precios simples cada 90 días.",
+    "sellerFootnote": "Todos los planes de pago para vendedores se cobran una vez cada 90 días. Sin comisiones ni sorpresas mensuales.",
+    "billingUnavailable": "La facturación de pago todavía se está configurando. Los planes gratuitos ya están disponibles.",
+    "billingUnavailableEnv": "La facturación de pago todavía no está activa en este entorno. La navegación gratuita sigue funcionando.",
+    "sellerBillingUnavailableEnv": "El alta gratuita para vendedores ya está activa. La facturación de pago se habilitará cuando Stripe esté configurado.",
+    "buyerPlans": {
+      "free": {
+        "name": "Gratis",
+        "cta": "Crear cuenta gratuita de comprador",
+        "features": {
+          "one": "Explorar todos los anuncios",
+          "two": "10 guardados al día",
+          "three": "Filtros de búsqueda básicos",
+          "four": "Ver puntuaciones de match"
+        }
+      },
+      "plus": {
+        "name": "Plus",
+        "billingLabel": "cada 90 días",
+        "priceNote": "Un solo pago por 90 días. Equivale a unos $8.33 al mes.",
+        "cta": "Mejorar a Buyer Plus",
+        "features": {
+          "one": "Guardados y matching ilimitados",
+          "two": "Perfil de comprador con IA",
+          "three": "Desglose de puntuación de match",
+          "four": "Búsquedas guardadas y alertas",
+          "five": "Dreamboard"
+        }
+      }
+    },
+    "sellerPlans": {
+      "freeSeller": {
+        "name": "Gratis",
+        "cta": "Crear cuenta gratuita de vendedor",
+        "features": {
+          "one": "1 anuncio activo",
+          "two": "Entrada manual basada en texto",
+          "three": "Hasta 10 fotos",
+          "four": "Visibilidad estándar",
+          "five": "Notificaciones de matches"
+        }
+      },
+      "standard": {
+        "name": "Creator",
+        "billingLabel": "cada 90 días",
+        "priceNote": "Un solo pago por 90 días. Equivale a unos $10 al mes.",
+        "cta": "Empezar plan Creator",
+        "features": {
+          "one": "Anuncios activos ilimitados",
+          "two": "Creación de anuncios asistida por IA",
+          "three": "Subida dinámica de fotos",
+          "four": "Hasta 30 fotos por anuncio",
+          "five": "Notificaciones de matches"
+        }
+      },
+      "featured": {
+        "name": "Featured Creator",
+        "billingLabel": "cada 90 días",
+        "priceNote": "Un solo pago por 90 días. Equivale a unos $20 al mes.",
+        "cta": "Empezar Featured Creator",
+        "features": {
+          "one": "Todo lo incluido en Creator",
+          "two": "Vídeos externos integrados (YouTube/Vimeo)",
+          "three": "Mayor visibilidad en el feed",
+          "four": "Destacado en correos a compradores",
+          "five": "Panel de analítica",
+          "six": "Hasta 50 fotos por anuncio",
+          "seven": "Matching prioritario"
+        }
+      }
+    }
+  },
+  "auth": {
+    "signIn": {
+      "heading": "Bienvenido de nuevo",
+      "subtitle": "Inicia sesión en OnlyHulls",
+      "invalidCredentials": "Correo o contraseña no válidos",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "signingIn": "Iniciando sesión...",
+      "submit": "Iniciar sesión",
+      "noAccount": "¿No tienes cuenta?",
+      "signUp": "Crear cuenta"
+    },
+    "signUp": {
+      "heading": "Crea tu cuenta",
+      "sellerSubtitle": "Publica tu barco en OnlyHulls",
+      "buyerSubtitle": "Únete a OnlyHulls y encuentra tu barco ideal",
+      "registrationFailed": "No se pudo completar el registro",
+      "name": "Nombre (opcional)",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "passwordHint": "Mínimo 8 caracteres",
+      "creating": "Creando cuenta...",
+      "submit": "Crear cuenta",
+      "alreadyHaveAccount": "¿Ya tienes cuenta?",
+      "signIn": "Iniciar sesión",
+      "accountReady": "Cuenta lista",
+      "checkEmail": "Revisa tu correo",
+      "autoVerifiedMessage": "Creamos tu cuenta para {email}. La verificación por correo no está configurada ahora mismo, así que puedes iniciar sesión de inmediato.",
+      "verificationMessage": "Enviamos un enlace de verificación a {email}. Haz clic en el enlace para activar tu cuenta y luego inicia sesión.",
+      "goToSignIn": "Ir a iniciar sesión"
+    },
+    "forgotPassword": {
+      "heading": "Restablece tu contraseña",
+      "subtitle": "Introduce tu correo y te enviaremos un enlace para restablecerla",
+      "email": "Correo electrónico",
+      "sending": "Enviando...",
+      "submit": "Enviar enlace",
+      "sentMessage": "Si existe una cuenta con ese correo, hemos enviado un enlace para restablecer la contraseña.",
+      "backToSignIn": "Volver a iniciar sesión",
+      "rememberPassword": "¿Recuerdas tu contraseña?",
+      "signIn": "Iniciar sesión"
+    },
+    "resetPassword": {
+      "invalidLink": "Enlace de restablecimiento no válido.",
+      "requestNew": "Solicitar uno nuevo",
+      "heading": "Definir nueva contraseña",
+      "success": "¡Contraseña actualizada correctamente!",
+      "signIn": "Iniciar sesión",
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "genericError": "Algo salió mal",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "passwordHint": "Mínimo 8 caracteres",
+      "updating": "Actualizando...",
+      "submit": "Actualizar contraseña"
+    }
+  },
+  "home": {
+    "heroTitleStart": "Encuentra tu",
+    "heroTitleAccent": "hull",
+    "heroSubtitle": "Explora el mercado real, guarda candidatos y contacta directamente con los vendedores. Impulsado por IA. Cero comisión. Diseñado para llevarte al barco correcto más rápido.",
+    "searchPlaceholder": "Buscar barcos...",
+    "searchButton": "Buscar",
+    "browseAllBoats": "Explorar todos los barcos",
+    "getMatchedByAI": "Recibir match con IA",
+    "heroProof": {
+      "one": "Explora sin registrarte",
+      "two": "Cuenta gratis para guardar y comparar",
+      "three": "Contacto directo con el vendedor sin comisión de broker"
+    },
+    "stats": {
+      "boatsListed": "Barcos publicados",
+      "commission": "Comisión",
+      "matching": "Matching"
+    },
+    "categories": {
+      "cruising": "Crucero",
+      "liveaboard": "Vivir a bordo",
+      "racing": "Regata",
+      "family": "Familia",
+      "budget": "Precio ajustado",
+      "classic": "Clásico"
+    },
+    "paths": {
+      "buyers": {
+        "eyebrow": "Para compradores",
+        "title": "Quiero comprar",
+        "description": "Explora el mercado, guarda opciones, compara lado a lado o deja que la IA reduzca la lista por ti.",
+        "bullet1": "Empieza gratis y guarda barcos desde el primer momento",
+        "bullet2": "Usa el matching con IA cuando quieras ayuda para reducir opciones",
+        "primary": "Empezar matching con IA",
+        "secondary": "O explorar barcos"
+      },
+      "sellers": {
+        "eyebrow": "Para vendedores",
+        "title": "Quiero vender",
+        "description": "Publica tu barco, preséntalo mejor y recibe compradores directos sin pagar comisión por la venta.",
+        "bullet1": "Publicación gratuita activa en minutos",
+        "bullet2": "Mejora después solo si quieres más visibilidad",
+        "primary": "Publica tu barco gratis",
+        "secondary": "O ver planes para vendedores"
+      }
+    },
+    "trendingHulls": "Hulls en tendencia",
+    "viewAll": "Ver todo",
+    "howTitleStart": "Cómo funciona",
+    "howTitleAccent": "OnlyHulls",
+    "howTitleEnd": "",
+    "howSubtitle": "Tres pasos hasta tu próximo barco. Sin brokers ni historias.",
+    "stepLabel": "Paso {number}",
+    "steps": {
+      "browse": {
+        "title": "Explora o recibe matches",
+        "description": "Busca manualmente o deja que nuestra IA encuentre barcos que encajen con tu estilo, presupuesto y objetivos."
+      },
+      "love": {
+        "title": "Encuentra favoritos",
+        "description": "Revisa tus matches, guarda tus favoritos y construye tu lista corta ideal."
+      },
+      "connect": {
+        "title": "Conecta directo",
+        "description": "Escribe a vendedores sin intermediarios. Sin comisiones de broker. Nunca."
+      }
+    },
+    "whyTitleStart": "Por qué los amantes de los barcos eligen",
+    "whyTitleAccent": "OnlyHulls",
+    "values": {
+      "commission": {
+        "title": "Comisión",
+        "description": "Nunca nos quedamos con una parte. Compra y vende sin perder dinero en comisiones."
+      },
+      "matching": {
+        "title": "Matching inteligente",
+        "description": "Nuestra IA construye tu perfil de comprador y puntúa cada anuncio contra él."
+      },
+      "brokers": {
+        "title": "Sin brokers obligatorios",
+        "description": "Conecta directamente con los vendedores. Sin porteros ni intermediarios."
+      },
+      "reach": {
+        "title": "Alcance",
+        "description": "Barcos de todas partes. El comprador correcto encuentra el barco correcto, en todo el mundo."
+      }
+    },
+    "sellerCta": {
+      "titleStart": "Muéstranos tu",
+      "titleAccent": "hull",
+      "description": "Publica tu barco gratis. Nuestra IA te conecta con compradores cualificados en todo el mundo. Sin comisión, sin brokers y sin intermediarios.",
+      "badge": "Publicación gratuita activa en minutos. Mejora después solo si quieres más visibilidad.",
+      "disclaimer": "No se requiere tarjeta. Publica en menos de 5 minutos."
+    },
+    "finalCta": {
+      "titleStart": "¿Listo para hacer",
+      "titleAccent": "olas",
+      "description": "Únete al marketplace de barcos que te pone primero. Cero comisiones. Barcos reales. Conexiones reales.",
+      "primary": "Empezar gratis",
+      "secondary": "Explorar barcos"
+    }
+  },
+  "matchPage": {
+    "metadataTitle": "Matching de barcos con IA",
+    "metadataDescription": "Cuéntanos cuál es tu barco ideal y nuestra IA te conectará con los mejores anuncios, incluso si todavía no sabes exactamente qué buscas.",
+    "badge": "Con IA",
+    "heroTitleStart": "Tu",
+    "heroTitleAccent": "match",
+    "heroTitleEnd": "ideal te espera",
+    "heroDescription": "Cuéntanos cuál es tu barco ideal y nuestra IA te conectará con los mejores anuncios, incluso si todavía no sabes exactamente qué buscas.",
+    "browseInstead": "Explorar barcos",
+    "heroFootnote": "Tu perfil de comprador y tu lista corta quedan guardados en tu cuenta, para que puedas volver más tarde y seguir filtrando sin empezar de cero.",
+    "previewEyebrow": "Vista previa - Ejemplo de resultados con IA",
+    "exampleMatch": "{score}% (ejemplo)",
+    "howItWorks": "Cómo funciona",
+    "stepLabel": "Paso {number}",
+    "whyHeading": "¿Por qué usar matching con IA?",
+    "faqEyebrow": "FAQ para compradores",
+    "faqHeading": "Preguntas que los compradores suelen hacer antes de empezar",
+    "faqSubtitle": "Estas son las preguntas prácticas que vemos con más frecuencia entre compradores que usan OnlyHulls para reducir el mercado rápidamente.",
+    "finalHeadingStart": "¿Listo para encontrar",
+    "finalHeadingAccent": "el adecuado",
+    "finalHeadingEnd": "?",
+    "finalDescription": "Crea una cuenta gratuita, charla con nuestra IA y ve tus matches en minutos.",
+    "steps": {
+      "one": {
+        "title": "Cuéntanos tu sueño",
+        "description": "Habla con nuestra IA para construir tu perfil de comprador. Aprende lo que necesitas: presupuesto, tamaño, estilo de navegación e incluso detalles que todavía no habías pensado."
+      },
+      "two": {
+        "title": "Recibe matches",
+        "description": "Nuestro motor puntúa cada anuncio frente a tu perfil usando similitud con IA y filtros inteligentes. Los mejores matches suben a la parte superior."
+      },
+      "three": {
+        "title": "Conecta directo",
+        "description": "¿Encontraste el adecuado? Conecta directamente con el vendedor. Sin brokers, sin intermediarios y sin comisiones del 10%."
+      }
+    },
+    "features": {
+      "one": {
+        "title": "Aprende lo que quieres",
+        "description": "La IA construye un perfil rico a partir de una conversación natural, no de un formulario tedioso. Detecta preferencias que quizá ni tú habías identificado."
+      },
+      "two": {
+        "title": "Puntúa cada anuncio",
+        "description": "Cada barco recibe un porcentaje de match basado en tu perfil. Ordena por puntuación para ver qué encaja mejor contigo."
+      },
+      "three": {
+        "title": "Privado y seguro",
+        "description": "Tu perfil es tuyo. Los vendedores ven tu interés, no tus datos. Tú decides cuándo y cómo conectas."
+      },
+      "four": {
+        "title": "Cero comisión",
+        "description": "No nos quedamos con parte del trato. El matching es gratis. Las funciones premium son opcionales."
+      }
+    },
+    "startSignals": {
+      "one": {
+        "title": "Tarda solo un par de minutos",
+        "description": "Empieza con una charla breve en lugar de un formulario largo. La IA construye tu perfil de comprador a partir de esa conversación."
+      },
+      "two": {
+        "title": "Tus resultados quedan guardados",
+        "description": "Tus matches, señales de lista corta y tu perfil de comprador permanecen asociados a tu cuenta cuando vuelves."
+      },
+      "three": {
+        "title": "Contacto directo con el vendedor",
+        "description": "Cuando estés listo, conectas directamente con el vendedor. OnlyHulls no añade comisión de broker."
+      }
+    },
+    "stackSignals": {
+      "aiLive": "El matching con IA está activo",
+      "aiLiveValue": "El reranking funciona con {provider}.",
+      "smartMatching": "El matching inteligente está activo",
+      "smartMatchingValue": "Las reglas, las señales de shortlist y los filtros del comprador siguen haciendo gran parte del trabajo.",
+      "semanticOn": "La clasificación semántica está activa",
+      "semanticOnValue": "La similitud del perfil funciona con embeddings de {provider}.",
+      "specRanking": "La clasificación por especificaciones está activa",
+      "specRankingValue": "El presupuesto, el tamaño, la ubicación y el tipo de barco siguen influyendo en la puntuación.",
+      "saved": "Tus matches quedan guardados",
+      "savedValue": "Vuelve cuando quieras para ordenar por precio, tamaño, año o más recientes sin empezar de nuevo."
+    },
+    "faqs": {
+      "one": {
+        "question": "¿Cómo decide OnlyHulls qué es un buen match?",
+        "answer": "OnlyHulls combina tu perfil de comprador, el tipo de barco, el presupuesto, las especificaciones, señales de ubicación y ranking asistido por IA para puntuar los anuncios. Los matches más fuertes suben arriba, pero siempre puedes explorar todo el mercado por tu cuenta."
+      },
+      "two": {
+        "question": "¿Tengo que saber exactamente qué marca y modelo quiero?",
+        "answer": "No. El flujo de matching está pensado para compradores que conocen mejor su estilo de vida, presupuesto y misión que el barco exacto. La IA usa esas señales para mostrar opciones probables y explicar los compromisos."
+      },
+      "three": {
+        "question": "¿Puedo seguir navegando y ordenando barcos manualmente después de recibir matches?",
+        "answer": "Sí. Tus matches se guardan y aún puedes ordenar por precio, tamaño, año y fecha del anuncio mientras comparas opciones dentro del inventario más amplio."
+      },
+      "four": {
+        "question": "¿Qué obtengo con Buyer Plus?",
+        "answer": "Buyer Plus desbloquea matching con IA a más largo plazo, guardados ilimitados, mejores herramientas para la lista corta y alertas de búsquedas guardadas durante 90 días, manteniendo el contacto directo con vendedores sin comisión."
+      }
+    }
+  },
+  "boatsPage": {
+    "loadError": "No se pudieron cargar los barcos. Inténtalo de nuevo.",
+    "loadMoreError": "No se pudieron cargar más barcos. Inténtalo de nuevo.",
+    "saveSearchError": "No se pudo guardar la búsqueda ahora mismo.",
+    "saveSearchDuplicate": "Esta búsqueda ya está guardada.",
+    "saveSearchSuccess": "Búsqueda guardada. Los nuevos barcos coincidentes aparecerán en tus alertas.",
+    "heading": "Explorar barcos",
+    "boatCount": "{count} barcos",
+    "saving": "Guardando...",
+    "saveSearch": "Guardar búsqueda",
+    "signInToSave": "Inicia sesión para guardar",
+    "compareShortlist": "Lista de comparación: {count}/{max} barcos seleccionados.",
+    "compareFilled": "{count} ocupados",
+    "compareOpenAriaSelected": "Abrir comparación con {count} barcos seleccionados",
+    "compareOpenAria": "Abrir página de comparación",
+    "openCompare": "Abrir comparación",
+    "comparePage": "Página de comparación",
+    "searchPlaceholder": "Buscar barcos...",
+    "searchButton": "Buscar",
+    "clearFilter": "Quitar filtro",
+    "minPrice": "Precio mín.",
+    "maxPrice": "Precio máx.",
+    "minYear": "Año mín.",
+    "maxYear": "Año máx.",
+    "allBoatTypes": "Todos los tipos",
+    "allRigs": "Todos los aparejos",
+    "applyFilters": "Aplicar",
+    "sortBy": "Ordenar por",
+    "sort": {
+      "price": "Precio",
+      "size": "Tamaño",
+      "year": "Año",
+      "newest": "Más reciente"
+    },
+    "view": {
+      "grid": "Cuadrícula",
+      "rows": "Filas"
+    },
+    "searchHubsTitle": "Explora hubs de búsqueda",
+    "searchHubsSubtitle": "Usa páginas estables de exploración para marcas, regiones y tipos de barco populares.",
+    "retry": "Reintentar",
+    "noResultsTitle": "No se encontraron hulls",
+    "noResultsSubtitle": "No encontramos un anuncio activo para esta búsqueda exacta. Borra los filtros actuales o entra en una de las rutas vivas más fuertes que aparecen abajo.",
+    "clearFilters": "Borrar filtros",
+    "browseCatamarans": "Explorar catamaranes",
+    "puertoRicoBoats": "Barcos en Puerto Rico",
+    "liveMarketsTitle": "Prueba estos mercados activos",
+    "liveMarketsSubtitle": "Estos hubs de exploración suelen mantenerse más limpios y normalmente recuperan la búsqueda más rápido.",
+    "loadingMore": "Cargando...",
+    "showMore": "Mostrar más ({count} restantes)",
+    "boatFallback": "Barco",
+    "foundOn": "Encontrado en",
+    "addedToCompare": "Añadido a comparar",
+    "compare": "Comparar",
+    "viewListing": "Ver anuncio",
+    "boatTypes": {
+      "catamaran": "Catamarán",
+      "trimaran": "Trimarán",
+      "monohull": "Monocasco",
+      "powerboat": "Lancha"
+    },
+    "rigTypes": {
+      "sloop": "Sloop",
+      "cutter": "Cutter",
+      "ketch": "Ketch",
+      "yawl": "Yawl",
+      "schooner": "Goleta"
+    }
+  },
+  "sellPage": {
+    "metadataTitle": "Vende tu barco",
+    "metadataDescription": "Publica tu barco en OnlyHulls. Sin comisiones, sin brokers y con contacto directo con compradores encontrados por IA en todo el mundo.",
+    "badge": "Para vendedores",
+    "heroTitleStart": "Conviértete en",
+    "heroTitleAccent": "Creator",
+    "heroDescription": "Muéstranos tu hull. Publica tu barco gratis y deja que nuestra IA te conecte con compradores cualificados en todo el mundo. Sin brokers, sin intermediarios y sin porcentaje sobre tu venta.",
+    "seePricing": "Ver precios",
+    "howHeading": "Cómo funciona vender",
+    "whyHeadingStart": "Por qué vender en",
+    "whyHeadingAccent": "OnlyHulls",
+    "whyHeadingEnd": "",
+    "comparisonHeading": "OnlyHulls vs. brokers tradicionales",
+    "faqEyebrow": "FAQ para vendedores",
+    "faqHeading": "Las preguntas prácticas que hacen los vendedores antes de publicar",
+    "faqSubtitle": "Estas respuestas aclaran mejor el modelo comercial para propietarios que están decidiendo si publicar en OnlyHulls.",
+    "finalHeadingStart": "¿Listo para mostrarnos tus",
+    "finalHeadingAccent": "hulls",
+    "finalHeadingEnd": "?",
+    "finalDescription": "Crea una cuenta gratuita y publica tu barco en minutos. No se requiere tarjeta.",
+    "stepFootnote": "El pulido del anuncio y la mejora de presentación asistidos por IA están incluidos en los planes de vendedor de nivel superior.",
+    "table": {
+      "feature": "Función",
+      "onlyHulls": "OnlyHulls",
+      "broker": "Broker"
+    },
+    "steps": {
+      "one": {
+        "title": "Crea tu anuncio",
+        "description": "Introduce los datos de tu barco: marca, modelo, especificaciones, estado y precio. Nuestro asistente guiado te acompaña paso a paso."
+      },
+      "two": {
+        "title": "Añade fotos",
+        "description": "Sube fotos para mostrar tu barco. Las buenas fotos generan más interés, y te ayudamos a destacar primero las mejores."
+      },
+      "three": {
+        "title": "La IA hace el trabajo",
+        "description": "Nuestra IA analiza tu anuncio, lo etiqueta con rasgos como bluewater, liveaboard y race-ready, y lo conecta con compradores cualificados. Los planes Featured y Broker también incluyen ayuda de IA para limpiar el texto, la estructura y la presentación del anuncio."
+      },
+      "four": {
+        "title": "Conecta con compradores",
+        "description": "Cuando un comprador se interese, conectas directamente. Sin broker de por medio y sin comisión por la venta."
+      }
+    },
+    "benefits": {
+      "one": {
+        "title": "$0 de comisión",
+        "description": "Quédate con cada dólar de tu venta. Nunca nos llevamos una parte y publicar y recibir matches empieza gratis."
+      },
+      "two": {
+        "title": "Alcance global",
+        "description": "Tu anuncio es visible para compradores de todo el mundo. El matching con IA ayuda a que te encuentren los compradores correctos, no solo los locales."
+      },
+      "three": {
+        "title": "Tú mantienes el control",
+        "description": "Decides con quién hablar y cuándo. Sin llamadas frías de brokers y sin presión para aceptar ofertas bajas."
+      },
+      "four": {
+        "title": "Publica en minutos",
+        "description": "Nuestro asistente paso a paso lo hace rápido. Introduce lo básico, añade fotos y publícalo."
+      }
+    },
+    "comparison": {
+      "commission": {
+        "feature": "Comisión",
+        "us": "$0",
+        "them": "8-10% del precio de venta"
+      },
+      "listingFee": {
+        "feature": "Tarifa por anuncio",
+        "us": "Gratis",
+        "them": "$200-500+"
+      },
+      "buyerMatching": {
+        "feature": "Matching de compradores",
+        "us": "Con IA",
+        "them": "Manual, limitado"
+      },
+      "reach": {
+        "feature": "Alcance",
+        "us": "Global",
+        "them": "Local / regional"
+      },
+      "timeToList": {
+        "feature": "Tiempo para publicar",
+        "us": "Minutos",
+        "them": "Días o semanas"
+      }
+    },
+    "faqs": {
+      "one": {
+        "question": "¿Necesito pagar antes de poder crear un anuncio?",
+        "answer": "No. Puedes crear un anuncio gratis, dejarlo en borrador o en revisión y decidir más tarde si quieres quedarte en el plan gratuito o mejorar a un plan de pago de 90 días para vendedores."
+      },
+      "two": {
+        "question": "¿Qué hace realmente la IA para los vendedores?",
+        "answer": "OnlyHulls analiza el anuncio, lo etiqueta según la intención de compra y ayuda a dirigirlo a los compradores adecuados. Los planes de nivel superior también incluyen ayuda de IA para limpiar el texto, la estructura y la presentación del anuncio."
+      },
+      "three": {
+        "question": "¿Cuánto dura un plan de pago para vendedores?",
+        "answer": "Los planes Creator y Featured Creator se cobran por periodos de 90 días, lo que da a los vendedores una ventana de publicación más larga sin caer en la trampa de una suscripción mes a mes."
+      },
+      "four": {
+        "question": "¿Os quedáis con una comisión cuando vendo mi barco?",
+        "answer": "No. OnlyHulls no cobra comisión estilo broker. Tú te quedas con el importe de la venta y conectas directamente con los compradores."
+      }
+    }
+  },
+  "aboutPage": {
+    "metadataTitle": "Acerca de - OnlyHulls",
+    "metadataDescription": "OnlyHulls es un marketplace de barcos con IA creado para auténticos amantes del mar.",
+    "heading": "Acerca de OnlyHulls",
+    "intro": "OnlyHulls es un marketplace de barcos creado por personas que realmente aman los barcos. Usamos IA para ayudar a los compradores a encontrar el barco adecuado más rápido y a los vendedores a llegar a compradores cualificados y serios.",
+    "problem": "El proceso de compra de barcos está roto. Los anuncios están dispersos en decenas de sitios de brokers. Las especificaciones son inconsistentes. Las fotos son malas. Y no sabes si un barco realmente encaja con lo que necesitas hasta que has dedicado horas a investigarlo.",
+    "solution": "Estamos solucionando eso agregando anuncios de los mejores sitios de brokers, enriqueciéndolos con especificaciones extraídas por IA y conectando compradores con barcos según sus necesidades reales, no solo precio y ubicación.",
+    "cards": {
+      "matching": {
+        "title": "Matching con IA",
+        "description": "Cuéntanos qué quieres. Nuestra IA perfila tus necesidades y clasifica cada barco del catálogo según lo bien que encaja."
+      },
+      "commission": {
+        "title": "Cero comisión",
+        "description": "Explorar, buscar y contactar con vendedores siempre es gratis. Cobramos por inteligencia, no por conectar personas."
+      },
+      "boats": {
+        "title": "Solo barcos reales",
+        "description": "Cada anuncio proviene de brokers verificados o de propietarios reales. Sin engaños. Sin anuncios fantasma."
+      }
+    },
+    "contactHeading": "Ponte en contacto",
+    "contactDescription": "¿Preguntas, comentarios o propuestas de colaboración? Escríbenos a"
+  },
+  "privacyPage": {
+    "metadataTitle": "Política de privacidad - OnlyHulls",
+    "metadataDescription": "Cómo recopila, usa y protege OnlyHulls tus datos.",
+    "heading": "Política de privacidad",
+    "lastUpdated": "Última actualización: 1 de abril de 2026",
+    "sections": {
+      "informationCollected": {
+        "title": "1. Información que recopilamos",
+        "accountData": "Datos de la cuenta: dirección de correo, nombre visible y contraseña cifrada cuando te registras.",
+        "buyerProfile": "Perfil del comprador: preferencias de barco, rango de presupuesto, nivel de experiencia y preferencias de ubicación cuando completas el cuestionario de matching con IA.",
+        "usageData": "Datos de uso: páginas visitadas, barcos vistos, búsquedas y clics de contacto para ayudarnos a mejorar la plataforma y ofrecer mejores recomendaciones."
+      },
+      "howWeUse": {
+        "title": "2. Cómo usamos tus datos",
+        "items": {
+          "one": "Para ofrecer matching y recomendaciones de barcos con IA",
+          "two": "Para conectar compradores con vendedores y anuncios de brokers",
+          "three": "Para enviar correos transaccionales (verificación, restablecimiento de contraseña, notificaciones de match)",
+          "four": "Para mejorar la búsqueda, los algoritmos de matching y la experiencia de usuario",
+          "five": "Para detectar y prevenir fraude o abuso"
+        }
+      },
+      "sharing": {
+        "title": "3. Cesión de datos",
+        "intro": "No vendemos tus datos personales. Solo los compartimos con:",
+        "seller": "Vendedores: tu nombre y correo cuando inicias contacto (con tu consentimiento)",
+        "providers": "Proveedores de servicio: envío de correo (Resend), procesamiento de pagos (Stripe) e infraestructura de alojamiento",
+        "legal": "Requisitos legales: cuando la ley lo exija o para proteger nuestros derechos"
+      },
+      "security": {
+        "title": "4. Seguridad de los datos",
+        "body": "Las contraseñas se cifran con bcrypt. Todas las conexiones usan cifrado HTTPS/TLS. El procesamiento de pagos lo gestiona Stripe; nosotros nunca almacenamos números de tarjeta."
+      },
+      "rights": {
+        "title": "5. Tus derechos",
+        "body": "Puedes solicitar acceso, corrección o eliminación de tus datos personales en cualquier momento poniéndote en contacto con nosotros. También puedes borrar tu cuenta desde la página de ajustes de cuenta."
+      },
+      "cookies": {
+        "title": "6. Cookies",
+        "body": "Usamos cookies esenciales para autenticación y gestión de sesión. También usamos identificadores de sesión anónimos para seguir patrones de navegación y mejorar las recomendaciones. No usamos cookies publicitarias de terceros."
+      },
+      "contact": {
+        "title": "7. Contacto",
+        "body": "Para preguntas de privacidad o solicitudes de datos, contáctanos en"
+      }
+    }
+  },
+  "termsPage": {
+    "metadataTitle": "Términos del servicio - OnlyHulls",
+    "metadataDescription": "Términos del servicio para usar el marketplace de barcos OnlyHulls.",
+    "heading": "Términos del servicio",
+    "lastUpdated": "Última actualización: 1 de abril de 2026",
+    "sections": {
+      "acceptance": {
+        "title": "1. Aceptación de los términos",
+        "body": "Al acceder o usar OnlyHulls (\"la Plataforma\"), aceptas quedar sujeto a estos Términos del servicio. Si no estás de acuerdo, no uses la Plataforma."
+      },
+      "service": {
+        "title": "2. Descripción del servicio",
+        "body": "OnlyHulls es un marketplace de barcos con IA que conecta compradores y vendedores. Agregamos anuncios de brokers externos y ofrecemos herramientas para anuncios directos. OnlyHulls no posee, inspecciona ni garantiza ninguna embarcación listada en la Plataforma."
+      },
+      "accounts": {
+        "title": "3. Cuentas de usuario",
+        "body": "Debes proporcionar información precisa al crear una cuenta. Eres responsable de mantener la seguridad de tus credenciales. Debes tener al menos 18 años para usar la Plataforma."
+      },
+      "transactions": {
+        "title": "4. Anuncios y transacciones",
+        "body": "Los vendedores son los únicos responsables de la exactitud de sus anuncios, incluidos precio, especificaciones, estado y fotografías. OnlyHulls no participa, media ni garantiza ninguna transacción entre compradores y vendedores. Todas las compras se realizan directamente entre las partes implicadas."
+      },
+      "thirdParty": {
+        "title": "5. Anuncios de terceros",
+        "body": "Muchos anuncios de OnlyHulls proceden de sitios web de brokers externos. Proporcionamos enlaces a esos anuncios originales por comodidad. OnlyHulls no es responsable de la exactitud, disponibilidad o contenido de esos anuncios de terceros."
+      },
+      "ai": {
+        "title": "6. Funciones de IA",
+        "body": "OnlyHulls usa inteligencia artificial para perfilar compradores, hacer matching de barcos y analizar anuncios. Las recomendaciones y puntuaciones generadas por IA son solo informativas y no deben ser la única base para decisiones de compra. Realiza siempre tu propia due diligence, incluyendo inspecciones y peritajes independientes."
+      },
+      "liability": {
+        "title": "7. Limitación de responsabilidad",
+        "body": "OnlyHulls se ofrece \"tal cual\" sin garantías de ningún tipo. No somos responsables de daños derivados del uso de la Plataforma, incluidos, entre otros, pérdidas por transacciones, anuncios inexactos o recomendaciones de IA."
+      },
+      "contact": {
+        "title": "8. Contacto",
+        "body": "Para preguntas sobre estos términos, contáctanos en"
+      }
+    }
+  },
+  "notFound": {
+    "title": "Perdido en el mar",
+    "description": "Esta página no existe o el anuncio ya fue eliminado.",
+    "browseBoats": "Explorar barcos",
+    "goHome": "Ir al inicio"
+  }
+}

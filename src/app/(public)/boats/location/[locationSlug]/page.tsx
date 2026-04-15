@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
+import { localizeSeoHubDefinition } from "@/i18n/copy/seo";
 import {
   buildSeoHubMetadata,
   getLocationHub,
@@ -21,7 +23,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locationSlug } = await params;
   const hub = requireSeoHub(getLocationHub(locationSlug));
-  return buildSeoHubMetadata(hub);
+  const locale = await getLocale();
+  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub));
 }
 
 export default async function LocationHubPage({

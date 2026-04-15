@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations("auth.forgotPassword");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,26 +29,26 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-[80vh] items-center justify-center px-5">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Reset your password</h1>
+          <h1 className="text-2xl font-bold">{t("heading")}</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Enter your email and we&apos;ll send you a reset link
+            {t("subtitle")}
           </p>
         </div>
 
         {sent ? (
           <div className="space-y-4 text-center">
             <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 text-sm text-green-400">
-              If an account with that email exists, we&apos;ve sent a password reset link.
+              {t("sentMessage")}
             </div>
             <Link href="/sign-in" className="text-sm text-primary hover:text-primary-light">
-              Back to Sign In
+              {t("backToSignIn")}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-text-secondary">
-                Email
+                {t("email")}
               </label>
               <input
                 id="email"
@@ -62,15 +64,15 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full rounded-full bg-accent-btn px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
             >
-              {loading ? "Sending..." : "Send reset link"}
+              {loading ? t("sending") : t("submit")}
             </button>
           </form>
         )}
 
         <p className="text-center text-sm text-text-secondary">
-          Remember your password?{" "}
+          {t("rememberPassword")}{" "}
           <Link href="/sign-in" className="font-medium text-primary hover:text-primary-light">
-            Sign in
+            {t("signIn")}
           </Link>
         </p>
       </div>
