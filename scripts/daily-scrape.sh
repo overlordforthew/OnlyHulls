@@ -74,6 +74,27 @@ rewrite_database_url_for_host
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 
+should_run_daily_source() {
+    local source_key="$1"
+    local source_name="$2"
+    local policy_line
+    local action
+    local status
+    local reason
+
+    policy_line=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/source-policy-status.ts" "$source_key" "$source_name")
+    IFS=$'\t' read -r action status reason <<< "$policy_line"
+
+    if [ "$action" = "run" ]; then
+        return 0
+    fi
+
+    TOTAL_POLICY_SKIPS=$((TOTAL_POLICY_SKIPS + 1))
+    log "  SKIPPED: ${source_name} is ${status} in source policy"
+    log "  ${reason}"
+    return 1
+}
+
 run_import_cycle() {
     local json_file="$1"
     local source_key="$2"
@@ -94,67 +115,78 @@ log "=== OnlyHulls daily scrape (limit=$LIMIT) ==="
 
 TOTAL_IMPORTED=0
 TOTAL_SKIPPED=0
+TOTAL_POLICY_SKIPS=0
 
 # --- Sailboat Listings (most reliable, pure sailing) ---
 log "Scraping sailboatlistings.com..."
-if python3 "$SCRAPER_DIR/scrape_sailboats.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_boats.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from sailboatlistings.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_boats.json sailboatlistings
+if should_run_daily_source sailboatlistings "Sailboat Listings"; then
+    if python3 "$SCRAPER_DIR/scrape_sailboats.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_boats.json'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats from sailboatlistings.com"
+        if [ "$COUNT" -gt 0 ]; then
+            run_import_cycle /tmp/scraped_boats.json sailboatlistings
+        fi
+    else
+        log "  FAILED: sailboatlistings scrape error"
     fi
-else
-    log "  FAILED: sailboatlistings scrape error"
 fi
 
 # --- Apollo Duck â€” DROPPED (prices are JS-rendered, no static HTML access) ---
 
 # --- The Yacht Market (sailing boats, bluewater focus) ---
 log "Scraping theyachtmarket.com..."
-if python3 "$SCRAPER_DIR/scrape_yachtmarket.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_yachtmarket.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from theyachtmarket.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_yachtmarket.json theyachtmarket
+if should_run_daily_source theyachtmarket "TheYachtMarket"; then
+    if python3 "$SCRAPER_DIR/scrape_yachtmarket.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_yachtmarket.json'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats from theyachtmarket.com"
+        if [ "$COUNT" -gt 0 ]; then
+            run_import_cycle /tmp/scraped_yachtmarket.json theyachtmarket
+        fi
+    else
+        log "  FAILED: theyachtmarket scrape error"
     fi
-else
-    log "  FAILED: theyachtmarket scrape error"
 fi
 
 # --- Moorings Brokerage (charter exit fleet catamarans) ---
 log "Scraping mooringsbrokerage.com..."
-if python3 "$SCRAPER_DIR/scrape_moorings.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_moorings.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from mooringsbrokerage.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle /tmp/scraped_moorings.json moorings
+if should_run_daily_source moorings "Moorings Brokerage"; then
+    if python3 "$SCRAPER_DIR/scrape_moorings.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/scraped_moorings.json'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats from mooringsbrokerage.com"
+        if [ "$COUNT" -gt 0 ]; then
+            run_import_cycle /tmp/scraped_moorings.json moorings
+        fi
+    else
+        log "  FAILED: mooringsbrokerage scrape error"
     fi
-else
-    log "  FAILED: mooringsbrokerage scrape error"
 fi
 
 # --- Dream Yacht Sales (SSR cards, strong catamaran relevance) ---
 log "Scraping dreamyachtsales.com..."
-if python3 "$SCRAPER_DIR/scrape_dreamyacht.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_dreamyacht.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from dreamyachtsales.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle "${TMP_DIR}/scraped_dreamyacht.json" dreamyacht
+if should_run_daily_source dreamyacht "Dream Yacht Sales"; then
+    if python3 "$SCRAPER_DIR/scrape_dreamyacht.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_dreamyacht.json'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats from dreamyachtsales.com"
+        if [ "$COUNT" -gt 0 ]; then
+            run_import_cycle "${TMP_DIR}/scraped_dreamyacht.json" dreamyacht
+        fi
+    else
+        log "  FAILED: dreamyacht scrape error"
     fi
-else
-    log "  FAILED: dreamyacht scrape error"
 fi
 
 # --- CatamaranSite (SSR cards, catamarans only) ---
 log "Scraping catamaransite.com..."
-if python3 "$SCRAPER_DIR/scrape_catamaransite.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
-    COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_catamaransite.json'))))" 2>/dev/null || echo 0)
-    log "  Scraped $COUNT boats from catamaransite.com"
-    if [ "$COUNT" -gt 0 ]; then
-        run_import_cycle "${TMP_DIR}/scraped_catamaransite.json" catamaransite
+if should_run_daily_source catamaransite "CatamaranSite"; then
+    if python3 "$SCRAPER_DIR/scrape_catamaransite.py" "$LIMIT" >> "$LOG_FILE" 2>&1; then
+        COUNT=$(python3 -c "import json; print(len(json.load(open('${TMP_DIR}/scraped_catamaransite.json'))))" 2>/dev/null || echo 0)
+        log "  Scraped $COUNT boats from catamaransite.com"
+        if [ "$COUNT" -gt 0 ]; then
+            run_import_cycle "${TMP_DIR}/scraped_catamaransite.json" catamaransite
+        fi
+    else
+        log "  FAILED: catamaransite scrape error"
     fi
-else
-    log "  FAILED: catamaransite scrape error"
 fi
 
 # --- Expire stale listings (not seen in 14+ days) ---
@@ -177,6 +209,7 @@ SOURCE_BREAKDOWN=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c
 log ""
 log "=== Summary ==="
 log "New imports: $TOTAL_IMPORTED"
+log "Policy skips: $TOTAL_POLICY_SKIPS"
 log "Total active listings: $TOTAL_BOATS"
 log "By source:"
 echo "$SOURCE_BREAKDOWN" | while read line; do

@@ -54,7 +54,8 @@ async function main() {
        )::text AS low_price_count
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
-     WHERE b.status = 'active'
+     WHERE b.listing_source = 'imported'
+       AND b.status = 'active'
      GROUP BY COALESCE(b.source_name, 'Platform')
      ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC,
               COUNT(*) DESC

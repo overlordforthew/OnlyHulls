@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 import {
   assertSourceImportAllowed,
+  getDailySourceDecision,
   getSourceDecisionByKey,
   getSourceDecisionByName,
+  shouldRunSourceInDailyPortfolio,
 } from "../../src/lib/source-policy";
 
 const EXPECTED_DECISIONS = [
@@ -12,120 +14,122 @@ const EXPECTED_DECISIONS = [
     key: "sailboatlistings",
     name: "Sailboat Listings",
     status: "keep",
-    reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed 8,386 visible listings out of 9,906 active rows, making it the largest buyer-visible sailing source.",
+    reasonPrefix: "Keep in the daily portfolio;",
   },
   {
     key: "theyachtmarket",
     name: "TheYachtMarket",
     status: "keep",
-    reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed 3,522 visible listings out of 3,665 active rows with strong sailing relevance.",
+    reasonPrefix: "Keep in the daily portfolio;",
   },
   {
     key: "dreamyacht",
     name: "Dream Yacht Sales",
     status: "keep",
-    reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed 95 visible listings out of 97 active rows after the recent image and location recovery work.",
+    reasonPrefix: "Keep in the daily portfolio;",
   },
   {
     key: "catamaransite",
     name: "CatamaranSite",
     status: "keep",
-    reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed all 44 active CatamaranSite rows buyer-visible.",
+    reasonPrefix: "Keep in the daily portfolio;",
   },
   {
     key: "moorings",
     name: "Moorings Brokerage",
     status: "keep",
-    reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed 13 visible listings out of 14 active rows for this high-fit charter-exit source.",
+    reasonPrefix: "Keep in the daily portfolio;",
   },
   {
     key: "rightboat",
     name: "Rightboat",
     status: "test",
-    reason:
-      "Keep Rightboat in the controlled-test lane only; the operational source directory still flags aggressive rate limiting, and production currently has 0 active imported rows on 2026-04-14.",
+    reasonPrefix: "Keep Rightboat in the controlled-test lane only;",
   },
   {
     key: "apolloduck_us",
     name: "Apollo Duck US",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper can capture real images; production source health on 2026-04-13 showed 0 visible listings out of 89 active rows.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "camperandnicholsons",
     name: "Camper & Nicholsons",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper follows detail pages for real location and image extraction; production source health on 2026-04-13 showed 0 visible listings out of 90 active rows.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "boote_yachten",
     name: "Boote & Yachten",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper follows detail pages for real image extraction; production source health on 2026-04-14 showed 0 visible listings out of 23 active rows with all 23 missing images.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "denison",
     name: "Denison Yachting",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-14 showed 0 visible listings out of 21 active rows with all 21 missing locations and images.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "multihullcompany",
     name: "Multihull Company",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper captures real images from listing or detail pages; production source health on 2026-04-14 showed 0 visible listings out of 17 active rows with all 17 missing images.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "vi_yachtbroker",
     name: "VI Yacht Broker",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper follows detail pages for real image extraction; production source health on 2026-04-14 showed 0 visible listings out of 15 active rows with all 15 missing images.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "multihullworld",
     name: "Multihull World",
     status: "hold",
-    reason:
-      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-14 showed 0 visible listings out of 14 active rows with all 14 missing locations and images.",
+    reasonPrefix: "Hold new imports until",
   },
   {
     key: "catamarans_com",
     name: "Catamarans.com",
     status: "hold",
-    reason:
-      "Hold new imports until location extraction is materially better and powerboat/RIB bleed is filtered out; production source health on 2026-04-14 showed only 10 visible listings out of 88 active rows, with 78 missing locations and 21 active used-power URLs.",
+    reasonPrefix: "Hold new imports until",
   },
 ] as const;
 
 test("source policy resolves explicit decisions by key and name", () => {
   for (const decision of EXPECTED_DECISIONS) {
-    assert.deepEqual(getSourceDecisionByKey(decision.key), {
-      status: decision.status,
-      sourceName: decision.name,
-      reason: decision.reason,
-    });
-    assert.deepEqual(getSourceDecisionByName(decision.name), {
-      status: decision.status,
-      sourceName: decision.name,
-      reason: decision.reason,
-    });
+    const byKey = getSourceDecisionByKey(decision.key);
+    const byName = getSourceDecisionByName(decision.name);
+
+    assert.equal(byKey?.status, decision.status);
+    assert.equal(byKey?.sourceName, decision.name);
+    assert.match(byKey?.reason || "", new RegExp(`^${decision.reasonPrefix}`));
+
+    assert.equal(byName?.status, decision.status);
+    assert.equal(byName?.sourceName, decision.name);
+    assert.match(byName?.reason || "", new RegExp(`^${decision.reasonPrefix}`));
   }
 });
 
 test("source policy leaves unrelated sources undecided", () => {
   assert.equal(getSourceDecisionByKey("boats_com"), null);
   assert.equal(getSourceDecisionByName("Boats.com"), null);
+});
+
+test("source policy exposes the daily scrape run decision", () => {
+  for (const decision of EXPECTED_DECISIONS) {
+    const daily = getDailySourceDecision(decision.key, decision.name);
+
+    assert.equal(daily.status, decision.status);
+    assert.equal(daily.sourceName, decision.name);
+    assert.equal(daily.run, decision.status === "keep");
+    assert.equal(shouldRunSourceInDailyPortfolio(decision.key), decision.status === "keep");
+  }
+
+  const undecided = getDailySourceDecision("boats_com", "Boats.com");
+  assert.equal(undecided.run, false);
+  assert.equal(undecided.status, "undecided");
+  assert.match(undecided.reason, /not in the daily portfolio yet/i);
 });
 
 test("source policy blocks only held imports", () => {

@@ -1,7 +1,15 @@
 export type SourceDecisionStatus = "keep" | "test" | "hold";
+export type DailySourceDecisionStatus = SourceDecisionStatus | "undecided";
 
 export type SourceDecision = {
   status: SourceDecisionStatus;
+  sourceName: string;
+  reason: string;
+};
+
+export type DailySourceDecision = {
+  run: boolean;
+  status: DailySourceDecisionStatus;
   sourceName: string;
   reason: string;
 };
@@ -11,7 +19,7 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     status: "keep",
     sourceName: "Sailboat Listings",
     reason:
-      "Keep in the daily portfolio; production source health on 2026-04-14 showed 8,386 visible listings out of 9,906 active rows, making it the largest buyer-visible sailing source.",
+      "Keep in the daily portfolio; production source health on 2026-04-15 showed 8,242 visible listings out of 9,906 active rows, still making it the largest buyer-visible sailing source.",
   },
   theyachtmarket: {
     status: "keep",
@@ -41,19 +49,19 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     status: "test",
     sourceName: "Rightboat",
     reason:
-      "Keep Rightboat in the controlled-test lane only; the operational source directory still flags aggressive rate limiting, and production currently has 0 active imported rows on 2026-04-14.",
+      "Keep Rightboat in the controlled-test lane only; the operational source directory still flags aggressive rate limiting, and production currently has 0 active imported rows on 2026-04-15.",
   },
   apolloduck_us: {
     status: "hold",
     sourceName: "Apollo Duck US",
     reason:
-      "Hold new imports until the scraper can capture real images; production source health on 2026-04-13 showed 0 visible listings out of 89 active rows.",
+      "Hold new imports until the scraper can capture real images and locations; production source health on 2026-04-15 showed 0 visible listings out of 89 active rows, with 87 missing locations and 89 missing images.",
   },
   camperandnicholsons: {
     status: "hold",
     sourceName: "Camper & Nicholsons",
     reason:
-      "Hold new imports until the scraper follows detail pages for real location and image extraction; production source health on 2026-04-13 showed 0 visible listings out of 90 active rows.",
+      "Hold new imports until the scraper follows detail pages for real location and image extraction; production source health on 2026-04-15 showed 0 visible listings out of 90 active rows, with all 90 missing locations and images.",
   },
   boote_yachten: {
     status: "hold",
@@ -65,31 +73,31 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     status: "hold",
     sourceName: "Denison Yachting",
     reason:
-      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-14 showed 0 visible listings out of 21 active rows with all 21 missing locations and images.",
+      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-15 showed 0 visible listings out of 21 active rows with all 21 missing locations and images.",
   },
   multihullcompany: {
     status: "hold",
     sourceName: "Multihull Company",
     reason:
-      "Hold new imports until the scraper captures real images from listing or detail pages; production source health on 2026-04-14 showed 0 visible listings out of 17 active rows with all 17 missing images.",
+      "Hold new imports until the scraper captures real images from listing or detail pages; production source health on 2026-04-15 showed 0 visible listings out of 17 active rows with all 17 missing images.",
   },
   vi_yachtbroker: {
     status: "hold",
     sourceName: "VI Yacht Broker",
     reason:
-      "Hold new imports until the scraper follows detail pages for real image extraction; production source health on 2026-04-14 showed 0 visible listings out of 15 active rows with all 15 missing images.",
+      "Hold new imports until the scraper follows detail pages for real image extraction; production source health on 2026-04-15 showed 0 visible listings out of 15 active rows with all 15 missing images.",
   },
   multihullworld: {
     status: "hold",
     sourceName: "Multihull World",
     reason:
-      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-14 showed 0 visible listings out of 14 active rows with all 14 missing locations and images.",
+      "Hold new imports until the scraper follows detail pages for real image and location extraction; production source health on 2026-04-15 showed 0 visible listings out of 14 active rows with all 14 missing locations and images.",
   },
   catamarans_com: {
     status: "hold",
     sourceName: "Catamarans.com",
     reason:
-      "Hold new imports until location extraction is materially better and powerboat/RIB bleed is filtered out; production source health on 2026-04-14 showed only 10 visible listings out of 88 active rows, with 78 missing locations and 21 active used-power URLs.",
+      "Hold new imports until location extraction is materially better and powerboat/RIB bleed is filtered out; production source health on 2026-04-15 still showed only 10 visible listings out of 88 active rows, with 78 missing locations and 21 active used-power URLs.",
   },
 };
 
@@ -105,6 +113,32 @@ export function getSourceDecisionByName(sourceName: string | null | undefined) {
   const normalized = String(sourceName || "").trim().toLowerCase();
   if (!normalized) return null;
   return SOURCE_DECISIONS_BY_NAME.get(normalized) ?? null;
+}
+
+export function getDailySourceDecision(sourceKey: string, fallbackSourceName?: string): DailySourceDecision {
+  const decision = getSourceDecisionByKey(sourceKey);
+  const sourceName = decision?.sourceName || fallbackSourceName || sourceKey;
+
+  if (!decision) {
+    return {
+      run: false,
+      status: "undecided",
+      sourceName,
+      reason:
+        `${sourceName} is not in the daily portfolio yet; add an explicit source policy decision after a source-health review before scraping it in production.`,
+    };
+  }
+
+  return {
+    run: decision.status === "keep",
+    status: decision.status,
+    sourceName: decision.sourceName,
+    reason: decision.reason,
+  };
+}
+
+export function shouldRunSourceInDailyPortfolio(sourceKey: string) {
+  return getDailySourceDecision(sourceKey).run;
 }
 
 export function assertSourceImportAllowed(sourceKey: string, sourceName: string) {
