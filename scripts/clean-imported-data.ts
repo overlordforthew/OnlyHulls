@@ -1,6 +1,7 @@
 import { pool, query } from "../src/lib/db/index";
 import { boatToEmbeddingText, embeddingsEnabled, generateEmbedding } from "../src/lib/ai/embeddings";
 import { generateText } from "../src/lib/ai/provider";
+import { cleanImportedListingSummary } from "../src/lib/browse-summary";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
@@ -11,6 +12,7 @@ import {
   buildImportedSaleStatusSql,
   buildVisibleImportQualitySql,
   calculateImportQualityScore,
+  MIN_GOOD_SUMMARY_LENGTH,
   mergeStickyImportQualityFlags,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
@@ -161,6 +163,7 @@ async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string)
 }
 
 async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
+  const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
   return query<CleanupRow>(
     `SELECT b.id, b.slug, b.year, b.make, b.model, b.source_site, b.asking_price, b.currency, b.asking_price_usd,
             b.location_text, b.source_name, b.source_url, b.view_count,
@@ -179,13 +182,21 @@ async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
      WHERE b.status = 'active'
        AND b.source_url IS NOT NULL
        AND (
+         $3::boolean = false
+         OR COALESCE(d.ai_summary, '') ~* '(^|[[:space:]])Asking\\s+'
+         OR COALESCE(d.ai_summary, '') ~* 'Imported from'
+         OR COALESCE(d.ai_summary, '') ~* 'Key specs include'
+         OR COALESCE(d.documentation_status->>'summary_source', '') = 'source'
+         OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'thin_summary'
+       )
+       AND (
          $2::boolean = false
          OR ${buildImportedSaleStatusSql("b")}
          OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'sale_status'
        )
      ORDER BY b.view_count DESC, b.created_at DESC, b.id
      LIMIT $1`,
-    [limit, saleStatusOnly]
+    [limit, saleStatusOnly, summaryBoilerplateOnly]
   );
 }
 
@@ -208,6 +219,7 @@ async function main() {
   const reindex = parseArgFlag("--reindex");
   const skipEmbeddings = parseArgFlag("--skip-embeddings");
   const saleStatusOnly = parseArgFlag("--sale-status-only");
+  const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
   const limit = parseArgValue("--limit", DEFAULT_LIMIT);
   const llmLimit = parseArgValue("--llm-limit", DEFAULT_LLM_LIMIT);
   const modelConfig = configureCleanupModel();
@@ -257,23 +269,25 @@ async function main() {
         typeof normalizedSpecs.vessel_type === "string" ? normalizedSpecs.vessel_type : null,
       existingTags: row.character_tags,
     });
-    const cleanedSourceSummary = normalizeImportedSummary(row.ai_summary);
-    let summary = cleanedSourceSummary;
-    let summarySource: "source" | "deterministic" | "llm" = cleanedSourceSummary ? "source" : "deterministic";
-
-    if (!summary) {
-      summary = buildImportedSummary({
-        year: row.year,
-        make: normalized.make,
-        model: normalized.model,
-        locationText: normalizedLocation,
-        loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
-        rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
-        hullMaterial: typeof normalizedSpecs.hull_material === "string" ? normalizedSpecs.hull_material : null,
-        berths: typeof normalizedSpecs.berths === "number" ? normalizedSpecs.berths : null,
-        heads: typeof normalizedSpecs.heads === "number" ? normalizedSpecs.heads : null,
-      });
-    }
+    const cleanedSourceSummary = cleanImportedListingSummary({
+      summary: normalizeImportedSummary(row.ai_summary),
+      title: `${row.year} ${normalized.make}${normalized.model ? ` ${normalized.model}` : ""}`.trim(),
+      locationText: normalizedLocation,
+    });
+    const fallbackSummary = buildImportedSummary({
+      year: row.year,
+      make: normalized.make,
+      model: normalized.model,
+      locationText: normalizedLocation,
+      loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
+      rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
+      hullMaterial: typeof normalizedSpecs.hull_material === "string" ? normalizedSpecs.hull_material : null,
+      berths: typeof normalizedSpecs.berths === "number" ? normalizedSpecs.berths : null,
+      heads: typeof normalizedSpecs.heads === "number" ? normalizedSpecs.heads : null,
+    });
+    const useSourceSummary = cleanedSourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH;
+    let summary = useSourceSummary ? cleanedSourceSummary : fallbackSummary;
+    let summarySource: "source" | "deterministic" | "llm" = useSourceSummary ? "source" : "deterministic";
 
     if (
       shouldUseLlm(
@@ -511,6 +525,7 @@ async function main() {
         reindexed,
         visibleActiveCount: Number.parseInt(visibleCount[0]?.count || "0", 10),
         saleStatusOnly,
+        summaryBoilerplateOnly,
       },
       null,
       2

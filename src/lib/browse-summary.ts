@@ -24,36 +24,112 @@ function trimSummary(value: string, maxLength: number) {
   return `${safeClip.trimEnd()}...`;
 }
 
-export function buildBoatBrowseSummary(input: {
+function splitSentences(value: string) {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function dedupeSentences(sentences: string[]) {
+  return sentences.filter(
+    (sentence, index) =>
+      sentences.findIndex((candidate) => candidate.toLowerCase() === sentence.toLowerCase()) === index
+  );
+}
+
+function stripSummaryBoilerplate(value: string) {
+  return value
+    .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
+    .replace(
+      /\s*[;,:-]?\s*\bAsking(?:\s+price)?\s*:?\s*(?:just\s+reduced\s+to|reduced\s+to|has\s+now\s+been\s+reduced\s+to|is)?\s*(?:[A-Z$]{2,5}\s*)?[$€£]?\d[\d,]*(?:\.\d+)?(?:\s*(?:ex(?:cl\.?)?\s*vat|vat paid|eu vat paid|or nearest offer))?[^.!?]*[.!?]?/gi,
+      ""
+    )
+    .replace(/\s*\bImported from\s+[^.]+\.?/gi, "")
+    .replace(/\s*\bPlease contact(?:\s+our\s+broker|\s+us)?[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bContact us\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*[^.!?]*\bis your go-to contact for any questions[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bFor more information contact\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bViewings?\s+by appointment\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bFeel free to give us a call\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bFor complete details\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bYou have questions\?\s*We have answers\.[^.!?]*[.!?]?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeSentenceCase(value: string) {
+  if (!value) return "";
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
+export function cleanImportedListingSummary(input: {
   summary?: string | null;
   title?: string | null;
   locationText?: string | null;
-  maxLength?: number;
+  maxLength?: number | null;
 }) {
-  const maxLength = input.maxLength ?? 220;
   const normalized = String(input.summary || "")
     .replace(/\s+/g, " ")
     .trim();
 
   if (!normalized) return "";
 
+  const cleanedSentences = splitSentences(normalized)
+    .map((sentence) => {
+      let cleaned = stripSummaryBoilerplate(normalizeSentence(sentence))
+        .replace(/\blisted in\b/gi, "in")
+        .replace(/\blisted\b/gi, "")
+        .trim();
+
+      cleaned = cleaned.replace(/^[\s,:-]+/, "").trim();
+      if (!cleaned) return "";
+
+      cleaned = normalizeSentenceCase(cleaned);
+      return ensureSentencePunctuation(cleaned);
+    })
+    .filter(Boolean);
+
+  const preferred = dedupeSentences(cleanedSentences).join(" ").trim();
+  if (preferred) {
+    return input.maxLength ? trimSummary(preferred, input.maxLength) : preferred;
+  }
+
+  const fallback = stripSummaryBoilerplate(
+    normalized
+      .replace(/\bKey specs include\s+/i, "")
+      .replace(/\b(monohull|catamaran|trimaran) hull\b/gi, "$1")
+      .replace(/\blisted in\b/gi, "in")
+      .replace(/\blisted\b/gi, "")
+  );
+
+  return input.maxLength ? trimSummary(fallback, input.maxLength) : fallback;
+}
+
+export function buildBoatPublicSummary(input: {
+  summary?: string | null;
+  title?: string | null;
+  locationText?: string | null;
+  maxLength?: number | null;
+}) {
+  const cleaned = cleanImportedListingSummary({
+    ...input,
+    maxLength: null,
+  });
+
+  if (!cleaned) return "";
+
   const title = String(input.title || "").trim();
   const locationText = String(input.locationText || "").trim();
   const titlePattern = title ? new RegExp(`^${escapeRegExp(title)}\\b`, "i") : null;
   const locationPattern = locationText ? new RegExp(`\\b${escapeRegExp(locationText)}\\b`, "i") : null;
 
-  const cleanedSentences = normalized
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean)
+  const publicSentences = splitSentences(cleaned)
     .map((sentence) => {
-      let cleaned = normalizeSentence(sentence)
-        .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
-        .replace(/\s*\bImported from\s+[^.]+\.?/gi, "")
-        .trim();
+      let next = sentence.trim();
 
-      if (titlePattern && titlePattern.test(cleaned)) {
-        cleaned = cleaned
+      if (titlePattern && titlePattern.test(next)) {
+        next = next
           .replace(titlePattern, "")
           .replace(/^[\s,:-]+/, "")
           .replace(/^(?:with|featuring)\s+/i, "")
@@ -61,26 +137,30 @@ export function buildBoatBrowseSummary(input: {
       }
 
       if (locationText) {
-        const leadingLocationPattern = new RegExp(
-          `^(?:listed in|located in|in)\\s+${escapeRegExp(locationText)}(?:[;,:-]|$)`,
+        const standaloneLeadLocationPattern = new RegExp(
+          `^(?:listed in|located in|lying in|lying)\\s+${escapeRegExp(locationText)}\\b`,
           "i"
         );
-        cleaned = cleaned.replace(leadingLocationPattern, "").trim();
+        if (standaloneLeadLocationPattern.test(next)) {
+          return "";
+        }
+
+        const leadingLocationPattern = new RegExp(
+          `^(?:in)\\s+${escapeRegExp(locationText)}(?:[;,:-]|$)`,
+          "i"
+        );
+        next = next.replace(leadingLocationPattern, "").trim();
       }
 
-      if (/^(?:listed in|located in|in)\b/i.test(cleaned)) {
-        cleaned = "";
-      }
+      next = next.replace(/^[\s,:-]+/, "").trim();
+      if (!next) return "";
 
-      cleaned = cleaned.replace(/^[\s,:-]+/, "").trim();
-      if (!cleaned) return "";
-
-      cleaned = `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
-      return ensureSentencePunctuation(cleaned);
+      next = normalizeSentenceCase(next);
+      return ensureSentencePunctuation(next);
     })
     .filter((sentence) => {
       if (!sentence) return false;
-      if (titlePattern && titlePattern.test(sentence) && /\b(listed|located)\b/i.test(sentence)) {
+      if (titlePattern && /\b(listed|located)\b/i.test(sentence) && titlePattern.test(sentence)) {
         return false;
       }
       if (titlePattern && locationPattern && titlePattern.test(sentence) && locationPattern.test(sentence)) {
@@ -89,21 +169,31 @@ export function buildBoatBrowseSummary(input: {
       return true;
     });
 
-  const deduped = cleanedSentences.filter(
-    (sentence, index) =>
-      cleanedSentences.findIndex((candidate) => candidate.toLowerCase() === sentence.toLowerCase()) === index
-  );
+  const standaloneLocationPattern = locationText
+    ? new RegExp(`^(?:Located in|Lying in|Lying|In)\\s+${escapeRegExp(locationText)}\\.?$`, "i")
+    : null;
+  const preferred = dedupeSentences(publicSentences).filter((sentence, index, all) => {
+    if (!standaloneLocationPattern) return true;
+    if (all.length <= 1) return true;
+    return !standaloneLocationPattern.test(sentence);
+  });
 
-  const preferred = deduped.join(" ").trim();
-  if (preferred) {
-    return trimSummary(preferred, maxLength);
+  const summary = preferred.join(" ").trim() || cleaned;
+  if (!summary) {
+    return "";
   }
 
-  const fallback = normalized
-    .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
-    .replace(/\bImported from\s+[^.]+\.?/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return input.maxLength ? trimSummary(summary, input.maxLength) : summary;
+}
 
-  return trimSummary(fallback, maxLength);
+export function buildBoatBrowseSummary(input: {
+  summary?: string | null;
+  title?: string | null;
+  locationText?: string | null;
+  maxLength?: number;
+}) {
+  return buildBoatPublicSummary({
+    ...input,
+    maxLength: input.maxLength ?? 220,
+  });
 }

@@ -20,6 +20,7 @@ import JsonLdScript from "@/components/JsonLdScript";
 import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
+import { buildBoatPublicSummary } from "@/lib/browse-summary";
 import { getRelatedBoats } from "@/lib/db/queries";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
@@ -68,7 +69,12 @@ function toAbsoluteUrl(url: string | null | undefined, appUrl: string) {
 function buildBoatMetaDescription(boat: BoatDetail, priceStr: string, copy: BoatDetailCopy) {
   const title = buildBoatTitle(boat);
   const location = boat.location_text ?? null;
-  const summary = boat.ai_summary?.trim();
+  const summary = buildBoatPublicSummary({
+    summary: boat.ai_summary,
+    title,
+    locationText: location,
+    maxLength: 240,
+  });
   if (summary) {
     return trimMetaDescription(copy.metadata.summaryDescription(title, location, summary));
   }
@@ -270,6 +276,11 @@ export default async function BoatDetailPage({
     preferredCurrency,
   });
   const boatTitle = buildBoatTitle(boat);
+  const displaySummary = buildBoatPublicSummary({
+    summary: boat.ai_summary,
+    title: boatTitle,
+    locationText: boat.location_text,
+  });
   const imageCount = media.filter((mediaItem) => mediaItem.type === "image").length;
   const videoCount = media.filter((mediaItem) => mediaItem.type === "video").length;
   const hasSpecificLocation = boat.source_url
@@ -416,14 +427,14 @@ export default async function BoatDetailPage({
               )}
             </div>
 
-            {boat.ai_summary && (
+            {displaySummary && (
               <div className="rounded-xl border-l-4 border-primary bg-surface p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Sparkles className="h-4 w-4" />
                   {copy.listingDescription}
                 </div>
                 <p className="mt-3 whitespace-pre-wrap leading-relaxed text-foreground/80">
-                  {boat.ai_summary}
+                  {displaySummary}
                 </p>
               </div>
             )}

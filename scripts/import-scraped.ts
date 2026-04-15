@@ -18,6 +18,7 @@ import {
   embeddingsEnabled,
   generateEmbeddings,
 } from "../src/lib/ai/embeddings";
+import { cleanImportedListingSummary } from "../src/lib/browse-summary";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
@@ -27,6 +28,7 @@ import {
   buildImportQualityFlags,
   calculateImportQualityScore,
   inferImportedVesselType,
+  MIN_GOOD_SUMMARY_LENGTH,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
@@ -273,21 +275,25 @@ function buildSpecsAndSummary(input: {
   if (input.boat.water_capacity) specs.water_capacity = parseNumber(input.boat.water_capacity);
   if (input.boat.fuel_capacity) specs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
 
-  const sourceSummary = normalizeImportedSummary(input.boat.description);
-  const summary =
-    sourceSummary ||
-    buildImportedSummary({
-      year: input.year,
-      make: input.make,
-      model: input.model,
-      locationText: input.location,
-      loa,
-      rigType,
-      hullMaterial,
-      berths: typeof specs.berths === "number" ? specs.berths : null,
-      heads: typeof specs.heads === "number" ? specs.heads : null,
-    });
-  const summarySource: "source" | "deterministic" = sourceSummary ? "source" : "deterministic";
+  const sourceSummary = cleanImportedListingSummary({
+    summary: normalizeImportedSummary(input.boat.description),
+    title: `${input.year} ${input.make}${input.model ? ` ${input.model}` : ""}`.trim(),
+    locationText: input.location,
+  });
+  const fallbackSummary = buildImportedSummary({
+    year: input.year,
+    make: input.make,
+    model: input.model,
+    locationText: input.location,
+    loa,
+    rigType,
+    hullMaterial,
+    berths: typeof specs.berths === "number" ? specs.berths : null,
+    heads: typeof specs.heads === "number" ? specs.heads : null,
+  });
+  const summarySource: "source" | "deterministic" =
+    sourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH ? "source" : "deterministic";
+  const summary = summarySource === "source" ? sourceSummary : fallbackSummary;
   const tags = buildImportedCharacterTags({
     priceUsd: toUsd(input.price, input.currency),
     loa,
