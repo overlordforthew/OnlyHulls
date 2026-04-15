@@ -534,6 +534,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Boats Olson 30",
+      sourceSite: "sailboatlistings",
+      slug: "1983-pacific-boats-olson-30-new-jersey",
+    }),
+    { make: "Pacific Boats", model: "Olson 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Boats Inc Olson 30",
+      sourceSite: "sailboatlistings",
+      slug: "1980-pacific-boats-inc-olson-30-new-york",
+    }),
+    { make: "Pacific Boats", model: "Olson 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific Boats",
+      model: "Inc Olson 30",
+      sourceSite: "sailboatlistings",
+      slug: "1980-pacific-boats-inc-olson-30-new-york",
+    }),
+    { make: "Pacific Boats", model: "Olson 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pacific",
+      model: "Boats",
+      sourceSite: "sailboatlistings",
+      slug: "1980-pacific-boats-florida",
+    }),
+    { make: "Pacific Boats", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Carroll",
       model: "Marine Farr30",
       sourceSite: "sailboatlistings",
