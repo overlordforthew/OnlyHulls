@@ -17,7 +17,8 @@ const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
     COALESCE(d.specs, '{}') as specs,
     COALESCE(d.character_tags, '{}') as character_tags,
-    d.condition_score`;
+    d.condition_score,
+    d.ai_summary`;
 
 function sanitizeBoatResults(rows: Record<string, unknown>[]) {
   return rows.map((row) =>

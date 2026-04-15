@@ -59,6 +59,7 @@ interface Boat {
   source_site?: string | null;
   source_name?: string | null;
   source_url?: string | null;
+  ai_summary?: string | null;
 }
 
 interface FilterState {
@@ -108,6 +109,20 @@ function formatBoatType(value?: string | null) {
   return normalized
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function buildBrowseSummary(value?: string | null, maxLength = 220) {
+  const normalized = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+
+  const clipped = normalized.slice(0, maxLength);
+  const lastSpace = clipped.lastIndexOf(" ");
+  const safeClip = lastSpace > 120 ? clipped.slice(0, lastSpace) : clipped;
+  return `${safeClip.trimEnd()}...`;
 }
 
 export default function BoatsPage() {
@@ -802,6 +817,8 @@ function BoatBrowseRow({
     preferredCurrency: displayCurrency,
   });
   const vesselType = formatBoatType(boat.specs.vessel_type);
+  const summary = buildBrowseSummary(boat.ai_summary);
+  const hasSummary = summary.length > 0;
 
   return (
     <div
@@ -834,95 +851,110 @@ function BoatBrowseRow({
           </div>
         </Link>
 
-        <div className="flex flex-col justify-between p-5">
-          <div>
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="p-5">
+          <div className={hasSummary ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]" : ""}>
+            <div className="flex flex-col justify-between">
               <div>
-                <Link href={href} className="text-xl font-semibold text-foreground hover:text-primary">
-                  {`${boat.year} ${boat.make} ${boat.model}`}
-                </Link>
-                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-foreground/70">
-                  {boat.specs.loa && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Ruler className="h-4 w-4 text-primary" />
-                      {boat.specs.loa}ft
-                    </span>
-                  )}
-                  {vesselType && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Sailboat className="h-4 w-4 text-primary" />
-                      {vesselType}
-                    </span>
-                  )}
-                  {boat.specs.rig_type && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Sailboat className="h-4 w-4 text-primary" />
-                      {boat.specs.rig_type}
-                    </span>
-                  )}
-                  {boat.location_text && (
-                    <span
-                      data-testid="boat-row-location"
-                      className="inline-flex items-center gap-1.5 font-medium text-foreground/85"
-                    >
-                      <MapPin className="h-4 w-4 text-primary" />
-                      {boat.location_text}
-                    </span>
-                  )}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Link href={href} className="text-xl font-semibold text-foreground hover:text-primary">
+                      {`${boat.year} ${boat.make} ${boat.model}`}
+                    </Link>
+                    <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-foreground/70">
+                      {boat.specs.loa && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Ruler className="h-4 w-4 text-primary" />
+                          {boat.specs.loa}ft
+                        </span>
+                      )}
+                      {vesselType && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Sailboat className="h-4 w-4 text-primary" />
+                          {vesselType}
+                        </span>
+                      )}
+                      {boat.specs.rig_type && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Sailboat className="h-4 w-4 text-primary" />
+                          {boat.specs.rig_type}
+                        </span>
+                      )}
+                      {boat.location_text && (
+                        <span
+                          data-testid="boat-row-location"
+                          className="inline-flex items-center gap-1.5 font-medium text-foreground/85"
+                        >
+                          <MapPin className="h-4 w-4 text-primary" />
+                          {boat.location_text}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
+
+                {boat.character_tags.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {boat.character_tags.slice(0, 5).map((tag) => (
+                      <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs text-primary">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {boat.source_name && (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
+                    <span>{t("foundOn")}</span>
+                    {safeSourceUrl ? (
+                      <a
+                        href={safeSourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-medium text-foreground/75 hover:text-primary"
+                      >
+                        {boat.source_name}
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="font-medium text-foreground/75">{boat.source_name}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onCompareToggle}
+                  disabled={compareDisabled && !compareSelected}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                    compareSelected
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  <GitCompareArrows className="h-4 w-4" />
+                  {compareSelected ? t("addedToCompare") : t("compare")}
+                </button>
+                <Link
+                  href={href}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
+                >
+                  {t("viewListing")}
+                </Link>
               </div>
             </div>
 
-            {boat.character_tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {boat.character_tags.slice(0, 5).map((tag) => (
-                  <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs text-primary">
-                    {tag}
-                  </span>
-                ))}
+            {hasSummary && (
+              <div className="rounded-2xl border border-border bg-background/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                  {t("listingSnapshot")}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-foreground/75">
+                  {summary}
+                </p>
               </div>
             )}
-
-            {boat.source_name && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
-                <span>{t("foundOn")}</span>
-                {safeSourceUrl ? (
-                  <a
-                    href={safeSourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-medium text-foreground/75 hover:text-primary"
-                  >
-                    {boat.source_name}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                ) : (
-                  <span className="font-medium text-foreground/75">{boat.source_name}</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onCompareToggle}
-              disabled={compareDisabled && !compareSelected}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                compareSelected
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-foreground/70 hover:border-primary hover:text-primary"
-              } disabled:cursor-not-allowed disabled:opacity-50`}
-            >
-              <GitCompareArrows className="h-4 w-4" />
-              {compareSelected ? t("addedToCompare") : t("compare")}
-            </button>
-            <Link
-              href={href}
-              className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
-            >
-              {t("viewListing")}
-            </Link>
           </div>
         </div>
       </div>

@@ -524,6 +524,7 @@
     "showMore": "Show More ({count} remaining)",
     "boatFallback": "Boat",
     "foundOn": "Found on",
+    "listingSnapshot": "Listing snapshot",
     "addedToCompare": "Added to Compare",
     "compare": "Compare",
     "viewListing": "View Listing",
