@@ -589,6 +589,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Smart",
+      model: "Cat S280 Open",
+      sourceSite: "sailboatlistings",
+      slug: "2025-smart-cat-s280-open-california",
+    }),
+    { make: "Smart Cat", model: "S280 Open" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Smart Cat",
+      model: "Cat S280 House",
+      sourceSite: "sailboatlistings",
+      slug: "2025-smart-cat-s280-house-florida",
+    }),
+    { make: "Smart Cat", model: "S280 House" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Smart",
+      model: "Cat",
+      sourceSite: "sailboatlistings",
+      slug: "2025-smart-cat-florida",
+    }),
+    { make: "Smart Cat", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Smart",
+      model: "Move 30",
+      sourceSite: "sailboatlistings",
+      slug: "2025-smart-move-30-florida",
+    }),
+    { make: "Smart", model: "Move 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Van",
       model: "De Stadt 74",
       sourceSite: "sailboatlistings",
