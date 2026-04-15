@@ -129,7 +129,6 @@ export default function SiteNav() {
  
           {/* Desktop Actions */}
           <div className="hidden items-center gap-4 md:flex">
-            <LocaleSwitcher compact />
             {isLoggedIn ? (
               <div className="relative">
                 <button
@@ -147,7 +146,10 @@ export default function SiteNav() {
                   <span className="max-w-[100px] truncate">{session.user.name || t("account")}</span>
                 </button>
                 {profileOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-surface p-2 shadow-xl">
+                  <div
+                    className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface p-2 shadow-xl"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <Link
                       href="/matches"
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted hover:text-foreground"
@@ -213,6 +215,10 @@ export default function SiteNav() {
                     >
                       {t("accountBilling")}
                     </Link>
+                    <LocaleSwitcher
+                      variant="menu"
+                      onChangeComplete={() => setProfileOpen(false)}
+                    />
                     <ThemeSwitcher
                       variant="menu"
                       onToggle={() => setProfileOpen(false)}
@@ -230,6 +236,7 @@ export default function SiteNav() {
               </div>
             ) : (
               <>
+                <LocaleSwitcher compact />
                 <Link
                   href="/sign-in"
                   className="text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
