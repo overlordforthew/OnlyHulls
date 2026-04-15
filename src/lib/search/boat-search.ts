@@ -248,13 +248,21 @@ export function buildWhereClause(filters: BoatSearchFilters) {
   };
 }
 
-function formatMoneyLabel(minPrice: string | null, maxPrice: string | null) {
+function formatMoneyLabel(
+  minPrice: string | null,
+  maxPrice: string | null,
+  currency: SupportedCurrency
+) {
+  const prefix = currency === "USD" ? "$" : `${currency} `;
+
   const format = (value: string) => {
     const amount = Number(value);
     if (!Number.isFinite(amount)) return null;
-    if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(amount % 1_000_000 === 0 ? 0 : 1)}M`;
-    if (amount >= 1_000) return `$${Math.round(amount / 1_000)}k`;
-    return `$${Math.round(amount)}`;
+    if (amount >= 1_000_000) {
+      return `${prefix}${(amount / 1_000_000).toFixed(amount % 1_000_000 === 0 ? 0 : 1)}M`;
+    }
+    if (amount >= 1_000) return `${prefix}${Math.round(amount / 1_000)}k`;
+    return `${prefix}${Math.round(amount)}`;
   };
 
   if (minPrice && maxPrice) {
@@ -284,6 +292,8 @@ export function buildSavedSearchName(filters: Partial<BoatSearchFilters>) {
 
   if (normalized.search) {
     parts.push(normalized.search);
+  } else if (normalized.location) {
+    parts.push(`In ${humanize(normalized.location)}`);
   } else if (normalized.tag) {
     parts.push(humanize(normalized.tag));
   } else if (normalized.rigType) {
@@ -294,11 +304,22 @@ export function buildSavedSearchName(filters: Partial<BoatSearchFilters>) {
     parts.push("All boats");
   }
 
-  const moneyLabel = formatMoneyLabel(normalized.minPrice, normalized.maxPrice);
+  const moneyLabel = formatMoneyLabel(
+    normalized.minPrice,
+    normalized.maxPrice,
+    normalized.currency
+  );
   if (moneyLabel) parts.push(moneyLabel);
 
   const yearLabel = formatYearLabel(normalized.minYear, normalized.maxYear);
   if (yearLabel) parts.push(yearLabel);
+
+  if (
+    normalized.location &&
+    !parts.some((part) => part.toLowerCase().includes(normalized.location!.toLowerCase()))
+  ) {
+    parts.push(`In ${humanize(normalized.location)}`);
+  }
 
   if (
     normalized.rigType &&
@@ -318,6 +339,7 @@ export function buildSavedSearchSignature(filters: Partial<BoatSearchFilters>) {
 
   return JSON.stringify({
     search: normalized.search,
+    location: normalized.location,
     tag: normalized.tag,
     currency: normalized.currency,
     minPrice: normalized.minPrice,

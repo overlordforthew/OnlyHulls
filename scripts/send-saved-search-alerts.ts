@@ -1,55 +1,16 @@
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
-import { pool, query, queryOne } from "../src/lib/db/index";
-import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
-
-interface SavedSearchEmailRow {
-  id: string;
-  user_id: string;
-  name: string;
-  search_query: string | null;
-  tag: string | null;
-  min_price: string | null;
-  max_price: string | null;
-  min_year: number | null;
-  max_year: number | null;
-  rig_type: string | null;
-  hull_type: string | null;
-  sort: string;
-  dir: string;
-  last_checked_at: string;
-  email: string;
-  display_name: string | null;
-  email_alerts: "instant" | "weekly";
-}
-
-interface AlertBoat {
-  id: string;
-  slug: string | null;
-  year: number;
-  make: string;
-  model: string;
-  asking_price: number;
-  currency: string;
-  location_text: string | null;
-}
-
-interface AlertCandidate {
-  savedSearchId: string;
-  userId: string;
-  email: string;
-  displayName: string | null;
-  name: string;
-  browseUrl: string;
-  newResults: number;
-  lastCheckedAt: string;
-  boats: AlertBoat[];
-}
+import { pool } from "../src/lib/db/index";
+import {
+  listSavedSearchAlertCandidates,
+  markSavedSearchAlertSent,
+  type SavedSearchAlertCandidate,
+} from "../src/lib/saved-searches";
 
 interface AlertGroup {
   email: string;
   displayName: string | null;
-  alerts: AlertCandidate[];
+  alerts: SavedSearchAlertCandidate[];
 }
 
 const PLACEHOLDER_MARKERS = [
@@ -136,162 +97,6 @@ function formatCurrency(amount: number, currency: string) {
   return `${symbol}${Math.round(amount).toLocaleString("en-US")}`;
 }
 
-function buildBrowseUrl(row: SavedSearchEmailRow) {
-  const params = new URLSearchParams();
-
-  if (row.search_query) params.set("q", row.search_query);
-  if (row.tag) params.set("tag", row.tag);
-  if (row.min_price) params.set("minPrice", row.min_price);
-  if (row.max_price) params.set("maxPrice", row.max_price);
-  if (row.min_year) params.set("minYear", String(row.min_year));
-  if (row.max_year) params.set("maxYear", String(row.max_year));
-  if (row.rig_type) params.set("rigType", row.rig_type);
-  if (row.hull_type) params.set("hullType", row.hull_type);
-  params.set("sort", row.sort || "newest");
-  params.set("dir", row.dir || "desc");
-
-  const queryString = params.toString();
-  return queryString ? `/boats?${queryString}` : "/boats";
-}
-
-function buildConditions(row: SavedSearchEmailRow, includeSince: boolean) {
-  const conditions: string[] = ["b.status = 'active'", buildVisibleImportQualitySql("b")];
-  const params: unknown[] = [];
-  let paramIdx = 1;
-
-  if (row.search_query) {
-    conditions.push(
-      `LOWER(CONCAT_WS(' ',
-        b.make,
-        b.model,
-        COALESCE(d.ai_summary, ''),
-        COALESCE(b.location_text, ''),
-        COALESCE(b.source_name, ''),
-        COALESCE(b.source_site, ''),
-        array_to_string(COALESCE(d.character_tags, '{}'), ' '),
-        COALESCE(d.specs->>'rig_type', ''),
-        COALESCE(d.specs->>'hull_material', '')
-      )) LIKE $${paramIdx++}`
-    );
-    params.push(`%${row.search_query.toLowerCase()}%`);
-  }
-
-  if (row.min_price) {
-    conditions.push(`b.asking_price >= $${paramIdx++}`);
-    params.push(Number(row.min_price));
-  }
-  if (row.max_price) {
-    conditions.push(`b.asking_price <= $${paramIdx++}`);
-    params.push(Number(row.max_price));
-  }
-  if (row.min_year) {
-    conditions.push(`b.year >= $${paramIdx++}`);
-    params.push(row.min_year);
-  }
-  if (row.max_year) {
-    conditions.push(`b.year <= $${paramIdx++}`);
-    params.push(row.max_year);
-  }
-  if (row.rig_type) {
-    conditions.push(`LOWER(COALESCE(d.specs->>'rig_type', '')) = LOWER($${paramIdx++})`);
-    params.push(row.rig_type);
-  }
-  if (row.hull_type) {
-    conditions.push(`LOWER(COALESCE(d.specs->>'hull_material', '')) = LOWER($${paramIdx++})`);
-    params.push(row.hull_type);
-  }
-  if (row.tag) {
-    conditions.push(`$${paramIdx++} = ANY(COALESCE(d.character_tags, '{}'))`);
-    params.push(row.tag);
-  }
-  if (includeSince) {
-    conditions.push(`b.created_at > $${paramIdx++}`);
-    params.push(row.last_checked_at);
-  }
-
-  return { conditions, params, nextParamIdx: paramIdx };
-}
-
-async function countNewResults(row: SavedSearchEmailRow) {
-  const { conditions, params } = buildConditions(row, true);
-  const result = await queryOne<{ count: string }>(
-    `SELECT COUNT(*) AS count
-     FROM boats b
-     LEFT JOIN users u ON u.id = b.seller_id
-     LEFT JOIN boat_dna d ON d.boat_id = b.id
-     WHERE ${conditions.join(" AND ")}`,
-    params
-  );
-
-  return Number.parseInt(result?.count || "0", 10);
-}
-
-async function listNewBoats(row: SavedSearchEmailRow, limit: number) {
-  const { conditions, params, nextParamIdx } = buildConditions(row, true);
-  const queryParams = [...params, limit];
-
-  return query<AlertBoat>(
-    `SELECT b.id, b.slug, b.year, b.make, b.model, b.asking_price, b.currency, b.location_text
-     FROM boats b
-     LEFT JOIN users u ON u.id = b.seller_id
-     LEFT JOIN boat_dna d ON d.boat_id = b.id
-     WHERE ${conditions.join(" AND ")}
-     ORDER BY b.created_at DESC, b.id DESC
-     LIMIT $${nextParamIdx}`,
-    queryParams
-  );
-}
-
-async function listAlertCandidates(limitPerSearch: number) {
-  const rows = await query<SavedSearchEmailRow>(
-    `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.tag, ss.min_price, ss.max_price,
-            ss.min_year, ss.max_year, ss.rig_type, ss.hull_type, ss.sort, ss.dir,
-            ss.last_checked_at, u.email, u.display_name, u.email_alerts
-     FROM saved_searches ss
-     JOIN users u ON u.id = ss.user_id
-     WHERE u.email_verified = true
-       AND u.email_alerts IN ('instant', 'weekly')
-       AND (
-         u.email_alerts = 'instant'
-         OR ss.last_checked_at <= NOW() - INTERVAL '7 days'
-       )
-     ORDER BY ss.last_checked_at ASC, ss.created_at ASC`
-  );
-
-  const candidates: AlertCandidate[] = [];
-
-  for (const row of rows) {
-    const newResults = await countNewResults(row);
-    if (newResults < 1) continue;
-
-    candidates.push({
-      savedSearchId: row.id,
-      userId: row.user_id,
-      email: row.email,
-      displayName: row.display_name,
-      name: row.name,
-      browseUrl: buildBrowseUrl(row),
-      newResults,
-      lastCheckedAt: row.last_checked_at,
-      boats: await listNewBoats(row, limitPerSearch),
-    });
-  }
-
-  return candidates;
-}
-
-async function markSavedSearchAlertSent(savedSearchId: string, lastCheckedAt: string) {
-  const updated = await queryOne<{ id: string }>(
-    `UPDATE saved_searches
-     SET last_checked_at = NOW(), updated_at = NOW()
-     WHERE id = $1 AND last_checked_at = $2
-     RETURNING id`,
-    [savedSearchId, lastCheckedAt]
-  );
-
-  return Boolean(updated);
-}
-
 async function sendSavedSearchAlertEmail(group: AlertGroup) {
   const appUrl = getAppUrl();
   const firstName = group.displayName?.trim() || "there";
@@ -302,14 +107,14 @@ async function sendSavedSearchAlertEmail(group: AlertGroup) {
       const boats = alert.boats
         .map((boat) => {
           const listingUrl = `${appUrl}/boats/${boat.slug || boat.id}`;
-          const location = boat.location_text
-            ? `<p style="margin: 4px 0 0; color: #64748b;">${esc(boat.location_text)}</p>`
+          const location = boat.locationText
+            ? `<p style="margin: 4px 0 0; color: #64748b;">${esc(boat.locationText)}</p>`
             : "";
 
           return `
             <div style="padding: 14px 0; border-top: 1px solid #e2e8f0;">
-              <a href="${listingUrl}" style="color: #0f172a; font-weight: 600; text-decoration: none;">${esc(`${boat.year} ${boat.make} ${boat.model}`)}</a>
-              <p style="margin: 6px 0 0; color: #0369a1; font-weight: 600;">${esc(formatCurrency(Number(boat.asking_price), boat.currency))}</p>
+              <a href="${listingUrl}" style="color: #0f172a; font-weight: 600; text-decoration: none;">${esc(boat.title)}</a>
+              <p style="margin: 6px 0 0; color: #0369a1; font-weight: 600;">${esc(formatCurrency(Number(boat.price), boat.currency))}</p>
               ${location}
             </div>
           `;
@@ -365,7 +170,7 @@ async function main() {
   }
 
   const limitPerSearch = Number.parseInt(process.env.SAVED_SEARCH_EMAIL_LIMIT || "5", 10);
-  const candidates = await listAlertCandidates(
+  const candidates = await listSavedSearchAlertCandidates(
     Number.isFinite(limitPerSearch) && limitPerSearch > 0 ? limitPerSearch : 5
   );
 

@@ -13,6 +13,8 @@ interface SavedSearchRow {
   id: string;
   name: string;
   search_query: string | null;
+  location_query: string | null;
+  currency_code: string;
   tag: string | null;
   min_price: string | null;
   max_price: string | null;
@@ -91,6 +93,8 @@ export interface SavedSearchAlertCandidate {
 function rowToFilters(row: SavedSearchRow): BoatSearchFilters {
   return normalizeBoatSearchFilters({
     search: row.search_query ?? "",
+    location: row.location_query,
+    currency: row.currency_code,
     minPrice: row.min_price,
     maxPrice: row.max_price,
     minYear: row.min_year?.toString() ?? null,
@@ -204,7 +208,7 @@ async function hydrateSavedSearch(row: SavedSearchRow): Promise<SavedSearchRecor
 
 export async function listSavedSearches(userId: string): Promise<SavedSearchRecord[]> {
   const rows = await query<SavedSearchRow>(
-    `SELECT id, name, search_query, tag, min_price, max_price, min_year, max_year,
+    `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
             rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1
@@ -227,7 +231,7 @@ export async function getSavedSearchSummary(userId: string): Promise<SavedSearch
 
 export async function listSavedSearchAlertCandidates(limitPerSearch = 5) {
   const rows = await query<SavedSearchEmailRow>(
-    `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.tag, ss.min_price, ss.max_price,
+    `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.location_query, ss.currency_code, ss.tag, ss.min_price, ss.max_price,
             ss.min_year, ss.max_year, ss.rig_type, ss.hull_type, ss.sort, ss.dir,
             ss.last_checked_at, ss.created_at, ss.updated_at,
             u.email, u.display_name, u.email_alerts
@@ -274,7 +278,7 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
   const filters = normalizeBoatSearchFilters(input);
   const signature = buildSavedSearchSignature(filters);
   const existing = await queryOne<SavedSearchRow>(
-    `SELECT id, name, search_query, tag, min_price, max_price, min_year, max_year,
+    `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
             rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1 AND signature = $2`,
@@ -285,13 +289,39 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
     const updated = await queryOne<SavedSearchRow>(
       `UPDATE saved_searches
        SET name = $3,
-           sort = $4,
-           dir = $5,
+           search_query = $4,
+           location_query = $5,
+           currency_code = $6,
+           tag = $7,
+           min_price = $8,
+           max_price = $9,
+           min_year = $10,
+           max_year = $11,
+           rig_type = $12,
+           hull_type = $13,
+           sort = $14,
+           dir = $15,
            updated_at = NOW()
        WHERE user_id = $1 AND signature = $2
-       RETURNING id, name, search_query, tag, min_price, max_price, min_year, max_year,
+       RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                  rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
-      [userId, signature, buildSavedSearchName(filters), filters.sort, filters.dir]
+      [
+        userId,
+        signature,
+        buildSavedSearchName(filters),
+        filters.search || null,
+        filters.location || null,
+        filters.currency,
+        filters.tag,
+        filters.minPrice ? Number(filters.minPrice) : null,
+        filters.maxPrice ? Number(filters.maxPrice) : null,
+        filters.minYear ? Number(filters.minYear) : null,
+        filters.maxYear ? Number(filters.maxYear) : null,
+        filters.rigType,
+        filters.hullType,
+        filters.sort,
+        filters.dir,
+      ]
     );
 
     return {
@@ -302,19 +332,21 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
 
   const created = await queryOne<SavedSearchRow>(
     `INSERT INTO saved_searches (
-       user_id, name, signature, search_query, tag, min_price, max_price,
-       min_year, max_year, rig_type, hull_type, sort, dir
+       user_id, name, signature, search_query, location_query, currency_code, tag, min_price,
+       max_price, min_year, max_year, rig_type, hull_type, sort, dir
      ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7,
-       $8, $9, $10, $11, $12, $13
+       $1, $2, $3, $4, $5, $6, $7, $8,
+       $9, $10, $11, $12, $13, $14, $15
      )
-     RETURNING id, name, search_query, tag, min_price, max_price, min_year, max_year,
+     RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
     [
       userId,
       buildSavedSearchName(filters),
       signature,
       filters.search || null,
+      filters.location || null,
+      filters.currency,
       filters.tag,
       filters.minPrice ? Number(filters.minPrice) : null,
       filters.maxPrice ? Number(filters.maxPrice) : null,
@@ -338,7 +370,7 @@ export async function acknowledgeSavedSearch(userId: string, savedSearchId: stri
     `UPDATE saved_searches
      SET last_checked_at = NOW(), updated_at = NOW()
      WHERE id = $1 AND user_id = $2
-     RETURNING id, name, search_query, tag, min_price, max_price, min_year, max_year,
+     RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
     [savedSearchId, userId]
   );

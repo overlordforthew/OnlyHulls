@@ -34,7 +34,9 @@ export async function POST(req: Request) {
         userId: user.id,
         payload: {
           search: result.savedSearch.filters.search || null,
+          location: result.savedSearch.filters.location || null,
           tag: result.savedSearch.filters.tag || null,
+          currency: result.savedSearch.filters.currency,
         },
       });
     }

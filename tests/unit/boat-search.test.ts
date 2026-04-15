@@ -5,6 +5,7 @@ import {
   buildBoatSearchParams,
   buildOrderBy,
   buildSavedSearchName,
+  buildSavedSearchSignature,
   buildWhereClause,
   filtersFromSearchParams,
 } from "../../src/lib/search/boat-search";
@@ -24,6 +25,17 @@ test("buildSavedSearchName uses stable ASCII separators", () => {
 
 test("buildSavedSearchName falls back cleanly for broad saved searches", () => {
   assert.equal(buildSavedSearchName({}), "All boats");
+});
+
+test("buildSavedSearchName includes dedicated location filters", () => {
+  assert.equal(buildSavedSearchName({ location: "bahamas" }), "In Bahamas");
+});
+
+test("buildSavedSearchName preserves non-USD price context", () => {
+  assert.equal(
+    buildSavedSearchName({ minPrice: "200000", maxPrice: "400000", currency: "EUR" }),
+    "All boats | EUR 200k-EUR 400k"
+  );
 });
 
 test("buildOrderBy favors stronger trust signals on newest browse results", () => {
@@ -56,4 +68,13 @@ test("boat search preserves dedicated location filters separately from text sear
   const where = buildWhereClause(filters);
   assert.match(where.where, /location_text/i);
   assert.equal(where.params[0], "%bahamas%");
+});
+
+test("saved search signature keeps location and currency distinct", () => {
+  const signature = JSON.parse(
+    buildSavedSearchSignature({ location: "bahamas", minPrice: "200000", currency: "GBP" })
+  );
+
+  assert.equal(signature.location, "bahamas");
+  assert.equal(signature.currency, "GBP");
 });

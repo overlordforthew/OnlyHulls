@@ -444,6 +444,8 @@ function normalizeLocationPart(value: string) {
   const normalized = normalizeSpacing(repairUtf8Mojibake(value))
     .replace(/^\(\d+\)\s*/g, "")
     .replace(/\p{Regional_Indicator}+/gu, " ")
+    .replace(/\s*-\s*The$/i, "")
+    .replace(/\s+(?:duty|vat|tax)\s+paid$/i, "")
     .replace(/^[./?-]+|[./?-]+$/g, "")
     .trim();
   if (!normalized) return "";
@@ -557,6 +559,7 @@ export function normalizeImportedLocation(value?: string | null) {
   normalized = normalized
     .replace(/\s*\|\s*/g, ", ")
     .replace(/\s*\/\s*/g, " / ")
+    .replace(/\s+(?:duty|vat|tax)\s+paid$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   normalized = trimNarrativeLocationTail(normalized);

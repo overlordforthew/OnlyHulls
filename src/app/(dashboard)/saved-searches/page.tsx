@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, Bookmark, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { formatCurrencyAmount, type SupportedCurrency } from "@/lib/currency";
 
 interface SavedSearch {
   id: string;
@@ -24,6 +25,7 @@ interface SavedSearch {
   lastCheckedAt: string;
   filters: {
     search: string;
+    location: string | null;
     minPrice: string | null;
     maxPrice: string | null;
     minYear: string | null;
@@ -31,6 +33,7 @@ interface SavedSearch {
     rigType: string | null;
     hullType: string | null;
     tag: string | null;
+    currency: SupportedCurrency;
     sort: string;
     dir: string;
   };
@@ -112,22 +115,38 @@ function formatCurrency(amount: number, currency: string) {
   }
 }
 
+function formatSavedSearchPrice(value: string, currency: SupportedCurrency) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return value;
+  return formatCurrencyAmount(amount, currency, 0);
+}
+
+function humanizeFilterValue(value: string) {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function describeFilters(search: SavedSearch) {
   const chips: string[] = [];
 
   if (search.filters.search) chips.push(`Query: ${search.filters.search}`);
-  if (search.filters.tag) chips.push(`Tag: ${search.filters.tag.replace(/[-_]+/g, " ")}`);
-  if (search.filters.rigType) chips.push(`Rig: ${search.filters.rigType}`);
-  if (search.filters.hullType) chips.push(`Hull: ${search.filters.hullType}`);
+  if (search.filters.location) chips.push(`Location: ${humanizeFilterValue(search.filters.location)}`);
+  if (search.filters.tag) chips.push(`Tag: ${humanizeFilterValue(search.filters.tag)}`);
+  if (search.filters.rigType) chips.push(`Rig: ${humanizeFilterValue(search.filters.rigType)}`);
+  if (search.filters.hullType) chips.push(`Hull: ${humanizeFilterValue(search.filters.hullType)}`);
   if (search.filters.minPrice || search.filters.maxPrice) {
     chips.push(
-      `Price: ${search.filters.minPrice ? `$${search.filters.minPrice}` : "Any"} - ${search.filters.maxPrice ? `$${search.filters.maxPrice}` : "Any"}`
+      `Price: ${search.filters.minPrice ? formatSavedSearchPrice(search.filters.minPrice, search.filters.currency) : "Any"} - ${search.filters.maxPrice ? formatSavedSearchPrice(search.filters.maxPrice, search.filters.currency) : "Any"}`
     );
   }
   if (search.filters.minYear || search.filters.maxYear) {
     chips.push(
       `Year: ${search.filters.minYear || "Any"} - ${search.filters.maxYear || "Any"}`
     );
+  }
+  if (search.filters.currency !== "USD") {
+    chips.push(`Currency: ${search.filters.currency}`);
   }
   chips.push(`Sort: ${search.filters.sort} ${search.filters.dir}`);
 

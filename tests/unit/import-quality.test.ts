@@ -224,6 +224,14 @@ test("normalizeImportedLocation trims narrative tails from scraped location text
     ),
     "Toronto, Canada"
   );
+  assert.equal(
+    normalizeImportedLocation("Treasure Cay Abaco Bahamas Duty Paid"),
+    "Treasure Cay Abaco, Bahamas"
+  );
+  assert.equal(
+    normalizeImportedLocation("Nassau - The, Bahamas"),
+    "Nassau, Bahamas"
+  );
 });
 
 test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {

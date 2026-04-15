@@ -240,6 +240,18 @@ const MIGRATION_MARKERS: MigrationMarker[] = [
       SELECT to_regclass('public.funnel_events') IS NOT NULL AS ok
     `,
   },
+  {
+    name: "021_saved_search_locations.sql",
+    checkSql: `
+      SELECT (
+        SELECT COUNT(*)
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'saved_searches'
+          AND column_name IN ('location_query', 'currency_code')
+      ) = 2 AS ok
+    `,
+  },
 ];
 
 async function reconcileExistingMigrations(
