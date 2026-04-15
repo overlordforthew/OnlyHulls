@@ -544,6 +544,7 @@ function canonicalizeMakeName(make: string) {
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
+  if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
   if (/^fountaine\s+pajot$/i.test(normalized)) return "Fountaine Pajot";
   if (/^hallberg(?:\s+|-)rassy$/i.test(normalized)) return "Hallberg-Rassy";
   if (/^robertson(?:\s*(?:&|and)\s*caine|&caine|\s+caine)$/i.test(normalized)) {
@@ -719,6 +720,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^seacraft\b[\s-]*/i, "").trim();
   }
 
+  if (/^carrol(?:l)?(?:\s+marine)?$/i.test(make) && modelStartsWith(/^marine\b[\s-]*/i)) {
+    make = "Carroll Marine";
+    model = model.replace(/^marine\b[\s-]*/i, "").trim();
+  }
+
   if (/^hunter$/i.test(make) && modelStartsWith(/^marine\b[\s-]*/i)) {
     make = "Hunter Marine";
     model = model.replace(/^marine\b[\s-]*/i, "").trim();
@@ -886,6 +892,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^chris craft$/i.test(make)) {
     cleaned = cleaned.replace(/^craft\b[\s-]*/i, "");
+  }
+
+  if (/^carroll marine$/i.test(make)) {
+    cleaned = cleaned.replace(/^marine\b[\s-]*/i, "");
   }
 
   if (/^spirit yachts$/i.test(make)) {

@@ -454,6 +454,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Carroll",
+      model: "Marine Farr30",
+      sourceSite: "sailboatlistings",
+      slug: "1996-carroll-marine-farr30-new-york",
+    }),
+    { make: "Carroll Marine", model: "Farr30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Carrol",
+      model: "Marine 1d35",
+      sourceSite: "sailboatlistings",
+      slug: "1988-carrol-marine-1d35-texas",
+    }),
+    { make: "Carroll Marine", model: "1d35" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Carroll Marine",
+      model: "Marine Frers 33",
+      sourceSite: "sailboatlistings",
+      slug: "1988-carroll-marine-frers-33-new-york",
+    }),
+    { make: "Carroll Marine", model: "Frers 33" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Carroll",
+      model: "Marine",
+      sourceSite: "sailboatlistings",
+      slug: "1980-carroll-marine-florida",
+    }),
+    { make: "Carroll Marine", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hunter",
       model: "Marine 33",
       sourceSite: "sailboatlistings",
