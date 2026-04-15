@@ -142,6 +142,15 @@ export function buildBoatPublicSummary(input: {
     .map((sentence) => {
       let next = sentence.trim();
 
+      if (/^(?:listed in|located in|lying in|lying)\b/i.test(next)) {
+        const locationArtifactPattern =
+          /^(?:listed in|located in|lying in|lying)\b[^.!?]*?\d+\s+(?=with\b|featuring\b)/i;
+        if (locationArtifactPattern.test(next)) {
+          next = next.replace(locationArtifactPattern, "").trim();
+          next = next.replace(/^(?:with|featuring)\s+/i, "").trim();
+        }
+      }
+
       if (titleAnywherePattern && /^(?:listed in|located in|lying in|lying)\b/i.test(next)) {
         const titleMatch = next.match(titleAnywherePattern);
         if (titleMatch && typeof titleMatch.index === "number") {

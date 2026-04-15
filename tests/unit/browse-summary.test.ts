@@ -127,6 +127,18 @@ test("buildBoatPublicSummary strips location-led title duplication even when mod
   );
 });
 
+test("buildBoatPublicSummary repairs live location-plus-model artifacts left by earlier cleanup", () => {
+  assert.equal(
+    buildBoatPublicSummary({
+      title: "2023 Beneteau Oceanis 38 1",
+      locationText: "Bangor, Down",
+      summary:
+        "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. Lying Bangor, near Belfast - Northern Ireland1 with the two double cabin layout and larger 40hp engine.",
+    }),
+    "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. The two double cabin layout and larger 40hp engine."
+  );
+});
+
 test("cleanImportedListingSummary removes platform boilerplate after useful source copy", () => {
   assert.equal(
     cleanImportedListingSummary({
