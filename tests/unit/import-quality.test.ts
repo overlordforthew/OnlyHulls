@@ -678,6 +678,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Ice",
+      model: "Yachts Ice 62 Evo",
+      sourceSite: "theyachtmarket",
+      slug: "2016-ice-yachts-ice-62-evo-barcelona",
+    }),
+    { make: "Ice Yachts", model: "Ice 62 Evo" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ice Yachts",
+      model: "Yachts Felci 71",
+      sourceSite: "theyachtmarket",
+      slug: "2008-ice-yachts-felci-71-gaeta",
+    }),
+    { make: "Ice Yachts", model: "Felci 71" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ice",
+      model: "Yachts Ice Cat 72",
+      sourceSite: "theyachtmarket",
+      slug: "2019-ice-yachts-ice-cat-72-gruissan",
+    }),
+    { make: "Ice Yachts", model: "Ice Cat 72" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Leonardo",
       model: "Yachts Eagle 44",
       sourceSite: "sailboatlistings",
