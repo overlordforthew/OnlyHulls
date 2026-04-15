@@ -490,6 +490,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Trident",
+      model: "Marine Voyager 38",
+      sourceSite: "theyachtmarket",
+      slug: "1984-trident-marine-voyager-38-coleraine",
+    }),
+    { make: "Trident Marine", model: "Voyager 38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Trident Marine",
+      model: "Marine Warrior 35",
+      sourceSite: "theyachtmarket",
+      slug: "1977-trident-marine-warrior-35-largs",
+    }),
+    { make: "Trident Marine", model: "Warrior 35" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Trident",
+      model: "Marine",
+      sourceSite: "theyachtmarket",
+      slug: "1980-trident-marine-",
+    }),
+    { make: "Trident Marine", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hunter",
       model: "Marine 33",
       sourceSite: "sailboatlistings",
