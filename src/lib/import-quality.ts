@@ -630,6 +630,17 @@ export function hasUsableImportedLocation(value?: string | null) {
   return Boolean(normalized) && !GENERIC_LOCATION_VALUES.has(normalized);
 }
 
+export function resolveImportedDedupLocationText(
+  nextLocationText?: string | null,
+  existingLocationText?: string | null
+) {
+  if (nextLocationText !== undefined && nextLocationText !== null && nextLocationText !== "") {
+    return nextLocationText;
+  }
+
+  return existingLocationText ?? null;
+}
+
 function canonicalizeMakeName(make: string) {
   const normalized = normalizeSpacing(make);
   if (/^o\s+day$/i.test(normalized)) return "O'Day";

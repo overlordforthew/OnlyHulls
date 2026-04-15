@@ -9,6 +9,7 @@ import {
   hasImportedSaleStatusMarker,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
+  resolveImportedDedupLocationText,
   sanitizeImportedBoatRecord,
   sanitizeImportedDimensions,
   sanitizeImportedSpecs,
@@ -231,6 +232,19 @@ test("normalizeImportedLocation trims narrative tails from scraped location text
   assert.equal(
     normalizeImportedLocation("Nassau - The, Bahamas"),
     "Nassau, Bahamas"
+  );
+});
+
+test("resolveImportedDedupLocationText matches the importer update target", () => {
+  assert.equal(
+    resolveImportedDedupLocationText("Nassau, Bahamas", "Viewing Location: Bahamas"),
+    "Nassau, Bahamas"
+  );
+  assert.equal(resolveImportedDedupLocationText("", ""), "");
+  assert.equal(resolveImportedDedupLocationText("", null), null);
+  assert.equal(
+    resolveImportedDedupLocationText("", "Outside United States"),
+    "Outside United States"
   );
 });
 

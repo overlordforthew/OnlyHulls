@@ -19,7 +19,7 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     status: "keep",
     sourceName: "Sailboat Listings",
     reason:
-      "Keep in the daily portfolio; production source health on 2026-04-15 showed 8,588 visible listings out of 9,906 active rows, still making it the largest buyer-visible sailing source.",
+      "Keep in the daily portfolio; production source health on 2026-04-15 showed 9,017 visible listings out of 9,851 active rows after the stale-detail recovery and duplicate cleanup work, still making it the largest buyer-visible sailing source.",
   },
   theyachtmarket: {
     status: "keep",

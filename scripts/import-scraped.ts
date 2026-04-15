@@ -30,6 +30,7 @@ import {
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
+  resolveImportedDedupLocationText,
   sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
@@ -637,6 +638,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const make = normalized.make || existing.make;
       const model = normalized.model || existing.model;
       const location = parsedLocation || normalizeImportedLocation(existing.location_text) || "";
+      const targetLocationText = resolveImportedDedupLocationText(location, existing.location_text);
       const normalizedSlug =
         year && location ? buildImportedSlug(year, make, model, location) : null;
       const currency = detectCurrency(b);
@@ -677,20 +679,21 @@ async function updateBoats(filePath: string, sourceSite: string) {
         priceUsd,
       });
 
-      const hasDedupKey = Boolean(make && model && year && location);
+      const hasDedupKey = Boolean(make && model && year && targetLocationText !== null);
       let targetSlug = normalizedSlug;
       if (hasDedupKey) {
         const collision = await queryOne<{ id: string }>(
           `SELECT id
            FROM boats
            WHERE id <> $1
+             AND listing_source = 'imported'
              AND status = 'active'
              AND make = $2
              AND model = $3
              AND year = $4
-             AND location_text = $5
+             AND location_text IS NOT DISTINCT FROM $5
            LIMIT 1`,
-          [boatId, make, model, year, location]
+          [boatId, make, model, year, targetLocationText]
         );
 
         if (collision) {
