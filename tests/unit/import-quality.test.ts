@@ -625,6 +625,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Maine",
+      model: "Cat 30",
+      sourceSite: "sailboatlistings",
+      slug: "1999-maine-cat-30-new-jersey",
+    }),
+    { make: "Maine Cat", model: "30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Maine Cat",
+      model: "Cat Maine Cat 41",
+      sourceSite: "sailboatlistings",
+      slug: "2007-maine-cat-maine-cat-41-virginia",
+    }),
+    { make: "Maine Cat", model: "41" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Maine",
+      model: "Cat",
+      sourceSite: "sailboatlistings",
+      slug: "2002-maine-cat-panama",
+    }),
+    { make: "Maine Cat", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Maine",
+      model: "Catboat 26",
+      sourceSite: "sailboatlistings",
+      slug: "1999-maine-catboat-26-maine",
+    }),
+    { make: "Maine", model: "Catboat 26" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Van",
       model: "De Stadt 74",
       sourceSite: "sailboatlistings",
