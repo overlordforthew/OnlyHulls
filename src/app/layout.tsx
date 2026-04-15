@@ -8,7 +8,6 @@ import JsonLdScript from "@/components/JsonLdScript";
 import Providers from "@/components/Providers";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
-import ThemeSwitcher from "@/components/ThemeSwitcher";
 import WhatsAppContactButton from "@/components/WhatsAppContactButton";
 import { getRootLayoutCopy } from "@/i18n/copy/layouts";
 import "./globals.css";
@@ -146,7 +145,6 @@ export default async function RootLayout({
             <main className="min-h-screen">{children}</main>
             <SiteFooter />
             <WhatsAppContactButton />
-            <ThemeSwitcher />
           </NextIntlClientProvider>
         </Providers>
       </body>

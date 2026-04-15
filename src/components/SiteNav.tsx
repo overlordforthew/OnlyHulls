@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Waves, Menu, X, User, LogOut, Bell, GitCompareArrows } from "lucide-react";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 export default function SiteNav() {
   const t = useTranslations("siteNav");
@@ -212,6 +213,10 @@ export default function SiteNav() {
                     >
                       {t("accountBilling")}
                     </Link>
+                    <ThemeSwitcher
+                      variant="menu"
+                      onToggle={() => setProfileOpen(false)}
+                    />
                     <div className="my-1 h-px bg-border" />
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
@@ -269,6 +274,11 @@ export default function SiteNav() {
               {t("compareBoats")}{compareCount > 0 ? ` (${compareCount})` : ""}
             </Link>
             <LocaleSwitcher />
+            <ThemeSwitcher
+              variant="menu"
+              className="justify-center text-lg text-foreground hover:text-primary"
+              onToggle={() => setMenuOpen(false)}
+            />
             <div className="mt-4 flex flex-col items-center gap-4">
               {isLoggedIn ? (
                 <>
