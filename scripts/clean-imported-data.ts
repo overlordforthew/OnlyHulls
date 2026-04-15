@@ -11,6 +11,7 @@ import {
   buildImportedSaleStatusSql,
   buildVisibleImportQualitySql,
   calculateImportQualityScore,
+  mergeStickyImportQualityFlags,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   normalizeImportedSummary,
@@ -177,7 +178,11 @@ async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.status = 'active'
        AND b.source_url IS NOT NULL
-       AND ($2::boolean = false OR ${buildImportedSaleStatusSql("b")})
+       AND (
+         $2::boolean = false
+         OR ${buildImportedSaleStatusSql("b")}
+         OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'sale_status'
+       )
      ORDER BY b.view_count DESC, b.created_at DESC, b.id
      LIMIT $1`,
     [limit, saleStatusOnly]
@@ -304,7 +309,8 @@ async function main() {
       }
     }
 
-    const qualityFlags = buildImportQualityFlags({
+    const qualityFlags = mergeStickyImportQualityFlags({
+      currentFlags: buildImportQualityFlags({
       make: row.make,
       model: row.model,
       slug: row.slug,
@@ -312,6 +318,8 @@ async function main() {
       imageCount: row.image_count,
       priceUsd: row.asking_price_usd,
       summary,
+      }),
+      existingFlags: row.documentation_status?.import_quality_flags,
     });
     const qualityScore = calculateImportQualityScore(qualityFlags);
     const documentationStatus = buildImportDocumentationStatus({

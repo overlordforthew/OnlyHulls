@@ -584,6 +584,7 @@ const SALE_STATUS_PATTERN =
 const IMPORTED_SALE_STATUS_PATTERN = /\b(?:sold|sale\s+pending|deal\s+pending|pending)\b/i;
 const IMPORTED_SALE_STATUS_SQL_PATTERN =
   "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending|pending)([^a-z]|$)";
+const SALE_STATUS_DELIMITER_PATTERN = "[\\s-]+";
 
 function promoteSpecificSourceMakeModel(input: {
   make: string;
@@ -626,6 +627,19 @@ function promoteSpecificSourceMakeModel(input: {
   if (/^canadian$/i.test(make) && /^sailcraft\b/i.test(model)) {
     make = "Canadian Sailcraft";
     model = model.replace(/^sailcraft\b[\s-]*/i, "").trim();
+  }
+
+  if (/^sale$/i.test(make)) {
+    model = model.replace(new RegExp(`^${SALE_STATUS_PATTERN.source}${SALE_STATUS_DELIMITER_PATTERN}?`, "i"), "").trim();
+    const tokens = model.split(/\s+/).filter(Boolean);
+    while (tokens.length > 0 && PROMOTION_STOPWORDS.has(tokens[0].toLowerCase())) {
+      tokens.shift();
+    }
+
+    if (tokens.length > 0 && !/^\d{4}$/.test(tokens[0])) {
+      make = tokens.shift() || make;
+      model = tokens.join(" ");
+    }
   }
 
   return { make, model };
@@ -883,8 +897,14 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
     for (let pass = 0; pass < 4; pass += 1) {
       const next = cleaned
-        .replace(new RegExp(`^${SALE_STATUS_PATTERN.source}(?:\\s+|$)`, "i"), "")
-        .replace(new RegExp(`(?:^|\\s+)${SALE_STATUS_PATTERN.source}$`, "i"), "")
+        .replace(
+          new RegExp(`^${SALE_STATUS_PATTERN.source}(?:${SALE_STATUS_DELIMITER_PATTERN}|$)`, "i"),
+          ""
+        )
+        .replace(
+          new RegExp(`(?:^|${SALE_STATUS_DELIMITER_PATTERN})${SALE_STATUS_PATTERN.source}$`, "i"),
+          ""
+        )
         .trim();
       if (next === cleaned) break;
       cleaned = next;
@@ -1516,6 +1536,20 @@ export function buildImportQualityFlags(input: {
   }
 
   return flags;
+}
+
+export function mergeStickyImportQualityFlags(input: {
+  currentFlags: string[];
+  existingFlags?: unknown;
+}) {
+  const merged = new Set(input.currentFlags);
+  const existingFlags = Array.isArray(input.existingFlags) ? input.existingFlags : [];
+
+  if (existingFlags.includes("sale_status")) {
+    merged.add("sale_status");
+  }
+
+  return Array.from(merged);
 }
 
 export function calculateImportQualityScore(flags: string[]) {

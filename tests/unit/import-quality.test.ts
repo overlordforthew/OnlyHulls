@@ -5,6 +5,7 @@ import {
   buildImportedSlugFallback,
   buildImportedSlug,
   buildImportQualityFlags,
+  mergeStickyImportQualityFlags,
   hasImportedSaleStatusMarker,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
@@ -1281,6 +1282,26 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
     }),
     { make: "Ranger", model: "29" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1997,
+      make: "Hunter",
+      model: "310-Sale Pending",
+      sourceSite: "sailboatlistings",
+      slug: "1997-hunter-310-sale-pending-new-york",
+    }),
+    { make: "Hunter", model: "310" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1978,
+      make: "Sale",
+      model: "Pending Catalina 30",
+      sourceSite: "sailboatlistings",
+      slug: "1978-sale-pending-catalina-30-michigan",
+    }),
+    { make: "Catalina", model: "30" }
+  );
 });
 
 test("hasImportedSaleStatusMarker catches sold and pending imported listings", () => {
@@ -1330,6 +1351,23 @@ test("buildImportQualityFlags hides sold imports even when the normalized model 
       summary: "This imported listing has enough summary detail to clear the normal quality checks.",
     }),
     ["sale_status"]
+  );
+});
+
+test("mergeStickyImportQualityFlags preserves sale_status once cleanup has hidden a listing", () => {
+  assert.deepEqual(
+    mergeStickyImportQualityFlags({
+      currentFlags: [],
+      existingFlags: ["sale_status"],
+    }),
+    ["sale_status"]
+  );
+  assert.deepEqual(
+    mergeStickyImportQualityFlags({
+      currentFlags: ["missing_model"],
+      existingFlags: ["sale_status"],
+    }).sort(),
+    ["missing_model", "sale_status"]
   );
 });
 
