@@ -30,6 +30,7 @@ const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
 
 const LOCATION_LABEL_PREFIXES = [
   /^location\s*:\s*/i,
+  /^viewing location\s*:\s*/i,
   /^located in\s+/i,
   /^area\s*:\s*/i,
   /^city\s*:\s*/i,
@@ -449,9 +450,23 @@ function normalizeLocationPart(value: string) {
 
   const override = lookupLocationOverride(normalized);
   if (override) return override;
+  const repeatedParenthetical = normalized.match(/^(.+?)\s*\(([^)]+)\)$/);
+  if (
+    repeatedParenthetical &&
+    normalizeAliasKey(repeatedParenthetical[1]) === normalizeAliasKey(repeatedParenthetical[2])
+  ) {
+    return repeatedParenthetical[1].trim();
+  }
 
   const alias = lookupCountryAlias(normalized);
   if (alias) return alias;
+  const stateWithParens = normalized.match(/^([A-Za-z]{2})\s*\(([^)]+)\)$/);
+  if (stateWithParens && LOCATION_STATE_CODES.has(stateWithParens[1].toLowerCase())) {
+    return stateWithParens[1].toUpperCase();
+  }
+  if (/^[A-Za-z]{2}$/.test(normalized) && LOCATION_STATE_CODES.has(normalized.toLowerCase())) {
+    return normalized.toUpperCase();
+  }
   if (/^[A-Z]{2}$/.test(normalized)) return normalized;
 
   return normalized
@@ -466,6 +481,54 @@ export function normalizeSpacing(value?: string | null) {
     .replace(/[|]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function findNarrativeLocationBreak(value: string) {
+  let earliest = -1;
+
+  for (const pattern of LOCATION_NARRATIVE_BREAK_PATTERNS) {
+    const match = pattern.exec(value);
+    if (!match) continue;
+    if (earliest === -1 || match.index < earliest) {
+      earliest = match.index;
+    }
+  }
+
+  return earliest;
+}
+
+function extractFallbackLocationFromNarrative(value: string) {
+  for (const candidate of LOCATION_REGION_FALLBACKS) {
+    const pattern = new RegExp(
+      `(?:^|[\\s,/])${candidate.replace(/\s+/g, "\\s+")}(?=$|[\\s,/.])`,
+      "i"
+    );
+    if (pattern.test(value)) {
+      return candidate;
+    }
+  }
+
+  return "";
+}
+
+function trimNarrativeLocationTail(value: string) {
+  const normalized = value.replace(/^in\s+(?=[A-Z])/i, "").trim();
+  const breakIndex = findNarrativeLocationBreak(normalized);
+
+  if (breakIndex === -1) {
+    return normalized;
+  }
+
+  const trimmed = normalized
+    .slice(0, breakIndex)
+    .replace(/(?:\s+-\s*|[,\s/.-]+)$/g, "")
+    .trim();
+
+  if (trimmed) {
+    return trimmed;
+  }
+
+  return extractFallbackLocationFromNarrative(normalized);
 }
 
 export function normalizeImportedSummary(value?: string | null) {
@@ -496,6 +559,7 @@ export function normalizeImportedLocation(value?: string | null) {
     .replace(/\s*\/\s*/g, " / ")
     .replace(/\s{2,}/g, " ")
     .trim();
+  normalized = trimNarrativeLocationTail(normalized);
 
   if (!normalized) return "";
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
@@ -583,10 +647,18 @@ const PROMOTION_STOPWORDS = new Set([
 ]);
 const SALE_STATUS_PATTERN =
   /(?:sale\s+pending|deal\s+pending(?:\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})*|pending|sold|new)/i;
-const IMPORTED_SALE_STATUS_PATTERN = /\b(?:sold|sale\s+pending|deal\s+pending|pending)\b/i;
+const IMPORTED_SALE_STATUS_PATTERN =
+  /(?:\b(?:sold|sale\s+pending|deal\s+pending|pending)\b|[a-z]+sold\b)/i;
 const IMPORTED_SALE_STATUS_SQL_PATTERN =
-  "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending|pending)([^a-z]|$)";
+  "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending|pending)([^a-z]|$)|[a-z]+sold([^a-z]|$)";
 const SALE_STATUS_DELIMITER_PATTERN = "[\\s-]+";
+const LOCATION_NARRATIVE_BREAK_PATTERNS = [
+  /\b[\p{Lu}\d][\p{L}\d.'/-]*(?:\s+[\p{Lu}\d][\p{L}\d.'/-]*){0,3}\s+is\s+a\s+\d{4}\b/ui,
+  /\b(?:a\s+duty\s+and\s+tax\s+free\s+port|the\s+vessel\s+was\s+previously|was\s+previously\s+part|out\s+of\s+water\s+survey|available\s+upon\s+request|scheduled\s+to\s+be\s+relocated|at\s+head\s+of\s+the\s+sea|we\s+are\s+scheduling\s+viewings|we\s+will\s+be\s+happy|we\s+promise\s+to|for\s+serious\s+inquiry)\b/i,
+];
+const LOCATION_REGION_FALLBACKS = [...COMMON_LOCATION_SUFFIXES].sort(
+  (left, right) => right.length - left.length
+);
 
 function promoteSpecificSourceMakeModel(input: {
   make: string;
@@ -630,6 +702,8 @@ function promoteSpecificSourceMakeModel(input: {
     make = "Canadian Sailcraft";
     model = model.replace(/^sailcraft\b[\s-]*/i, "").trim();
   }
+
+  make = make.replace(/^([A-Za-z][A-Za-z/&' -]{2,})sold$/i, "$1").trim();
 
   if (/^sale$/i.test(make)) {
     model = model.replace(new RegExp(`^${SALE_STATUS_PATTERN.source}${SALE_STATUS_DELIMITER_PATTERN}?`, "i"), "").trim();
@@ -1312,7 +1386,8 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     model: normalizedModel,
     source_url:
       "source_url" in boat ? getSafeExternalUrl(boat.source_url) : boat.source_url,
-    location_text: normalizedLocation || boat.location_text || null,
+    location_text:
+      normalizedLocation || (boat.source_url ? null : boat.location_text || null),
     hero_url: "hero_url" in boat ? getSafeExternalUrl(boat.hero_url) : boat.hero_url,
     specs: normalizedSpecs,
   } as T;

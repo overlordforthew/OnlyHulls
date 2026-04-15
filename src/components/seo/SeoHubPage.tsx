@@ -30,6 +30,7 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
   const collectionSchema = buildHubCollectionSchema(localizedHub, boats, total);
   const breadcrumbSchema = buildHubBreadcrumbSchema(localizedHub);
   const lowInventory = boats.length > 0 && boats.length < 6;
+  const showBrowseOverflow = Boolean(localizedHub.browseHref) && total > boats.length;
 
   return (
     <div className="pb-16">
@@ -109,6 +110,20 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
                 <BoatCard key={boat.id} boat={boat} />
               ))}
             </div>
+
+            {showBrowseOverflow && localizedHub.browseHref && (
+              <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-7 text-text-secondary">
+                  {copy.showingHubSubset(boats.length, total)}
+                </p>
+                <Link
+                  href={localizedHub.browseHref}
+                  className="inline-flex rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                >
+                  {copy.seeAllListings(total)}
+                </Link>
+              </div>
+            )}
 
             {lowInventory && (
               <div className="mt-8 rounded-2xl border border-border bg-surface p-6">

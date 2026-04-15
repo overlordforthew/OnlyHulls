@@ -7,6 +7,7 @@ import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 export interface SeoHubDefinition {
   slug: string;
   href: string;
+  browseHref?: string;
   title: string;
   heading: string;
   description: string;
@@ -173,6 +174,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
   florida: {
     slug: "florida",
     href: "/boats/location/florida",
+    browseHref: "/boats?q=florida",
     title: "Boats for Sale in Florida",
     heading: "Boats for Sale in Florida",
     description:
@@ -188,6 +190,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
   caribbean: {
     slug: "caribbean",
     href: "/boats/location/caribbean",
+    browseHref: "/boats?q=caribbean",
     title: "Boats for Sale in the Caribbean",
     heading: "Boats for Sale in the Caribbean",
     description:
@@ -203,6 +206,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
   "puerto-rico": {
     slug: "puerto-rico",
     href: "/boats/location/puerto-rico",
+    browseHref: "/boats?q=puerto%20rico",
     title: "Boats for Sale in Puerto Rico",
     heading: "Boats for Sale in Puerto Rico",
     description:
@@ -218,6 +222,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
   bahamas: {
     slug: "bahamas",
     href: "/boats/location/bahamas",
+    browseHref: "/boats?q=bahamas",
     title: "Boats for Sale in the Bahamas",
     heading: "Boats for Sale in the Bahamas",
     description:

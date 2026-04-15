@@ -5,6 +5,8 @@ export interface SeoHubPageCopy {
   browseAllBoats: string;
   getAiMatched: string;
   liveListings: (count: number) => string;
+  showingHubSubset: (shown: number, total: number) => string;
+  seeAllListings: (count: number) => string;
   noBoatsTitle: string;
   noBoatsDescription: string;
   broaderSearchHeading: string;
@@ -37,6 +39,9 @@ const EN_SEO_COPY: SeoHubPageCopy = {
   browseAllBoats: "Browse all boats",
   getAiMatched: "Get AI matched",
   liveListings: (count) => pluralize(count, "live listing", "live listings"),
+  showingHubSubset: (shown, total) =>
+    `Showing ${shown.toLocaleString()} of ${total.toLocaleString()} live listings on this hub.`,
+  seeAllListings: (count) => `See all ${count.toLocaleString()} in browse`,
   noBoatsTitle: "No boats are live on this hub yet",
   noBoatsDescription:
     "The page is ready, but the current catalog does not have enough clean live listings here yet.",
@@ -187,6 +192,9 @@ const ES_SEO_COPY: SeoHubPageCopy = {
   browseAllBoats: "Explorar todos los barcos",
   getAiMatched: "Recibir match con IA",
   liveListings: (count) => pluralize(count, "anuncio activo", "anuncios activos"),
+  showingHubSubset: (shown, total) =>
+    `Mostrando ${shown.toLocaleString()} de ${total.toLocaleString()} anuncios activos en este hub.`,
+  seeAllListings: (count) => `Ver los ${count.toLocaleString()} en la exploración`,
   noBoatsTitle: "Todavía no hay barcos activos en este hub",
   noBoatsDescription:
     "La página ya está lista, pero el catálogo actual todavía no tiene suficientes anuncios activos y limpios aquí.",

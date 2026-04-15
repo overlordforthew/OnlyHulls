@@ -193,6 +193,39 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
   );
 });
 
+test("normalizeImportedLocation trims narrative tails from scraped location text", () => {
+  assert.equal(
+    normalizeImportedLocation(
+      "Viewing Location: We are scheduling viewings as we sail around Bahamas with family visiting in February"
+    ),
+    "Bahamas"
+  );
+  assert.equal(
+    normalizeImportedLocation(
+      "Cancun, Mexico, The Vessel Was Previously Part Of A Charter Fleet And Has Recently Been Removed From Service"
+    ),
+    "Cancun, Mexico"
+  );
+  assert.equal(
+    normalizeImportedLocation(
+      "League City, Tx (Texas) Jewel Is A 2018 Lagoon 42 For Sale By Broker."
+    ),
+    "League City, TX"
+  );
+  assert.equal(
+    normalizeImportedLocation(
+      "Pangkor Marina, A Duty And Tax Free Port For International Yachts"
+    ),
+    "Pangkor Marina"
+  );
+  assert.equal(
+    normalizeImportedLocation(
+      "Toronto, Canada - Out Of Water Survey 2024 Available Upon Request For Serious Inquiry"
+    ),
+    "Toronto, Canada"
+  );
+});
+
 test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   assert.deepEqual(
     normalizeImportedMakeModel({
@@ -1348,6 +1381,16 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
     }),
     { make: "Catalina", model: "30" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1978,
+      make: "Pearsonsold",
+      model: "365",
+      sourceSite: "sailboatlistings",
+      slug: "1978-pearsonsold-365-abaco",
+    }),
+    { make: "Pearson", model: "365" }
+  );
 });
 
 test("hasImportedSaleStatusMarker catches sold and pending imported listings", () => {
@@ -1377,6 +1420,14 @@ test("hasImportedSaleStatusMarker catches sold and pending imported listings", (
   );
   assert.equal(
     hasImportedSaleStatusMarker({
+      make: "Pearsonsold",
+      model: "365",
+      slug: "1978-pearsonsold-365-abaco",
+    }),
+    true
+  );
+  assert.equal(
+    hasImportedSaleStatusMarker({
       make: "Beneteau",
       model: "Oceanis 45",
       slug: "2012-beneteau-oceanis-45-catalonia",
@@ -1394,6 +1445,18 @@ test("buildImportQualityFlags hides sold imports even when the normalized model 
       locationText: "Kemah, Texas",
       imageCount: 4,
       priceUsd: 125000,
+      summary: "This imported listing has enough summary detail to clear the normal quality checks.",
+    }),
+    ["sale_status"]
+  );
+  assert.deepEqual(
+    buildImportQualityFlags({
+      make: "Pearsonsold",
+      model: "365",
+      slug: "1978-pearsonsold-365-abaco",
+      locationText: "Abaco, Bahamas",
+      imageCount: 17,
+      priceUsd: 34000,
       summary: "This imported listing has enough summary detail to clear the normal quality checks.",
     }),
     ["sale_status"]
