@@ -26,9 +26,11 @@ migrations/         # SQL migration files
 ```
 
 ## Deploy
-- **Coolify auto-deploy** on git push to `bluemele/OnlyHulls`
+- **Coolify auto-deploy** on git push to `origin/main`
 - Domain: `onlyhulls.com`
 - Infra services run via `infra/docker-compose.infra.yml` on host
+- Shipping posture: once relevant checks pass and rollback is clear, default to pushing verified OnlyHulls changes to `origin/main` so they go live without a permission-only pause.
+- After pushing to `main`, verify `https://onlyhulls.com/api/public/deploy-health` reflects the new build and sanity-check the affected surface in production.
 
 ## Key Patterns
 - Server Components by default, Client Components only when needed (interactivity)
