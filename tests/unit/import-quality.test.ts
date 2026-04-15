@@ -5,6 +5,7 @@ import {
   buildImportedSlugFallback,
   buildImportedSlug,
   buildImportQualityFlags,
+  buildImportedSummary,
   mergeStickyImportQualityFlags,
   hasImportedSaleStatusMarker,
   normalizeImportedLocation,
@@ -1862,5 +1863,20 @@ test("buildImportedSlugFallback appends deterministic suffix", () => {
       "4cc610fb-435a-4dd4-88f7-934f655964b3"
     ),
     "1983-irwin-38-center-cockpit-mark-2-la-cruz-marina-near-puerto-vallarta-4cc610"
+  );
+});
+
+test("buildImportedSummary avoids price and source boilerplate", () => {
+  assert.equal(
+    buildImportedSummary({
+      year: 2010,
+      make: "Robertson and Caine",
+      model: "Leopard 38",
+      locationText: "Nassau, Bahamas",
+      loa: 38,
+      rigType: "masthead sloop",
+      hullMaterial: "catamaran",
+    }),
+    "2010 Robertson and Caine Leopard 38 listed in Nassau, Bahamas. Key specs include 38ft LOA, masthead sloop rig, catamaran hull."
   );
 });

@@ -1639,14 +1639,11 @@ export function buildImportedSummary(input: {
   make: string;
   model: string;
   locationText?: string | null;
-  price: number;
-  currency: string;
   loa?: number | null;
   rigType?: string | null;
   hullMaterial?: string | null;
   berths?: number | null;
   heads?: number | null;
-  sourceName?: string | null;
 }) {
   const title = `${input.year} ${input.make}${input.model ? ` ${input.model}` : ""}`.trim();
   const facts: string[] = [];
@@ -1659,10 +1656,8 @@ export function buildImportedSummary(input: {
 
   const base = `${title} listed${input.locationText ? ` in ${input.locationText}` : ""}.`;
   const specSentence = facts.length > 0 ? ` Key specs include ${facts.join(", ")}.` : "";
-  const priceSentence = ` Asking ${input.currency} ${Math.round(input.price).toLocaleString("en-US")}.`;
-  const sourceSentence = input.sourceName ? ` Imported from ${input.sourceName}.` : "";
 
-  return `${base}${specSentence}${priceSentence}${sourceSentence}`.replace(/\s+/g, " ").trim();
+  return `${base}${specSentence}`.replace(/\s+/g, " ").trim();
 }
 
 function buildImportedSaleStatusHaystack(input: {

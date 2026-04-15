@@ -267,14 +267,11 @@ async function main() {
         make: normalized.make,
         model: normalized.model,
         locationText: normalizedLocation,
-        price: Number(row.asking_price),
-        currency: row.currency,
         loa: typeof normalizedSpecs.loa === "number" ? normalizedSpecs.loa : null,
         rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
         hullMaterial: typeof normalizedSpecs.hull_material === "string" ? normalizedSpecs.hull_material : null,
         berths: typeof normalizedSpecs.berths === "number" ? normalizedSpecs.berths : null,
         heads: typeof normalizedSpecs.heads === "number" ? normalizedSpecs.heads : null,
-        sourceName: row.source_name,
       });
     }
 

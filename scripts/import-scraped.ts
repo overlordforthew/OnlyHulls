@@ -281,14 +281,11 @@ function buildSpecsAndSummary(input: {
       make: input.make,
       model: input.model,
       locationText: input.location,
-      price: input.price,
-      currency: input.currency,
       loa,
       rigType,
       hullMaterial,
       berths: typeof specs.berths === "number" ? specs.berths : null,
       heads: typeof specs.heads === "number" ? specs.heads : null,
-      sourceName: input.sourceName,
     });
   const summarySource: "source" | "deterministic" = sourceSummary ? "source" : "deterministic";
   const tags = buildImportedCharacterTags({

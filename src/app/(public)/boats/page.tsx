@@ -10,6 +10,7 @@ import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
+import { buildBoatBrowseSummary } from "@/lib/browse-summary";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
   getDisplayedPrice,
@@ -109,20 +110,6 @@ function formatBoatType(value?: string | null) {
   return normalized
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function buildBrowseSummary(value?: string | null, maxLength = 220) {
-  const normalized = String(value || "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!normalized) return "";
-  if (normalized.length <= maxLength) return normalized;
-
-  const clipped = normalized.slice(0, maxLength);
-  const lastSpace = clipped.lastIndexOf(" ");
-  const safeClip = lastSpace > 120 ? clipped.slice(0, lastSpace) : clipped;
-  return `${safeClip.trimEnd()}...`;
 }
 
 export default function BoatsPage() {
@@ -817,7 +804,11 @@ function BoatBrowseRow({
     preferredCurrency: displayCurrency,
   });
   const vesselType = formatBoatType(boat.specs.vessel_type);
-  const summary = buildBrowseSummary(boat.ai_summary);
+  const summary = buildBoatBrowseSummary({
+    summary: boat.ai_summary,
+    title: `${boat.year} ${boat.make} ${boat.model}`,
+    locationText: boat.location_text,
+  });
   const hasSummary = summary.length > 0;
 
   return (
