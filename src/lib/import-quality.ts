@@ -545,7 +545,9 @@ function canonicalizeMakeName(make: string) {
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
-  if (/^fountaine\s+pajot$/i.test(normalized)) return "Fountaine Pajot";
+  if (/^(?:fountaine|fountain|fontaine|fountains)\s+pajot$/i.test(normalized)) {
+    return "Fountaine Pajot";
+  }
   if (/^hallberg(?:\s+|-)rassy$/i.test(normalized)) return "Hallberg-Rassy";
   if (/^robertson(?:\s*(?:&|and)\s*caine|&caine|\s+caine)$/i.test(normalized)) {
     return "Robertson and Caine";
@@ -687,7 +689,7 @@ function repairCompoundBrandMakeModel(input: {
 
   const modelStartsWith = (pattern: RegExp) => pattern.test(model);
 
-  if (/^fountaine$/i.test(make) && modelStartsWith(/^pajot\b[\s-]*/i)) {
+  if (/^(?:fountaine|fountain|fontaine|fountains)$/i.test(make) && modelStartsWith(/^pajot\b[\s-]*/i)) {
     make = "Fountaine Pajot";
     model = model.replace(/^pajot\b[\s-]*/i, "").trim();
   }

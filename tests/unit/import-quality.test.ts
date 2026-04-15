@@ -205,6 +205,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fountain",
+      model: "Pajot Lucia 40",
+      sourceSite: "sailboatlistings",
+      slug: "2018-fountain-pajot-lucia-40-southern-caribbean",
+    }),
+    { make: "Fountaine Pajot", model: "Lucia 40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fontaine",
+      model: "Pajot Venezia",
+      sourceSite: "sailboatlistings",
+      slug: "1995-fontaine-pajot-venezia-grenada",
+    }),
+    { make: "Fountaine Pajot", model: "Venezia" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fountains",
+      model: "Pajot Eleuthera",
+      sourceSite: "sailboatlistings",
+      slug: "2006-fountains-pajot-eleuthera-florida",
+    }),
+    { make: "Fountaine Pajot", model: "Eleuthera" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fountain Pajot",
+      model: "Lavezzi",
+      sourceSite: "sailboatlistings",
+      slug: "2009-fountain-pajot-lavezzi-antigua",
+    }),
+    { make: "Fountaine Pajot", model: "Lavezzi" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hallberg",
       model: "Rassy 42",
       sourceSite: "theyachtmarket",
