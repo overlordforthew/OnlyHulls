@@ -598,6 +598,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Italia",
+      model: "Yachts 15 98",
+      sourceSite: "theyachtmarket",
+      slug: "2014-italia-yachts-15-98-monfalcone",
+    }),
+    { make: "Italia Yachts", model: "15 98" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Italia",
+      model: "Yachts Italia 11 98",
+      sourceSite: "theyachtmarket",
+      slug: "2021-italia-yachts-italia-11-98-liguria",
+    }),
+    { make: "Italia Yachts", model: "11 98" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Italia Yachts",
+      model: "Yachts Italia 12 98",
+      sourceSite: "theyachtmarket",
+      slug: "2022-italia-yachts-italia-12-98-op-de-wal-bij-delta-yacht",
+    }),
+    { make: "Italia Yachts", model: "12 98" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Italia",
+      model: "Yachts",
+      sourceSite: "theyachtmarket",
+      slug: "1980-italia-yachts-",
+    }),
+    { make: "Italia Yachts", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Sweden",
       model: "Yachts 45",
       sourceSite: "theyachtmarket",

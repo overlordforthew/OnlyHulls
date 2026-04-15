@@ -740,6 +740,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
   }
 
+  if (/^italia(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
+    make = "Italia Yachts";
+    model = model.replace(/^yachts\b[\s-]*/i, "").trim();
+  }
+
   if (/^sweden(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
     make = "Sweden Yachts";
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
@@ -900,6 +905,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^spirit yachts$/i.test(make)) {
     cleaned = cleaned.replace(/^spirit\b[\s-]*/i, "");
+  }
+
+  if (/^italia yachts$/i.test(make)) {
+    cleaned = cleaned.replace(/^italia\b[\s-]*/i, "");
   }
 
   if (/^hans christian$/i.test(make)) {
