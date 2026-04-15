@@ -226,12 +226,16 @@ async function main() {
   let embeddingsUpdated = 0;
 
   for (const row of rows) {
+    const rawLoa = typeof row.specs?.loa === "number" && Number.isFinite(row.specs.loa)
+      ? row.specs.loa
+      : null;
     const normalized = normalizeImportedMakeModel({
       year: row.year,
       make: row.make,
       model: row.model,
       slug: row.slug,
       sourceSite: row.source_site,
+      loa: rawLoa,
     });
     const normalizedLocation = normalizeImportedLocation(row.location_text);
     const normalizedSlug = buildImportedSlug(
@@ -311,13 +315,13 @@ async function main() {
 
     const qualityFlags = mergeStickyImportQualityFlags({
       currentFlags: buildImportQualityFlags({
-      make: row.make,
-      model: row.model,
-      slug: row.slug,
-      locationText: normalizedLocation,
-      imageCount: row.image_count,
-      priceUsd: row.asking_price_usd,
-      summary,
+        make: normalized.make,
+        model: normalized.model,
+        slug: row.slug,
+        locationText: normalizedLocation,
+        imageCount: row.image_count,
+        priceUsd: row.asking_price_usd,
+        summary,
       }),
       existingFlags: row.documentation_status?.import_quality_flags,
     });

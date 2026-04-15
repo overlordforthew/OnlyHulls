@@ -379,6 +379,7 @@ async function importBoats(filePath: string, sourceSite: string) {
       }
 
       const location = normalizeImportedLocation(b.location);
+      const rawLoa = parseNumber(b.length || b.loa);
       const preNormalizedSlug = buildImportedSlug(year, parsedName.make, parsedName.model, location);
       const { make, model } = normalizeImportedMakeModel({
         year,
@@ -386,6 +387,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         model: parsedName.model,
         slug: preNormalizedSlug,
         sourceSite,
+        loa: rawLoa,
       });
 
       // Minimum 25ft, maximum 300ft — no dinghies, no parse errors
@@ -393,7 +395,7 @@ async function importBoats(filePath: string, sourceSite: string) {
         make,
         model,
         sourceSite,
-        loa: parseNumber(b.length || b.loa),
+        loa: rawLoa,
       });
       if (loa !== null && (loa < 25 || loa > 300)) {
         skipped++;
@@ -465,8 +467,8 @@ async function importBoats(filePath: string, sourceSite: string) {
       invalidImageUrls += rawImages.length - images.length;
       const priceUsd = toUsd(price, currency);
       const qualityFlags = buildImportQualityFlags({
-        make: parsedName.make,
-        model: parsedName.model,
+        make,
+        model,
         slug: preNormalizedSlug,
         locationText: location,
         imageCount: images.length,
@@ -616,6 +618,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const price = parsePrice(b.price);
       const parsedLocation = normalizeImportedLocation(b.location);
       const parsedName = b.name ? parseMakeModel(b.name, parsedYear ?? undefined) : { make: "", model: "" };
+      const rawLoa = parseNumber(b.length || b.loa);
       const preNormalizedSlug = buildImportedSlug(
         parsedYear || existing.year || new Date().getUTCFullYear(),
         parsedName.make,
@@ -628,6 +631,7 @@ async function updateBoats(filePath: string, sourceSite: string) {
         model: parsedName.model,
         slug: preNormalizedSlug,
         sourceSite,
+        loa: rawLoa,
       });
       const year = parsedYear ?? existing.year ?? null;
       const make = normalized.make || existing.make;
@@ -655,7 +659,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
       invalidImageUrls += rawImages.length - images.length;
       const priceUsd = price ? toUsd(price, currency) : null;
       const qualityFlags = buildImportQualityFlags({
+        make,
         model,
+        slug: existing.slug || preNormalizedSlug,
         locationText: location,
         imageCount: images.length,
         priceUsd,

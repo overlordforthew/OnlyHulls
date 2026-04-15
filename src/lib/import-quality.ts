@@ -267,6 +267,31 @@ const LOCATION_STATE_CODES = new Set([
   "wy",
 ]);
 
+function collectLocationModelWords(...phraseGroups: string[][]) {
+  const words = new Set<string>();
+
+  for (const group of phraseGroups) {
+    for (const phrase of group) {
+      for (const token of String(phrase || "").toLowerCase().split(/[^a-z0-9]+/)) {
+        if (token) words.add(token);
+      }
+    }
+  }
+
+  return words;
+}
+
+const LOCATION_MODEL_WORDS = collectLocationModelWords(
+  Array.from(LOCATION_STOP_WORDS),
+  Array.from(LOCATION_STATE_CODES),
+  Object.keys(COUNTRY_ALIASES),
+  Object.values(COUNTRY_ALIASES),
+  Object.keys(LOCATION_NORMALIZATION_OVERRIDES),
+  Object.values(LOCATION_NORMALIZATION_OVERRIDES),
+  COMMON_LOCATION_SUFFIXES,
+  Array.from(GENERIC_LOCATION_VALUES)
+);
+
 const WINDOWS_1252_UNICODE_TO_BYTE: Record<string, number> = {
   "\u20AC": 0x80,
   "\u201A": 0x82,
@@ -1383,6 +1408,7 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     model: boat.model,
     slug: boat.slug,
     sourceSite: boat.source_site,
+    loa: toFiniteNumber(boat.specs?.loa),
   });
   const normalizedMake = normalizedMakeModel.make || boat.make;
   const normalizedModel = normalizedMakeModel.model;
@@ -1470,15 +1496,45 @@ function inferModelFromSlug(slug?: string | null, make?: string | null) {
   return inferred;
 }
 
+function looksLikeLocationModelCandidate(model?: string | null) {
+  const tokens = normalizeSpacing(model)
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length === 0 || tokens.length > 5) return false;
+  if (tokens.some((token) => /\d/.test(token))) return false;
+
+  return tokens.every((token) => LOCATION_MODEL_WORDS.has(token));
+}
+
+function formatLoaBackfillModel(loa?: number | null) {
+  if (typeof loa !== "number" || !Number.isFinite(loa)) return "";
+  if (loa < 20 || loa > 90) return "";
+
+  const rounded = Math.round(loa * 10) / 10;
+  if (Math.abs(rounded - Math.round(rounded)) < 0.05) {
+    return String(Math.round(rounded));
+  }
+
+  return rounded.toFixed(1).replace(/\.0$/, "");
+}
+
 export function normalizeImportedMakeModel(input: {
   year?: number | null;
   make?: string | null;
   model?: string | null;
   slug?: string | null;
   sourceSite?: string | null;
+  loa?: number | null;
 }) {
   let make = normalizeSpacing(input.make);
-  let model = normalizeSpacing(input.model);
+  const rawModel = normalizeSpacing(input.model);
+  let model = rawModel;
+  const isSailboatListings =
+    normalizeSpacing(input.sourceSite).toLowerCase() === "sailboatlistings";
+  const canBackfillFromLoa =
+    isSailboatListings && (!rawModel || GENERIC_MODEL_TOKENS.has(rawModel.toLowerCase()));
 
   if (!model) {
     model = inferModelFromSlug(input.slug, make);
@@ -1515,16 +1571,20 @@ export function normalizeImportedMakeModel(input: {
   model = dedupeAdjacentModelTokens(model);
   model = normalizeRomanSuffixes(model);
 
-  if (
-    normalizeSpacing(input.sourceSite).toLowerCase() === "sailboatlistings" &&
-    input.year &&
-    model === String(input.year)
-  ) {
+  if (isSailboatListings && input.year && model === String(input.year)) {
     model = "";
   }
 
   if (GENERIC_MODEL_TOKENS.has(model.toLowerCase())) {
     model = "";
+  }
+
+  if (canBackfillFromLoa && looksLikeLocationModelCandidate(model)) {
+    model = "";
+  }
+
+  if (canBackfillFromLoa && !model) {
+    model = formatLoaBackfillModel(input.loa);
   }
 
   return { make, model };

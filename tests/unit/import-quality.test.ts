@@ -1464,6 +1464,49 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
   );
 });
 
+test("normalizeImportedMakeModel backfills missing Sailboat Listings models from LOA", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "",
+      sourceSite: "sailboatlistings",
+      slug: "1981-hunter-new-jersey",
+      loa: 30,
+    }),
+    { make: "Hunter", model: "30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cabo Rico",
+      model: "Sailboat",
+      sourceSite: "sailboatlistings",
+      slug: "1989-cabo-rico-mississippi",
+      loa: 34,
+    }),
+    { make: "Cabo Rico", model: "34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Catalina",
+      model: "",
+      sourceSite: "sailboatlistings",
+      slug: "1978-catalina-puerto-rico",
+      loa: 26.8,
+    }),
+    { make: "Catalina", model: "26.8" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Hunter",
+      model: "",
+      sourceSite: "theyachtmarket",
+      slug: "1981-hunter-",
+      loa: 30,
+    }),
+    { make: "Hunter", model: "" }
+  );
+});
+
 test("hasImportedSaleStatusMarker catches sold and pending imported listings", () => {
   assert.equal(
     hasImportedSaleStatusMarker({
