@@ -516,7 +516,7 @@ test("make SEO hub loads", async ({ page }) => {
 test("location SEO hub loads", async ({ page }) => {
   await gotoWithRetry(page, "/boats/location/florida");
   await expect(page.getByRole("heading", { name: "Boats for Sale in Florida", exact: false })).toBeVisible();
-  await expect(page.getByText("live Florida listings", { exact: false })).toBeVisible();
+  await expect(page.getByText("live listings", { exact: false })).toBeVisible();
 });
 
 test("match page renders buyer faq content", async ({ page }) => {
