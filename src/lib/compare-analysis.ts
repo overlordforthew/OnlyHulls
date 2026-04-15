@@ -4,6 +4,9 @@ import {
   formatCurrencyAmount,
   type SupportedCurrency,
 } from "@/lib/currency";
+import { getComparePageCopy, type CompareAnalysisCopy } from "@/i18n/copy/compare";
+
+const DEFAULT_COMPARE_ANALYSIS_COPY = getComparePageCopy("en").analysis;
 
 export interface CompareSpecs {
   loa?: number;
@@ -107,9 +110,12 @@ export function formatFeet(value: unknown) {
   return feet !== null ? `${feet}ft` : "—";
 }
 
-export function formatKilograms(value: unknown) {
+export function formatKilograms(
+  value: unknown,
+  formatNumber: (value: number) => string = (number) => number.toLocaleString("en-US")
+) {
   const kilograms = toFiniteNumber(value);
-  return kilograms !== null ? `${Math.round(kilograms).toLocaleString("en-US")} kg` : "—";
+  return kilograms !== null ? `${formatNumber(Math.round(kilograms))} kg` : "—";
 }
 
 export function getBoatPriceUsd(boat: CompareBoat) {
@@ -137,28 +143,35 @@ export function formatPriceFromUsd(amountUsd: number, currency: SupportedCurrenc
   return formatCurrencyAmount(convertUsdToCurrency(amountUsd, currency), currency);
 }
 
-export function formatPricePerFoot(boat: CompareBoat, currency: SupportedCurrency) {
+export function formatPricePerFoot(
+  boat: CompareBoat,
+  currency: SupportedCurrency,
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
+) {
   const amountUsd = getPricePerFootUsd(boat);
   if (amountUsd === null) {
     return "—";
   }
 
-  return `${formatPriceFromUsd(amountUsd, currency)}/ft`;
+  return `${formatPriceFromUsd(amountUsd, currency)}${copy.units.perFoot}`;
 }
 
-export function getListingPathLabel(boat: CompareBoat) {
+export function getListingPathLabel(
+  boat: CompareBoat,
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
+) {
   if (boat.source_url) {
-    return `Imported via ${formatSourceSite(boat.source_site)}`;
+    return copy.listingPath.imported(formatSourceSite(boat.source_site));
   }
 
   if (
     boat.seller_subscription_tier === "featured" ||
     boat.seller_subscription_tier === "broker"
   ) {
-    return "Direct featured listing";
+    return copy.listingPath.directFeatured;
   }
 
-  return "Direct OnlyHulls listing";
+  return copy.listingPath.directOnlyHulls;
 }
 
 export function formatSourceSite(source: string | null | undefined) {
@@ -198,84 +211,111 @@ export function getWinningNumericBoatIds(
   return new Set(entries.filter((entry) => entry.value === target).map((entry) => entry.id));
 }
 
-export function buildQuickFactors(boats: CompareBoat[], currency: SupportedCurrency): QuickFactor[] {
+export function buildQuickFactors(
+  boats: CompareBoat[],
+  currency: SupportedCurrency,
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
+): QuickFactor[] {
   const factors = [
     createQuickFactor({
       boats,
-      label: "Lowest buy-in",
+      label: copy.quickFactors.lowestBuyIn.label,
       numericPreference: "low",
       value: getBoatPriceUsd,
       detail: (winner, runnerUp) => {
         if (!runnerUp) {
-          return `${formatPriceFromUsd(getBoatPriceUsd(winner), currency)} gets you into this compare set first.`;
+          return copy.quickFactors.lowestBuyIn.onlyWinner(
+            formatPriceFromUsd(getBoatPriceUsd(winner), currency)
+          );
         }
 
         const savings = Math.abs(getBoatPriceUsd(runnerUp) - getBoatPriceUsd(winner));
-        return `${formatPriceFromUsd(savings, currency)} less than ${formatBoatTitle(runnerUp)}.`;
+        return copy.quickFactors.lowestBuyIn.savings(
+          formatPriceFromUsd(savings, currency),
+          formatBoatTitle(runnerUp)
+        );
       },
     }),
     createQuickFactor({
       boats,
-      label: "Price per foot edge",
+      label: copy.quickFactors.pricePerFootEdge.label,
       numericPreference: "low",
       value: getPricePerFootUsd,
-      detail: (winner) => `${formatPricePerFoot(winner, currency)} based on current asking price and LOA.`,
+      detail: (winner) =>
+        copy.quickFactors.pricePerFootEdge.detail(formatPricePerFoot(winner, currency, copy)),
     }),
     createQuickFactor({
       boats,
-      label: "Newest build",
+      label: copy.quickFactors.newestBuild.label,
       numericPreference: "high",
       value: (boat) => boat.year,
       detail: (winner, runnerUp) => {
         if (!runnerUp) {
-          return `${winner.year} is the newest build in this compare set.`;
+          return copy.quickFactors.newestBuild.onlyWinner(winner.year);
         }
 
-        return `${winner.year - runnerUp.year} years newer than ${formatBoatTitle(runnerUp)}.`;
+        return copy.quickFactors.newestBuild.advantage(
+          winner.year - runnerUp.year,
+          formatBoatTitle(runnerUp)
+        );
       },
     }),
     createQuickFactor({
       boats,
-      label: "Longest hull",
+      label: copy.quickFactors.longestHull.label,
       numericPreference: "high",
       value: (boat) => toFiniteNumber(boat.specs.loa),
       detail: (winner, runnerUp) => {
         if (!runnerUp || toFiniteNumber(runnerUp.specs.loa) === null) {
-          return `${formatFeet(winner.specs.loa)} overall length.`;
+          return copy.quickFactors.longestHull.onlyWinner(formatFeet(winner.specs.loa));
         }
 
         const advantage = (winner.specs.loa as number) - (runnerUp.specs.loa as number);
-        return `${formatFeet(winner.specs.loa)} LOA, about ${advantage.toFixed(1)}ft longer than ${formatBoatTitle(runnerUp)}.`;
+        return copy.quickFactors.longestHull.advantage(
+          formatFeet(winner.specs.loa),
+          advantage.toFixed(1),
+          formatBoatTitle(runnerUp)
+        );
       },
     }),
     createQuickFactor({
       boats,
-      label: "Shallower draft",
+      label: copy.quickFactors.shallowerDraft.label,
       numericPreference: "low",
       value: (boat) => toFiniteNumber(boat.specs.draft),
       detail: (winner, runnerUp) => {
         if (!runnerUp || toFiniteNumber(runnerUp.specs.draft) === null) {
-          return `${formatFeet(winner.specs.draft)} draft.`;
+          return copy.quickFactors.shallowerDraft.onlyWinner(formatFeet(winner.specs.draft));
         }
 
         const margin = (runnerUp.specs.draft as number) - (winner.specs.draft as number);
-        return `${formatFeet(winner.specs.draft)} draft, roughly ${margin.toFixed(1)}ft shallower than ${formatBoatTitle(runnerUp)}.`;
+        return copy.quickFactors.shallowerDraft.advantage(
+          formatFeet(winner.specs.draft),
+          margin.toFixed(1),
+          formatBoatTitle(runnerUp)
+        );
       },
     }),
     createQuickFactor({
       boats,
-      label: "Accommodation edge",
+      label: copy.quickFactors.accommodationEdge.label,
       numericPreference: "high",
       value: (boat) =>
         scoreAccommodation(boat.specs.cabins, boat.specs.berths, boat.specs.heads),
       detail: (winner) =>
-        [
-          toFiniteNumber(winner.specs.cabins) ? `${winner.specs.cabins} cabins` : null,
-          toFiniteNumber(winner.specs.berths) ? `${winner.specs.berths} berths` : null,
-          toFiniteNumber(winner.specs.heads) ? `${winner.specs.heads} heads` : null,
-        ]
-          .filter(Boolean)
-          .join(" / "),
+        copy.quickFactors.accommodationEdge.detail(
+          [
+            toFiniteNumber(winner.specs.cabins)
+              ? copy.quickFactors.accommodationEdge.cabins(String(winner.specs.cabins))
+              : null,
+            toFiniteNumber(winner.specs.berths)
+              ? copy.quickFactors.accommodationEdge.berths(String(winner.specs.berths))
+              : null,
+            toFiniteNumber(winner.specs.heads)
+              ? copy.quickFactors.accommodationEdge.heads(String(winner.specs.heads))
+              : null,
+          ].filter((part): part is string => Boolean(part))
+        ),
     }),
   ].filter((factor): factor is QuickFactor => factor !== null);
 
@@ -284,7 +324,8 @@ export function buildQuickFactors(boats: CompareBoat[], currency: SupportedCurre
 
 export function buildActionRecommendation(
   boats: CompareBoat[],
-  currency: SupportedCurrency
+  currency: SupportedCurrency,
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
 ): ActionRecommendation | null {
   const entries = boats
     .map((boat) => ({ boat, score: getActionScore(boat) }))
@@ -301,23 +342,28 @@ export function buildActionRecommendation(
   }
 
   const reasons = [
-    !winner.boat.source_url ? "direct OnlyHulls path" : "cleanest imported listing path",
-    winner.boat.condition_score ? `condition ${Math.round(winner.boat.condition_score)}/10` : null,
-    winner.boat.image_count ? `${winner.boat.image_count} images` : null,
-    winner.boat.location_text ? "specific location shown" : null,
+    !winner.boat.source_url ? copy.actionRecommendation.directPath : copy.actionRecommendation.importedPath,
+    winner.boat.condition_score
+      ? copy.actionRecommendation.condition(Math.round(winner.boat.condition_score))
+      : null,
+    winner.boat.image_count ? copy.actionRecommendation.images(winner.boat.image_count) : null,
+    winner.boat.location_text ? copy.actionRecommendation.specificLocationShown : null,
     getPricePerFootUsd(winner.boat) !== null
-      ? `${formatPricePerFoot(winner.boat, currency)}`
+      ? formatPricePerFoot(winner.boat, currency, copy)
       : null,
   ].filter(Boolean);
 
   return {
     winnerId: winner.boat.id,
     winnerTitle: formatBoatTitle(winner.boat),
-    detail: `Best first call if you want the cleaner path first: ${reasons.slice(0, 3).join(", ")}.`,
+    detail: copy.actionRecommendation.detail(reasons.slice(0, 3).join(", ")),
   };
 }
 
-export function buildBoatInsights(boats: CompareBoat[]) {
+export function buildBoatInsights(
+  boats: CompareBoat[],
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
+) {
   const insights = new Map<string, BoatInsight>();
 
   for (const boat of boats) {
@@ -333,44 +379,44 @@ export function buildBoatInsights(boats: CompareBoat[]) {
     {
       value: getBoatPriceUsd,
       preference: "low",
-      strength: "Lowest buy-in in this compare",
-      watchout: "Highest asking price in this compare",
+      strength: copy.insights.lowestBuyIn,
+      watchout: copy.insights.highestAskingPrice,
     },
     {
       value: getPricePerFootUsd,
       preference: "low",
-      strength: "Lower price per foot",
-      watchout: "Higher price per foot",
+      strength: copy.insights.lowerPricePerFoot,
+      watchout: copy.insights.higherPricePerFoot,
     },
     {
       value: (boat) => boat.year,
       preference: "high",
-      strength: "Newest build year here",
-      watchout: "Oldest build year here",
+      strength: copy.insights.newestBuildYear,
+      watchout: copy.insights.oldestBuildYear,
     },
     {
       value: (boat) => toFiniteNumber(boat.specs.loa),
       preference: "high",
-      strength: "Longer LOA in this shortlist",
-      watchout: "Smaller overall footprint",
+      strength: copy.insights.longerLoa,
+      watchout: copy.insights.smallerFootprint,
     },
     {
       value: (boat) => toFiniteNumber(boat.specs.draft),
       preference: "low",
-      strength: "Shallower draft",
-      watchout: "Deeper draft to account for",
+      strength: copy.insights.shallowerDraft,
+      watchout: copy.insights.deeperDraft,
     },
     {
       value: (boat) => scoreAccommodation(boat.specs.cabins, boat.specs.berths, boat.specs.heads),
       preference: "high",
-      strength: "Stronger accommodation layout",
-      watchout: "Lighter accommodation spec sheet",
+      strength: copy.insights.strongerAccommodation,
+      watchout: copy.insights.lighterAccommodation,
     },
     {
       value: (boat) => toFiniteNumber(boat.condition_score),
       preference: "high",
-      strength: "Better condition signal",
-      watchout: "Weaker condition signal",
+      strength: copy.insights.betterConditionSignal,
+      watchout: copy.insights.weakerConditionSignal,
     },
   ];
 
@@ -400,17 +446,17 @@ export function buildBoatInsights(boats: CompareBoat[]) {
 
   for (const boat of boats) {
     if (!boat.source_url) {
-      addInsight(insights, boat.id, "strengths", "Direct listing inside OnlyHulls");
+      addInsight(insights, boat.id, "strengths", copy.insights.directListing);
     } else {
-      addInsight(insights, boat.id, "watchouts", "Imported listing; confirm the source details before acting");
+      addInsight(insights, boat.id, "watchouts", copy.insights.importedListing);
     }
 
     if (!boat.location_text) {
-      addInsight(insights, boat.id, "watchouts", "Location still being refined");
+      addInsight(insights, boat.id, "watchouts", copy.insights.locationRefining);
     }
 
     if (countFilledSpecs(boat) < 4) {
-      addInsight(insights, boat.id, "watchouts", "Thin spec sheet for a clean decision");
+      addInsight(insights, boat.id, "watchouts", copy.insights.thinSpecs);
     }
   }
 
@@ -424,7 +470,10 @@ export function buildBoatInsights(boats: CompareBoat[]) {
   return insights;
 }
 
-export function buildBestFitSignals(boat: CompareBoat): BestFitSignal[] {
+export function buildBestFitSignals(
+  boat: CompareBoat,
+  copy: CompareAnalysisCopy = DEFAULT_COMPARE_ANALYSIS_COPY
+): BestFitSignal[] {
   const fits: BestFitSignal[] = [];
   const tags = new Set(boat.character_tags.map((tag) => tag.toLowerCase()));
   const loa = toFiniteNumber(boat.specs.loa);
@@ -438,52 +487,52 @@ export function buildBestFitSignals(boat: CompareBoat): BestFitSignal[] {
 
   if (tags.has("bluewater") || (loa !== null && loa >= 45)) {
     fits.push({
-      label: "Bluewater cruising",
+      label: copy.bestFit.bluewater.label,
       reason:
         loa !== null && loa >= 45
-          ? `${formatFeet(loa)} overall length gives it a stronger offshore posture.`
-          : "Its bluewater tags make it a more natural offshore shortlist candidate.",
+          ? copy.bestFit.bluewater.lengthReason(formatFeet(loa))
+          : copy.bestFit.bluewater.tagReason,
     });
   }
 
   if (tags.has("liveaboard-ready") || ((cabins ?? 0) >= 3 && (heads ?? 0) >= 2)) {
     fits.push({
-      label: "Liveaboard setup",
+      label: copy.bestFit.liveaboard.label,
       reason:
         (cabins ?? 0) >= 3
-          ? `${formatCount(cabins)} cabins and ${formatCount(heads)} heads support longer stays aboard.`
-          : "The liveaboard-ready signals point to an easier onboard setup.",
+          ? copy.bestFit.liveaboard.cabinsReason(formatCount(cabins), formatCount(heads))
+          : copy.bestFit.liveaboard.tagReason,
     });
   }
 
   if (draft !== null && draft <= 4.5) {
     fits.push({
-      label: "Shallow-water cruising",
-      reason: `${formatFeet(draft)} draft opens up thinner anchorages and coastal routes.`,
+      label: copy.bestFit.shallowWater.label,
+      reason: copy.bestFit.shallowWater.reason(formatFeet(draft)),
     });
   }
 
   if (tags.has("family-friendly") || (berths ?? 0) >= 6) {
     fits.push({
-      label: "Family crew",
+      label: copy.bestFit.familyCrew.label,
       reason:
         (berths ?? 0) >= 6
-          ? `${formatCount(berths)} berths give a family or guest crew more sleeping flexibility.`
-          : "Family-friendly signals suggest an easier cruising setup with guests aboard.",
+          ? copy.bestFit.familyCrew.berthsReason(formatCount(berths))
+          : copy.bestFit.familyCrew.tagReason,
     });
   }
 
   if (!boat.source_url && condition !== null && condition >= 8 && (imageCount ?? 0) >= 6) {
     fits.push({
-      label: "Fast first contact",
-      reason: "Direct listing, strong condition signal, and healthy photo depth make this easier to act on.",
+      label: copy.bestFit.fastFirstContact.label,
+      reason: copy.bestFit.fastFirstContact.reason,
     });
   }
 
   if (pricePerFoot !== null && pricePerFoot <= 9000) {
     fits.push({
-      label: "Value-first shortlist",
-      reason: "The current price per foot keeps this one in the stronger value conversation.",
+      label: copy.bestFit.valueFirst.label,
+      reason: copy.bestFit.valueFirst.reason,
     });
   }
 

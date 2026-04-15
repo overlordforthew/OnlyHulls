@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { getPublicAppUrl } from "@/lib/config/urls";
+import { getAuthLayoutCopy } from "@/i18n/copy/layouts";
 
 const appUrl = getPublicAppUrl();
 
-export const metadata: Metadata = {
-  title: "Reset Password",
-  alternates: {
-    canonical: `${appUrl}/reset-password`,
-  },
-  robots: {
-    index: false,
-    follow: true,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const copy = getAuthLayoutCopy(locale);
+
+  return {
+    title: copy.resetPasswordTitle,
+    alternates: {
+      canonical: `${appUrl}/reset-password`,
+    },
+    robots: {
+      index: false,
+      follow: true,
+    },
+  };
+}
 
 export default function ResetPasswordLayout({
   children,

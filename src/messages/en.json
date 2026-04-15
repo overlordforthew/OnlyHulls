@@ -14,87 +14,756 @@
     "error": "Something went wrong",
     "search": "Search",
     "filter": "Filter",
-    "sort": "Sort"
-  },
-  "nav": {
-    "browse": "Browse Boats",
-    "matches": "My Matches",
-    "listings": "My Listings",
-    "profile": "Profile",
-    "pricing": "Pricing",
-    "admin": "Admin"
-  },
-  "home": {
-    "hero": "Find Your Perfect Boat",
-    "subtitle": "AI-powered matchmaking connects you with the right boat — even when you don't know exactly what you're looking for.",
-    "ctaBuyer": "I'm Looking for a Boat",
-    "ctaSeller": "I'm Selling a Boat",
-    "howItWorks": "How It Works",
-    "step1Title": "Tell Us About Your Dream",
-    "step1Desc": "Chat with our AI to build your buyer profile. It learns what you need, even the things you haven't thought of yet.",
-    "step2Title": "Get Matched",
-    "step2Desc": "Our engine scores every listing against your unique profile. Best matches float to the top.",
-    "step3Title": "Connect Directly",
-    "step3Desc": "Found the one? Connect directly with the seller. No brokers, no middlemen, no 10% commission."
-  },
-  "boats": {
-    "matchScore": "{score}% Match",
-    "askingPrice": "Asking Price",
-    "year": "Year",
-    "length": "Length",
-    "location": "Location",
-    "condition": "Condition",
-    "viewDetails": "View Details",
-    "connect": "Connect",
-    "save": "Save",
-    "dismiss": "Dismiss",
-    "dreamboard": "Dreamboard",
-    "sampleListing": "Sample Listing",
-    "noResults": "No boats found matching your criteria.",
-    "filters": {
-      "priceRange": "Price Range",
-      "yearRange": "Year Range",
-      "lengthRange": "Length (ft)",
-      "hullType": "Hull Type",
-      "rigType": "Rig Type",
-      "location": "Location"
-    }
-  },
-  "onboarding": {
-    "title": "Let's Find Your Perfect Boat",
-    "subtitle": "Chat with our AI to build your buyer profile. The more you share, the better your matches.",
-    "placeholder": "Tell me about your dream boat experience...",
-    "generating": "Generating your profile...",
-    "profileReady": "Your Buyer Profile is Ready",
-    "reviewProfile": "Review Profile",
-    "startOver": "Start Over"
-  },
-  "listing": {
-    "createTitle": "List Your Boat",
-    "steps": {
-      "basics": "Basics",
-      "specs": "Specifications",
-      "details": "Details",
-      "location": "Location & Price",
-      "photos": "Photos",
-      "review": "Review"
-    },
-    "pendingReview": "Your listing is pending review. We'll notify you once it's approved.",
-    "publish": "Submit for Review"
-  },
-  "pricing": {
-    "title": "Simple, Fair Pricing",
-    "subtitle": "No commissions, no hidden fees. Just simple 90-day pricing.",
-    "buyerTitle": "For Buyers",
-    "sellerTitle": "For Sellers",
-    "free": "Free",
-    "perMonth": "/month",
-    "currentPlan": "Current Plan",
-    "upgrade": "Upgrade",
+    "sort": "Sort",
+    "account": "Account",
     "getStarted": "Get Started"
   },
-  "email": {
-    "connectSubject": "New Match on OnlyHulls",
-    "introSubject": "OnlyHulls Introduction"
+  "localeSwitcher": {
+    "label": "Language",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "themeSwitcher": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  },
+  "seoHubLinks": {
+    "title": "Popular Boat Searches",
+    "subtitle": "Jump into the highest-intent buyer paths with cleaner, indexable landing pages."
+  },
+  "currencySelector": {
+    "label": "Currency"
+  },
+  "siteNav": {
+    "browse": "Browse",
+    "match": "Match",
+    "sell": "Sell",
+    "compare": "Compare",
+    "compareBoats": "Compare Boats",
+    "compareAria": "Compare boats",
+    "compareAriaSelected": "Compare boats, {count} selected",
+    "compareFilled": "{count} filled",
+    "myMatches": "My Matches",
+    "myListings": "My Listings",
+    "listBoat": "List a Boat",
+    "savedSearches": "Saved Searches",
+    "savedSearchesNew": "{count} new",
+    "aiProfile": "AI Profile",
+    "accountBilling": "Account & Billing",
+    "toggleMenu": "Toggle menu",
+    "browseBoats": "Browse Boats",
+    "aiMatch": "AI Match",
+    "sellYourBoat": "Sell Your Boat",
+    "openComparePage": "Open compare page",
+    "openCompare": "Open compare",
+    "account": "Account"
+  },
+  "siteFooter": {
+    "browse": "Browse",
+    "allBoats": "All Boats",
+    "cruising": "Cruising",
+    "liveaboard": "Liveaboard",
+    "racing": "Racing",
+    "classic": "Classic",
+    "sellers": "Sellers",
+    "listYourBoat": "List Your Boat",
+    "sellerPricing": "Seller Pricing",
+    "createAccount": "Create Account",
+    "buyers": "Buyers",
+    "aiMatching": "AI Matching",
+    "buyerPlans": "Buyer Plans",
+    "getStarted": "Get Started",
+    "brandTagline": "AI-powered boat marketplace.",
+    "about": "About",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "rightsReserved": "All rights reserved.",
+    "bottomTagline": "Zero commission. AI-powered. Built for boat lovers."
+  },
+  "boatCard": {
+    "boatFallbackAlt": "Boat",
+    "matchPercent": "{score}% Match",
+    "locationRefining": "Location being refined",
+    "foundOn": "Found on",
+    "compare": "Compare",
+    "addedToCompare": "Added to Compare",
+    "save": "Save",
+    "pass": "Pass",
+    "connect": "Connect",
+    "partnerListing": "partner listing",
+    "sample": "Sample",
+    "featuredSeller": "Featured Seller",
+    "exclusive": "Exclusive to OnlyHulls",
+    "listingBadgeOwner": "Direct owner",
+    "listingBadgeFeatured": "Featured seller",
+    "listingBadgeBroker": "Broker listing",
+    "listingBadgeImported": "Imported listing",
+    "trustFeatured": "Featured seller listing with direct contact on OnlyHulls.",
+    "trustOwner": "Owner-submitted listing with direct contact on OnlyHulls.",
+    "trustImported": "Imported market listing. Details may still be syncing.",
+    "trustLocationSource": "Location is still being refined from the {source} source feed.",
+    "trustLocationSeller": "Seller still needs to confirm the boat's location.",
+    "trustSourceNoLink": "Source details were imported from {source}; external link is not available yet."
+  },
+  "matchCta": {
+    "primary": "Get Matched - It's Free",
+    "secondary": "Get Matched - Free",
+    "contactOwner": "Contact Owner",
+    "sendingIntro": "Sending Intro...",
+    "sendIntroRequest": "Send Intro Request",
+    "requestAlreadySent": "Request already sent",
+    "sellerContactUnlocked": "Seller contact unlocked",
+    "reachOutTo": "Reach out to {name} at",
+    "theSeller": "the seller",
+    "thisBoat": "this boat",
+    "contactFailed": "Failed to contact the seller. Please try again.",
+    "listBoatFree": "List Your Boat - Free"
+  },
+  "contactGate": {
+    "ariaLabel": "Contact owner",
+    "close": "Close",
+    "title": "Before you visit {listingName}",
+    "description": "Save {boatTitle} to your shortlist so you can compare later and get matched with similar boats.",
+    "benefit1": "Find similar boats with AI matching",
+    "benefit2": "Price drop alerts for saved boats",
+    "benefit3": "Save and compare your favorites",
+    "saveContinue": "Save & Continue",
+    "signUpSave": "Sign Up & Save",
+    "continueGuest": "Continue as Guest",
+    "freeAccountHint": "Free account. No credit card required.",
+    "originalListing": "the original listing"
+  },
+  "pricing": {
+    "mostPopular": "Most Popular",
+    "getStartedFree": "Get Started Free",
+    "subscribe": "Subscribe",
+    "buyerHeading": "Buyer Plans",
+    "buyerSubtitle": "Browse for free, or upgrade for unlimited AI matching with simple 90-day pricing.",
+    "buyerFootnote": "Start free any time. Upgrade only if you want longer-running alerts and deeper AI matching.",
+    "sellerHeading": "Seller Plans",
+    "sellerSubtitle": "No commissions, no hidden fees - just simple 90-day pricing.",
+    "sellerFootnote": "All paid seller plans are billed once for 90 days. No commissions and no surprise monthly charges.",
+    "billingUnavailable": "Paid billing is still being configured. Free plans are available now.",
+    "billingUnavailableEnv": "Paid billing is not live yet on this environment. Free browsing still works.",
+    "sellerBillingUnavailableEnv": "Free seller onboarding is live. Paid seller billing will unlock once Stripe is configured.",
+    "buyerPlans": {
+      "free": {
+        "name": "Free",
+        "cta": "Start Free Buyer Account",
+        "features": {
+          "one": "Browse all listings",
+          "two": "10 saves/day",
+          "three": "Basic search filters",
+          "four": "View match scores"
+        }
+      },
+      "plus": {
+        "name": "Plus",
+        "billingLabel": "every 90 days",
+        "priceNote": "One upfront 90-day payment. Works out to about $8.33/month.",
+        "cta": "Upgrade to Buyer Plus",
+        "features": {
+          "one": "Unlimited saves and matching",
+          "two": "AI buyer profile",
+          "three": "Match score breakdowns",
+          "four": "Saved searches and alerts",
+          "five": "Dreamboard"
+        }
+      }
+    },
+    "sellerPlans": {
+      "freeSeller": {
+        "name": "Free",
+        "cta": "Start Free Seller Account",
+        "features": {
+          "one": "1 active listing",
+          "two": "Manual text-based entry",
+          "three": "Up to 10 photos",
+          "four": "Standard visibility",
+          "five": "Match notifications"
+        }
+      },
+      "standard": {
+        "name": "Creator",
+        "billingLabel": "every 90 days",
+        "priceNote": "One upfront 90-day payment. Works out to about $10/month.",
+        "cta": "Start Creator Plan",
+        "features": {
+          "one": "Unlimited active listings",
+          "two": "AI-assisted listing creation",
+          "three": "Dynamic photo uploads",
+          "four": "Up to 30 photos per listing",
+          "five": "Match notifications"
+        }
+      },
+      "featured": {
+        "name": "Featured Creator",
+        "billingLabel": "every 90 days",
+        "priceNote": "One upfront 90-day payment. Works out to about $20/month.",
+        "cta": "Start Featured Creator",
+        "features": {
+          "one": "Everything in Creator",
+          "two": "External video embeds (YouTube/Vimeo)",
+          "three": "Boosted placement in feed",
+          "four": "Featured in buyer email blasts",
+          "five": "Analytics dashboard",
+          "six": "Up to 50 photos per listing",
+          "seven": "Priority matching"
+        }
+      }
+    }
+  },
+  "auth": {
+    "signIn": {
+      "heading": "Welcome back",
+      "subtitle": "Sign in to OnlyHulls",
+      "invalidCredentials": "Invalid email or password",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot password?",
+      "signingIn": "Signing in...",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "signUp": {
+      "heading": "Create your account",
+      "sellerSubtitle": "List your boat on OnlyHulls",
+      "buyerSubtitle": "Join OnlyHulls and find your perfect boat",
+      "registrationFailed": "Registration failed",
+      "name": "Name (optional)",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "Minimum 8 characters",
+      "creating": "Creating account...",
+      "submit": "Create account",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "accountReady": "Account ready",
+      "checkEmail": "Check your email",
+      "autoVerifiedMessage": "We created your account for {email}. Email verification is not configured right now, so you can sign in immediately.",
+      "verificationMessage": "We sent a verification link to {email}. Click the link to activate your account, then sign in.",
+      "goToSignIn": "Go to Sign In"
+    },
+    "forgotPassword": {
+      "heading": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a reset link",
+      "email": "Email",
+      "sending": "Sending...",
+      "submit": "Send reset link",
+      "sentMessage": "If an account with that email exists, we've sent a password reset link.",
+      "backToSignIn": "Back to Sign In",
+      "rememberPassword": "Remember your password?",
+      "signIn": "Sign in"
+    },
+    "resetPassword": {
+      "invalidLink": "Invalid reset link.",
+      "requestNew": "Request a new one",
+      "heading": "Set new password",
+      "success": "Password updated successfully!",
+      "signIn": "Sign in",
+      "passwordMismatch": "Passwords don't match",
+      "genericError": "Something went wrong",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordHint": "Minimum 8 characters",
+      "updating": "Updating...",
+      "submit": "Update password"
+    }
+  },
+  "home": {
+    "heroTitleStart": "Find Your Perfect",
+    "heroTitleAccent": "Hull",
+    "heroSubtitle": "Search the real market, save contenders, and connect directly with sellers. AI-powered. Zero commission. Built to get you to the right boat faster.",
+    "searchPlaceholder": "Search boats...",
+    "searchButton": "Search",
+    "browseAllBoats": "Browse All Boats",
+    "getMatchedByAI": "Get Matched by AI",
+    "heroProof": {
+      "one": "Browse without signing up",
+      "two": "Free account to save and compare",
+      "three": "Direct seller contact with no broker commission"
+    },
+    "stats": {
+      "boatsListed": "Boats Listed",
+      "commission": "Commission",
+      "matching": "Matching"
+    },
+    "categories": {
+      "cruising": "Cruising",
+      "liveaboard": "Liveaboard",
+      "racing": "Racing",
+      "family": "Family",
+      "budget": "Budget",
+      "classic": "Classic"
+    },
+    "paths": {
+      "buyers": {
+        "eyebrow": "For buyers",
+        "title": "I want to buy",
+        "description": "Browse the market, save contenders, compare side by side, or let the AI narrow the shortlist for you.",
+        "bullet1": "Start free and save boats right away",
+        "bullet2": "Use AI matching when you want help narrowing the field",
+        "primary": "Start AI Matching",
+        "secondary": "Or browse boats"
+      },
+      "sellers": {
+        "eyebrow": "For sellers",
+        "title": "I want to sell",
+        "description": "List your boat, present it cleanly, and get direct buyer leads without paying commission on the sale.",
+        "bullet1": "Free listing live in minutes",
+        "bullet2": "Upgrade later only if you want more visibility",
+        "primary": "List Your Boat Free",
+        "secondary": "Or see seller plans"
+      }
+    },
+    "trendingHulls": "Trending Hulls",
+    "viewAll": "View All",
+    "howTitleStart": "How",
+    "howTitleAccent": "OnlyHulls",
+    "howTitleEnd": "Works",
+    "howSubtitle": "Three steps to your next boat. No brokers, no BS.",
+    "stepLabel": "Step {number}",
+    "steps": {
+      "browse": {
+        "title": "Browse or Get Matched",
+        "description": "Search manually or let our AI find boats that fit your style, budget, and dreams."
+      },
+      "love": {
+        "title": "Fall in Love",
+        "description": "Swipe through matches, save your favorites, and build your dream shortlist."
+      },
+      "connect": {
+        "title": "Connect Directly",
+        "description": "Message sellers with zero middlemen. No broker fees. No commission. Ever."
+      }
+    },
+    "whyTitleStart": "Why Boat Lovers Choose",
+    "whyTitleAccent": "OnlyHulls",
+    "values": {
+      "commission": {
+        "title": "Commission",
+        "description": "We never take a cut. Buy and sell without losing a dime to fees."
+      },
+      "matching": {
+        "title": "Powered Matching",
+        "description": "Our AI builds your buyer profile and scores every listing against it."
+      },
+      "brokers": {
+        "title": "Brokers Required",
+        "description": "Connect directly with sellers. No gatekeepers, no middlemen."
+      },
+      "reach": {
+        "title": "Reach",
+        "description": "Boats from everywhere. The right buyer finds the right boat, worldwide."
+      }
+    },
+    "sellerCta": {
+      "titleStart": "Show Us Your",
+      "titleAccent": "Hull",
+      "description": "List your boat for free. Our AI connects you with qualified buyers worldwide. No commission, no brokers, no middlemen.",
+      "badge": "Free listing live in minutes. Upgrade later only if you want more exposure.",
+      "disclaimer": "No credit card required. List in under 5 minutes."
+    },
+    "finalCta": {
+      "titleStart": "Ready to Make",
+      "titleAccent": "Waves",
+      "description": "Join the boat marketplace that puts you first. Zero fees. Real boats. Real connections.",
+      "primary": "Get Started - It's Free",
+      "secondary": "Browse Boats"
+    }
+  },
+  "matchPage": {
+    "metadataTitle": "AI Boat Matching",
+    "metadataDescription": "Tell us your dream boat and our AI will match you with the best listings, even when you do not know exactly what you are looking for.",
+    "badge": "AI-Powered",
+    "heroTitleStart": "Your Perfect",
+    "heroTitleAccent": "Match",
+    "heroTitleEnd": "is Waiting",
+    "heroDescription": "Tell us your dream boat and our AI will match you with the best listings, even when you do not know exactly what you are looking for.",
+    "browseInstead": "Browse Boats Instead",
+    "heroFootnote": "Your buyer profile and shortlist stay attached to your account, so you can come back later and keep narrowing the field without starting over.",
+    "previewEyebrow": "Preview - Example AI Match Results",
+    "exampleMatch": "{score}% (example)",
+    "howItWorks": "How It Works",
+    "stepLabel": "Step {number}",
+    "whyHeading": "Why AI Matching?",
+    "faqEyebrow": "Buyer FAQ",
+    "faqHeading": "Questions buyers usually ask before they start matching",
+    "faqSubtitle": "These are the practical questions we see most often from buyers using OnlyHulls to narrow the market quickly.",
+    "finalHeadingStart": "Ready to Find",
+    "finalHeadingAccent": "The One",
+    "finalHeadingEnd": "?",
+    "finalDescription": "Create a free account, chat with our AI, and see your matches in minutes.",
+    "steps": {
+      "one": {
+        "title": "Tell Us Your Dream",
+        "description": "Chat with our AI to build your buyer profile. It learns what you need - budget, size, sailing style, and even the things you have not thought through yet."
+      },
+      "two": {
+        "title": "Get Matched",
+        "description": "Our engine scores every listing against your profile using AI similarity and smart filters. Best matches float to the top."
+      },
+      "three": {
+        "title": "Connect Directly",
+        "description": "Found the one? Connect directly with the seller. No brokers, no middlemen, and no 10% commission eating into the deal."
+      }
+    },
+    "features": {
+      "one": {
+        "title": "Learns What You Want",
+        "description": "The AI builds a rich profile from a natural conversation, not a tedious form. It picks up on preferences you might not realize you have."
+      },
+      "two": {
+        "title": "Scores Every Listing",
+        "description": "Every boat gets a match percentage based on your profile. Sort by match score to see what fits you best."
+      },
+      "three": {
+        "title": "Private and Secure",
+        "description": "Your profile is yours. Sellers see your interest, not your data. You control when and how you connect."
+      },
+      "four": {
+        "title": "Zero Commission",
+        "description": "We do not take a cut of your deal. Matching is free. Premium features are optional."
+      }
+    },
+    "startSignals": {
+      "one": {
+        "title": "Takes a couple of minutes",
+        "description": "Start with a short chat instead of a long form. The AI builds your buyer profile from that conversation."
+      },
+      "two": {
+        "title": "Your results stay saved",
+        "description": "Matches, shortlist signals, and your buyer profile stay attached to your account when you come back."
+      },
+      "three": {
+        "title": "Direct seller contact",
+        "description": "When you are ready, you connect directly with the seller. No broker commission is added by OnlyHulls."
+      }
+    },
+    "stackSignals": {
+      "aiLive": "AI matching is live",
+      "aiLiveValue": "Reranking is powered by {provider}.",
+      "smartMatching": "Smart matching is active",
+      "smartMatchingValue": "Rules, shortlist signals, and buyer filters are still doing the heavy lifting.",
+      "semanticOn": "Semantic ranking is on",
+      "semanticOnValue": "Profile similarity is running through {provider} embeddings.",
+      "specRanking": "Spec ranking is on",
+      "specRankingValue": "Budget, size, location, and boat-type filters stay in the scoring mix.",
+      "saved": "Your matches stay saved",
+      "savedValue": "Come back anytime to sort by price, size, year, or newest without starting over."
+    },
+    "faqs": {
+      "one": {
+        "question": "How does OnlyHulls decide what is a good match?",
+        "answer": "OnlyHulls combines your buyer profile, boat type, budget, specs, location signals, and AI-assisted ranking to score listings. Stronger matches rise to the top, but you can still browse the full market yourself."
+      },
+      "two": {
+        "question": "Do I have to know the exact make and model I want?",
+        "answer": "No. The matching flow is built for buyers who know the lifestyle, budget, and mission more than the exact boat. The AI uses those signals to surface likely fits and explain the tradeoffs."
+      },
+      "three": {
+        "question": "Can I still sort and browse boats manually after I get matched?",
+        "answer": "Yes. Your matches are saved, and you can still sort by price, size, year, and listing date while comparing listings across the broader inventory."
+      },
+      "four": {
+        "question": "What do I get with Buyer Plus?",
+        "answer": "Buyer Plus unlocks longer-term AI matching, unlimited saves, better shortlist tools, and saved-search alerts over a 90-day period while keeping direct contact with sellers commission-free."
+      }
+    }
+  },
+  "boatsPage": {
+    "loadError": "Failed to load boats. Please try again.",
+    "loadMoreError": "Failed to load more boats. Please try again.",
+    "saveSearchError": "Unable to save search right now.",
+    "saveSearchDuplicate": "This search is already saved.",
+    "saveSearchSuccess": "Search saved. New matching boats will show up in your alerts.",
+    "heading": "Browse Boats",
+    "boatCount": "{count} boats",
+    "saving": "Saving...",
+    "saveSearch": "Save Search",
+    "signInToSave": "Sign In to Save",
+    "compareShortlist": "Compare shortlist: {count}/{max} boats selected.",
+    "compareFilled": "{count} filled",
+    "compareOpenAriaSelected": "Open compare with {count} selected boats",
+    "compareOpenAria": "Open compare page",
+    "openCompare": "Open compare",
+    "comparePage": "Compare page",
+    "searchPlaceholder": "Search boats...",
+    "searchButton": "Search",
+    "clearFilter": "Clear filter",
+    "minPrice": "Min price",
+    "maxPrice": "Max price",
+    "minYear": "Min year",
+    "maxYear": "Max year",
+    "allBoatTypes": "All boat types",
+    "allRigs": "All rigs",
+    "applyFilters": "Apply",
+    "sortBy": "Sort by",
+    "sort": {
+      "price": "Price",
+      "size": "Size",
+      "year": "Year",
+      "newest": "Newest"
+    },
+    "view": {
+      "grid": "Grid",
+      "rows": "Rows"
+    },
+    "searchHubsTitle": "Explore Search Hubs",
+    "searchHubsSubtitle": "Use stable browse pages for popular makes, regions, and boat types.",
+    "retry": "Retry",
+    "noResultsTitle": "No hulls found",
+    "noResultsSubtitle": "We did not find a live listing for this exact search. Clear the current filters or jump into one of the strongest live browse paths below.",
+    "clearFilters": "Clear filters",
+    "browseCatamarans": "Browse catamarans",
+    "puertoRicoBoats": "Puerto Rico boats",
+    "liveMarketsTitle": "Try these live markets",
+    "liveMarketsSubtitle": "These browse hubs stay cleaner and usually recover the search fastest.",
+    "loadingMore": "Loading...",
+    "showMore": "Show More ({count} remaining)",
+    "boatFallback": "Boat",
+    "foundOn": "Found on",
+    "addedToCompare": "Added to Compare",
+    "compare": "Compare",
+    "viewListing": "View Listing",
+    "boatTypes": {
+      "catamaran": "Catamaran",
+      "trimaran": "Trimaran",
+      "monohull": "Monohull",
+      "powerboat": "Powerboat"
+    },
+    "rigTypes": {
+      "sloop": "Sloop",
+      "cutter": "Cutter",
+      "ketch": "Ketch",
+      "yawl": "Yawl",
+      "schooner": "Schooner"
+    }
+  },
+  "sellPage": {
+    "metadataTitle": "Sell Your Boat",
+    "metadataDescription": "List your boat on OnlyHulls. No commissions, no brokers, and direct contact with AI-matched buyers worldwide.",
+    "badge": "For Sellers",
+    "heroTitleStart": "Become a",
+    "heroTitleAccent": "Creator",
+    "heroDescription": "Show us your hull. List your boat for free and let our AI connect you with qualified buyers worldwide. No brokers, no middlemen, and no percentage of your sale.",
+    "seePricing": "See Pricing",
+    "howHeading": "How Selling Works",
+    "whyHeadingStart": "Why Sell on",
+    "whyHeadingAccent": "OnlyHulls",
+    "whyHeadingEnd": "?",
+    "comparisonHeading": "OnlyHulls vs. Traditional Brokers",
+    "faqEyebrow": "Seller FAQ",
+    "faqHeading": "The practical questions sellers ask before they list",
+    "faqSubtitle": "These answers make the commercial model clearer for owners deciding whether to list on OnlyHulls.",
+    "finalHeadingStart": "Ready to Show Us Your",
+    "finalHeadingAccent": "Hull(s)",
+    "finalHeadingEnd": "?",
+    "finalDescription": "Create a free account and list your boat in minutes. No credit card required.",
+    "stepFootnote": "AI-assisted listing polish and presentation cleanup are included on higher-tier seller plans.",
+    "table": {
+      "feature": "Feature",
+      "onlyHulls": "OnlyHulls",
+      "broker": "Broker"
+    },
+    "steps": {
+      "one": {
+        "title": "Create Your Listing",
+        "description": "Enter your boat's details - make, model, specs, condition, and price. Our guided wizard walks you through it step by step."
+      },
+      "two": {
+        "title": "Add Photos",
+        "description": "Upload photos to showcase your boat. Great photos get more interest, and we help you lead with the strongest ones."
+      },
+      "three": {
+        "title": "AI Does the Work",
+        "description": "Our AI analyzes your listing, tags it with character traits such as bluewater, liveaboard, and race-ready, and matches it with qualified buyers. Featured and Broker plans also get AI help cleaning up listing copy, structure, and presentation."
+      },
+      "four": {
+        "title": "Connect with Buyers",
+        "description": "When a buyer is interested, you connect directly. No broker in the middle and no commission on the sale."
+      }
+    },
+    "benefits": {
+      "one": {
+        "title": "$0 Commission",
+        "description": "Keep every dollar of your sale. We never take a cut, and listing plus matching start free."
+      },
+      "two": {
+        "title": "Global Reach",
+        "description": "Your listing is visible to buyers worldwide. AI matching helps the right buyers find you, not just the local ones."
+      },
+      "three": {
+        "title": "You Stay in Control",
+        "description": "You decide who to talk to and when. No cold calls from brokers and no pressure to accept lowball offers."
+      },
+      "four": {
+        "title": "List in Minutes",
+        "description": "Our step-by-step wizard makes it fast. Enter the basics, add photos, and go live."
+      }
+    },
+    "comparison": {
+      "commission": {
+        "feature": "Commission",
+        "us": "$0",
+        "them": "8-10% of sale price"
+      },
+      "listingFee": {
+        "feature": "Listing Fee",
+        "us": "Free",
+        "them": "$200-500+"
+      },
+      "buyerMatching": {
+        "feature": "Buyer Matching",
+        "us": "AI-powered",
+        "them": "Manual, limited"
+      },
+      "reach": {
+        "feature": "Reach",
+        "us": "Global",
+        "them": "Local / regional"
+      },
+      "timeToList": {
+        "feature": "Time to List",
+        "us": "Minutes",
+        "them": "Days to weeks"
+      }
+    },
+    "faqs": {
+      "one": {
+        "question": "Do I need to pay before I can create a listing?",
+        "answer": "No. You can create a listing for free, get it into draft or review, and decide later whether to stay on the free tier or upgrade into a 90-day paid seller plan."
+      },
+      "two": {
+        "question": "What does the AI actually do for sellers?",
+        "answer": "OnlyHulls analyzes the listing, tags it for buyer intent, and helps route it toward the right buyers. Higher-tier seller plans also include AI help cleaning up listing copy, structure, and presentation."
+      },
+      "three": {
+        "question": "How long does a paid seller plan last?",
+        "answer": "Creator and Featured Creator plans are billed for 90 days at a time, which gives sellers a longer listing window without feeling like a month-to-month subscription trap."
+      },
+      "four": {
+        "question": "Do you take a commission when my boat sells?",
+        "answer": "No. OnlyHulls does not take a broker-style commission. You keep the sale proceeds and connect directly with buyers."
+      }
+    }
+  },
+  "aboutPage": {
+    "metadataTitle": "About - OnlyHulls",
+    "metadataDescription": "OnlyHulls is an AI-powered boat marketplace built for real boat lovers.",
+    "heading": "About OnlyHulls",
+    "intro": "OnlyHulls is a boat marketplace built by people who actually love boats. We use AI to help buyers find the right boat faster and help sellers reach qualified, serious buyers.",
+    "problem": "The boat buying process is broken. Listings are scattered across dozens of broker sites. Specs are inconsistent. Photos are terrible. And you have no idea if a boat actually fits what you need until you've spent hours researching it.",
+    "solution": "We're fixing that by aggregating listings from the best broker sites, enriching them with AI-extracted specifications, and matching buyers to boats based on their actual needs - not just price and location.",
+    "cards": {
+      "matching": {
+        "title": "AI-Powered Matching",
+        "description": "Tell us what you want. Our AI profiles your needs and ranks every boat in our catalog by how well it fits."
+      },
+      "commission": {
+        "title": "Zero Commission",
+        "description": "Browsing, searching, and contacting sellers is always free. We charge for AI intelligence, not for connecting people."
+      },
+      "boats": {
+        "title": "Real Boats Only",
+        "description": "Every listing is sourced from verified brokers or submitted by real owners. No bait-and-switch. No ghost listings."
+      }
+    },
+    "contactHeading": "Get in Touch",
+    "contactDescription": "Questions, feedback, or partnership inquiries? Reach us at"
+  },
+  "privacyPage": {
+    "metadataTitle": "Privacy Policy - OnlyHulls",
+    "metadataDescription": "How OnlyHulls collects, uses, and protects your data.",
+    "heading": "Privacy Policy",
+    "lastUpdated": "Last updated: April 1, 2026",
+    "sections": {
+      "informationCollected": {
+        "title": "1. Information We Collect",
+        "accountData": "Account data: email address, display name, and encrypted password when you register.",
+        "buyerProfile": "Buyer profile: boat preferences, budget range, experience level, and location preferences when you complete the AI matching questionnaire.",
+        "usageData": "Usage data: pages visited, boats viewed, search queries, and contact clicks to help us improve the Platform and provide better recommendations."
+      },
+      "howWeUse": {
+        "title": "2. How We Use Your Data",
+        "items": {
+          "one": "To provide AI-powered boat matching and recommendations",
+          "two": "To connect buyers with sellers and broker listings",
+          "three": "To send transactional emails (verification, password reset, match notifications)",
+          "four": "To improve our search, matching algorithms, and user experience",
+          "five": "To detect and prevent fraud or abuse"
+        }
+      },
+      "sharing": {
+        "title": "3. Data Sharing",
+        "intro": "We do not sell your personal data. We share data only with:",
+        "seller": "Sellers: your name and email when you initiate contact (with your consent)",
+        "providers": "Service providers: email delivery (Resend), payment processing (Stripe), and hosting infrastructure",
+        "legal": "Legal requirements: when required by law or to protect our rights"
+      },
+      "security": {
+        "title": "4. Data Security",
+        "body": "Passwords are hashed with bcrypt. All connections use HTTPS/TLS encryption. Payment processing is handled by Stripe - we never store credit card numbers."
+      },
+      "rights": {
+        "title": "5. Your Rights",
+        "body": "You can request access to, correction of, or deletion of your personal data at any time by contacting us. You can delete your account from the account settings page."
+      },
+      "cookies": {
+        "title": "6. Cookies",
+        "body": "We use essential cookies for authentication and session management. We use anonymous session identifiers to track browsing patterns for improving recommendations. We do not use third-party advertising cookies."
+      },
+      "contact": {
+        "title": "7. Contact",
+        "body": "For privacy questions or data requests, contact us at"
+      }
+    }
+  },
+  "termsPage": {
+    "metadataTitle": "Terms of Service - OnlyHulls",
+    "metadataDescription": "Terms of service for using the OnlyHulls boat marketplace.",
+    "heading": "Terms of Service",
+    "lastUpdated": "Last updated: April 1, 2026",
+    "sections": {
+      "acceptance": {
+        "title": "1. Acceptance of Terms",
+        "body": "By accessing or using OnlyHulls (\"the Platform\"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Platform."
+      },
+      "service": {
+        "title": "2. Description of Service",
+        "body": "OnlyHulls is an AI-powered boat marketplace that connects buyers and sellers. We aggregate listings from third-party brokers and provide tools for direct listings. OnlyHulls does not own, inspect, or guarantee any vessel listed on the Platform."
+      },
+      "accounts": {
+        "title": "3. User Accounts",
+        "body": "You must provide accurate information when creating an account. You are responsible for maintaining the security of your account credentials. You must be at least 18 years old to use the Platform."
+      },
+      "transactions": {
+        "title": "4. Listings & Transactions",
+        "body": "Sellers are solely responsible for the accuracy of their listings, including pricing, specifications, condition, and photographs. OnlyHulls does not participate in, mediate, or guarantee any transaction between buyers and sellers. All purchases are made directly between the parties involved."
+      },
+      "thirdParty": {
+        "title": "5. Third-Party Listings",
+        "body": "Many listings on OnlyHulls are sourced from third-party broker websites. We provide links to these original listings as a convenience. OnlyHulls is not responsible for the accuracy, availability, or content of third-party listings."
+      },
+      "ai": {
+        "title": "6. AI Features",
+        "body": "OnlyHulls uses artificial intelligence for buyer profiling, boat matching, and listing analysis. AI-generated recommendations and scores are for informational purposes only and should not be the sole basis for purchasing decisions. Always conduct your own due diligence, including independent surveys and inspections."
+      },
+      "liability": {
+        "title": "7. Limitation of Liability",
+        "body": "OnlyHulls is provided \"as is\" without warranties of any kind. We are not liable for any damages arising from your use of the Platform, including but not limited to losses from transactions, inaccurate listings, or AI recommendations."
+      },
+      "contact": {
+        "title": "8. Contact",
+        "body": "For questions about these terms, contact us at"
+      }
+    }
+  },
+  "notFound": {
+    "title": "Lost at Sea",
+    "description": "This page doesn't exist - or the listing has been removed.",
+    "browseBoats": "Browse Boats",
+    "goHome": "Go Home"
   }
 }

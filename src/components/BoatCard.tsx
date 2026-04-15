@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ExternalLink, GitCompareArrows, Heart, MapPin, MessageCircle, X } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
 import { isLocalMediaUrl } from "@/lib/media";
@@ -38,6 +39,8 @@ interface BoatCardProps {
   compareDisabled?: boolean;
 }
 
+type BoatCardTranslator = (key: string, values?: Record<string, string | number>) => string;
+
 export default function BoatCard({
   boat,
   displayCurrency,
@@ -50,10 +53,11 @@ export default function BoatCard({
   compareSelected,
   compareDisabled,
 }: BoatCardProps) {
+  const t = useTranslations("boatCard");
   const href = `/boats/${boat.slug || boat.id}`;
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
-  const listingBadge = getListingBadge(boat);
-  const trustSignal = getTrustSignal(boat);
+  const listingBadge = getListingBadge(boat, t);
+  const trustSignal = getTrustSignal(boat, t);
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -78,7 +82,7 @@ export default function BoatCard({
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated">
-              <span className="text-5xl opacity-20">Boat</span>
+              <span className="text-5xl opacity-20">{t("boatFallbackAlt")}</span>
             </div>
           )}
 
@@ -86,7 +90,7 @@ export default function BoatCard({
 
           {matchScore !== undefined && (
             <span className="absolute right-3 top-3 rounded-full bg-gradient-to-r from-success to-primary px-3 py-1 text-xs font-bold text-white shadow-lg">
-              {Math.round(matchScore * 100)}% Match
+              {t("matchPercent", { score: Math.round(matchScore * 100) })}
             </span>
           )}
 
@@ -136,7 +140,7 @@ export default function BoatCard({
             className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200"
           >
             <MapPin className="h-3.5 w-3.5 shrink-0" />
-            Location being refined
+            {t("locationRefining")}
           </div>
         )}
 
@@ -171,7 +175,7 @@ export default function BoatCard({
 
         {boat.source_name && (
           <div className="mt-2 flex items-center gap-1 text-xs text-text-tertiary">
-            <span>Found on</span>
+            <span>{t("foundOn")}</span>
             {safeSourceUrl ? (
               <a
                 href={safeSourceUrl}
@@ -214,7 +218,7 @@ export default function BoatCard({
               data-testid="boat-compare-toggle"
             >
               <GitCompareArrows className="h-3.5 w-3.5" />
-              {compareSelected ? "Added to Compare" : "Compare"}
+              {compareSelected ? t("addedToCompare") : t("compare")}
             </button>
           </div>
         )}
@@ -227,7 +231,7 @@ export default function BoatCard({
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border py-2 text-xs font-medium text-text-secondary transition-all hover:border-primary hover:text-primary"
               >
                 <Heart className="h-3.5 w-3.5" />
-                Save
+                {t("save")}
               </button>
             )}
             {onDismiss && (
@@ -236,7 +240,7 @@ export default function BoatCard({
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border py-2 text-xs font-medium text-text-secondary transition-all hover:border-text-secondary hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
-                Pass
+                {t("pass")}
               </button>
             )}
             {onConnect && (
@@ -245,7 +249,7 @@ export default function BoatCard({
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-accent-btn py-2 text-xs font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
-                Connect
+                {t("connect")}
               </button>
             )}
           </div>
@@ -264,47 +268,53 @@ function formatVesselType(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function getListingBadge(boat: BoatCardProps["boat"]) {
+function getListingBadge(
+  boat: BoatCardProps["boat"],
+  t: BoatCardTranslator
+) {
   if (boat.source_name || boat.source_site || boat.source_url) {
     return {
-      label: `via ${boat.source_name || boat.source_site || "partner listing"}`,
+      label: `via ${boat.source_name || boat.source_site || t("partnerListing")}`,
       className: "bg-white/20",
     };
   }
 
   if (boat.is_sample) {
     return {
-      label: "Sample",
+      label: t("sample"),
       className: "bg-accent-btn/90",
     };
   }
 
   if (boat.seller_subscription_tier === "featured" || boat.seller_subscription_tier === "broker") {
     return {
-      label: "Featured Seller",
+      label: t("featuredSeller"),
       className: "bg-accent-btn/90",
     };
   }
 
   return {
-    label: "Exclusive to OnlyHulls",
+    label: t("exclusive"),
     className: "bg-primary-btn/85",
   };
 }
 
-function getTrustSignal(boat: BoatCardProps["boat"]) {
+function getTrustSignal(
+  boat: BoatCardProps["boat"],
+  t: BoatCardTranslator
+) {
   if (!boat.location_text) {
     return {
       label: boat.source_name
-        ? `Location is still being refined from the ${boat.source_name} source feed.`
-        : "Seller still needs to confirm the boat's location.",
+        ? t("trustLocationSource", { source: boat.source_name })
+        : t("trustLocationSeller"),
       tone: "warning" as const,
     };
   }
 
   if (boat.source_name && !boat.source_url) {
     return {
-      label: `Source details were imported from ${boat.source_name}; external link is not available yet.`,
+      label: t("trustSourceNoLink", { source: boat.source_name }),
       tone: "neutral" as const,
     };
   }

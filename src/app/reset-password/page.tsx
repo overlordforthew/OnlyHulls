@@ -2,9 +2,11 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 function ResetForm() {
+  const t = useTranslations("auth.resetPassword");
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ function ResetForm() {
     setError("");
 
     if (password !== confirm) {
-      setError("Passwords don't match");
+      setError(t("passwordMismatch"));
       return;
     }
 
@@ -32,7 +34,7 @@ function ResetForm() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || "Something went wrong");
+      setError(data.error || t("genericError"));
       return;
     }
 
@@ -45,9 +47,9 @@ function ResetForm() {
   if (!token) {
     return (
       <div className="text-center space-y-4">
-        <p className="text-text-secondary">Invalid reset link.</p>
+        <p className="text-text-secondary">{t("invalidLink")}</p>
         <Link href="/forgot-password" className="text-primary hover:text-primary-light">
-          Request a new one
+          {t("requestNew")}
         </Link>
       </div>
     );
@@ -56,19 +58,19 @@ function ResetForm() {
   return (
     <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-surface p-8">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">Set new password</h1>
+        <h1 className="text-2xl font-bold">{t("heading")}</h1>
       </div>
 
       {success ? (
         <div className="space-y-4 text-center">
           <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 text-sm text-green-400">
-            Password updated successfully!
+            {t("success")}
           </div>
           <Link
             href="/sign-in"
             className="inline-block rounded-full bg-accent-btn px-6 py-3 text-sm font-semibold text-white"
           >
-            Sign in
+            {t("signIn")}
           </Link>
         </div>
       ) : (
@@ -80,7 +82,7 @@ function ResetForm() {
           )}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
-              New password
+              {t("newPassword")}
             </label>
             <input
               id="password"
@@ -91,11 +93,11 @@ function ResetForm() {
               onChange={(e) => setPassword(e.target.value)}
               className={inputClass}
             />
-            <p className="mt-1 text-xs text-text-tertiary">Minimum 8 characters</p>
+            <p className="mt-1 text-xs text-text-tertiary">{t("passwordHint")}</p>
           </div>
           <div>
             <label htmlFor="confirm" className="block text-sm font-medium text-text-secondary">
-              Confirm password
+              {t("confirmPassword")}
             </label>
             <input
               id="confirm"
@@ -112,7 +114,7 @@ function ResetForm() {
             disabled={loading}
             className="w-full rounded-full bg-accent-btn px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
           >
-            {loading ? "Updating..." : "Update password"}
+            {loading ? t("updating") : t("submit")}
           </button>
         </form>
       )}

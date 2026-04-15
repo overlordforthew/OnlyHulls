@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function ThemeSwitcher() {
+  const t = useTranslations("themeSwitcher");
   const [isLight, setIsLight] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("oh-theme") === "light";
@@ -29,7 +31,7 @@ export default function ThemeSwitcher() {
     <button
       onClick={toggle}
       className="fixed bottom-20 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-lg backdrop-blur transition-all hover:border-primary hover:scale-105 active:scale-95 sm:bottom-20 sm:right-6"
-      title={isLight ? "Switch to dark mode" : "Switch to light mode"}
+      title={isLight ? t("switchToDark") : t("switchToLight")}
     >
       {isLight ? (
         <Moon className="h-4.5 w-4.5 text-text-secondary" />

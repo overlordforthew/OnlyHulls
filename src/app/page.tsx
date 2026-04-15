@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import {
   Sailboat,
   Home as HomeIcon,
@@ -24,100 +25,100 @@ import { getBoatCount, getFeaturedBoats } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORIES = [
-  { label: "Cruising", Icon: Sailboat, tag: "bluewater" },
-  { label: "Liveaboard", Icon: HomeIcon, tag: "liveaboard-ready" },
-  { label: "Racing", Icon: Flag, tag: "race-ready" },
-  { label: "Family", Icon: Users, tag: "family-friendly" },
-  { label: "Budget", Icon: DollarSign, tag: "budget-friendly" },
-  { label: "Classic", Icon: Landmark, tag: "classic" },
+const CATEGORY_CONFIG = [
+  { key: "cruising", Icon: Sailboat, tag: "bluewater" },
+  { key: "liveaboard", Icon: HomeIcon, tag: "liveaboard-ready" },
+  { key: "racing", Icon: Flag, tag: "race-ready" },
+  { key: "family", Icon: Users, tag: "family-friendly" },
+  { key: "budget", Icon: DollarSign, tag: "budget-friendly" },
+  { key: "classic", Icon: Landmark, tag: "classic" },
 ];
 
-const STEPS = [
+const STEP_CONFIG = [
   {
+    key: "browse",
     Icon: Eye,
-    title: "Browse or Get Matched",
-    desc: "Search manually or let our AI find boats that fit your style, budget, and dreams.",
   },
   {
+    key: "love",
     Icon: Heart,
-    title: "Fall in Love",
-    desc: "Swipe through matches, save your favorites, and build your dream shortlist.",
   },
   {
+    key: "connect",
     Icon: Handshake,
-    title: "Connect Directly",
-    desc: "Message sellers with zero middlemen. No broker fees. No commission. Ever.",
   },
 ];
 
-const VALUES = [
+const VALUE_CONFIG = [
   {
+    key: "commission",
     Icon: DollarSign,
     stat: "$0",
-    title: "Commission",
-    desc: "We never take a cut. Buy and sell without losing a dime to fees.",
   },
   {
+    key: "matching",
     Icon: Zap,
     stat: "AI",
-    title: "Powered Matching",
-    desc: "Our AI builds your buyer profile and scores every listing against it.",
   },
   {
+    key: "brokers",
     Icon: Shield,
     stat: "No",
-    title: "Brokers Required",
-    desc: "Connect directly with sellers. No gatekeepers, no middlemen.",
   },
   {
+    key: "reach",
     Icon: Globe,
     stat: "Global",
-    title: "Reach",
-    desc: "Boats from everywhere. The right buyer finds the right boat, worldwide.",
-  },
-];
-
-const HERO_PROOF = [
-  "Browse without signing up",
-  "Free account to save and compare",
-  "Direct seller contact with no broker commission",
-];
-
-const PATHS = [
-  {
-    eyebrow: "For buyers",
-    title: "I want to buy",
-    description: "Browse the market, save contenders, compare side by side, or let the AI narrow the shortlist for you.",
-    bullets: [
-      "Start free and save boats right away",
-      "Use AI matching when you want help narrowing the field",
-    ],
-    primaryHref: "/match",
-    primaryLabel: "Start AI Matching",
-    secondaryHref: "/boats",
-    secondaryLabel: "Or browse boats",
-  },
-  {
-    eyebrow: "For sellers",
-    title: "I want to sell",
-    description: "List your boat, present it cleanly, and get direct buyer leads without paying commission on the sale.",
-    bullets: [
-      "Free listing live in minutes",
-      "Upgrade later only if you want more visibility",
-    ],
-    primaryHref: null,
-    primaryLabel: "List Your Boat Free",
-    secondaryHref: "/sell",
-    secondaryLabel: "Or see seller plans",
   },
 ];
 
 export default async function Home() {
+  const t = await getTranslations("home");
   const [count, boats] = await Promise.all([
     getBoatCount(),
     getFeaturedBoats(6),
   ]);
+  const categories = CATEGORY_CONFIG.map((category) => ({
+    ...category,
+    label: t(`categories.${category.key}`),
+  }));
+  const steps = STEP_CONFIG.map((step) => ({
+    ...step,
+    title: t(`steps.${step.key}.title`),
+    desc: t(`steps.${step.key}.description`),
+  }));
+  const values = VALUE_CONFIG.map((value) => ({
+    ...value,
+    title: t(`values.${value.key}.title`),
+    desc: t(`values.${value.key}.description`),
+  }));
+  const heroProof = [
+    t("heroProof.one"),
+    t("heroProof.two"),
+    t("heroProof.three"),
+  ];
+  const paths = [
+    {
+      eyebrow: t("paths.buyers.eyebrow"),
+      title: t("paths.buyers.title"),
+      description: t("paths.buyers.description"),
+      bullets: [t("paths.buyers.bullet1"), t("paths.buyers.bullet2")],
+      primaryHref: "/match",
+      primaryLabel: t("paths.buyers.primary"),
+      secondaryHref: "/boats",
+      secondaryLabel: t("paths.buyers.secondary"),
+    },
+    {
+      eyebrow: t("paths.sellers.eyebrow"),
+      title: t("paths.sellers.title"),
+      description: t("paths.sellers.description"),
+      bullets: [t("paths.sellers.bullet1"), t("paths.sellers.bullet2")],
+      primaryHref: null,
+      primaryLabel: t("paths.sellers.primary"),
+      secondaryHref: "/sell",
+      secondaryLabel: t("paths.sellers.secondary"),
+    },
+  ];
 
   return (
     <div>
@@ -132,13 +133,11 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-5">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-              Find Your Perfect{" "}
-              <span className="text-primary">Hull</span>
+              {t("heroTitleStart")}{" "}
+              <span className="text-primary">{t("heroTitleAccent")}</span>
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg text-text-secondary sm:text-xl">
-              Search the real market, save contenders, and connect directly with sellers.{" "}
-              <br className="hidden sm:block" />
-              AI-powered. Zero commission. Built to get you to the right boat faster.
+              {t("heroSubtitle")}
             </p>
 
             {/* Search bar */}
@@ -151,7 +150,7 @@ export default async function Home() {
                 <input
                   type="text"
                   name="q"
-                  placeholder="Search boats..."
+                  placeholder={t("searchPlaceholder")}
                   className="w-full bg-transparent py-3.5 text-sm text-foreground placeholder:text-text-tertiary focus:outline-none"
                 />
               </div>
@@ -159,7 +158,7 @@ export default async function Home() {
                 type="submit"
                 className="m-1.5 rounded-full bg-accent-btn px-6 text-sm font-semibold text-white transition-all hover:bg-accent-light"
               >
-                Search
+                {t("searchButton")}
               </button>
             </form>
 
@@ -169,18 +168,18 @@ export default async function Home() {
                 href="/boats"
                 className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
               >
-                Browse All Boats
+                {t("browseAllBoats")}
               </Link>
               <Link
                 href="/match"
                 className="rounded-full border border-border-bright px-8 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary hover:text-primary"
               >
-                Get Matched by AI
+                {t("getMatchedByAI")}
               </Link>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-text-secondary">
-              {HERO_PROOF.map((item) => (
+              {heroProof.map((item) => (
                 <span
                   key={item}
                   className="rounded-full border border-border bg-surface/70 px-3 py-1.5"
@@ -194,20 +193,20 @@ export default async function Home() {
             <div className="mx-auto mt-8 grid max-w-2xl grid-cols-3 gap-4 rounded-2xl border border-border bg-surface/55 p-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">{count}</p>
-                <p className="mt-1 text-xs text-text-secondary">Boats Listed</p>
+                <p className="mt-1 text-xs text-text-secondary">{t("stats.boatsListed")}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">$0</p>
-                <p className="mt-1 text-xs text-text-secondary">Commission</p>
+                <p className="mt-1 text-xs text-text-secondary">{t("stats.commission")}</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-primary sm:text-3xl">AI</p>
-                <p className="mt-1 text-xs text-text-secondary">Matching</p>
+                <p className="mt-1 text-xs text-text-secondary">{t("stats.matching")}</p>
               </div>
             </div>
 
             <div className="mx-auto mt-8 grid max-w-4xl gap-4 text-left lg:grid-cols-2">
-              {PATHS.map((path) => (
+              {paths.map((path) => (
                 <div
                   key={path.title}
                   className="flex h-full flex-col rounded-2xl border border-border bg-surface/80 p-6 shadow-lg shadow-black/10"
@@ -255,7 +254,7 @@ export default async function Home() {
       {/* ─── Categories ─── */}
       <section className="border-y border-border bg-surface/50">
         <div className="mx-auto flex max-w-7xl justify-center gap-6 overflow-x-auto px-5 py-5 no-scrollbar sm:gap-10">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <Link
               key={cat.tag}
               href={`/boats?tag=${cat.tag}`}
@@ -277,13 +276,13 @@ export default async function Home() {
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-2xl font-bold">
                 <Flame className="h-6 w-6 text-accent" />
-                Trending Hulls
+                {t("trendingHulls")}
               </h2>
               <Link
                 href="/boats"
                 className="flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary-light"
               >
-                View All <ArrowRight className="h-4 w-4" />
+                {t("viewAll")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -299,13 +298,13 @@ export default async function Home() {
       <section className="border-y border-border bg-surface/30 py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
-            How <span className="text-primary">OnlyHulls</span> Works
+            {t("howTitleStart")} <span className="text-primary">{t("howTitleAccent")}</span>{t("howTitleEnd") ? ` ${t("howTitleEnd")}` : ""}
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-center text-text-secondary">
-            Three steps to your next boat. No brokers, no BS.
+            {t("howSubtitle")}
           </p>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <div
                 key={step.title}
                 className="group rounded-2xl border border-border bg-surface p-8 text-center transition-all hover:border-primary/30"
@@ -313,7 +312,7 @@ export default async function Home() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary transition-all group-hover:bg-primary/20 group-hover:shadow-lg group-hover:shadow-primary/10">
                   <step.Icon className="h-7 w-7" strokeWidth={1.5} />
                 </div>
-                <p className="mt-2 text-xs font-semibold text-text-tertiary">Step {i + 1}</p>
+                <p className="mt-2 text-xs font-semibold text-text-tertiary">{t("stepLabel", { number: i + 1 })}</p>
                 <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
                 <p className="mt-2 text-sm text-text-secondary">{step.desc}</p>
               </div>
@@ -326,10 +325,10 @@ export default async function Home() {
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5">
           <h2 className="text-center text-2xl font-bold sm:text-3xl">
-            Why Boat Lovers Choose <span className="text-primary">OnlyHulls</span>
+            {t("whyTitleStart")} <span className="text-primary">{t("whyTitleAccent")}</span>
           </h2>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            {VALUES.map((v) => (
+            {values.map((v) => (
               <div
                 key={v.title}
                 className="group rounded-2xl border border-border bg-surface p-8 transition-all hover:border-primary/30"
@@ -355,21 +354,20 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-5">
           <div className="mx-auto max-w-2xl rounded-2xl border border-border-bright bg-surface p-10 text-center sm:p-14">
             <h2 className="text-2xl font-bold sm:text-3xl">
-              Show Us Your <span className="text-primary">Hull</span>
+              {t("sellerCta.titleStart")} <span className="text-primary">{t("sellerCta.titleAccent")}</span>
             </h2>
             <p className="mx-auto mt-4 max-w-md text-text-secondary">
-              List your boat for free. Our AI connects you with qualified buyers
-              worldwide. No commission, no brokers, no middlemen.
+              {t("sellerCta.description")}
             </p>
             <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-text-secondary">
               <Clock3 className="h-4 w-4 text-primary" />
-              Free listing live in minutes. Upgrade later only if you want more exposure.
+              {t("sellerCta.badge")}
             </div>
             <ListBoatCTA
               className="mt-8 inline-block rounded-full bg-accent-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
             />
             <p className="mt-3 text-xs text-text-tertiary">
-              No credit card required. List in under 5 minutes.
+              {t("sellerCta.disclaimer")}
             </p>
           </div>
         </div>
@@ -379,24 +377,23 @@ export default async function Home() {
       <section className="py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-5 text-center">
           <h2 className="text-3xl font-bold sm:text-4xl">
-            Ready to Make <span className="text-primary">Waves</span>?
+            {t("finalCta.titleStart")} <span className="text-primary">{t("finalCta.titleAccent")}</span>?
           </h2>
           <p className="mx-auto mt-4 max-w-md text-text-secondary">
-            Join the boat marketplace that puts you first.
-            Zero fees. Real boats. Real connections.
+            {t("finalCta.description")}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/sign-up"
               className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
             >
-              Get Started — It&apos;s Free
+              {t("finalCta.primary")}
             </Link>
             <Link
               href="/boats"
               className="rounded-full border border-border-bright px-8 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary hover:text-primary"
             >
-              Browse Boats
+              {t("finalCta.secondary")}
             </Link>
           </div>
         </div>

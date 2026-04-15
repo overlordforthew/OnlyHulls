@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
+import { localizeSeoHubLink } from "@/i18n/copy/seo";
 import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 
 interface SeoHubLinksProps {
@@ -11,22 +13,28 @@ interface SeoHubLinksProps {
 
 export default function SeoHubLinks({
   links = buildSeoHubLinks("__none__"),
-  title = "Popular Boat Searches",
-  subtitle = "Jump into the highest-intent buyer paths with cleaner, indexable landing pages.",
+  title,
+  subtitle,
   compact = false,
 }: SeoHubLinksProps) {
+  const t = useTranslations("seoHubLinks");
+  const locale = useLocale();
+  const resolvedTitle = title || t("title");
+  const resolvedSubtitle = subtitle || t("subtitle");
+  const localizedLinks = links.map((link) => localizeSeoHubLink(locale, link));
+
   return (
     <section className={compact ? "" : "border-y border-border bg-surface/30 py-14 sm:py-16"}>
       <div className="mx-auto max-w-7xl px-5">
         <div className={compact ? "mb-4" : "text-center"}>
-          <h2 className={`font-bold ${compact ? "text-lg" : "text-2xl"}`}>{title}</h2>
+          <h2 className={`font-bold ${compact ? "text-lg" : "text-2xl"}`}>{resolvedTitle}</h2>
           <p className={`text-text-secondary ${compact ? "mt-1 text-sm" : "mx-auto mt-3 max-w-2xl"}`}>
-            {subtitle}
+            {resolvedSubtitle}
           </p>
         </div>
 
         <div className={`grid gap-4 ${compact ? "mt-4 sm:grid-cols-2 lg:grid-cols-3" : "mt-8 sm:grid-cols-2 lg:grid-cols-3"}`}>
-          {links.map((link) => (
+          {localizedLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}

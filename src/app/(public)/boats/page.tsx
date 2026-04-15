@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import BoatCard from "@/components/BoatCard";
@@ -128,6 +129,7 @@ export default function BoatsPage() {
 }
 
 function BoatsPageInner() {
+  const t = useTranslations("boatsPage");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -167,7 +169,7 @@ function BoatsPageInner() {
   const BATCH_SIZE = 30;
   const isLoggedIn = status === "authenticated";
   const compareReady = compareCount > 0;
-  const compareCountLabel = `${compareCount} filled`;
+  const compareCountLabel = t("compareFilled", { count: compareCount });
 
   useEffect(() => {
     const savedView = window.localStorage.getItem("boats_view_mode");
@@ -259,7 +261,7 @@ function BoatsPageInner() {
       setActiveTag(nextTag);
       setAppliedFilters(nextFilters);
     } catch {
-      setError("Failed to load boats. Please try again.");
+      setError(t("loadError"));
       setBoats([]);
       setTotal(0);
     } finally {
@@ -279,7 +281,7 @@ function BoatsPageInner() {
       setPage(nextPage);
     } catch {
       // Keep existing boats on load-more failure — only show a subtle indicator
-      setError("Failed to load more boats. Please try again.");
+      setError(t("loadMoreError"));
     } finally {
       setLoadingMore(false);
     }
@@ -355,21 +357,41 @@ function BoatsPageInner() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || "Unable to save search.");
+        throw new Error(data.error || t("saveSearchError"));
       }
 
       window.dispatchEvent(new CustomEvent("saved-searches:updated"));
       setSaveMessage(
         data.duplicate
-          ? "This search is already saved."
-          : "Search saved. New matching boats will show up in your alerts."
+          ? t("saveSearchDuplicate")
+          : t("saveSearchSuccess")
       );
     } catch (err) {
-      setSaveMessage(err instanceof Error ? err.message : "Unable to save search right now.");
+      setSaveMessage(err instanceof Error ? err.message : t("saveSearchError"));
     } finally {
       setSaveLoading(false);
     }
   }
+
+  const sortLabels: Record<SortField, string> = {
+    price: t("sort.price"),
+    size: t("sort.size"),
+    year: t("sort.year"),
+    newest: t("sort.newest"),
+  };
+  const hullTypeOptions = [
+    ["catamaran", t("boatTypes.catamaran")],
+    ["trimaran", t("boatTypes.trimaran")],
+    ["monohull", t("boatTypes.monohull")],
+    ["powerboat", t("boatTypes.powerboat")],
+  ] as const;
+  const rigTypeOptions = [
+    ["sloop", t("rigTypes.sloop")],
+    ["cutter", t("rigTypes.cutter")],
+    ["ketch", t("rigTypes.ketch")],
+    ["yawl", t("rigTypes.yawl")],
+    ["schooner", t("rigTypes.schooner")],
+  ] as const;
 
   return (
     <div className="pb-16">
@@ -378,11 +400,11 @@ function BoatsPageInner() {
         <div className="mx-auto max-w-7xl px-5 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Browse Boats</h1>
+              <h1 className="text-2xl font-bold">{t("heading")}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {!loading && (
                   <p className="text-sm text-text-secondary">
-                    {total} boats
+                    {t("boatCount", { count: total })}
                   </p>
                 )}
                 <CurrencySelector
@@ -398,10 +420,10 @@ function BoatsPageInner() {
                 >
                   {isLoggedIn ? <BookmarkPlus className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
                   {saveLoading
-                    ? "Saving..."
+                    ? t("saving")
                     : isLoggedIn
-                      ? "Save Search"
-                      : "Sign In to Save"}
+                      ? t("saveSearch")
+                      : t("signInToSave")}
                 </button>
               </div>
               {saveMessage && (
@@ -411,7 +433,7 @@ function BoatsPageInner() {
               )}
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <p className="text-xs text-text-secondary">
-                  Compare shortlist: {compareCount}/{maxCompareBoats} boats selected.
+                  {t("compareShortlist", { count: compareCount, max: maxCompareBoats })}
                 </p>
                 <Link
                   href="/compare"
@@ -423,12 +445,12 @@ function BoatsPageInner() {
                   }`}
                   aria-label={
                     compareReady
-                      ? `Open compare with ${compareCount} selected boats`
-                      : "Open compare page"
+                      ? t("compareOpenAriaSelected", { count: compareCount })
+                      : t("compareOpenAria")
                   }
                 >
                   <GitCompareArrows className="h-3.5 w-3.5" />
-                  {compareReady ? "Open compare" : "Compare page"}
+                  {compareReady ? t("openCompare") : t("comparePage")}
                   {compareReady && (
                     <>
                       <span className="inline-flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full border-2 border-amber-300 bg-amber-300/15 px-1.5 text-[10px] font-bold text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.25)]">
@@ -450,7 +472,7 @@ function BoatsPageInner() {
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search boats..."
+                  placeholder={t("searchPlaceholder")}
                   className={`${inputClass} w-full pl-9`}
                 />
               </div>
@@ -458,7 +480,7 @@ function BoatsPageInner() {
                 type="submit"
                 className="rounded-lg bg-primary-btn px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-light"
               >
-                Search
+                {t("searchButton")}
               </button>
               <button
                 type="button"
@@ -480,7 +502,7 @@ function BoatsPageInner() {
             <div className="mt-3 flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                 {activeTag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                <button onClick={clearTag} className="text-primary/60 hover:text-primary" aria-label="Clear filter">
+                <button onClick={clearTag} className="text-primary/60 hover:text-primary" aria-label={t("clearFilter")}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
@@ -492,28 +514,28 @@ function BoatsPageInner() {
             <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-border bg-surface p-4">
               <input
                 type="number"
-                placeholder="Min price"
+                placeholder={t("minPrice")}
                 value={filters.minPrice}
                 onChange={(e) => setFilters((f) => ({ ...f, minPrice: e.target.value }))}
                 className={`${inputClass} w-28`}
               />
               <input
                 type="number"
-                placeholder="Max price"
+                placeholder={t("maxPrice")}
                 value={filters.maxPrice}
                 onChange={(e) => setFilters((f) => ({ ...f, maxPrice: e.target.value }))}
                 className={`${inputClass} w-28`}
               />
               <input
                 type="number"
-                placeholder="Min year"
+                placeholder={t("minYear")}
                 value={filters.minYear}
                 onChange={(e) => setFilters((f) => ({ ...f, minYear: e.target.value }))}
                 className={`${inputClass} w-28 min-w-[7rem]`}
               />
               <input
                 type="number"
-                placeholder="Max year"
+                placeholder={t("maxYear")}
                 value={filters.maxYear}
                 onChange={(e) => setFilters((f) => ({ ...f, maxYear: e.target.value }))}
                 className={`${inputClass} w-28 min-w-[7rem]`}
@@ -524,29 +546,26 @@ function BoatsPageInner() {
                 data-testid="boats-filter-boat-type"
                 className={inputClass}
               >
-                <option value="">All boat types</option>
-                <option value="catamaran">Catamaran</option>
-                <option value="trimaran">Trimaran</option>
-                <option value="monohull">Monohull</option>
-                <option value="powerboat">Powerboat</option>
+                <option value="">{t("allBoatTypes")}</option>
+                {hullTypeOptions.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
               <select
                 value={filters.rigType}
                 onChange={(e) => setFilters((f) => ({ ...f, rigType: e.target.value }))}
                 className={inputClass}
               >
-                <option value="">All rigs</option>
-                <option value="sloop">Sloop</option>
-                <option value="cutter">Cutter</option>
-                <option value="ketch">Ketch</option>
-                <option value="yawl">Yawl</option>
-                <option value="schooner">Schooner</option>
+                <option value="">{t("allRigs")}</option>
+                {rigTypeOptions.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
               <button
                 onClick={() => fetchBoats(searchInput, activeTag, filters)}
                 className="rounded-lg bg-primary-btn px-4 py-2 text-sm font-medium text-white hover:bg-primary-light"
               >
-                Apply
+                {t("applyFilters")}
               </button>
             </div>
           )}
@@ -557,12 +576,9 @@ function BoatsPageInner() {
       <div className="border-b border-border bg-surface/30">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-1 overflow-x-auto">
-            <span className="mr-1 text-xs text-text-tertiary whitespace-nowrap">Sort by</span>
+            <span className="mr-1 text-xs text-text-tertiary whitespace-nowrap">{t("sortBy")}</span>
             {(["price", "size", "year", "newest"] as SortField[]).map((field) => {
               const active = sortField === field;
-              const labels: Record<SortField, string> = {
-                price: "Price", size: "Size", year: "Year", newest: "Newest",
-              };
               return (
                 <button
                   key={field}
@@ -573,7 +589,7 @@ function BoatsPageInner() {
                       : "text-text-secondary hover:text-foreground hover:bg-surface-elevated border border-transparent"
                   }`}
                 >
-                  {labels[field]}
+                  {sortLabels[field]}
                   {active ? (
                     sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                   ) : (
@@ -596,7 +612,7 @@ function BoatsPageInner() {
               }`}
             >
               <Grid2X2 className="h-4 w-4" />
-              Grid
+              {t("view.grid")}
             </button>
             <button
               type="button"
@@ -609,7 +625,7 @@ function BoatsPageInner() {
               }`}
             >
               <List className="h-4 w-4" />
-              Rows
+              {t("view.rows")}
             </button>
           </div>
         </div>
@@ -619,8 +635,8 @@ function BoatsPageInner() {
         <div className="pt-6">
           <SeoHubLinks
             compact
-            title="Explore Search Hubs"
-            subtitle="Use stable browse pages for popular makes, regions, and boat types."
+            title={t("searchHubsTitle")}
+            subtitle={t("searchHubsSubtitle")}
           />
         </div>
       )}
@@ -634,7 +650,7 @@ function BoatsPageInner() {
               onClick={() => { setError(null); fetchBoats(); }}
               className="ml-3 font-medium text-red-300 underline hover:text-red-200"
             >
-              Retry
+              {t("retry")}
             </button>
           </div>
         )}
@@ -655,9 +671,9 @@ function BoatsPageInner() {
             <div className="flex justify-center text-primary">
               <Sailboat className="h-10 w-10" aria-hidden="true" />
             </div>
-            <p className="mt-4 text-lg font-medium text-foreground">No hulls found</p>
+            <p className="mt-4 text-lg font-medium text-foreground">{t("noResultsTitle")}</p>
             <p className="mx-auto mt-2 max-w-2xl text-sm text-text-secondary">
-              We did not find a live listing for this exact search. Clear the current filters or jump into one of the strongest live browse paths below.
+              {t("noResultsSubtitle")}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
@@ -665,25 +681,25 @@ function BoatsPageInner() {
                 onClick={clearSearchCriteria}
                 className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
               >
-                Clear filters
+                {t("clearFilters")}
               </button>
               <Link
                 href="/catamarans-for-sale"
                 className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
               >
-                Browse catamarans
+                {t("browseCatamarans")}
               </Link>
               <Link
                 href="/boats/location/puerto-rico"
                 className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
               >
-                Puerto Rico boats
+                {t("puertoRicoBoats")}
               </Link>
             </div>
             <SeoHubLinks
               compact
-              title="Try these live markets"
-              subtitle="These browse hubs stay cleaner and usually recover the search fastest."
+              title={t("liveMarketsTitle")}
+              subtitle={t("liveMarketsSubtitle")}
             />
           </div>
         ) : (
@@ -726,10 +742,10 @@ function BoatsPageInner() {
                   {loadingMore ? (
                     <span className="inline-flex items-center gap-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      Loading...
+                      {t("loadingMore")}
                     </span>
                   ) : (
-                    `Show More (${total - boats.length} remaining)`
+                    t("showMore", { count: total - boats.length })
                   )}
                 </button>
               </div>
@@ -754,6 +770,7 @@ function BoatBrowseRow({
   compareSelected: boolean;
   compareDisabled: boolean;
 }) {
+  const t = useTranslations("boatsPage");
   const href = `/boats/${boat.slug || boat.id}`;
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const displayedPrice = getDisplayedPrice({
@@ -783,7 +800,7 @@ function BoatBrowseRow({
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface-elevated text-5xl opacity-20">
-              Boat
+              {t("boatFallback")}
             </div>
           )}
           <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
@@ -846,7 +863,7 @@ function BoatBrowseRow({
 
             {boat.source_name && (
               <div className="mt-4 flex items-center gap-2 text-sm text-foreground/55">
-                <span>Found on</span>
+                <span>{t("foundOn")}</span>
                 {safeSourceUrl ? (
                   <a
                     href={safeSourceUrl}
@@ -876,13 +893,13 @@ function BoatBrowseRow({
               } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <GitCompareArrows className="h-4 w-4" />
-              {compareSelected ? "Added to Compare" : "Compare"}
+              {compareSelected ? t("addedToCompare") : t("compare")}
             </button>
             <Link
               href={href}
               className="inline-flex items-center gap-2 rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light"
             >
-              View Listing
+              {t("viewListing")}
             </Link>
           </div>
         </div>

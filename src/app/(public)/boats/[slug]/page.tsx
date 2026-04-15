@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
+import { getLocale } from "next-intl/server";
 import { ArrowLeft, MapPin, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -13,6 +14,7 @@ import {
 import { ContactOwnerCTA } from "@/components/MatchCTA";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
+import { getBoatDetailCopy, type BoatDetailCopy } from "@/i18n/copy/boat-detail";
 import { ImageGallery } from "@/components/ImageGallery";
 import JsonLdScript from "@/components/JsonLdScript";
 import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
@@ -63,17 +65,15 @@ function toAbsoluteUrl(url: string | null | undefined, appUrl: string) {
   return `${appUrl}/${url}`;
 }
 
-function buildBoatMetaDescription(boat: BoatDetail, priceStr: string) {
+function buildBoatMetaDescription(boat: BoatDetail, priceStr: string, copy: BoatDetailCopy) {
   const title = buildBoatTitle(boat);
-  const location = boat.location_text ? ` in ${boat.location_text}` : "";
+  const location = boat.location_text ?? null;
   const summary = boat.ai_summary?.trim();
   if (summary) {
-    return trimMetaDescription(`${title} for sale${location}. ${summary}`);
+    return trimMetaDescription(copy.metadata.summaryDescription(title, location, summary));
   }
 
-  return trimMetaDescription(
-    `${title} boat for sale${location} on OnlyHulls. View price, photos, specs, and seller contact details. Listed at ${priceStr}.`
-  );
+  return trimMetaDescription(copy.metadata.defaultDescription(title, location, priceStr));
 }
 
 async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
@@ -167,25 +167,27 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const locale = await getLocale();
+  const copy = getBoatDetailCopy(locale);
   const boat = await getPublicBoat(slug);
-  if (!boat) return { title: "Boat Not Found" };
+  if (!boat) return { title: copy.metadata.boatNotFoundTitle };
 
   const appUrl = getPublicAppUrl();
   const canonicalUrl = `${appUrl}/boats/${slug}`;
   const boatTitle = buildBoatTitle(boat);
   const heroImage = toAbsoluteUrl(boat.hero_url, appUrl);
   const priceStr = boat.asking_price_usd
-    ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}`
-    : `$${Math.round(boat.asking_price).toLocaleString("en-US")} ${boat.currency}`;
+    ? `$${Math.round(boat.asking_price_usd).toLocaleString(locale)}`
+    : `$${Math.round(boat.asking_price).toLocaleString(locale)} ${boat.currency}`;
   const title = boat.location_text
-    ? `${boatTitle} for sale in ${boat.location_text}`
-    : `${boatTitle} for sale`;
-  const description = buildBoatMetaDescription(boat, priceStr);
+    ? copy.metadata.titleWithLocation(boatTitle, boat.location_text)
+    : copy.metadata.titleWithoutLocation(boatTitle);
+  const description = buildBoatMetaDescription(boat, priceStr, copy);
   const keywords = [
     boat.make,
     boat.model,
     String(boat.year),
-    "boat for sale",
+    copy.metadata.keywordBoatForSale,
     "OnlyHulls",
     ...boat.character_tags,
     ...(boat.location_text ? [boat.location_text] : []),
@@ -225,6 +227,8 @@ export default async function BoatDetailPage({
 }) {
   const { slug } = await params;
   const cookieStore = await cookies();
+  const locale = await getLocale();
+  const copy = getBoatDetailCopy(locale);
   const preferredCurrency = normalizeSupportedCurrency(
     cookieStore.get("preferred_currency")?.value
   );
@@ -233,6 +237,7 @@ export default async function BoatDetailPage({
   if (!boat) notFound();
   const appUrl = getPublicAppUrl();
   const boatUrl = `${appUrl}/boats/${slug}`;
+  const formatNumber = (value: number) => value.toLocaleString(locale);
 
   if (boat.status === "active") {
     query(`UPDATE boats SET view_count = view_count + 1, last_viewed_at = NOW() WHERE id = $1`, [
@@ -271,19 +276,15 @@ export default async function BoatDetailPage({
     ? hasUsableImportedLocation(boat.location_text)
     : Boolean(boat.location_text?.trim());
   const trustSourceLabel = boat.source_url
-    ? `Imported from ${formatSourceSite(boat.source_site)}`
-    : "Exclusive to OnlyHulls";
+    ? copy.trust.importedSource(
+        formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
+      )
+    : copy.trust.exclusiveOnlyHulls;
   const contactSteps = boat.source_url
-    ? [
-        "We keep this boat in your browsing flow so you can return and compare later.",
-        `You will review the original ${formatSourceSite(boat.source_site)} listing in a new tab before reaching out.`,
-        "You still avoid broker commission from OnlyHulls itself.",
-      ]
-    : [
-        "Your request goes directly toward the seller of this listing.",
-        "OnlyHulls does not add broker commission to the introduction.",
-        "You can come back to this listing later because your interest stays attached to your account.",
-      ];
+    ? copy.contactSteps.imported(
+        formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
+      )
+    : copy.contactSteps.direct;
   const imageUrls = media
     .filter((mediaItem) => mediaItem.type === "image")
     .slice(0, 8)
@@ -294,14 +295,15 @@ export default async function BoatDetailPage({
     "@context": "https://schema.org",
     "@type": "Product",
     name: boatTitle,
-    category: "Boat",
+    category: copy.metadata.schemaCategory,
     model: boat.model,
     sku: boat.id,
     description: buildBoatMetaDescription(
       boat,
       boat.asking_price_usd
-        ? `$${Math.round(boat.asking_price_usd).toLocaleString("en-US")}`
-        : `${boat.currency} ${Math.round(boat.asking_price).toLocaleString("en-US")}`
+        ? `$${Math.round(boat.asking_price_usd).toLocaleString(locale)}`
+        : `${boat.currency} ${Math.round(boat.asking_price).toLocaleString(locale)}`,
+      copy
     ),
     ...(imageUrls.length > 0 && { image: imageUrls }),
     brand: { "@type": "Brand", name: boat.make },
@@ -315,8 +317,8 @@ export default async function BoatDetailPage({
       seller: {
         "@type": "Organization",
         name: boat.source_url
-          ? formatSourceSite(boat.source_site)
-          : boat.seller_name || "OnlyHulls Seller",
+          ? formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
+          : boat.seller_name || copy.metadata.sellerFallback,
       },
     },
     ...(boat.location_text && {
@@ -333,13 +335,13 @@ export default async function BoatDetailPage({
       {
         "@type": "ListItem",
         position: 1,
-        name: "OnlyHulls",
+        name: copy.metadata.homeBreadcrumb,
         item: appUrl,
       },
       {
         "@type": "ListItem",
         position: 2,
-        name: "Browse Boats",
+        name: copy.metadata.browseBreadcrumb,
         item: `${appUrl}/boats`,
       },
       {
@@ -363,7 +365,7 @@ export default async function BoatDetailPage({
             className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Browse
+            {copy.backToBrowse}
           </Link>
         </div>
       </div>
@@ -380,14 +382,14 @@ export default async function BoatDetailPage({
             }`}
           >
             {boat.status === "pending_review"
-              ? "Preview mode: this listing is pending review and is only visible to the seller and admins."
-              : "Preview mode: this listing is not live to buyers right now."}
+              ? copy.previewPending
+              : copy.previewInactive}
           </div>
         )}
 
         {boat.is_sample && (
           <div className="mt-4 rounded-lg border border-accent/20 bg-accent/10 px-4 py-2 text-sm text-accent">
-            This is a sample listing for demonstration purposes.
+            {copy.sampleListing}
           </div>
         )}
 
@@ -418,7 +420,7 @@ export default async function BoatDetailPage({
               <div className="rounded-xl border-l-4 border-primary bg-surface p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Sparkles className="h-4 w-4" />
-                  Listing Description
+                  {copy.listingDescription}
                 </div>
                 <p className="mt-3 whitespace-pre-wrap leading-relaxed text-foreground/80">
                   {boat.ai_summary}
@@ -427,32 +429,32 @@ export default async function BoatDetailPage({
             )}
 
             <div>
-              <h2 className="text-xl font-bold">Specifications</h2>
+              <h2 className="text-xl font-bold">{copy.specifications}</h2>
               <div className="mt-4 grid grid-cols-2 gap-1">
-                {specs.loa ? <SpecRow label="LOA" value={`${specs.loa}ft`} /> : null}
-                {specs.beam ? <SpecRow label="Beam" value={`${specs.beam}ft`} /> : null}
-                {specs.draft ? <SpecRow label="Draft" value={`${specs.draft}ft`} /> : null}
-                {specs.vessel_type ? <SpecRow label="Boat Type" value={String(specs.vessel_type)} /> : null}
-                {specs.rig_type ? <SpecRow label="Rig Type" value={String(specs.rig_type)} /> : null}
-                {specs.hull_material ? <SpecRow label="Hull" value={String(specs.hull_material)} /> : null}
-                {specs.engine ? <SpecRow label="Engine" value={String(specs.engine)} /> : null}
-                {specs.cabins ? <SpecRow label="Cabins" value={String(specs.cabins)} /> : null}
-                {specs.berths ? <SpecRow label="Berths" value={String(specs.berths)} /> : null}
-                {specs.heads ? <SpecRow label="Heads" value={String(specs.heads)} /> : null}
+                {specs.loa ? <SpecRow label={copy.specLabels.loa} value={`${specs.loa}ft`} /> : null}
+                {specs.beam ? <SpecRow label={copy.specLabels.beam} value={`${specs.beam}ft`} /> : null}
+                {specs.draft ? <SpecRow label={copy.specLabels.draft} value={`${specs.draft}ft`} /> : null}
+                {specs.vessel_type ? <SpecRow label={copy.specLabels.boatType} value={String(specs.vessel_type)} /> : null}
+                {specs.rig_type ? <SpecRow label={copy.specLabels.rigType} value={String(specs.rig_type)} /> : null}
+                {specs.hull_material ? <SpecRow label={copy.specLabels.hull} value={String(specs.hull_material)} /> : null}
+                {specs.engine ? <SpecRow label={copy.specLabels.engine} value={String(specs.engine)} /> : null}
+                {specs.cabins ? <SpecRow label={copy.specLabels.cabins} value={String(specs.cabins)} /> : null}
+                {specs.berths ? <SpecRow label={copy.specLabels.berths} value={String(specs.berths)} /> : null}
+                {specs.heads ? <SpecRow label={copy.specLabels.heads} value={String(specs.heads)} /> : null}
                 {specs.displacement ? (
                   <SpecRow
-                    label="Displacement"
-                    value={`${Number(specs.displacement).toLocaleString()} kg`}
+                    label={copy.specLabels.displacement}
+                    value={`${formatNumber(Number(specs.displacement))} kg`}
                   />
                 ) : null}
-                {specs.keel_type ? <SpecRow label="Keel" value={String(specs.keel_type)} /> : null}
-                {specs.fuel_type ? <SpecRow label="Fuel" value={String(specs.fuel_type)} /> : null}
+                {specs.keel_type ? <SpecRow label={copy.specLabels.keel} value={String(specs.keel_type)} /> : null}
+                {specs.fuel_type ? <SpecRow label={copy.specLabels.fuel} value={String(specs.fuel_type)} /> : null}
               </div>
             </div>
 
             {boat.character_tags.length > 0 && (
               <div>
-                <h3 className="font-semibold">Character</h3>
+                <h3 className="font-semibold">{copy.character}</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {boat.character_tags.map((tag) => (
                     <span
@@ -481,9 +483,11 @@ export default async function BoatDetailPage({
                 </div>
                 <div>
                   <p className="font-semibold">
-                    {boat.source_url ? formatSourceSite(boat.source_site) : boat.seller_name || "Seller"}
+                    {boat.source_url
+                      ? formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
+                      : boat.seller_name || copy.sellerFallback}
                   </p>
-                  <p className="text-xs text-text-secondary">{getSellerSubtitle(boat)}</p>
+                  <p className="text-xs text-text-secondary">{getSellerSubtitle(boat, copy)}</p>
                 </div>
               </div>
 
@@ -496,7 +500,9 @@ export default async function BoatDetailPage({
 
               {boat.condition_score && (
                 <p className="mt-2 text-sm text-text-secondary">
-                  Condition: <span className="font-semibold text-foreground">{boat.condition_score}/10</span>
+                  <span className="font-semibold text-foreground">
+                    {copy.conditionLabel(boat.condition_score)}
+                  </span>
                 </p>
               )}
 
@@ -504,14 +510,18 @@ export default async function BoatDetailPage({
                 sourceUrl={boat.source_url}
                 boatId={boat.id}
                 boatTitle={`${boat.year} ${boat.make} ${boat.model}`}
-                sourceName={boat.source_site ? formatSourceSite(boat.source_site) : null}
+                sourceName={
+                  boat.source_url
+                    ? formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
+                    : null
+                }
                 boatSlug={boat.slug || boat.id}
                 className="mt-6 block w-full rounded-full bg-accent-btn px-8 py-4 text-center text-lg font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
               />
-              <p className="mt-3 text-center text-xs text-text-tertiary">Free to message sellers.</p>
+              <p className="mt-3 text-center text-xs text-text-tertiary">{copy.freeToMessage}</p>
 
               <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
-                <p className="text-sm font-semibold text-foreground">What happens next</p>
+                <p className="text-sm font-semibold text-foreground">{copy.whatHappensNext}</p>
                 <div className="mt-3 space-y-2 text-sm text-text-secondary">
                   {contactSteps.map((step) => (
                     <div key={step} className="flex items-start gap-2">
@@ -524,28 +534,30 @@ export default async function BoatDetailPage({
             </div>
 
             <div className="rounded-xl border border-border bg-surface p-6">
-              <p className="text-sm font-semibold text-foreground">Listing trust</p>
+              <p className="text-sm font-semibold text-foreground">{copy.listingTrust}</p>
               <div className="mt-4 space-y-3 text-sm text-text-secondary">
                 <div className="flex items-start justify-between gap-4">
-                  <span>Source</span>
+                  <span>{copy.trust.source}</span>
                   <span className="text-right font-medium text-foreground">{trustSourceLabel}</span>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <span>Photos</span>
+                  <span>{copy.trust.photos}</span>
                   <span className="text-right font-medium text-foreground">
-                    {imageCount} image{imageCount === 1 ? "" : "s"}
+                    {copy.trust.images(imageCount)}
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <span>Video</span>
+                  <span>{copy.trust.video}</span>
                   <span className="text-right font-medium text-foreground">
-                    {videoCount > 0 ? `${videoCount} clip${videoCount === 1 ? "" : "s"}` : "None attached"}
+                    {videoCount > 0 ? copy.trust.clips(videoCount) : copy.trust.noneAttached}
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-4">
-                  <span>Location confidence</span>
+                  <span>{copy.trust.locationConfidence}</span>
                   <span className="text-right font-medium text-foreground">
-                    {hasSpecificLocation ? "Specific location provided" : "Location still being verified"}
+                    {hasSpecificLocation
+                      ? copy.trust.specificLocationProvided
+                      : copy.trust.locationStillBeingVerified}
                   </span>
                 </div>
               </div>
@@ -556,7 +568,7 @@ export default async function BoatDetailPage({
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary-light"
                 >
-                  View original source listing
+                  {copy.trust.viewOriginalSourceListing}
                 </a>
               )}
             </div>
@@ -569,11 +581,11 @@ export default async function BoatDetailPage({
               <section>
                 <div className="max-w-2xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
-                    Keep Comparing
+                    {copy.keepComparingEyebrow}
                   </p>
-                  <h2 className="mt-2 text-2xl font-bold">Similar boats to consider</h2>
+                  <h2 className="mt-2 text-2xl font-bold">{copy.similarBoatsHeading}</h2>
                   <p className="mt-2 text-text-secondary">
-                    These listings line up with this boat on make, location, or buyer-intent tags so you can compare the market without restarting your search.
+                    {copy.similarBoatsDescription}
                   </p>
                 </div>
                 <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -592,8 +604,8 @@ export default async function BoatDetailPage({
               <SeoHubLinks
                 compact
                 links={relatedHubLinks}
-                title="Keep browsing this market"
-                subtitle="Jump into the strongest make, region, and boat-type hubs connected to this listing."
+                title={copy.keepBrowsingMarketTitle}
+                subtitle={copy.keepBrowsingMarketSubtitle}
               />
             )}
           </div>
@@ -619,21 +631,24 @@ const SOURCE_NAMES: Record<string, string> = {
   vi_yachtbroker: "VI Yacht Broker",
 };
 
-function formatSourceSite(source: string | null): string {
-  if (!source) return "External Listing";
+function formatSourceSite(source: string | null, fallback = "External Listing"): string {
+  if (!source) return fallback;
   return SOURCE_NAMES[source] || source.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function getSellerSubtitle(boat: Pick<BoatDetail, "source_url" | "seller_subscription_tier">) {
+function getSellerSubtitle(
+  boat: Pick<BoatDetail, "source_url" | "seller_subscription_tier">,
+  copy: BoatDetailCopy
+) {
   if (boat.source_url) {
-    return "Original Listing";
+    return copy.sellerSubtitles.originalListing;
   }
 
   if (boat.seller_subscription_tier === "featured" || boat.seller_subscription_tier === "broker") {
-    return "Featured Seller";
+    return copy.sellerSubtitles.featuredSeller;
   }
 
-  return "Exclusive to OnlyHulls";
+  return copy.sellerSubtitles.exclusiveOnlyHulls;
 }
 
 function SpecRow({ label, value }: { label: string; value: string }) {

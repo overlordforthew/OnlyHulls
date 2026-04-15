@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { X, ExternalLink, Bookmark, Sparkles, Bell } from "lucide-react";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 
@@ -44,6 +45,7 @@ export default function ContactGateModal({
   boatTitle,
   boatSlug,
 }: ContactGateModalProps) {
+  const t = useTranslations("contactGate");
   const { data: session } = useSession();
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -85,7 +87,7 @@ export default function ContactGateModal({
     onClose();
   };
 
-  const displayName = sourceName || "the original listing";
+  const resolvedDisplayName = sourceName || t("originalListing");
 
   return (
     <div
@@ -99,13 +101,13 @@ export default function ContactGateModal({
         className="relative w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
-        aria-label="Contact owner"
+        aria-label={t("ariaLabel")}
       >
         {/* Close button */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-1.5 text-text-secondary transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Close"
+          aria-label={t("close")}
         >
           <X className="h-5 w-5" />
         </button>
@@ -113,11 +115,10 @@ export default function ContactGateModal({
         {/* Header */}
         <div className="pr-8">
           <h3 className="text-xl font-bold text-foreground">
-            Before you visit {displayName}
+            {t("title", { listingName: resolvedDisplayName })}
           </h3>
           <p className="mt-2 text-sm text-text-secondary">
-            Save <span className="font-medium text-foreground">{boatTitle}</span> to
-            your shortlist so you can compare later and get matched with similar boats.
+            {t("description", { boatTitle })}
           </p>
         </div>
 
@@ -125,15 +126,15 @@ export default function ContactGateModal({
         <div className="mt-5 space-y-2.5">
           <div className="flex items-center gap-2.5 text-sm text-text-secondary">
             <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-            <span>Find similar boats with AI matching</span>
+            <span>{t("benefit1")}</span>
           </div>
           <div className="flex items-center gap-2.5 text-sm text-text-secondary">
             <Bell className="h-4 w-4 shrink-0 text-primary" />
-            <span>Price drop alerts for saved boats</span>
+            <span>{t("benefit2")}</span>
           </div>
           <div className="flex items-center gap-2.5 text-sm text-text-secondary">
             <Bookmark className="h-4 w-4 shrink-0 text-primary" />
-            <span>Save and compare your favorites</span>
+            <span>{t("benefit3")}</span>
           </div>
         </div>
 
@@ -144,7 +145,7 @@ export default function ContactGateModal({
             className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-btn px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20"
           >
             <Bookmark className="h-4 w-4" />
-            {session?.user ? "Save & Continue" : "Sign Up & Save"}
+            {session?.user ? t("saveContinue") : t("signUpSave")}
           </button>
 
           <button
@@ -152,12 +153,12 @@ export default function ContactGateModal({
             className="flex w-full items-center justify-center gap-2 rounded-full border border-border px-6 py-3.5 text-sm font-medium text-text-secondary transition-all hover:border-text-secondary hover:text-foreground"
           >
             <ExternalLink className="h-4 w-4" />
-            Continue as Guest
+            {t("continueGuest")}
           </button>
         </div>
 
         <p className="mt-4 text-center text-xs text-text-tertiary">
-          Free account. No credit card required.
+          {t("freeAccountHint")}
         </p>
       </div>
     </div>

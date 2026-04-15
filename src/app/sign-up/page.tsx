@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, Suspense } from "react";
 import Link from "next/link";
 
@@ -13,6 +14,7 @@ export default function SignUpPage() {
 }
 
 function SignUpForm() {
+  const t = useTranslations("auth.signUp");
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,8 +25,8 @@ function SignUpForm() {
   const [autoVerified, setAutoVerified] = useState(false);
   const subtitle =
     searchParams.get("role") === "seller"
-      ? "List your boat on OnlyHulls"
-      : "Join OnlyHulls and find your perfect boat";
+      ? t("sellerSubtitle")
+      : t("buyerSubtitle");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +43,7 @@ function SignUpForm() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || "Registration failed");
+      setError(data.error || t("registrationFailed"));
       return;
     }
 
@@ -59,32 +61,26 @@ function SignUpForm() {
           <div className="text-center space-y-4 py-4">
             <div className="text-4xl">&#9993;</div>
             <h1 className="text-2xl font-bold">
-              {autoVerified ? "Account ready" : "Check your email"}
+              {autoVerified ? t("accountReady") : t("checkEmail")}
             </h1>
             <p className="text-text-secondary">
               {autoVerified ? (
-                <>
-                  We created your account for <strong>{email}</strong>. Email verification
-                  is not configured right now, so you can sign in immediately.
-                </>
+                t("autoVerifiedMessage", { email })
               ) : (
-                <>
-                  We sent a verification link to <strong>{email}</strong>. Click the link to
-                  activate your account, then sign in.
-                </>
+                t("verificationMessage", { email })
               )}
             </p>
             <Link
               href="/sign-in"
               className="inline-block mt-4 rounded-full bg-accent-btn px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-accent-light"
             >
-              Go to Sign In
+              {t("goToSignIn")}
             </Link>
           </div>
         ) : (
         <>
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Create your account</h1>
+          <h1 className="text-2xl font-bold">{t("heading")}</h1>
           <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>
         </div>
 
@@ -97,7 +93,7 @@ function SignUpForm() {
 
           <div>
             <label htmlFor="displayName" className="block text-sm font-medium text-text-secondary">
-              Name (optional)
+              {t("name")}
             </label>
             <input
               id="displayName"
@@ -110,7 +106,7 @@ function SignUpForm() {
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-text-secondary">
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -124,7 +120,7 @@ function SignUpForm() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
-              Password
+              {t("password")}
             </label>
             <input
               id="password"
@@ -135,7 +131,7 @@ function SignUpForm() {
               onChange={(e) => setPassword(e.target.value)}
               className={inputClass}
             />
-            <p className="mt-1 text-xs text-text-tertiary">Minimum 8 characters</p>
+            <p className="mt-1 text-xs text-text-tertiary">{t("passwordHint")}</p>
           </div>
 
           <button
@@ -143,14 +139,14 @@ function SignUpForm() {
             disabled={loading}
             className="w-full rounded-full bg-accent-btn px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light hover:shadow-lg hover:shadow-accent/20 disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? t("creating") : t("submit")}
           </button>
         </form>
 
         <p className="text-center text-sm text-text-secondary">
-          Already have an account?{" "}
+          {t("alreadyHaveAccount")}{" "}
           <Link href="/sign-in" className="font-medium text-primary hover:text-primary-light">
-            Sign in
+            {t("signIn")}
           </Link>
         </p>
         </>
