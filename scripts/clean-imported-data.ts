@@ -8,6 +8,7 @@ import {
   buildImportedCharacterTags,
   buildImportedSummary,
   buildImportQualityFlags,
+  buildImportedSaleStatusSql,
   buildVisibleImportQualitySql,
   calculateImportQualityScore,
   normalizeImportedLocation,
@@ -158,7 +159,7 @@ async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string)
   };
 }
 
-async function fetchCandidates(limit: number) {
+async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
   return query<CleanupRow>(
     `SELECT b.id, b.slug, b.year, b.make, b.model, b.source_site, b.asking_price, b.currency, b.asking_price_usd,
             b.location_text, b.source_name, b.source_url, b.view_count,
@@ -176,9 +177,10 @@ async function fetchCandidates(limit: number) {
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.status = 'active'
        AND b.source_url IS NOT NULL
+       AND ($2::boolean = false OR ${buildImportedSaleStatusSql("b")})
      ORDER BY b.view_count DESC, b.created_at DESC, b.id
      LIMIT $1`,
-    [limit]
+    [limit, saleStatusOnly]
   );
 }
 
@@ -200,12 +202,13 @@ async function main() {
   const dryRun = parseArgFlag("--dry-run");
   const reindex = parseArgFlag("--reindex");
   const skipEmbeddings = parseArgFlag("--skip-embeddings");
+  const saleStatusOnly = parseArgFlag("--sale-status-only");
   const limit = parseArgValue("--limit", DEFAULT_LIMIT);
   const llmLimit = parseArgValue("--llm-limit", DEFAULT_LLM_LIMIT);
   const modelConfig = configureCleanupModel();
   const shouldRefreshEmbeddings = !skipEmbeddings && !dryRun && embeddingsEnabled();
 
-  const rows = await fetchCandidates(limit);
+  const rows = await fetchCandidates(limit, saleStatusOnly);
   if (rows.length === 0) {
     console.log("Imported cleanup: nothing to process.");
     return;
@@ -302,7 +305,9 @@ async function main() {
     }
 
     const qualityFlags = buildImportQualityFlags({
-      model: normalized.model,
+      make: row.make,
+      model: row.model,
+      slug: row.slug,
       locationText: normalizedLocation,
       imageCount: row.image_count,
       priceUsd: row.asking_price_usd,
@@ -496,6 +501,7 @@ async function main() {
         embeddingsUpdated,
         reindexed,
         visibleActiveCount: Number.parseInt(visibleCount[0]?.count || "0", 10),
+        saleStatusOnly,
       },
       null,
       2

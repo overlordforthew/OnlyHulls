@@ -1475,7 +1475,7 @@ function buildImportedSaleStatusHaystack(input: {
   return normalizeSpacing([input.make, input.model, slugText].filter(Boolean).join(" "));
 }
 
-function buildImportedSaleStatusSql(alias = "b") {
+export function buildImportedSaleStatusSql(alias = "b") {
   const haystackSql = `LOWER(CONCAT_WS(' ',
     COALESCE(${alias}.make, ''),
     COALESCE(${alias}.model, ''),

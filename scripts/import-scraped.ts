@@ -465,9 +465,9 @@ async function importBoats(filePath: string, sourceSite: string) {
       invalidImageUrls += rawImages.length - images.length;
       const priceUsd = toUsd(price, currency);
       const qualityFlags = buildImportQualityFlags({
-        make,
-        model,
-        slug: finalSlug,
+        make: parsedName.make,
+        model: parsedName.model,
+        slug: preNormalizedSlug,
         locationText: location,
         imageCount: images.length,
         priceUsd,
