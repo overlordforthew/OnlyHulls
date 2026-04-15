@@ -783,6 +783,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Sly",
+      model: "Yachts Sly 42",
+      sourceSite: "theyachtmarket",
+      slug: "2006-sly-yachts-sly-42-italy",
+    }),
+    { make: "Sly Yachts", model: "42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sly",
+      model: "Yachts 54",
+      sourceSite: "theyachtmarket",
+      slug: "2012-sly-yachts-54-france",
+    }),
+    { make: "Sly Yachts", model: "54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sly Yachts",
+      model: "Yachts Sly 42",
+      sourceSite: "theyachtmarket",
+      slug: "2006-sly-yachts-sly-42-italy",
+    }),
+    { make: "Sly Yachts", model: "42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Leonardo",
       model: "Yachts Eagle 44",
       sourceSite: "sailboatlistings",
