@@ -95,6 +95,7 @@ export async function GET(req: Request) {
 
     const orderBy = buildOrderBy(filters.sort, filters.dir);
     const hasStructuredFilters =
+      Boolean(filters.location) ||
       Boolean(filters.minPrice) ||
       Boolean(filters.maxPrice) ||
       Boolean(filters.minYear) ||

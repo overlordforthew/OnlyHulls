@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildOrderBy, buildSavedSearchName } from "../../src/lib/search/boat-search";
+import {
+  buildBoatSearchParams,
+  buildOrderBy,
+  buildSavedSearchName,
+  buildWhereClause,
+  filtersFromSearchParams,
+} from "../../src/lib/search/boat-search";
 
 test("buildSavedSearchName uses stable ASCII separators", () => {
   assert.equal(
@@ -33,4 +39,21 @@ test("buildOrderBy keeps explicit price sorting centered on price", () => {
 
   assert.match(orderBy, /asking_price_usd|b\.asking_price/i);
   assert.doesNotMatch(orderBy, /location_text/i);
+});
+
+test("boat search preserves dedicated location filters separately from text search", () => {
+  const filters = filtersFromSearchParams(
+    new URLSearchParams("location=bahamas&page=2&limit=30")
+  );
+
+  assert.equal(filters.search, "");
+  assert.equal(filters.location, "bahamas");
+
+  const params = buildBoatSearchParams({ location: "bahamas" });
+  assert.equal(params.get("location"), "bahamas");
+  assert.equal(params.get("q"), null);
+
+  const where = buildWhereClause(filters);
+  assert.match(where.where, /location_text/i);
+  assert.equal(where.params[0], "%bahamas%");
 });

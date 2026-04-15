@@ -11,6 +11,7 @@ export type BoatSortDir = "asc" | "desc";
 
 export interface BoatSearchFilters {
   search: string;
+  location: string | null;
   page: number;
   limit: number;
   minPrice: string | null;
@@ -97,6 +98,7 @@ export function normalizeBoatSearchFilters(input: BoatSearchFilterInput): BoatSe
 
   return {
     search: normalizeText(input.search) ?? "",
+    location: normalizeText(input.location),
     page: clampPositiveInt(Number(input.page ?? 1), 1, 10_000),
     limit: clampPositiveInt(Number(input.limit ?? 30), 30, 100),
     minPrice: normalizeNumberString(input.minPrice),
@@ -115,6 +117,7 @@ export function normalizeBoatSearchFilters(input: BoatSearchFilterInput): BoatSe
 export function filtersFromSearchParams(searchParams: URLSearchParams): BoatSearchFilters {
   return normalizeBoatSearchFilters({
     search: searchParams.get("q") || "",
+    location: searchParams.get("location"),
     page: parseInt(searchParams.get("page") || "1", 10),
     limit: parseInt(searchParams.get("limit") || "30", 10),
     minPrice: searchParams.get("minPrice"),
@@ -135,6 +138,7 @@ export function buildBoatSearchParams(filters: Partial<BoatSearchFilters>) {
   const params = new URLSearchParams();
 
   if (normalized.search) params.set("q", normalized.search);
+  if (normalized.location) params.set("location", normalized.location);
   if (normalized.tag) params.set("tag", normalized.tag);
   if (normalized.minPrice) params.set("minPrice", normalized.minPrice);
   if (normalized.maxPrice) params.set("maxPrice", normalized.maxPrice);
@@ -202,6 +206,11 @@ export function buildWhereClause(filters: BoatSearchFilters) {
       )) LIKE $${paramIdx++}`
     );
     params.push(`%${filters.search.toLowerCase()}%`);
+  }
+
+  if (filters.location) {
+    conditions.push(`LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++}`);
+    params.push(`%${filters.location.toLowerCase()}%`);
   }
 
   if (filters.minPrice) {

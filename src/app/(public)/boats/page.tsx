@@ -135,6 +135,7 @@ function BoatsPageInner() {
   const searchParams = useSearchParams();
   const { status } = useSession();
   const initialQ = searchParams.get("q") || "";
+  const initialLocation = searchParams.get("location") || "";
   const initialTag = searchParams.get("tag") || "";
   const requestedCurrency = searchParams.get("currency");
   const initialCurrency = requestedCurrency
@@ -150,6 +151,7 @@ function BoatsPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(initialQ);
   const [search, setSearch] = useState(initialQ);
+  const [locationFilter, setLocationFilter] = useState(initialLocation);
   const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -209,6 +211,7 @@ function BoatsPageInner() {
   function clearSearchCriteria() {
     setSearchInput("");
     setSearch("");
+    setLocationFilter("");
     setActiveTag("");
     setFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
@@ -222,12 +225,20 @@ function BoatsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortField, sortDir, displayCurrency]);
 
-  const buildParams = useCallback((q?: string, tag?: string, pageNum?: number, filterState?: FilterState) => {
+  const buildParams = useCallback((
+    q?: string,
+    tag?: string,
+    pageNum?: number,
+    filterState?: FilterState,
+    nextLocation?: string
+  ) => {
     const params = new URLSearchParams();
     const searchQ = q !== undefined ? q : search;
     const searchTag = tag !== undefined ? tag : activeTag;
+    const currentLocation = nextLocation !== undefined ? nextLocation : locationFilter;
     const currentFilters = filterState ?? appliedFilters;
     if (searchQ) params.set("q", searchQ);
+    if (currentLocation) params.set("location", currentLocation);
     if (searchTag) params.set("tag", searchTag);
     params.set("page", String(pageNum || page));
     params.set("limit", String(BATCH_SIZE));
@@ -241,23 +252,30 @@ function BoatsPageInner() {
     params.set("sort", sortField);
     params.set("dir", sortDir);
     return params;
-  }, [search, activeTag, page, appliedFilters, displayCurrency, sortField, sortDir]);
+  }, [search, activeTag, locationFilter, page, appliedFilters, displayCurrency, sortField, sortDir]);
 
-  async function fetchBoats(q?: string, tag?: string, filterState?: FilterState) {
+  async function fetchBoats(
+    q?: string,
+    tag?: string,
+    filterState?: FilterState,
+    nextLocation?: string
+  ) {
     setLoading(true);
     setError(null);
     setPage(1);
     const nextSearch = q !== undefined ? q : search;
     const nextTag = tag !== undefined ? tag : activeTag;
+    const resolvedLocation = nextLocation !== undefined ? nextLocation : locationFilter;
     const nextFilters = filterState ?? appliedFilters;
     try {
-      const params = buildParams(nextSearch, nextTag, 1, nextFilters);
+      const params = buildParams(nextSearch, nextTag, 1, nextFilters, resolvedLocation);
       const res = await fetch(`/api/boats?${params}`);
       if (!res.ok) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
       setBoats(data.boats || []);
       setTotal(data.total || 0);
       setSearch(nextSearch);
+      setLocationFilter(resolvedLocation);
       setActiveTag(nextTag);
       setAppliedFilters(nextFilters);
     } catch {
@@ -289,14 +307,16 @@ function BoatsPageInner() {
 
   useEffect(() => {
     const q = searchParams.get("q") || "";
+    const location = searchParams.get("location") || "";
     const tag = searchParams.get("tag") || "";
     const nextFilters = filtersFromParams(searchParams);
     setSearchInput(q);
     setSearch(q);
+    setLocationFilter(location);
     setActiveTag(tag);
     setFilters(nextFilters);
     setAppliedFilters(nextFilters);
-    fetchBoats(q, tag, nextFilters);
+    fetchBoats(q, tag, nextFilters, location);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -312,6 +332,7 @@ function BoatsPageInner() {
   const hasMore = boats.length < total;
   const currentSearchFilters = {
     search,
+    location: locationFilter || null,
     tag: activeTag,
     minPrice: appliedFilters.minPrice || null,
     maxPrice: appliedFilters.maxPrice || null,
@@ -325,6 +346,7 @@ function BoatsPageInner() {
   };
   const hasActiveSearchCriteria =
     search.trim().length > 0 ||
+    locationFilter.trim().length > 0 ||
     activeTag.trim().length > 0 ||
     Boolean(
         appliedFilters.minPrice ||
