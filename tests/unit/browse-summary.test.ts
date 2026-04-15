@@ -114,3 +114,27 @@ test("cleanImportedListingSummary removes colon-style asking price boilerplate",
     "Launched at the end of 2024, The Idler is a rare chance to step straight into ownership of a brand-new Sunreef 80 Eco. Antigua Charter Yacht Show - Dec Miami International Yacht Show - Feb. Every element of her design reflects modern luxury with a lighter footprint."
   );
 });
+
+test("buildBoatPublicSummary strips location-led title duplication even when model punctuation differs", () => {
+  assert.equal(
+    buildBoatPublicSummary({
+      title: "2023 Beneteau Oceanis 38 1",
+      locationText: "Bangor, Down",
+      summary:
+        "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. Lying Bangor, near Belfast - Northern Ireland 2023 Beneteau Oceanis 38.1 with the two double cabin layout and larger 40hp engine.",
+    }),
+    "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. The two double cabin layout and larger 40hp engine."
+  );
+});
+
+test("cleanImportedListingSummary removes platform boilerplate after useful source copy", () => {
+  assert.equal(
+    cleanImportedListingSummary({
+      title: "2016 Lagoon 450",
+      locationText: "Langkawi",
+      summary:
+        "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans with spacious comfort and blue-water capability. We provide only a selection of key information on this platform.",
+    }),
+    "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans with spacious comfort and blue-water capability."
+  );
+});

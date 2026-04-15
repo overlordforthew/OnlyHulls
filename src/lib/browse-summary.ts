@@ -2,6 +2,18 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildLoosePattern(value: string, anchored = false) {
+  const tokens = String(value || "")
+    .trim()
+    .split(/[^A-Za-z0-9]+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map(escapeRegExp);
+
+  if (tokens.length === 0) return null;
+  return new RegExp(`${anchored ? "^" : ""}${tokens.join("[\\s._/&'-]*")}\\b`, "i");
+}
+
 function normalizeSentence(value: string) {
   return value
     .replace(/^Key specs include\s+/i, "")
@@ -53,6 +65,7 @@ function stripSummaryBoilerplate(value: string) {
     .replace(/\s*\bViewings?\s+by appointment\b[^.!?]*[.!?]?/gi, "")
     .replace(/\s*\bFeel free to give us a call\b[^.!?]*[.!?]?/gi, "")
     .replace(/\s*\bFor complete details\b[^.!?]*[.!?]?/gi, "")
+    .replace(/\s*\bWe provide only a selection of key information on this platform\b[^.!?]*[.!?]?/gi, "")
     .replace(/\s*\bYou have questions\?\s*We have answers\.[^.!?]*[.!?]?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -121,12 +134,20 @@ export function buildBoatPublicSummary(input: {
 
   const title = String(input.title || "").trim();
   const locationText = String(input.locationText || "").trim();
-  const titlePattern = title ? new RegExp(`^${escapeRegExp(title)}\\b`, "i") : null;
+  const titlePattern = buildLoosePattern(title, true);
+  const titleAnywherePattern = buildLoosePattern(title, false);
   const locationPattern = locationText ? new RegExp(`\\b${escapeRegExp(locationText)}\\b`, "i") : null;
 
   const publicSentences = splitSentences(cleaned)
     .map((sentence) => {
       let next = sentence.trim();
+
+      if (titleAnywherePattern && /^(?:listed in|located in|lying in|lying)\b/i.test(next)) {
+        const titleMatch = next.match(titleAnywherePattern);
+        if (titleMatch && typeof titleMatch.index === "number") {
+          next = next.slice(titleMatch.index).trim();
+        }
+      }
 
       if (titlePattern && titlePattern.test(next)) {
         next = next
