@@ -580,10 +580,10 @@ const PROMOTION_STOPWORDS = new Set([
   "yachts",
 ]);
 const SALE_STATUS_PATTERN =
-  /(?:sale\s+pending|deal\s+pending(?:\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})*|sold|new)/i;
-const IMPORTED_SALE_STATUS_PATTERN = /\b(?:sold|sale\s+pending|deal\s+pending)\b/i;
+  /(?:sale\s+pending|deal\s+pending(?:\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})*|pending|sold|new)/i;
+const IMPORTED_SALE_STATUS_PATTERN = /\b(?:sold|sale\s+pending|deal\s+pending|pending)\b/i;
 const IMPORTED_SALE_STATUS_SQL_PATTERN =
-  "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending)([^a-z]|$)";
+  "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending|pending)([^a-z]|$)";
 
 function promoteSpecificSourceMakeModel(input: {
   make: string;

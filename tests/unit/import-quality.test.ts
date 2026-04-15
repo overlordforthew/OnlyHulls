@@ -1271,6 +1271,16 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
     }),
     { make: "Prout", model: "35" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      year: 1975,
+      make: "Ranger",
+      model: "Pending 29",
+      sourceSite: "sailboatlistings",
+      slug: "1975-ranger-pending-29-virginia",
+    }),
+    { make: "Ranger", model: "29" }
+  );
 });
 
 test("hasImportedSaleStatusMarker catches sold and pending imported listings", () => {
@@ -1287,6 +1297,14 @@ test("hasImportedSaleStatusMarker catches sold and pending imported listings", (
       make: "Hunter",
       model: "310-Sale Pending",
       slug: "1997-hunter-310-sale-pending-new-york",
+    }),
+    true
+  );
+  assert.equal(
+    hasImportedSaleStatusMarker({
+      make: "Ranger",
+      model: "Pending 29",
+      slug: "1975-ranger-pending-29-virginia",
     }),
     true
   );
