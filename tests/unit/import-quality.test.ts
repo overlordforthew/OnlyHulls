@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
+  buildImportQualityFlags,
+  hasImportedSaleStatusMarker,
   normalizeImportedLocation,
   normalizeImportedMakeModel,
   sanitizeImportedBoatRecord,
@@ -1268,6 +1270,48 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
       slug: "1974-prout-sale-pending-sold-35-texas",
     }),
     { make: "Prout", model: "35" }
+  );
+});
+
+test("hasImportedSaleStatusMarker catches sold and pending imported listings", () => {
+  assert.equal(
+    hasImportedSaleStatusMarker({
+      make: "Sold",
+      model: "South",
+      slug: "1989-sold-south-south-carolina",
+    }),
+    true
+  );
+  assert.equal(
+    hasImportedSaleStatusMarker({
+      make: "Hunter",
+      model: "310-Sale Pending",
+      slug: "1997-hunter-310-sale-pending-new-york",
+    }),
+    true
+  );
+  assert.equal(
+    hasImportedSaleStatusMarker({
+      make: "Beneteau",
+      model: "Oceanis 45",
+      slug: "2012-beneteau-oceanis-45-catalonia",
+    }),
+    false
+  );
+});
+
+test("buildImportQualityFlags hides sold imports even when the normalized model looks clean", () => {
+  assert.deepEqual(
+    buildImportQualityFlags({
+      make: "Beneteau",
+      model: "473",
+      slug: "2004-beneteau-sold-473-texas",
+      locationText: "Kemah, Texas",
+      imageCount: 4,
+      priceUsd: 125000,
+      summary: "This imported listing has enough summary detail to clear the normal quality checks.",
+    }),
+    ["sale_status"]
   );
 });
 

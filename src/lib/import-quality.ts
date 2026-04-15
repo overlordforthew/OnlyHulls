@@ -581,6 +581,9 @@ const PROMOTION_STOPWORDS = new Set([
 ]);
 const SALE_STATUS_PATTERN =
   /(?:sale\s+pending|deal\s+pending(?:\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})*|sold|new)/i;
+const IMPORTED_SALE_STATUS_PATTERN = /\b(?:sold|sale\s+pending|deal\s+pending)\b/i;
+const IMPORTED_SALE_STATUS_SQL_PATTERN =
+  "(^|[^a-z])(sold|sale[[:space:]]+pending|deal[[:space:]]+pending)([^a-z]|$)";
 
 function promoteSpecificSourceMakeModel(input: {
   make: string;
@@ -1463,8 +1466,37 @@ export function buildImportedSummary(input: {
   return `${base}${specSentence}${priceSentence}${sourceSentence}`.replace(/\s+/g, " ").trim();
 }
 
-export function buildImportQualityFlags(input: {
+function buildImportedSaleStatusHaystack(input: {
+  make?: string | null;
   model?: string | null;
+  slug?: string | null;
+}) {
+  const slugText = normalizeSpacing(String(input.slug || "").replace(/[-_]+/g, " "));
+  return normalizeSpacing([input.make, input.model, slugText].filter(Boolean).join(" "));
+}
+
+function buildImportedSaleStatusSql(alias = "b") {
+  const haystackSql = `LOWER(CONCAT_WS(' ',
+    COALESCE(${alias}.make, ''),
+    COALESCE(${alias}.model, ''),
+    REGEXP_REPLACE(COALESCE(${alias}.slug, ''), '[-_]+', ' ', 'g')
+  ))`;
+
+  return `${haystackSql} ~ '${IMPORTED_SALE_STATUS_SQL_PATTERN}'`;
+}
+
+export function hasImportedSaleStatusMarker(input: {
+  make?: string | null;
+  model?: string | null;
+  slug?: string | null;
+}) {
+  return IMPORTED_SALE_STATUS_PATTERN.test(buildImportedSaleStatusHaystack(input));
+}
+
+export function buildImportQualityFlags(input: {
+  make?: string | null;
+  model?: string | null;
+  slug?: string | null;
   locationText?: string | null;
   imageCount: number;
   priceUsd: number | null;
@@ -1472,6 +1504,7 @@ export function buildImportQualityFlags(input: {
 }) {
   const flags: string[] = [];
 
+  if (hasImportedSaleStatusMarker(input)) flags.push("sale_status");
   if (!normalizeSpacing(input.model)) flags.push("missing_model");
   if (!hasUsableImportedLocation(input.locationText)) flags.push("missing_location");
   if (input.imageCount < MIN_VISIBLE_IMPORTED_IMAGES) flags.push("missing_image");
@@ -1488,7 +1521,8 @@ export function buildImportQualityFlags(input: {
 export function calculateImportQualityScore(flags: string[]) {
   let score = 100;
   for (const flag of flags) {
-    if (flag === "missing_model") score -= 35;
+    if (flag === "sale_status") score -= 100;
+    else if (flag === "missing_model") score -= 35;
     else if (flag === "missing_location") score -= 30;
     else if (flag === "missing_image") score -= 35;
     else if (flag === "thin_summary") score -= 10;
@@ -1530,6 +1564,7 @@ export function buildVisibleImportQualitySql(alias = "b") {
     AND ${normalizedLocationSql} <> ''
     AND ${nonQuestionLocationSql} <> ''
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
+    AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (
       SELECT 1
