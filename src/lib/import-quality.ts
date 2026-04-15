@@ -610,9 +610,13 @@ function promoteSpecificSourceMakeModel(input: {
     model = model.replace(/^hinckley(?:\s+boat\s+builders)?\b[\s-]*/i, "").trim();
   }
 
-  if (/^performance$/i.test(make) && /^cruising\b/i.test(model)) {
+  if (/^performance$/i.test(make) && /^cruising(?:\s+inc\.?\b)?/i.test(model)) {
     make = "Performance Cruising";
-    model = model.replace(/^cruising\b[\s-]*/i, "").trim();
+    model = model.replace(/^cruising(?:\s+inc\.?\b)?[\s-]*/i, "").trim();
+  }
+
+  if (/^performance\s+cruising$/i.test(make) && /^inc\.?\b/i.test(model)) {
+    model = model.replace(/^inc\.?\b[\s-]*/i, "").trim();
   }
 
   if (/^canadian$/i.test(make) && /^sailcraft\b/i.test(model)) {

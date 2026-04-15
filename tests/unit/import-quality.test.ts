@@ -1024,6 +1024,33 @@ test("normalizeImportedMakeModel promotes out of generic sailboat listing makes"
     }),
     { make: "Performance Cruising", model: "Gemini 3000" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Performance",
+      model: "Cruising Inc Gemini 105",
+      sourceSite: "sailboatlistings",
+      slug: "2008-performance-cruising-inc-gemini-105-british-virgin-islands",
+    }),
+    { make: "Performance Cruising", model: "Gemini 105" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Performance Cruising",
+      model: "Inc Gemini 105mc",
+      sourceSite: "sailboatlistings",
+      slug: "2006-performance-cruising-inc-gemini-105mc-florida",
+    }),
+    { make: "Performance Cruising", model: "Gemini 105mc" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Performance Cruising",
+      model: "Inc",
+      sourceSite: "sailboatlistings",
+      slug: "1998-performance-cruising-inc-florida",
+    }),
+    { make: "Performance Cruising", model: "" }
+  );
 });
 
 test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and partnership models", () => {
