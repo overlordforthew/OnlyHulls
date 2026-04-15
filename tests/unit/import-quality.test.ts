@@ -741,6 +741,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Pegasus",
+      model: "Yachts Pegasus 50",
+      sourceSite: "theyachtmarket",
+      slug: "2026-pegasus-yachts-pegasus-50-venice",
+    }),
+    { make: "Pegasus Yachts", model: "50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pegasus",
+      model: "Yachts 800",
+      sourceSite: "theyachtmarket",
+      slug: "1979-pegasus-yachts-800-wayford",
+    }),
+    { make: "Pegasus Yachts", model: "800" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pegasus Yachts",
+      model: "Yachts Pegasus 50",
+      sourceSite: "theyachtmarket",
+      slug: "2023-pegasus-yachts-pegasus-50-marmaris",
+    }),
+    { make: "Pegasus Yachts", model: "50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Leonardo",
       model: "Yachts Eagle 44",
       sourceSite: "sailboatlistings",
