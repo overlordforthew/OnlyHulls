@@ -7,7 +7,8 @@ import { redis } from "./redis";
 export async function rateLimit(
   key: string,
   maxRequests: number,
-  windowSecs: number
+  windowSecs: number,
+  { failClosed = true }: { failClosed?: boolean } = {}
 ): Promise<{ allowed: boolean; retryAfter?: number }> {
   const now = Date.now();
   const windowMs = windowSecs * 1000;
@@ -32,7 +33,9 @@ export async function rateLimit(
 
     return { allowed: true };
   } catch {
-    // Fail closed: if Redis is unavailable, deny requests to prevent brute force
-    return { allowed: false, retryAfter: 60 };
+    // On Redis failure: fail closed for auth (brute force protection), fail open otherwise
+    return failClosed
+      ? { allowed: false, retryAfter: 60 }
+      : { allowed: true };
   }
 }
