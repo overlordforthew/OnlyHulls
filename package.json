@@ -12,7 +12,7 @@
     "test:browser": "playwright test tests/browser/local-smoke.spec.ts",
     "test:browser:all": "playwright test",
     "test:browser:headed": "playwright test tests/browser/local-smoke.spec.ts --headed",
-    "test:browser:prod": "PLAYWRIGHT_BASE_URL=https://onlyhulls.com playwright test tests/browser/smoke.spec.ts",
+    "test:browser:prod": "node scripts/run-prod-browser-smoke.mjs",
     "test:browser:seller:prepare": "npx tsx scripts/ensure-browser-test-user.ts",
     "db:migrate": "npx tsx src/lib/db/migrate.ts",
     "db:seed": "npx tsx scripts/seed.ts",

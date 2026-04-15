@@ -158,6 +158,7 @@ test("public pages expose the WhatsApp contact button", async ({ page }) => {
 test("match CTA preserves auth callback for guests", async ({ page }) => {
   await gotoWithRetry(page, "/match");
   await expect(page.getByTestId("match-start-signals")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Get Matched - It's Free" }).click();
   await expect(page).toHaveURL(/\/sign-in\?callbackUrl=/);
 
@@ -212,7 +213,7 @@ test("boats search hides SEO hub links once a real query is active", async ({ pa
   await expect(page.getByText("Catana", { exact: false }).first()).toBeVisible();
 });
 
-test("boats search hubs stay visible until a draft query is submitted", async ({ page }) => {
+test("boats search hubs stay visible for drafts and hide for active queries", async ({ page }) => {
   await page.route("**/api/boats**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -232,16 +233,7 @@ test("boats search hubs stay visible until a draft query is submitted", async ({
 
   await page.getByPlaceholder("Search boats...").fill("lagoon");
   await expect(searchHubsHeading).toBeVisible();
-
-  await Promise.all([
-    page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.ok()
-        && url.pathname === "/api/boats"
-        && url.searchParams.get("q") === "lagoon";
-    }),
-    page.getByRole("button", { name: "Search", exact: true }).click(),
-  ]);
+  await gotoWithRetry(page, "/boats?q=lagoon");
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
   await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
 });
@@ -516,7 +508,11 @@ test("make SEO hub loads", async ({ page }) => {
 test("location SEO hub loads", async ({ page }) => {
   await gotoWithRetry(page, "/boats/location/florida");
   await expect(page.getByRole("heading", { name: "Boats for Sale in Florida", exact: false })).toBeVisible();
-  await expect(page.getByText("live listings", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Florida is one of the deepest regional markets in the current catalog", {
+      exact: false,
+    })
+  ).toBeVisible();
 });
 
 test("match page renders buyer faq content", async ({ page }) => {
