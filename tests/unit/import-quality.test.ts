@@ -1294,6 +1294,16 @@ test("normalizeImportedMakeModel strips unhelpful sailboatlistings year-only and
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      year: 1997,
+      make: "Hunter",
+      model: "310-Sale",
+      sourceSite: "sailboatlistings",
+      slug: "1997-hunter-310-sale-new-york",
+    }),
+    { make: "Hunter", model: "310" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       year: 1978,
       make: "Sale",
       model: "Pending Catalina 30",

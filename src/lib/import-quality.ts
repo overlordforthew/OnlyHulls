@@ -909,6 +909,15 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
       if (next === cleaned) break;
       cleaned = next;
     }
+
+    for (let pass = 0; pass < 2; pass += 1) {
+      const next = cleaned
+        .replace(new RegExp(`^sale(?:${SALE_STATUS_DELIMITER_PATTERN}|$)`, "i"), "")
+        .replace(new RegExp(`(?:^|${SALE_STATUS_DELIMITER_PATTERN})sale$`, "i"), "")
+        .trim();
+      if (next === cleaned) break;
+      cleaned = next;
+    }
   }
 
   if (/^hunter marine$/i.test(make)) {
