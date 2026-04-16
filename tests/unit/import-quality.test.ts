@@ -693,6 +693,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Holby",
+      model: "Marine Tripp 37",
+      sourceSite: "sailboatlistings",
+      slug: "1987-holby-marine-tripp-37-michigan",
+    }),
+    { make: "Holby Marine", model: "Tripp 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Holby",
+      model: "Marine 36 Clearwater Sloop",
+      sourceSite: "sailboatlistings",
+      slug: "1993-holby-marine-36-clearwater-sloop-florida",
+    }),
+    { make: "Holby Marine", model: "36 Clearwater Sloop" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Holby Marine",
+      model: "Marine Tripp 37",
+      sourceSite: "sailboatlistings",
+      slug: "1987-holby-marine-tripp-37-connecticut",
+    }),
+    { make: "Holby Marine", model: "Tripp 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Spirit",
       model: "Yachts C72",
       sourceSite: "theyachtmarket",
