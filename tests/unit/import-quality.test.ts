@@ -540,6 +540,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "J Boats",
+      model: "J30",
+      sourceSite: "sailboatlistings",
+      slug: "1981-j-boats-j30-texas",
+    }),
+    { make: "J/Boats", model: "J/30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "J Boats",
+      model: "J 111 J111 J/111",
+      sourceSite: "sailboatlistings",
+      slug: "2012-j-boats-j-111-j111-j-111-rhode-island",
+    }),
+    { make: "J/Boats", model: "J/111" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "J Boats",
+      model: "95",
+      sourceSite: "sailboatlistings",
+      slug: "2012-j-boats-95-connecticut",
+    }),
+    { make: "J/Boats", model: "J/95" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "J Boat",
+      model: "J29",
+      sourceSite: "sailboatlistings",
+      slug: "1986-j-boats-j29-maryland",
+    }),
+    { make: "J/Boats", model: "J/29" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Cheoy",
       model: "Lee 47 Offshore",
       sourceSite: "theyachtmarket",
@@ -2427,6 +2463,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     gibsea.ai_summary,
     "1986 Gibsea 92 in Northern Ireland. 30ft LOA, masthead sloop rig, monohull."
+  );
+
+  const jBoats = sanitizeImportedBoatRecord({
+    year: 1981,
+    make: "J Boats",
+    model: "J30",
+    slug: "1981-j-boats-j30-texas",
+    source_site: "sailboatlistings",
+    location_text: "Texas",
+    ai_summary: "1981 J Boats J30 in Texas. 30ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 30,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(jBoats.make, "J/Boats");
+  assert.equal(jBoats.model, "J/30");
+  assert.equal(
+    jBoats.ai_summary,
+    "1981 J/Boats J/30 in Texas. 30ft LOA, masthead sloop rig, monohull."
   );
 });
 

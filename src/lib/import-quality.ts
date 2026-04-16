@@ -646,6 +646,7 @@ function canonicalizeMakeName(make: string) {
   if (/^o\s+day$/i.test(normalized)) return "O'Day";
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
+  if (/^j\s*\/?\s*boats?$/i.test(normalized)) return "J/Boats";
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
   if (/^(?:cheoy|choey|cheo|choye)(?:\s+lee)?$/i.test(normalized) || /^cheoylee$/i.test(normalized)) {
@@ -859,6 +860,11 @@ function repairCompoundBrandMakeModel(input: {
   if (/^chris$/i.test(make) && modelStartsWith(/^craft\b[\s-]*/i)) {
     make = "Chris Craft";
     model = model.replace(/^craft\b[\s-]*/i, "").trim();
+  }
+
+  if (/^j(?:\s*\/?\s*boats?)?$/i.test(make) && modelStartsWith(/^boats?\b[\s-]+\S/i)) {
+    make = "J/Boats";
+    model = model.replace(/^boats?\b[\s-]*/i, "").trim();
   }
 
   if (/^(?:cheoy|choey|cheoylee)$/i.test(make) && modelStartsWith(/^lee\b[\s-]*/i)) {
@@ -1221,6 +1227,12 @@ function canonicalizeKnownModelCodes(make: string, model: string) {
 
   if (/^bali$/i.test(make)) {
     cleaned = cleaned.replace(/^(\d)\s+(\d)(?=$|\s)/, "$1.$2");
+  }
+
+  if (/^j\/boats$/i.test(make)) {
+    cleaned = cleaned
+      .replace(/\bJ\s*[-/]?\s*(\d{1,3}[A-Za-z]?)(?=$|\s)/gi, "J/$1")
+      .replace(/^(\d{1,3}[A-Za-z]?)(?=$|\s)/i, "J/$1");
   }
 
   if (/^saffier$/i.test(make)) {
