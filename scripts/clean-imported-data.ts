@@ -1,7 +1,11 @@
 import { pool, query } from "../src/lib/db/index";
 import { boatToEmbeddingText, embeddingsEnabled, generateEmbedding } from "../src/lib/ai/embeddings";
 import { generateText } from "../src/lib/ai/provider";
-import { cleanImportedListingSummary } from "../src/lib/browse-summary";
+import {
+  cleanImportedListingSummary,
+  compressImportedListingSummary,
+  shouldCompressImportedListingSummary,
+} from "../src/lib/browse-summary";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
@@ -164,6 +168,7 @@ async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string)
 
 async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
   const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
+  const compressLongSummariesOnly = parseArgFlag("--compress-long-summaries-only");
   return query<CleanupRow>(
     `SELECT b.id, b.slug, b.year, b.make, b.model, b.source_site, b.asking_price, b.currency, b.asking_price_usd,
             b.location_text, b.source_name, b.source_url, b.view_count,
@@ -190,13 +195,17 @@ async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
          OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'thin_summary'
        )
        AND (
+         $4::boolean = false
+         OR LENGTH(COALESCE(d.ai_summary, '')) > 360
+       )
+       AND (
          $2::boolean = false
          OR ${buildImportedSaleStatusSql("b")}
          OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'sale_status'
        )
      ORDER BY b.view_count DESC, b.created_at DESC, b.id
      LIMIT $1`,
-    [limit, saleStatusOnly, summaryBoilerplateOnly]
+    [limit, saleStatusOnly, summaryBoilerplateOnly, compressLongSummariesOnly]
   );
 }
 
@@ -220,6 +229,7 @@ async function main() {
   const skipEmbeddings = parseArgFlag("--skip-embeddings");
   const saleStatusOnly = parseArgFlag("--sale-status-only");
   const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
+  const compressLongSummariesOnly = parseArgFlag("--compress-long-summaries-only");
   const limit = parseArgValue("--limit", DEFAULT_LIMIT);
   const llmLimit = parseArgValue("--llm-limit", DEFAULT_LLM_LIMIT);
   const modelConfig = configureCleanupModel();
@@ -274,6 +284,13 @@ async function main() {
       title: `${row.year} ${normalized.make}${normalized.model ? ` ${normalized.model}` : ""}`.trim(),
       locationText: normalizedLocation,
     });
+    const normalizedSourceSummary = shouldCompressImportedListingSummary({ summary: cleanedSourceSummary })
+      ? compressImportedListingSummary({
+        summary: cleanedSourceSummary,
+        maxLength: 360,
+        maxSentences: 3,
+      })
+      : cleanedSourceSummary;
     const fallbackSummary = buildImportedSummary({
       year: row.year,
       make: normalized.make,
@@ -285,9 +302,10 @@ async function main() {
       berths: typeof normalizedSpecs.berths === "number" ? normalizedSpecs.berths : null,
       heads: typeof normalizedSpecs.heads === "number" ? normalizedSpecs.heads : null,
     });
-    const useSourceSummary = cleanedSourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH;
-    let summary = useSourceSummary ? cleanedSourceSummary : fallbackSummary;
-    let summarySource: "source" | "deterministic" | "llm" = useSourceSummary ? "source" : "deterministic";
+    const useSourceSummary = normalizedSourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH;
+    let summary = useSourceSummary ? normalizedSourceSummary : fallbackSummary;
+    let summarySource: "source" | "deterministic" | "llm" =
+      useSourceSummary && normalizedSourceSummary === cleanedSourceSummary ? "source" : "deterministic";
 
     if (
       shouldUseLlm(
@@ -526,6 +544,7 @@ async function main() {
         visibleActiveCount: Number.parseInt(visibleCount[0]?.count || "0", 10),
         saleStatusOnly,
         summaryBoilerplateOnly,
+        compressLongSummariesOnly,
       },
       null,
       2

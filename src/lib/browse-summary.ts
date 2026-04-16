@@ -36,8 +36,35 @@ function trimSummary(value: string, maxLength: number) {
   return `${safeClip.trimEnd()}...`;
 }
 
-function splitSentences(value: string) {
+function normalizeSummaryText(value: string) {
   return value
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/[•·●▪◦]/g, ". ")
+    .replace(/\s*;\s*/g, ". ")
+    .replace(/\s+\./g, ".")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function insertSyntheticSentenceBreaks(value: string) {
+  return value
+    .replace(/(?<=[a-z0-9)])\s+(?=(?:[A-Z][A-Z/&'’() +.-]{2,32}:))/g, ". ")
+    .replace(/\s+(?=\d{4}\)\s+)/g, ". ")
+    .replace(
+      /\s+(?=(?:Owner'?s|One|Two|Three|Four|Aft|Forward|Forepeak|Chart(?:s)? table|Saloon table|C-shaped|L-shaped|Linear)\s+(?:cabin|cabins|shower|shower room|shower rooms|heads?|bathroom|bathrooms|galley|kitchen|settee|settees|berths?|chart table)\b)/gi,
+      ". "
+    )
+    .replace(
+      /(\b(?:bathroom|bathrooms|shower room|shower rooms|heads?|cabins?|galley|kitchen|settee|settees|berths?|chart table))\s+(?=(?:Double|Twin|Single)\s+(?:cabin|cabins|berths?|heads?|bathroom|bathrooms)\b)/gi,
+      "$1. "
+    )
+    .replace(/(?:\.\s*){2,}/g, ". ")
+    .trim();
+}
+
+function splitSentences(value: string) {
+  return insertSyntheticSentenceBreaks(normalizeSummaryText(value))
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
@@ -52,6 +79,10 @@ function dedupeSentences(sentences: string[]) {
 
 function stripSummaryBoilerplate(value: string) {
   return value
+    .replace(
+      /^\s*(?:for\s+(?:more\s+)?information|for\s+info(?:rmation)?|contact(?:\s+us)?|call(?:\s+us)?)\b[\s:,-]*(?:[A-Z][A-Za-z'’.-]+(?:\s+[A-Z][A-Za-z'’.-]+){0,3}\s+)?\+?\d[\d\s()./-]{6,}\s*/i,
+      ""
+    )
     .replace(/\s*[;,:-]?\s*\bAsking\s+(?:[A-Z]{3}\s+)?[$€£]?\d[\d,]*(?:\.\d+)?\.?/gi, "")
     .replace(
       /\s*[;,:-]?\s*\bAsking(?:\s+price)?\s*:?\s*(?:just\s+reduced\s+to|reduced\s+to|has\s+now\s+been\s+reduced\s+to|is)?\s*(?:[A-Z$]{2,5}\s*)?[$€£]?\d[\d,]*(?:\.\d+)?(?:\s*(?:ex(?:cl\.?)?\s*vat|vat paid|eu vat paid|or nearest offer))?[^.!?]*[.!?]?/gi,
@@ -74,6 +105,136 @@ function stripSummaryBoilerplate(value: string) {
 function normalizeSentenceCase(value: string) {
   if (!value) return "";
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
+const SPEC_SIGNAL_PATTERN =
+  /\b(?:loa|lwl|beam|draft|displacement|ballast|keel|rudder|engine|diesel|fuel|watermaker|water tank|fuel tank|generator|air ?con|autopilot|windlass|solar|bimini|sprayhood|trampoline|helm|cockpit|saloon|galley|cabin|cabins|berths?|heads?|wc\/shower|sleeps?|rig|sloop|cutter|ketch|yawl|catamaran|trimaran|monohull|owner'?s?\s+version|never chartered|private use only|bow thruster|sail ?drive)\b/i;
+const DIMENSION_SIGNAL_PATTERN =
+  /\b\d+(?:\.\d+)?\s*(?:ft|feet|m|metres?|meters?|hp|kw|knots?|ltrs?|litres?|liters?|kg|lbs?)\b/i;
+const MAINTENANCE_SIGNAL_PATTERN =
+  /\b(?:new|rebuilt|replaced|renewed|refit|refurbished|restored|serviced|maintained|upgraded|inspected|certified|winteri[sz]ed|paid up|ready for the season|ready to sail)\b/i;
+const USE_CASE_SIGNAL_PATTERN =
+  /\b(?:family|short[- ]handed|offshore|blue[- ]water|bluewater|cruising|liveaboard|passage[- ]making|owner'?s layout|guest cabin|suite)\b/i;
+const STRUCTURED_SPEC_PATTERN =
+  /\b(?:type|displacement|wc\/shower|engine type|power transmission|last service|water tank|fuel tank)\s*:/i;
+const SALES_SIGNAL_PATTERN =
+  /\b(?:contact|call|appointment|viewings?|website|offices across|questions|give us a call|schedule your viewing|submit your offer|make an offer|more information|price by negotiation|nearest offer|available on request|sale pending|deal pending|under offer|reserved)\b/i;
+const HYPE_SIGNAL_PATTERN =
+  /\b(?:incredible|remarkable|stunning|fabulous|amazing|magnificent|prestigious|exceptional|unmatched|dream(?:ing)?|do not miss|superb opportunity|iconic|beloved|wonderful|go-to|ready for new adventures)\b/i;
+const BAD_LEAD_PATTERN =
+  /^(?:remarks?|broker'?s remarks?|owner'?s remarks?|manufacturer provided description|technical highlights|key features|ground tackle|deck gear|navigation aids|for (?:more )?information|contact(?: us)?|call(?: us)?)\b/i;
+const LONG_SUMMARY_THRESHOLD = 360;
+const DEFAULT_COMPRESSED_SUMMARY_LENGTH = 360;
+
+function scoreSummarySentence(sentence: string) {
+  const normalized = sentence.trim();
+  if (!normalized) return Number.NEGATIVE_INFINITY;
+
+  let score = 0;
+
+  if (SPEC_SIGNAL_PATTERN.test(normalized)) score += 3;
+  if (DIMENSION_SIGNAL_PATTERN.test(normalized)) score += 3;
+  if (MAINTENANCE_SIGNAL_PATTERN.test(normalized)) score += 2;
+  if (USE_CASE_SIGNAL_PATTERN.test(normalized)) score += 1;
+  if (STRUCTURED_SPEC_PATTERN.test(normalized)) score += 2;
+
+  if (normalized.length >= 35 && normalized.length <= 190) score += 1;
+  if (normalized.length > 260) score -= 3;
+  else if (normalized.length > 180) score -= 1;
+
+  const commaCount = (normalized.match(/,/g) || []).length;
+  if (commaCount >= 8) score -= 2;
+  if ((normalized.match(/:/g) || []).length >= 2) score -= 2;
+
+  if (BAD_LEAD_PATTERN.test(normalized)) score -= 4;
+  if (SALES_SIGNAL_PATTERN.test(normalized)) score -= 4;
+  if (HYPE_SIGNAL_PATTERN.test(normalized)) score -= 1;
+
+  return score;
+}
+
+function condenseSummarySentences(
+  sentences: string[],
+  input: {
+    maxLength: number;
+    maxSentences: number;
+  }
+) {
+  const deduped = dedupeSentences(sentences.map((sentence) => sentence.trim()).filter(Boolean));
+  if (deduped.length === 0) return "";
+
+  if (deduped.length <= input.maxSentences) {
+    const joined = deduped.join(" ").trim();
+    if (joined.length <= input.maxLength) return joined;
+  }
+
+  const scored = deduped
+    .map((sentence, index) => ({
+      sentence,
+      index,
+      score: scoreSummarySentence(sentence),
+    }));
+
+  const chosen: Array<{ sentence: string; index: number; score: number }> = [];
+  let currentLength = 0;
+
+  for (const candidate of scored) {
+    if (candidate.score < 1) continue;
+    if (chosen.length >= input.maxSentences) break;
+
+    const nextLength = currentLength === 0
+      ? candidate.sentence.length
+      : currentLength + 1 + candidate.sentence.length;
+
+    if (chosen.length > 0 && nextLength > input.maxLength) continue;
+
+    chosen.push(candidate);
+    currentLength = nextLength;
+  }
+
+  const selected = (chosen.length > 0
+    ? chosen
+    : [...scored].sort((left, right) => right.score - left.score || left.index - right.index).slice(0, 1))
+    .sort((left, right) => left.index - right.index)
+    .map((candidate) => candidate.sentence);
+
+  return trimSummary(selected.join(" ").trim(), input.maxLength);
+}
+
+export function shouldCompressImportedListingSummary(input: {
+  summary?: string | null;
+  lengthThreshold?: number;
+  sentenceThreshold?: number;
+}) {
+  const normalized = String(input.summary || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return false;
+
+  const lengthThreshold = input.lengthThreshold ?? LONG_SUMMARY_THRESHOLD;
+  const sentenceThreshold = input.sentenceThreshold ?? 3;
+
+  return normalized.length > lengthThreshold || splitSentences(normalized).length > sentenceThreshold;
+}
+
+export function compressImportedListingSummary(input: {
+  summary?: string | null;
+  maxLength?: number;
+  maxSentences?: number;
+}) {
+  const normalized = String(input.summary || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+
+  const maxLength = input.maxLength ?? DEFAULT_COMPRESSED_SUMMARY_LENGTH;
+  const maxSentences = input.maxSentences ?? 3;
+
+  const sentences = splitSentences(normalized);
+  if (sentences.length <= maxSentences && normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return condenseSummarySentences(sentences, {
+    maxLength,
+    maxSentences,
+  });
 }
 
 export function cleanImportedListingSummary(input: {
@@ -213,7 +374,11 @@ export function buildBoatPublicSummary(input: {
     return "";
   }
 
-  return input.maxLength ? trimSummary(summary, input.maxLength) : summary;
+  return compressImportedListingSummary({
+    summary,
+    maxLength: input.maxLength ?? DEFAULT_COMPRESSED_SUMMARY_LENGTH,
+    maxSentences: input.maxLength && input.maxLength <= 220 ? 2 : 3,
+  });
 }
 
 export function buildBoatBrowseSummary(input: {

@@ -5,6 +5,8 @@ import {
   buildBoatBrowseSummary,
   buildBoatPublicSummary,
   cleanImportedListingSummary,
+  compressImportedListingSummary,
+  shouldCompressImportedListingSummary,
 } from "../../src/lib/browse-summary";
 
 test("buildBoatBrowseSummary drops title, price, and import-source boilerplate", () => {
@@ -148,5 +150,49 @@ test("cleanImportedListingSummary removes platform boilerplate after useful sour
         "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans with spacious comfort and blue-water capability. We provide only a selection of key information on this platform.",
     }),
     "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans with spacious comfort and blue-water capability."
+  );
+});
+
+test("shouldCompressImportedListingSummary flags long imported broker writeups", () => {
+  assert.equal(
+    shouldCompressImportedListingSummary({
+      summary:
+        "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans, the 450 F offers spacious comfort, elegant design, and outstanding blue-water capability. Lovingly maintained by a meticulous owner and used primarily for family cruising and benefits from continuous care and significant upgrades over the past years. She has many features like full aircon, solar panels, watermaker, all-new deck and cockpit cushions, new trampolines and many more.",
+    }),
+    true
+  );
+});
+
+test("compressImportedListingSummary keeps the strongest factual sentences under budget", () => {
+  assert.equal(
+    compressImportedListingSummary({
+      summary:
+        "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans, the 450 F offers spacious comfort, elegant design, and outstanding blue-water capability. Lovingly maintained by a meticulous owner and used primarily for family cruising and benefits from continuous care and significant upgrades over the past years. She has many features like full aircon, solar panels, watermaker, all-new deck and cockpit cushions, new trampolines and many more.",
+      maxLength: 260,
+      maxSentences: 2,
+    }),
+    "This 2016 Lagoon 450 F Owners Version is currently for sale in Langkawi. A proven performer among cruising catamarans, the 450 F offers spacious comfort, elegant design, and outstanding blue-water capability."
+  );
+});
+
+test("compressImportedListingSummary splits structured spec sheets without ai", () => {
+  assert.equal(
+    compressImportedListingSummary({
+      summary:
+        "TYPE: BENETEAU OCEANIS 430 owner’s version DISPLACEMENT: 9000kg (ballast 3600kg) WC/SHOWER: 2/2 + Cockpit shower ENGINE TYPE: Perkins Prima M50 POWER TRANSMISSION: Shaft/ 3 blades fixed propeller (Bronze) with small rope cutter • 2 solar panels 2×135 W (peak) • 2 Victron charge controllers MPPT 100/20 • 2 solar panels 15 Wpeak from Solara accessible on deck.",
+      maxLength: 260,
+      maxSentences: 3,
+    }),
+    "TYPE: BENETEAU OCEANIS 430 owner’s version. DISPLACEMENT: 9000kg (ballast 3600kg). WC/SHOWER: 2/2 + Cockpit shower."
+  );
+});
+
+test("cleanImportedListingSummary removes leading contact boilerplate from dense imported copy", () => {
+  assert.equal(
+    cleanImportedListingSummary({
+      summary:
+        "FOR INFORMATION CLAUDIO BACCHELLI +39 3356507516 Owner's cabin in the bow with dedicated bathroom Double cabin aft with dedicated bathroom C-shaped kitchen equipped with sink, fridge, oven and burner 2023) Diesel tank cleaning - mounted chain counter 2022) 2 electric toilets fitted - boiler heating element replaced 2021) replaced 5 service batteries (Varta).",
+    }),
+    "Owner's cabin in the bow with dedicated bathroom. Double cabin aft with dedicated bathroom. C-shaped kitchen equipped with sink, fridge, oven and burner. 2023) Diesel tank cleaning - mounted chain counter. 2022) 2 electric toilets fitted - boiler heating element replaced. 2021) replaced 5 service batteries (Varta)."
   );
 });

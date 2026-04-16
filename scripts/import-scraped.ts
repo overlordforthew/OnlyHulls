@@ -18,7 +18,11 @@ import {
   embeddingsEnabled,
   generateEmbeddings,
 } from "../src/lib/ai/embeddings";
-import { cleanImportedListingSummary } from "../src/lib/browse-summary";
+import {
+  cleanImportedListingSummary,
+  compressImportedListingSummary,
+  shouldCompressImportedListingSummary,
+} from "../src/lib/browse-summary";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
@@ -280,6 +284,13 @@ function buildSpecsAndSummary(input: {
     title: `${input.year} ${input.make}${input.model ? ` ${input.model}` : ""}`.trim(),
     locationText: input.location,
   });
+  const normalizedSourceSummary = shouldCompressImportedListingSummary({ summary: sourceSummary })
+    ? compressImportedListingSummary({
+      summary: sourceSummary,
+      maxLength: 360,
+      maxSentences: 3,
+    })
+    : sourceSummary;
   const fallbackSummary = buildImportedSummary({
     year: input.year,
     make: input.make,
@@ -292,8 +303,11 @@ function buildSpecsAndSummary(input: {
     heads: typeof specs.heads === "number" ? specs.heads : null,
   });
   const summarySource: "source" | "deterministic" =
-    sourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH ? "source" : "deterministic";
-  const summary = summarySource === "source" ? sourceSummary : fallbackSummary;
+    normalizedSourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH && normalizedSourceSummary === sourceSummary
+      ? "source"
+      : "deterministic";
+  const summary =
+    normalizedSourceSummary.trim().length >= MIN_GOOD_SUMMARY_LENGTH ? normalizedSourceSummary : fallbackSummary;
   const tags = buildImportedCharacterTags({
     priceUsd: toUsd(input.price, input.currency),
     loa,
