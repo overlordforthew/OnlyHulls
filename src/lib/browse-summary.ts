@@ -174,7 +174,7 @@ function normalizeSummaryText(value: string, sourceSite?: string | null) {
   return normalized;
 }
 
-function insertSyntheticSentenceBreaks(value: string, sourceSite?: string | null) {
+function insertSyntheticSentenceBreaks(value: string) {
   return value
     .replace(/(?<=[a-z0-9)])\s+(?=(?:[A-Z][A-Z/&'’() +.-]{2,32}:))/g, ". ")
     .replace(/\s+(?=\d{4}\)\s+)/g, ". ")
@@ -192,7 +192,7 @@ function insertSyntheticSentenceBreaks(value: string, sourceSite?: string | null
 }
 
 function splitSentences(value: string, sourceSite?: string | null) {
-  return insertSyntheticSentenceBreaks(normalizeSummaryText(value, sourceSite), sourceSite)
+  return insertSyntheticSentenceBreaks(normalizeSummaryText(value, sourceSite))
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
