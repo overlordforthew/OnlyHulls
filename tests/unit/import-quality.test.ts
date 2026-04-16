@@ -1323,6 +1323,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Ranger",
+      model: "Yachts 37 Sloop",
+      sourceSite: "theyachtmarket",
+      slug: "1973-ranger-yachts-37-sloop-honolulu",
+    }),
+    { make: "Ranger Yachts", model: "37 Sloop" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ranger Yachts",
+      model: "Yachts 37 Sloop",
+      sourceSite: "theyachtmarket",
+      slug: "1973-ranger-yachts-37-sloop-honolulu",
+    }),
+    { make: "Ranger Yachts", model: "37 Sloop" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ranger",
+      model: "28",
+      sourceSite: "sailboatlistings",
+      slug: "1976-ranger-28-florida",
+    }),
+    { make: "Ranger", model: "28" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
