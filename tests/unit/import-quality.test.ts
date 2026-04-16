@@ -828,6 +828,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Discovery",
+      model: "Yachts 58",
+      sourceSite: "theyachtmarket",
+      slug: "2015-discovery-yachts-58-cartagena",
+    }),
+    { make: "Discovery Yachts", model: "58" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Discovery Yachts",
+      model: "Yachts 58",
+      sourceSite: "theyachtmarket",
+      slug: "2021-discovery-yachts-58-valencia",
+    }),
+    { make: "Discovery Yachts", model: "58" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Discovery",
+      model: "55 Mk II",
+      sourceSite: "sailboatlistings",
+      slug: "2017-discovery-55-mk-ii-southampton",
+    }),
+    { make: "Discovery", model: "55 Mk II" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Leonardo",
       model: "Yachts Eagle 44",
       sourceSite: "sailboatlistings",
