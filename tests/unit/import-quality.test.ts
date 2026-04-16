@@ -558,6 +558,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Cheoylee",
+      model: "Ray Richards Offshore 32",
+      sourceSite: "sailboatlistings",
+      slug: "1978-cheoylee-ray-richards-offshore-32-florida",
+    }),
+    { make: "Cheoy Lee", model: "Ray Richards Offshore 32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheoylee",
+      model: "Lee Offshore 38",
+      sourceSite: "sailboatlistings",
+      slug: "1978-cheoylee-offshore-38-florida",
+    }),
+    { make: "Cheoy Lee", model: "Offshore 38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Grand",
       model: "Soleil 42 Lc",
       sourceSite: "theyachtmarket",

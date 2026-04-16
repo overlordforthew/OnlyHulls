@@ -648,7 +648,9 @@ function canonicalizeMakeName(make: string) {
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
-  if (/^(?:cheoy|choey|cheo|choye)(?:\s+lee)?$/i.test(normalized)) return "Cheoy Lee";
+  if (/^(?:cheoy|choey|cheo|choye)(?:\s+lee)?$/i.test(normalized) || /^cheoylee$/i.test(normalized)) {
+    return "Cheoy Lee";
+  }
   if (/^(?:fountaine|fountain|fontaine|fountains)\s+pajot$/i.test(normalized)) {
     return "Fountaine Pajot";
   }
@@ -840,7 +842,7 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^craft\b[\s-]*/i, "").trim();
   }
 
-  if (/^(?:cheoy|choey)$/i.test(make) && modelStartsWith(/^lee\b[\s-]*/i)) {
+  if (/^(?:cheoy|choey|cheoylee)$/i.test(make) && modelStartsWith(/^lee\b[\s-]*/i)) {
     make = "Cheoy Lee";
     model = model.replace(/^lee\b[\s-]*/i, "").trim();
   }
