@@ -810,6 +810,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Vaan",
+      model: "Yachts R4",
+      sourceSite: "theyachtmarket",
+      slug: "2027-vaan-yachts-r4-hellevoetsluis",
+    }),
+    { make: "Vaan Yachts", model: "R4" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Vaan Yachts",
+      model: "Yachts R5",
+      sourceSite: "theyachtmarket",
+      slug: "2024-vaan-yachts-r5-marseille",
+    }),
+    { make: "Vaan Yachts", model: "R5" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Leonardo",
       model: "Yachts Eagle 44",
       sourceSite: "sailboatlistings",
