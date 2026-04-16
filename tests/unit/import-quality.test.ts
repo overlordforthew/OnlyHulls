@@ -1296,6 +1296,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Swallow",
+      model: "Yachts Coast 250",
+      sourceSite: "theyachtmarket",
+      slug: "2020-swallow-yachts-coast-250-totnes-south-devon",
+    }),
+    { make: "Swallow Yachts", model: "Coast 250" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Swallow Yachts",
+      model: "Yachts Coast 250",
+      sourceSite: "theyachtmarket",
+      slug: "2020-swallow-yachts-coast-250-totnes-south-devon",
+    }),
+    { make: "Swallow Yachts", model: "Coast 250" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Swallow",
+      model: "Company Scylla Ketch",
+      sourceSite: "sailboatlistings",
+      slug: "1985-swallow-company-scylla-ketch-florida",
+    }),
+    { make: "Swallow", model: "Company Scylla Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
