@@ -522,6 +522,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Choey",
+      model: "Lee Clipper 33",
+      sourceSite: "sailboatlistings",
+      slug: "1970-choey-lee-clipper-33-california",
+    }),
+    { make: "Cheoy Lee", model: "Clipper 33" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Choey Lee",
+      model: "Lee Offshore",
+      sourceSite: "sailboatlistings",
+      slug: "1973-choey-lee-offshore-california",
+    }),
+    { make: "Cheoy Lee", model: "Offshore" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Grand",
       model: "Soleil 42 Lc",
       sourceSite: "theyachtmarket",
