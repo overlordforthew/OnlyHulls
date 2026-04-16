@@ -18,6 +18,10 @@ function normalizeSentence(value: string) {
   return value
     .replace(/^Key specs include\s+/i, "")
     .replace(/\b(monohull|catamaran|trimaran) hull\b/gi, "$1")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/,\s*\./g, ".")
+    .replace(/\.\s*,/g, ". ")
+    .replace(/\b(?:and|plus)\s+(?:so much more|many more)\b\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 }

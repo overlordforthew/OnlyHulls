@@ -141,6 +141,18 @@ test("buildBoatPublicSummary repairs live location-plus-model artifacts left by 
   );
 });
 
+test("buildBoatPublicSummary repairs stray punctuation and filler tails in live imported summaries", () => {
+  assert.equal(
+    buildBoatPublicSummary({
+      title: "2023 Beneteau Oceanis 38 1",
+      locationText: "Bangor, Down",
+      summary:
+        "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. This model comes with a great spec to include the 2 cabin layout with separate shower and head,. L-shaped galley and larger 40hp engine, Mainsail arch and sprayhood with cockpit enclosure, electric halyard winch and windlass, Iroko wood cockpit and so much more.",
+    }),
+    "With over 750 built, the Oceanis 38.1 is the perfect family/short handed cruiser. This model comes with a great spec to include the 2 cabin layout with separate shower and head. L-shaped galley and larger 40hp engine, Mainsail arch and sprayhood with cockpit enclosure, electric halyard winch and windlass, Iroko wood cockpit."
+  );
+});
+
 test("cleanImportedListingSummary removes platform boilerplate after useful source copy", () => {
   assert.equal(
     cleanImportedListingSummary({
