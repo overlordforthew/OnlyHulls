@@ -747,6 +747,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fairways",
+      model: "Marine Fisher 30",
+      sourceSite: "sailboatlistings",
+      slug: "1976-fairways-marine-fisher-30-maryland",
+    }),
+    { make: "Fairways Marine", model: "Fisher 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fairways Marine",
+      model: "Marine Fisher 30",
+      sourceSite: "sailboatlistings",
+      slug: "1973-fairways-marine-fisher-30-california",
+    }),
+    { make: "Fairways Marine", model: "Fisher 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Spirit",
       model: "Yachts C72",
       sourceSite: "theyachtmarket",
