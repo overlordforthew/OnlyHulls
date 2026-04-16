@@ -846,6 +846,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Alliaura",
+      model: "Marine Privilege 615",
+      sourceSite: "sailboatlistings",
+      slug: "2007-alliaura-marine-privilege-615-caribbean-saint-martin",
+    }),
+    { make: "Alliaura Marine", model: "Privilege 615" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alliaura",
+      model: "Marine Privilege 37",
+      sourceSite: "sailboatlistings",
+      slug: "1996-alliaura-marine-privilege-37-tyrell-bay-carriacou",
+    }),
+    { make: "Alliaura Marine", model: "Privilege 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alliaura Marine",
+      model: "Marine Privilege 615",
+      sourceSite: "sailboatlistings",
+      slug: "2007-alliaura-marine-privilege-615-caribbean-saint-martin",
+    }),
+    { make: "Alliaura Marine", model: "Privilege 615" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Jeantot",
       model: "Marine Privilege 39",
       sourceSite: "sailboatlistings",
