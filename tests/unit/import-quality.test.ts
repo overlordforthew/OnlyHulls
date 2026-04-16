@@ -945,6 +945,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Omega",
+      model: "Yachts Omega 28",
+      sourceSite: "theyachtmarket",
+      slug: "1979-omega-yachts-omega-28-dover",
+    }),
+    { make: "Omega Yachts", model: "28" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Omega",
+      model: "Yachts Omega 36",
+      sourceSite: "theyachtmarket",
+      slug: "1990-omega-yachts-omega-36-burnham-yacht-harbour",
+    }),
+    { make: "Omega Yachts", model: "36" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Omega Yachts",
+      model: "Yachts Omega 28",
+      sourceSite: "theyachtmarket",
+      slug: "1979-omega-yachts-omega-28-dover",
+    }),
+    { make: "Omega Yachts", model: "28" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Omega",
+      model: "46",
+      sourceSite: "theyachtmarket",
+      slug: "2004-omega-46-blankaholm",
+    }),
+    { make: "Omega", model: "46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
@@ -2058,6 +2094,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     choeyLee.ai_summary,
     "1970 Cheoy Lee Clipper 33 in California. 33ft LOA, ketch rig, monohull."
+  );
+
+  const omega = sanitizeImportedBoatRecord({
+    year: 1979,
+    make: "Omega",
+    model: "Yachts Omega 28",
+    slug: "1979-omega-yachts-omega-28-dover",
+    source_site: "theyachtmarket",
+    location_text: "Dover",
+    ai_summary:
+      "1979 Omega Yachts Omega 28 in Dover. 28ft LOA, monohull, well maintained.",
+    specs: {
+      loa: 28,
+    },
+  });
+
+  assert.equal(omega.make, "Omega Yachts");
+  assert.equal(omega.model, "28");
+  assert.equal(
+    omega.ai_summary,
+    "1979 Omega Yachts 28 in Dover. 28ft LOA, monohull, well maintained."
   );
 });
 
