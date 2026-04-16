@@ -972,6 +972,42 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Gilbert",
+      model: "Marine Gib'Sea 92",
+      sourceSite: "sailboatlistings",
+      slug: "1986-gilbert-marine-gib-sea-92-northern-ireland",
+    }),
+    { make: "Gibsea", model: "92" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Gilbert",
+      model: "Marine Gib Sea 37",
+      sourceSite: "sailboatlistings",
+      slug: "1985-gilbert-marine-gib-sea-37-florida",
+    }),
+    { make: "Gibsea", model: "37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Gibert",
+      model: "Marine France GIB SEA 402 Master Pro",
+      sourceSite: "sailboatlistings",
+      slug: "1987-gibert-marine-france-gib-sea-402-master-pro-spain-balearic-island-mallorca",
+    }),
+    { make: "Gibsea", model: "402 Master Pro" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Gibert",
+      model: "Marine Gibsea402",
+      sourceSite: "sailboatlistings",
+      slug: "1988-gibert-marine-gibsea402-thailand",
+    }),
+    { make: "Gibsea", model: "402" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Spirit",
       model: "Yachts C72",
       sourceSite: "theyachtmarket",
@@ -1701,6 +1737,24 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
     }),
     { make: "Bruce", model: "Farr Libera" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Gilbert",
+      model: "Karoff Chatam 33",
+      sourceSite: "sailboatlistings",
+      slug: "1985-gilbert-karoff-chatam-33-roatan",
+    }),
+    { make: "Gilbert", model: "Karoff Chatam 33" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Dufour",
+      model: "Gibsea 43",
+      sourceSite: "sailboatlistings",
+      slug: "2003-dufour-gibsea-43-new-york",
+    }),
+    { make: "Dufour", model: "Gibsea 43" }
+  );
 });
 
 test("normalizeImportedMakeModel promotes out of generic sailboat listing makes", () => {
@@ -2298,6 +2352,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     omega.ai_summary,
     "1979 Omega Yachts 28 in Dover. 28ft LOA, monohull, well maintained."
+  );
+
+  const gibsea = sanitizeImportedBoatRecord({
+    year: 1986,
+    make: "Gilbert",
+    model: "Marine Gib'Sea 92",
+    slug: "1986-gilbert-marine-gib-sea-92-northern-ireland",
+    source_site: "sailboatlistings",
+    location_text: "Northern Ireland",
+    ai_summary: "1986 Gilbert Marine Gib'Sea 92 in Northern Ireland. 30ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 30,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(gibsea.make, "Gibsea");
+  assert.equal(gibsea.model, "92");
+  assert.equal(
+    gibsea.ai_summary,
+    "1986 Gibsea 92 in Northern Ireland. 30ft LOA, masthead sloop rig, monohull."
   );
 });
 
