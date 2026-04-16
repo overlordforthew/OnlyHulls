@@ -693,6 +693,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fabola",
+      model: "Boats Diva 45",
+      sourceSite: "theyachtmarket",
+      slug: "1996-fabola-boats-diva-45-lefkas",
+    }),
+    { make: "Fabola Boats", model: "Diva 45" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fabola Boats",
+      model: "Boats Diva 45",
+      sourceSite: "theyachtmarket",
+      slug: "1996-fabola-boats-diva-45-lefkas",
+    }),
+    { make: "Fabola Boats", model: "Diva 45" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fabola",
+      model: "Diva 451",
+      sourceSite: "sailboatlistings",
+      slug: "1997-fabola-diva-451-washington",
+    }),
+    { make: "Fabola", model: "Diva 451" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Carroll",
       model: "Marine Farr30",
       sourceSite: "sailboatlistings",

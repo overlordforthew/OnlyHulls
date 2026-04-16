@@ -867,6 +867,11 @@ function repairCompoundBrandMakeModel(input: {
     model = model.replace(/^boats\b[\s-]*/i, "").trim();
   }
 
+  if (/^fabola(?:\s+boats)?$/i.test(make) && modelStartsWith(/^boats\b[\s-]*/i)) {
+    make = "Fabola Boats";
+    model = model.replace(/^boats\b[\s-]*/i, "").trim();
+  }
+
   if (/^carrol(?:l)?(?:\s+marine)?$/i.test(make) && modelStartsWith(/^marine\b[\s-]*/i)) {
     make = "Carroll Marine";
     model = model.replace(/^marine\b[\s-]*/i, "").trim();
