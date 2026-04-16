@@ -806,6 +806,25 @@ function repairCompoundBrandMakeModel(input: {
   let model = input.model;
 
   const modelStartsWith = (pattern: RegExp) => pattern.test(model);
+  const stripJensenCalFamilyPrefixes = (value: string) => {
+    let next = value.trim();
+    let previous = "";
+
+    while (next && next !== previous) {
+      previous = next;
+      next = next
+        .replace(
+          /^jensen(?:\s+marinecal(?:\s+boats?)?|\s+marine)?(?:(?=\d)|\b)[\s-]*/i,
+          ""
+        )
+        .replace(/^marinecal(?:\s+boats?)?(?:(?=\d)|\b)[\s-]*/i, "")
+        .replace(/^marine(?:(?=\d)|\b)[\s-]*/i, "")
+        .replace(/^cal(?:(?:\s*[-/]\s*|\s+)jensen)?(?:(?=\d)|\b)[\s-]*/i, "")
+        .trim();
+    }
+
+    return next;
+  };
 
   if (/^(?:fountaine|fountain|fontaine|fountains)$/i.test(make) && modelStartsWith(/^pajot\b[\s-]*/i)) {
     make = "Fountaine Pajot";
@@ -915,6 +934,15 @@ function repairCompoundBrandMakeModel(input: {
   if (/^sessa(?:\s+marine)?$/i.test(make) && modelStartsWith(/^marine\b[\s-]*/i)) {
     make = "Sessa Marine";
     model = model.replace(/^marine\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    /^(?:jensen|cal|cal-jensen)$/i.test(make) &&
+    /jensen/i.test(`${make} ${model}`) &&
+    /(?:\bcal\b|cal-\d|cal\d)/i.test(`${make} ${model}`)
+  ) {
+    make = "Cal";
+    model = stripJensenCalFamilyPrefixes(model);
   }
 
   if (

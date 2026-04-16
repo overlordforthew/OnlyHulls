@@ -459,6 +459,60 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Jensen",
+      model: "Marine Cal 25",
+      sourceSite: "sailboatlistings",
+      slug: "1966-jensen-marine-cal-25-california",
+    }),
+    { make: "Cal", model: "25" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cal",
+      model: "Jensen Marine Cal 2-27",
+      sourceSite: "sailboatlistings",
+      slug: "1976-cal-jensen-marine-cal-2-27-california",
+    }),
+    { make: "Cal", model: "2-27" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jensen",
+      model: "Cal 35 Mkii",
+      sourceSite: "theyachtmarket",
+      slug: "1985-jensen-cal-35-mkii-warwick",
+    }),
+    { make: "Cal", model: "35 Mkii" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cal-Jensen",
+      model: "Cal Jensen",
+      sourceSite: "sailboatlistings",
+      slug: "1969-cal-jensen-cal-jensen-california",
+    }),
+    { make: "Cal", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jensen",
+      model: "Marinecal Boats Cal29-2",
+      sourceSite: "sailboatlistings",
+      slug: "1975-jensen-marinecal-boats-cal29-2-under-cockpit",
+    }),
+    { make: "Cal", model: "29-2" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jensen",
+      model: "Catalina 30",
+      sourceSite: "sailboatlistings",
+      slug: "1978-jensen-catalina-30-california",
+    }),
+    { make: "Jensen", model: "Catalina 30" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",
