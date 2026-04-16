@@ -1269,6 +1269,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Neo",
+      model: "Yachts Neo 350",
+      sourceSite: "theyachtmarket",
+      slug: "2018-neo-yachts-neo-350-smiltyne",
+    }),
+    { make: "Neo Yachts", model: "350" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Neo",
+      model: "Yachts Neo 460 Roma",
+      sourceSite: "theyachtmarket",
+      slug: "2024-neo-yachts-neo-460-roma-miami",
+    }),
+    { make: "Neo Yachts", model: "460 Roma" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Neo",
+      model: "430",
+      sourceSite: "theyachtmarket",
+      slug: "2024-neo-430-miami",
+    }),
+    { make: "Neo", model: "430" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
@@ -2442,6 +2469,26 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     omega.ai_summary,
     "1979 Omega Yachts 28 in Dover. 28ft LOA, monohull, well maintained."
+  );
+
+  const neo = sanitizeImportedBoatRecord({
+    year: 2018,
+    make: "Neo",
+    model: "Yachts Neo 350",
+    slug: "2018-neo-yachts-neo-350-smiltyne",
+    source_site: "theyachtmarket",
+    location_text: "Smiltyne",
+    ai_summary: "2018 Neo Yachts Neo 350 in Smiltyne. 35.4ft LOA, monohull, race-ready.",
+    specs: {
+      loa: 35.4,
+    },
+  });
+
+  assert.equal(neo.make, "Neo Yachts");
+  assert.equal(neo.model, "350");
+  assert.equal(
+    neo.ai_summary,
+    "2018 Neo Yachts 350 in Smiltyne. 35.4ft LOA, monohull, race-ready."
   );
 
   const gibsea = sanitizeImportedBoatRecord({
