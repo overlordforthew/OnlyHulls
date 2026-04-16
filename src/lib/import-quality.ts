@@ -792,7 +792,9 @@ function repairCompoundBrandMakeModel(input: {
   if (
     sourceSite !== "theyachtmarket" &&
     sourceSite !== "sailboatlistings" &&
-    sourceSite !== "apolloduck_us"
+    sourceSite !== "apolloduck_us" &&
+    sourceSite !== "catamaransite" &&
+    sourceSite !== "catamarans_com"
   ) {
     return { make: input.make, model: input.model };
   }
@@ -1088,6 +1090,10 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
 
   if (/^carroll marine$/i.test(make)) {
     cleaned = cleaned.replace(/^marine\b[\s-]*/i, "");
+  }
+
+  if (/^fountaine pajot$/i.test(make)) {
+    cleaned = cleaned.replace(/^fp\b[\s-]*/i, "");
   }
 
   if (/^spirit yachts$/i.test(make)) {

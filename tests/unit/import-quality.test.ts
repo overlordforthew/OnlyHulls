@@ -297,6 +297,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fountaine",
+      model: "Pajot Fp Saba 50",
+      sourceSite: "catamarans_com",
+      slug: "2016-fountaine-pajot-fp-saba-50-panama",
+    }),
+    { make: "Fountaine Pajot", model: "Saba 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fountaine",
+      model: "Pajot 44 Helia",
+      sourceSite: "catamaransite",
+      slug: "2014-fountaine-pajot-44-helia-fort-lauderdale",
+    }),
+    { make: "Fountaine Pajot", model: "44 Helia" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fountaine Pajot",
+      model: "Fp 41",
+      sourceSite: "theyachtmarket",
+      slug: "2025-fountaine-pajot-fp-41-united-kingdom",
+    }),
+    { make: "Fountaine Pajot", model: "41" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Hallberg",
       model: "Rassy 42",
       sourceSite: "theyachtmarket",
