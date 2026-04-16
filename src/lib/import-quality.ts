@@ -1459,6 +1459,7 @@ type SanitizableBoatRecord = {
   make: string;
   model: string;
   slug?: string | null;
+  ai_summary?: string | null;
   source_site?: string | null;
   source_url?: string | null;
   location_text?: string | null;
@@ -1483,11 +1484,20 @@ export function sanitizeImportedBoatRecord<T extends SanitizableBoatRecord>(boat
     model: normalizedModel,
     sourceSite: boat.source_site,
   });
+  const normalizedSummary = normalizeImportedAiSummary({
+    summary: boat.ai_summary,
+    year: boat.year,
+    rawMake: boat.make,
+    rawModel: boat.model,
+    make: normalizedMake,
+    model: normalizedModel,
+  });
 
   return {
     ...boat,
     make: normalizedMake,
     model: normalizedModel,
+    ai_summary: "ai_summary" in boat ? normalizedSummary : boat.ai_summary,
     source_url:
       "source_url" in boat ? getSafeExternalUrl(boat.source_url) : boat.source_url,
     location_text:
@@ -1583,6 +1593,38 @@ function formatLoaBackfillModel(loa?: number | null) {
   }
 
   return rounded.toFixed(1).replace(/\.0$/, "");
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeImportedAiSummary(input: {
+  summary?: string | null;
+  year?: number | null;
+  rawMake?: string | null;
+  rawModel?: string | null;
+  make: string;
+  model: string;
+}) {
+  const summary = normalizeSpacing(input.summary);
+  if (!summary) return input.summary ?? null;
+
+  const rawTitle = [input.year, normalizeSpacing(input.rawMake), normalizeSpacing(input.rawModel)]
+    .filter(Boolean)
+    .join(" ");
+  const normalizedTitle = [input.year, input.make, input.model].filter(Boolean).join(" ");
+
+  if (!rawTitle || !normalizedTitle || rawTitle.toLowerCase() === normalizedTitle.toLowerCase()) {
+    return summary;
+  }
+
+  const prefixPattern = new RegExp(
+    `^${escapeRegex(rawTitle).replace(/\\ /g, "\\s+")}(?=$|\\s|[.,;:!?-])`,
+    "i"
+  );
+
+  return summary.replace(prefixPattern, normalizedTitle);
 }
 
 export function normalizeImportedMakeModel(input: {

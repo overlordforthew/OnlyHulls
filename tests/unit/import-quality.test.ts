@@ -2038,6 +2038,29 @@ test("sanitizeImportedBoatRecord keeps intentionally blank normalized models bla
   });
 });
 
+test("sanitizeImportedBoatRecord rewrites summary lead text when make/model normalization changes", () => {
+  const choeyLee = sanitizeImportedBoatRecord({
+    year: 1970,
+    make: "Choey",
+    model: "Lee Clipper 33",
+    slug: "1970-choey-lee-clipper-33-california",
+    source_site: "sailboatlistings",
+    location_text: "California",
+    ai_summary: "1970 Choey Lee Clipper 33 in California. 33ft LOA, ketch rig, monohull.",
+    specs: {
+      loa: 33,
+      rig_type: "ketch",
+    },
+  });
+
+  assert.equal(choeyLee.make, "Cheoy Lee");
+  assert.equal(choeyLee.model, "Clipper 33");
+  assert.equal(
+    choeyLee.ai_summary,
+    "1970 Cheoy Lee Clipper 33 in California. 33ft LOA, ketch rig, monohull."
+  );
+});
+
 test("buildImportedSlug uses cleaned location lead token", () => {
   assert.equal(
     buildImportedSlug(2003, "Robertson and Caine", "Leopard 47 Catamaran", "British Virgin Islands"),
