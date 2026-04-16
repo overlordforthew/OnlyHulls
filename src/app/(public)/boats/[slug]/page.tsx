@@ -73,6 +73,7 @@ function buildBoatMetaDescription(boat: BoatDetail, priceStr: string, copy: Boat
     summary: boat.ai_summary,
     title,
     locationText: location,
+    sourceSite: boat.source_site,
     maxLength: 240,
   });
   if (summary) {
@@ -280,6 +281,7 @@ export default async function BoatDetailPage({
     summary: boat.ai_summary,
     title: boatTitle,
     locationText: boat.location_text,
+    sourceSite: boat.source_site,
   });
   const imageCount = media.filter((mediaItem) => mediaItem.type === "image").length;
   const videoCount = media.filter((mediaItem) => mediaItem.type === "video").length;

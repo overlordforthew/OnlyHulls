@@ -283,10 +283,15 @@ function buildSpecsAndSummary(input: {
     summary: normalizeImportedSummary(input.boat.description),
     title: `${input.year} ${input.make}${input.model ? ` ${input.model}` : ""}`.trim(),
     locationText: input.location,
+    sourceSite: input.sourceSite,
   });
-  const normalizedSourceSummary = shouldCompressImportedListingSummary({ summary: sourceSummary })
+  const normalizedSourceSummary = shouldCompressImportedListingSummary({
+    summary: sourceSummary,
+    sourceSite: input.sourceSite,
+  })
     ? compressImportedListingSummary({
       summary: sourceSummary,
+      sourceSite: input.sourceSite,
       maxLength: 360,
       maxSentences: 3,
     })

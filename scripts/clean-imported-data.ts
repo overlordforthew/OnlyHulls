@@ -74,6 +74,13 @@ function parseArgValue(name: string, fallback: number) {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
+function parseArgText(name: string) {
+  const index = process.argv.indexOf(name);
+  if (index === -1) return null;
+  const raw = String(process.argv[index + 1] || "").trim();
+  return raw.length > 0 ? raw : null;
+}
+
 function configureCleanupModel() {
   if ((process.env.IMPORT_CLEANUP_PROVIDER || "").trim()) {
     process.env.AI_PROVIDER = process.env.IMPORT_CLEANUP_PROVIDER;
@@ -166,7 +173,12 @@ async function maybeGenerateLlmSummary(row: CleanupRow, fallbackSummary: string)
   };
 }
 
-async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
+async function fetchCandidates(
+  limit: number,
+  saleStatusOnly: boolean,
+  sourceSiteFilter: string | null,
+  summaryMinLength: number | null
+) {
   const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
   const compressLongSummariesOnly = parseArgFlag("--compress-long-summaries-only");
   return query<CleanupRow>(
@@ -199,13 +211,21 @@ async function fetchCandidates(limit: number, saleStatusOnly: boolean) {
          OR LENGTH(COALESCE(d.ai_summary, '')) > 360
        )
        AND (
+         $5::text IS NULL
+         OR b.source_site = $5
+       )
+       AND (
+         $6::int IS NULL
+         OR LENGTH(COALESCE(d.ai_summary, '')) >= $6
+       )
+       AND (
          $2::boolean = false
          OR ${buildImportedSaleStatusSql("b")}
          OR COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'sale_status'
        )
      ORDER BY b.view_count DESC, b.created_at DESC, b.id
      LIMIT $1`,
-    [limit, saleStatusOnly, summaryBoilerplateOnly, compressLongSummariesOnly]
+    [limit, saleStatusOnly, summaryBoilerplateOnly, compressLongSummariesOnly, sourceSiteFilter, summaryMinLength]
   );
 }
 
@@ -230,12 +250,16 @@ async function main() {
   const saleStatusOnly = parseArgFlag("--sale-status-only");
   const summaryBoilerplateOnly = parseArgFlag("--summary-boilerplate-only");
   const compressLongSummariesOnly = parseArgFlag("--compress-long-summaries-only");
+  const sourceSiteFilter = parseArgText("--source-site");
+  const summaryMinLength = process.argv.includes("--summary-min-length")
+    ? parseArgValue("--summary-min-length", 0)
+    : null;
   const limit = parseArgValue("--limit", DEFAULT_LIMIT);
   const llmLimit = parseArgValue("--llm-limit", DEFAULT_LLM_LIMIT);
   const modelConfig = configureCleanupModel();
   const shouldRefreshEmbeddings = !skipEmbeddings && !dryRun && embeddingsEnabled();
 
-  const rows = await fetchCandidates(limit, saleStatusOnly);
+  const rows = await fetchCandidates(limit, saleStatusOnly, sourceSiteFilter, summaryMinLength);
   if (rows.length === 0) {
     console.log("Imported cleanup: nothing to process.");
     return;
@@ -283,10 +307,15 @@ async function main() {
       summary: normalizeImportedSummary(row.ai_summary),
       title: `${row.year} ${normalized.make}${normalized.model ? ` ${normalized.model}` : ""}`.trim(),
       locationText: normalizedLocation,
+      sourceSite: row.source_site,
     });
-    const normalizedSourceSummary = shouldCompressImportedListingSummary({ summary: cleanedSourceSummary })
+    const normalizedSourceSummary = shouldCompressImportedListingSummary({
+      summary: cleanedSourceSummary,
+      sourceSite: row.source_site,
+    })
       ? compressImportedListingSummary({
         summary: cleanedSourceSummary,
+        sourceSite: row.source_site,
         maxLength: 360,
         maxSentences: 3,
       })
@@ -545,6 +574,8 @@ async function main() {
         saleStatusOnly,
         summaryBoilerplateOnly,
         compressLongSummariesOnly,
+        sourceSiteFilter,
+        summaryMinLength,
       },
       null,
       2

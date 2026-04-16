@@ -808,6 +808,7 @@ function BoatBrowseRow({
     summary: boat.ai_summary,
     title: `${boat.year} ${boat.make} ${boat.model}`,
     locationText: boat.location_text,
+    sourceSite: boat.source_site,
   });
   const hasSummary = summary.length > 0;
 

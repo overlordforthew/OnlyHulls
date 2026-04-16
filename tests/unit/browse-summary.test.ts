@@ -208,3 +208,64 @@ test("cleanImportedListingSummary removes leading contact boilerplate from dense
     "Owner's cabin in the bow with dedicated bathroom. Double cabin aft with dedicated bathroom. C-shaped kitchen equipped with sink, fridge, oven and burner. 2023) Diesel tank cleaning - mounted chain counter. 2022) 2 electric toilets fitted - boiler heating element replaced. 2021) replaced 5 service batteries (Varta)."
   );
 });
+
+test("buildBoatBrowseSummary strips TheYachtMarket remarks boilerplate without ai", () => {
+  assert.equal(
+    buildBoatBrowseSummary({
+      title: "1980 Rival 41 AC",
+      locationText: "Cardiff",
+      sourceSite: "theyachtmarket",
+      summary:
+        "Remarks :PART EXCHANGE & FINANCE AVAILABLE REMARKS Border Rival is a Rival 41 Aft Cockpit with just three owners since new, known for her solid construction, sea-kindly design, and reputation as a true blue-water yacht. She comes with a full history of receipts and a detailed maintenance spreadsheet. She is handsome, immensely capable, and clearly cherished.",
+    }),
+    "Border Rival is a Rival 41 Aft Cockpit with just three owners since new, known for her solid construction, sea-kindly design, and reputation as a true blue-water yacht."
+  );
+});
+
+test("buildBoatPublicSummary segments TheYachtMarket run-on spec blocks", () => {
+  assert.equal(
+    buildBoatPublicSummary({
+      title: "1974 Bowman 36",
+      locationText: "Gosport",
+      sourceSite: "theyachtmarket",
+      summary:
+        "Bowman 36 Proven Offshore Cruiser with Extensive Upgrades GRP hull construction Long keel configuration for offshore capability Teak interior joinery fitted to a high specification Seven coats Gelshield applied to hull in 1996 Topsides painted with International Perfection two-pack system in 2012 Deck repainted with the same system in 2015 Bronze anodised spars.",
+    }),
+    "Proven Offshore Cruiser with Extensive Upgrades. Long keel configuration for offshore capability. Teak interior joinery fitted to a high specification."
+  );
+});
+
+test("buildBoatPublicSummary does not over-split already-readable TheYachtMarket prose", () => {
+  assert.equal(
+    buildBoatPublicSummary({
+      title: "1972 Fisher 30",
+      locationText: "Ramsgate",
+      sourceSite: "theyachtmarket",
+      summary:
+        "Recently refurbished with new stainless steel rigging and a Digital Raymarine radar and navigation system, this Fisher 30 Motorsailer is a robust, safe and reliable all weather boat. It is at home in both calm inland waters and the roughest of sea conditions, born from its design origins of a Norwegian fishing boat. • Ketch rigged, with Kemp masts and spars.",
+    }),
+    "Recently refurbished with new stainless steel rigging and a Digital Raymarine radar and navigation system, this Fisher 30 Motorsailer is a robust, safe and reliable all weather boat. It is at home in both calm inland waters and the roughest of sea conditions, born from its design origins of a Norwegian fishing boat. Ketch rigged, with Kemp masts and spars."
+  );
+});
+
+test("cleanImportedListingSummary repairs old dotted artifact fragments from earlier cleanup", () => {
+  assert.equal(
+    cleanImportedListingSummary({
+      sourceSite: "theyachtmarket",
+      summary:
+        "One. Forward cabin with two bunks One. Forward shower room with manual toilet and washbasin Galley on the port side with central cabinet Chart table on the starboard side Hot and cold pressurized water.",
+    }),
+    "One forward cabin with two bunks. One forward shower room with manual toilet and washbasin. Galley on the port side with central cabinet. Chart table on the starboard side. Hot and cold pressurized water."
+  );
+});
+
+test("cleanImportedListingSummary repairs lingering with-dot number artifacts", () => {
+  assert.equal(
+    cleanImportedListingSummary({
+      sourceSite: "theyachtmarket",
+      summary:
+        "A compact twin keel yacht with. Four berths, Beta diesel and cruising kit to include stack pack main. Easily sailed single handed or by a couple.",
+    }),
+    "A compact twin keel yacht with four berths, Beta diesel and cruising kit to include stack pack main. Easily sailed single handed or by a couple."
+  );
+});

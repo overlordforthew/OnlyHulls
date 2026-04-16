@@ -2,6 +2,10 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeSourceSite(value?: string | null) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function buildLoosePattern(value: string, anchored = false) {
   const tokens = String(value || "")
     .trim()
@@ -17,13 +21,107 @@ function buildLoosePattern(value: string, anchored = false) {
 function normalizeSentence(value: string) {
   return value
     .replace(/^Key specs include\s+/i, "")
+    .replace(/^For sale\b[\s:,-]*/i, "")
     .replace(/\b(monohull|catamaran|trimaran) hull\b/gi, "$1")
+    .replace(/\b(One|Two|Three|Four)\.\s+(?=(?:forward|aft|port|starboard)\b)/gi, "$1 ")
+    .replace(/\b(double|single)\.\s+(?=(?:forward|aft)\b)/gi, "$1 ")
+    .replace(/\bwith\.\s+(?=(?:one|two|three|four|five|six|seven|eight|nine|ten)\b)/gi, "with ")
     .replace(/\s+([,.;:!?])/g, "$1")
     .replace(/,\s*\./g, ".")
     .replace(/\.\s*,/g, ". ")
     .replace(/\b(?:and|plus)\s+(?:so much more|many more)\b\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const THEYACHTMARKET_SECTION_STARTERS = [
+  "SLEEPS",
+  "WEBASTO",
+  "MAXPOWER",
+  "NEW TEAK COCKPIT",
+  "NEW UPHOLSTERY",
+  "GRP hull construction",
+  "Long keel configuration",
+  "Bilge keels",
+  "Long centre keel",
+  "Transom hung rudder",
+  "Coppercoated hull",
+  "Painted topsides",
+  "Covers for woodwork",
+  "Wide, safe",
+  "On Deck",
+  "Double bow roller",
+  "Windlass",
+  "CQR anchor",
+  "Non skid",
+  "Bronze anodised",
+  "Teak interior joinery",
+  "Seven coats Gelshield",
+  "Topsides painted",
+  "Deck repainted",
+  "Owner's cabin",
+  "One forward",
+  "One aft",
+  "One large aft owner's cabin",
+  "Two aft",
+  "Two cabins",
+  "Two showers",
+  "Three cabins",
+  "Seven berths",
+  "Saloon table",
+  "Charts table",
+  "Chart table on the",
+  "Large chart table",
+  "Spacious chart table",
+  "Main saloon",
+  "L-shaped galley",
+  "U-shaped saloon",
+  "Forward large shower room",
+  "Starboard bow accessible",
+  "One Quick",
+  "Galley on the",
+  "Hot and cold",
+  "Water maker",
+  "Watermaker",
+  "Webasto",
+  "Solar panel",
+  "Solar panels",
+  "Batteries",
+  "Full batten",
+  "Furling",
+  "Ketch rigged",
+];
+
+const THEYACHTMARKET_SECTION_PATTERN = new RegExp(
+  `\\s+(?=(?:${THEYACHTMARKET_SECTION_STARTERS.map(escapeRegExp).join("|")})\\b)`,
+  "gi"
+);
+
+function normalizeTheYachtMarketSummaryText(value: string) {
+  const cleaned = value
+    .replace(/^\s*Remarks?\s*:\s*/i, "")
+    .replace(/^\s*Summary\s*(?=\d{4}\b)/i, "")
+    .replace(/\bPART\s+EXCHANGE\s*&\s*FINANCE\s+AVAILABLE\b/gi, "")
+    .replace(/\bREMARKS\b/gi, "")
+    .replace(/\s+-\s*Project purchase\b/gi, "")
+    .replace(/\bProject purchase\b/gi, "")
+    .replace(/\s*-{5,}[\s\S]*$/g, "")
+    .replace(/>>/g, ". ")
+    .replace(/(\d{4})(?=[A-Z]{2,}\b)/g, "$1. ")
+    .replace(/([a-z])'(?=[A-Z])/g, "$1. '")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const sentencePunctuationCount = (cleaned.match(/[.!?]/g) || []).length;
+  const hasArtifactSignal =
+    /\b(?:one forward|one aft|chart table on the|hot and cold|sleeps|webasto|maxpower|new teak cockpit|new upholstery)\b/i.test(cleaned) ||
+    /\b(?:one double aft cabin|forward large shower room|starboard bow accessible|one quick)\b/i.test(cleaned);
+
+  if (sentencePunctuationCount >= 2 && !hasArtifactSignal) {
+    return cleaned;
+  }
+
+  return cleaned.replace(THEYACHTMARKET_SECTION_PATTERN, ". ");
 }
 
 function ensureSentencePunctuation(value: string) {
@@ -40,35 +138,61 @@ function trimSummary(value: string, maxLength: number) {
   return `${safeClip.trimEnd()}...`;
 }
 
-function normalizeSummaryText(value: string) {
-  return value
+function normalizeSummaryText(value: string, sourceSite?: string | null) {
+  let normalized = value
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/\u00a0/g, " ")
     .replace(/[•·●▪◦]/g, ". ")
     .replace(/\s*;\s*/g, ". ")
+    .replace(/\b(One|Two|Three|Four)\.\s+(?=(?:Forward|Aft|Port|Starboard)\b)/gi, "$1 ")
+    .replace(/\b(double|single)\.\s+(?=(?:Forward|Aft)\b)/gi, "$1 ")
+    .replace(/with\.\s+(?=(?:One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\b)/gi, "with ")
+    .replace(/\bcentral cabinet\s+(?=Chart table\b)/gi, "central cabinet. ")
     .replace(/\s+\./g, ".")
+    .replace(/([.!?])(?=[A-Z"'])/g, "$1 ")
     .replace(/\s+/g, " ")
     .trim();
+
+  normalized = normalized
+    .replace(
+      /\b(One|Two|Three|Four)\s+(Forward|Aft|Port|Starboard)\b/g,
+      (_, count: string, direction: string) => `${count} ${direction.toLowerCase()}`
+    )
+    .replace(
+      /\b(double|single)\s+(Forward|Aft)\b/gi,
+      (_, kind: string, direction: string) => `${kind.toLowerCase()} ${direction.toLowerCase()}`
+    )
+    .replace(
+      /\bwith\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\b/g,
+      (_, count: string) => `with ${count.toLowerCase()}`
+    );
+
+  if (normalizeSourceSite(sourceSite) === "theyachtmarket") {
+    normalized = normalizeTheYachtMarketSummaryText(normalized);
+  }
+
+  return normalized;
 }
 
-function insertSyntheticSentenceBreaks(value: string) {
+function insertSyntheticSentenceBreaks(value: string, sourceSite?: string | null) {
   return value
     .replace(/(?<=[a-z0-9)])\s+(?=(?:[A-Z][A-Z/&'’() +.-]{2,32}:))/g, ". ")
     .replace(/\s+(?=\d{4}\)\s+)/g, ". ")
     .replace(
-      /\s+(?=(?:Owner'?s|One|Two|Three|Four|Aft|Forward|Forepeak|Chart(?:s)? table|Saloon table|C-shaped|L-shaped|Linear)\s+(?:cabin|cabins|shower|shower room|shower rooms|heads?|bathroom|bathrooms|galley|kitchen|settee|settees|berths?|chart table)\b)/gi,
+      /\s+(?=(?:Owner'?s|One|Two|Three|Four|Forepeak|Chart(?:s)? table|Saloon table|C-shaped|L-shaped|Linear)\s+(?:cabin|cabins|shower|shower room|shower rooms|heads?|bathroom|bathrooms|galley|kitchen|settee|settees|berths?|chart table)\b)/gi,
       ". "
     )
     .replace(
       /(\b(?:bathroom|bathrooms|shower room|shower rooms|heads?|cabins?|galley|kitchen|settee|settees|berths?|chart table))\s+(?=(?:Double|Twin|Single)\s+(?:cabin|cabins|berths?|heads?|bathroom|bathrooms)\b)/gi,
       "$1. "
     )
+    .replace(/with\.\s+(?=(?:one|two|three|four|five|six|seven|eight|nine|ten)\b)/gi, "with ")
     .replace(/(?:\.\s*){2,}/g, ". ")
     .trim();
 }
 
-function splitSentences(value: string) {
-  return insertSyntheticSentenceBreaks(normalizeSummaryText(value))
+function splitSentences(value: string, sourceSite?: string | null) {
+  return insertSyntheticSentenceBreaks(normalizeSummaryText(value, sourceSite), sourceSite)
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
@@ -207,6 +331,7 @@ function condenseSummarySentences(
 
 export function shouldCompressImportedListingSummary(input: {
   summary?: string | null;
+  sourceSite?: string | null;
   lengthThreshold?: number;
   sentenceThreshold?: number;
 }) {
@@ -216,11 +341,15 @@ export function shouldCompressImportedListingSummary(input: {
   const lengthThreshold = input.lengthThreshold ?? LONG_SUMMARY_THRESHOLD;
   const sentenceThreshold = input.sentenceThreshold ?? 3;
 
-  return normalized.length > lengthThreshold || splitSentences(normalized).length > sentenceThreshold;
+  return (
+    normalized.length > lengthThreshold ||
+    splitSentences(normalized, input.sourceSite).length > sentenceThreshold
+  );
 }
 
 export function compressImportedListingSummary(input: {
   summary?: string | null;
+  sourceSite?: string | null;
   maxLength?: number;
   maxSentences?: number;
 }) {
@@ -230,8 +359,9 @@ export function compressImportedListingSummary(input: {
   const maxLength = input.maxLength ?? DEFAULT_COMPRESSED_SUMMARY_LENGTH;
   const maxSentences = input.maxSentences ?? 3;
 
-  const sentences = splitSentences(normalized);
-  if (sentences.length <= maxSentences && normalized.length <= maxLength) {
+  const sentences = splitSentences(normalized, input.sourceSite);
+  const hasWeakSentence = sentences.some((sentence) => scoreSummarySentence(sentence) < 1);
+  if (sentences.length <= maxSentences && normalized.length <= maxLength && !hasWeakSentence) {
     return normalized;
   }
 
@@ -245,6 +375,7 @@ export function cleanImportedListingSummary(input: {
   summary?: string | null;
   title?: string | null;
   locationText?: string | null;
+  sourceSite?: string | null;
   maxLength?: number | null;
 }) {
   const normalized = String(input.summary || "")
@@ -253,7 +384,7 @@ export function cleanImportedListingSummary(input: {
 
   if (!normalized) return "";
 
-  const cleanedSentences = splitSentences(normalized)
+  const cleanedSentences = splitSentences(normalized, input.sourceSite)
     .map((sentence) => {
       let cleaned = stripSummaryBoilerplate(normalizeSentence(sentence))
         .replace(/\blisted in\b/gi, "in")
@@ -274,7 +405,7 @@ export function cleanImportedListingSummary(input: {
   }
 
   const fallback = stripSummaryBoilerplate(
-    normalized
+    normalizeSummaryText(normalized, input.sourceSite)
       .replace(/\bKey specs include\s+/i, "")
       .replace(/\b(monohull|catamaran|trimaran) hull\b/gi, "$1")
       .replace(/\blisted in\b/gi, "in")
@@ -288,6 +419,7 @@ export function buildBoatPublicSummary(input: {
   summary?: string | null;
   title?: string | null;
   locationText?: string | null;
+  sourceSite?: string | null;
   maxLength?: number | null;
 }) {
   const cleaned = cleanImportedListingSummary({
@@ -298,12 +430,15 @@ export function buildBoatPublicSummary(input: {
   if (!cleaned) return "";
 
   const title = String(input.title || "").trim();
+  const titleWithoutYear = title.replace(/^\d{4}\s+/, "").trim();
   const locationText = String(input.locationText || "").trim();
   const titlePattern = buildLoosePattern(title, true);
+  const titleWithoutYearPattern =
+    titleWithoutYear && titleWithoutYear !== title ? buildLoosePattern(titleWithoutYear, true) : null;
   const titleAnywherePattern = buildLoosePattern(title, false);
   const locationPattern = locationText ? new RegExp(`\\b${escapeRegExp(locationText)}\\b`, "i") : null;
 
-  const publicSentences = splitSentences(cleaned)
+  const publicSentences = splitSentences(cleaned, input.sourceSite)
     .map((sentence) => {
       let next = sentence.trim();
 
@@ -326,6 +461,14 @@ export function buildBoatPublicSummary(input: {
       if (titlePattern && titlePattern.test(next)) {
         next = next
           .replace(titlePattern, "")
+          .replace(/^[\s,:-]+/, "")
+          .replace(/^(?:with|featuring)\s+/i, "")
+          .trim();
+      }
+
+      if (titleWithoutYearPattern && titleWithoutYearPattern.test(next)) {
+        next = next
+          .replace(titleWithoutYearPattern, "")
           .replace(/^[\s,:-]+/, "")
           .replace(/^(?:with|featuring)\s+/i, "")
           .trim();
@@ -380,6 +523,7 @@ export function buildBoatPublicSummary(input: {
 
   return compressImportedListingSummary({
     summary,
+    sourceSite: input.sourceSite,
     maxLength: input.maxLength ?? DEFAULT_COMPRESSED_SUMMARY_LENGTH,
     maxSentences: input.maxLength && input.maxLength <= 220 ? 2 : 3,
   });
@@ -389,6 +533,7 @@ export function buildBoatBrowseSummary(input: {
   summary?: string | null;
   title?: string | null;
   locationText?: string | null;
+  sourceSite?: string | null;
   maxLength?: number;
 }) {
   return buildBoatPublicSummary({
