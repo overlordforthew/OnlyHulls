@@ -612,6 +612,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Bluewater",
+      model: "Boats Ingrid 38",
+      sourceSite: "sailboatlistings",
+      slug: "1976-bluewater-boats-ingrid-38-florida",
+    }),
+    { make: "Bluewater Boats", model: "Ingrid 38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bluewater Boats",
+      model: "Boats Ingrid 38",
+      sourceSite: "sailboatlistings",
+      slug: "1978-bluewater-boats-ingrid-38-maine",
+    }),
+    { make: "Bluewater Boats", model: "Ingrid 38" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bluewater",
+      model: "Boats",
+      sourceSite: "sailboatlistings",
+      slug: "1976-bluewater-boats-florida",
+    }),
+    { make: "Bluewater Boats", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Carroll",
       model: "Marine Farr30",
       sourceSite: "sailboatlistings",
