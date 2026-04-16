@@ -846,6 +846,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Corsair",
+      model: "Marine F-31 Aft Cockpit",
+      sourceSite: "sailboatlistings",
+      slug: "1996-corsair-marine-f-31-aft-cockpit-california",
+    }),
+    { make: "Corsair Marine", model: "F-31 Aft Cockpit" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Corsair",
+      model: "Marine Farrier F31rs",
+      sourceSite: "sailboatlistings",
+      slug: "2001-corsair-marine-farrier-f31rs-california",
+    }),
+    { make: "Corsair Marine", model: "Farrier F31rs" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Corsair Marine",
+      model: "Marine F27 F-27",
+      sourceSite: "sailboatlistings",
+      slug: "1991-corsair-marine-f27-f-27-utah",
+    }),
+    { make: "Corsair Marine", model: "F27 F-27" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Spirit",
       model: "Yachts C72",
       sourceSite: "theyachtmarket",
