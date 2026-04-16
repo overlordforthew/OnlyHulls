@@ -22,6 +22,7 @@ import { getDisplayedPrice, normalizeSupportedCurrency } from "@/lib/currency";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatPublicSummary } from "@/lib/browse-summary";
+import { buildBoatFitReasons } from "@/lib/boat-fit";
 import { getRelatedBoats } from "@/lib/db/queries";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
@@ -284,6 +285,14 @@ export default async function BoatDetailPage({
     locationText: boat.location_text,
     sourceSite: boat.source_site,
   });
+  const whyThisBoatReasons = buildBoatFitReasons({
+    locale,
+    specs,
+    characterTags: boat.character_tags,
+    locationText: boat.location_text,
+    sourceUrl: boat.source_url,
+    similarBoatCount: relatedBoats.length,
+  });
   const imageCount = media.filter((mediaItem) => mediaItem.type === "image").length;
   const videoCount = media.filter((mediaItem) => mediaItem.type === "video").length;
   const hasSpecificLocation = boat.source_url
@@ -450,6 +459,21 @@ export default async function BoatDetailPage({
               </div>
             )}
 
+            {whyThisBoatReasons.length > 0 && (
+              <div className="rounded-2xl border border-border bg-surface p-6">
+                <h2 className="text-xl font-bold">{copy.whyThisBoatHeading}</h2>
+                <p className="mt-2 text-sm text-text-secondary">{copy.whyThisBoatDescription}</p>
+                <div className="mt-4 space-y-3">
+                  {whyThisBoatReasons.map((reason) => (
+                    <div key={reason} className="flex items-start gap-3 text-sm text-foreground/80">
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      <p>{reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <h2 className="text-xl font-bold">{copy.specifications}</h2>
               <div className="mt-4 grid grid-cols-2 gap-1">
@@ -601,6 +625,7 @@ export default async function BoatDetailPage({
               boatMake={boat.make}
               locationText={boat.location_text}
               browseSimilarUrl={similarBrowseUrl}
+              similarBoatCount={relatedBoats.length}
               canClaimImportedListing={Boolean(boat.source_url)}
             />
           </div>

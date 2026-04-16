@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Info } from "lucide-react";
+import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface Stats {
   totalUsers: number;
@@ -122,6 +123,7 @@ interface PendingListing {
   location_text: string | null;
   listing_source: string;
   source_name: string;
+  source_url?: string | null;
   seller_email: string;
   created_at: string;
   image_count: number;
@@ -475,6 +477,41 @@ export default function AdminPage() {
       setMessage("Listing rejected.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to reject listing");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleExpire(id: string) {
+    setActionLoading(`expire-${id}`);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/listings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "expired" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to expire listing");
+      }
+
+      setCleanupQueue((prev) => prev.filter((listing) => listing.id !== id));
+      setStats((prev) =>
+        prev
+          ? {
+              ...prev,
+              activeListings: Math.max(0, prev.activeListings - 1),
+              importQualitySummary: {
+                ...prev.importQualitySummary,
+                activeCount: Math.max(0, prev.importQualitySummary.activeCount - 1),
+              },
+            }
+          : prev
+      );
+      setMessage("Listing expired from the active inventory.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to expire listing");
     } finally {
       setActionLoading(null);
     }
@@ -1263,8 +1300,28 @@ export default function AdminPage() {
               The active imported listings most likely to hurt buyer trust right now, ranked by weakest quality first.
             </p>
           </div>
-          <div className="text-sm text-foreground/60">
-            Uses the same source and issue filters as the moderation queue.
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-foreground/60">
+              Uses the same source and issue filters as the moderation queue.
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                runMaintenanceAction(
+                  "expire-cleanup-queue",
+                  "/api/admin/listings/bulk",
+                  { status: "expired", ids: cleanupQueue.map((listing) => listing.id) },
+                  (data) => `Expired ${data.updated || 0} cleanup rows from active inventory.`,
+                  cleanupQueue.length > 0
+                    ? `Expire all ${cleanupQueue.length} listings currently shown in the cleanup queue?`
+                    : undefined
+                )
+              }
+              disabled={cleanupQueue.length === 0 || actionLoading === "expire-cleanup-queue"}
+              className="rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 transition-all hover:bg-red-500/15 disabled:opacity-50"
+            >
+              {actionLoading === "expire-cleanup-queue" ? "Expiring..." : "Expire Shown"}
+            </button>
           </div>
         </div>
         {cleanupQueue.length === 0 ? (
@@ -1321,12 +1378,30 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  {getSafeExternalUrl(listing.source_url) && (
+                    <a
+                      href={getSafeExternalUrl(listing.source_url)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary"
+                    >
+                      Open Source
+                    </a>
+                  )}
                   <Link
                     href={`/boats/${listing.slug || listing.id}`}
                     className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary"
                   >
                     Open Listing
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => void handleExpire(listing.id)}
+                    disabled={actionLoading === `expire-${listing.id}`}
+                    className="rounded-full bg-red-500 px-4 py-1.5 text-sm text-white hover:bg-red-600 disabled:opacity-50"
+                  >
+                    {actionLoading === `expire-${listing.id}` ? "Expiring..." : "Expire"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -1372,6 +1447,7 @@ export default function AdminPage() {
               <option value="missing_image">Missing images</option>
               <option value="missing_model">Missing model</option>
               <option value="thin_summary">Thin summary</option>
+              <option value="low_price">Low price</option>
               <option value="missing_description">Missing description</option>
               <option value="low_condition">Low condition</option>
             </select>

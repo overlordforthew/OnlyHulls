@@ -40,7 +40,7 @@ function parseCleanupResult(stdout: string) {
 }
 
 export async function bulkUpdateListingStatus(
-  status: "active" | "rejected" | "pending_review",
+  status: "active" | "rejected" | "pending_review" | "expired",
   ids?: string[]
 ) {
   const params: unknown[] = [status];

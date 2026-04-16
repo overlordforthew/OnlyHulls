@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 
     const listings = await query<Record<string, unknown>>(
       `SELECT b.id, b.slug, b.make, b.model, b.year, b.asking_price, b.currency,
-              b.location_text, b.status, b.created_at, b.listing_source,
+              b.location_text, b.status, b.created_at, b.listing_source, b.source_url,
               COALESCE(b.source_name, 'Platform') AS source_name,
               u.email as seller_email,
               COALESCE(media_counts.image_count, 0)::int AS image_count,

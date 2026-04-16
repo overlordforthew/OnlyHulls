@@ -16,6 +16,8 @@ export interface BoatDetailCopy {
   previewInactive: string;
   sampleListing: string;
   listingDescription: string;
+  whyThisBoatHeading: string;
+  whyThisBoatDescription: string;
   specifications: string;
   specLabels: {
     loa: string;
@@ -98,6 +100,9 @@ const EN_BOAT_DETAIL_COPY: BoatDetailCopy = {
   previewInactive: "Preview mode: this listing is not live to buyers right now.",
   sampleListing: "This is a sample listing for demonstration purposes.",
   listingDescription: "Listing Description",
+  whyThisBoatHeading: "Why this listing deserves a closer look",
+  whyThisBoatDescription:
+    "A fast read on the setup, market context, and best next comparison move.",
   specifications: "Specifications",
   specLabels: {
     loa: "LOA",
@@ -182,6 +187,9 @@ const ES_BOAT_DETAIL_COPY: BoatDetailCopy = {
   previewInactive: "Modo vista previa: este anuncio no está activo para compradores en este momento.",
   sampleListing: "Este es un anuncio de ejemplo con fines de demostración.",
   listingDescription: "Descripción del anuncio",
+  whyThisBoatHeading: "Por qué este anuncio merece una mirada más cercana",
+  whyThisBoatDescription:
+    "Una lectura rápida del barco, del mercado y del siguiente paso más útil para compararlo.",
   specifications: "Especificaciones",
   specLabels: {
     loa: "Eslora",

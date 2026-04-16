@@ -11,6 +11,7 @@ type BoatLeadActionsProps = {
   boatMake: string;
   locationText: string | null;
   browseSimilarUrl: string;
+  similarBoatCount: number;
   canClaimImportedListing: boolean;
 };
 
@@ -20,6 +21,7 @@ export default function BoatLeadActions({
   boatMake,
   locationText,
   browseSimilarUrl,
+  similarBoatCount,
   canClaimImportedListing,
 }: BoatLeadActionsProps) {
   const router = useRouter();
@@ -108,12 +110,21 @@ export default function BoatLeadActions({
         >
           {saveLoading ? "Saving alert..." : "Save similar boats alert"}
         </button>
-        <Link
-          href={browseSimilarUrl}
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
-        >
-          Browse more {boatMake}
-        </Link>
+        {similarBoatCount > 0 ? (
+          <a
+            href="#similar-boats"
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+          >
+            Compare {similarBoatCount} similar boat{similarBoatCount === 1 ? "" : "s"}
+          </a>
+        ) : (
+          <Link
+            href={browseSimilarUrl}
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+          >
+            Browse more {boatMake}
+          </Link>
+        )}
         {canClaimImportedListing && (
           <button
             type="button"
