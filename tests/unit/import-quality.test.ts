@@ -1350,6 +1350,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Ksenia",
+      model: "Yachts 149",
+      sourceSite: "theyachtmarket",
+      slug: "2010-ksenia-yachts-149-le-marin",
+    }),
+    { make: "Ksenia Yachts", model: "149" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ksenia Yachts",
+      model: "Yachts 149",
+      sourceSite: "theyachtmarket",
+      slug: "2010-ksenia-yachts-149-le-marin",
+    }),
+    { make: "Ksenia Yachts", model: "149" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ksenia",
+      model: "149",
+      sourceSite: "theyachtmarket",
+      slug: "2010-ksenia-149-le-marin",
+    }),
+    { make: "Ksenia", model: "149" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
