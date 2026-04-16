@@ -846,6 +846,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Jeantot",
+      model: "Marine Privilege 39",
+      sourceSite: "sailboatlistings",
+      slug: "1990-jeantot-marine-privilege-39-florida",
+    }),
+    { make: "Jeantot Marine", model: "Privilege 39" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jeantot",
+      model: "Marine Privilege 37",
+      sourceSite: "sailboatlistings",
+      slug: "1999-jeantot-marine-privilege-37-france",
+    }),
+    { make: "Jeantot Marine", model: "Privilege 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jeantot Marine",
+      model: "Marine Privilege 39",
+      sourceSite: "sailboatlistings",
+      slug: "1990-jeantot-marine-privilege-39-florida",
+    }),
+    { make: "Jeantot Marine", model: "Privilege 39" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Corsair",
       model: "Marine F-31 Aft Cockpit",
       sourceSite: "sailboatlistings",
