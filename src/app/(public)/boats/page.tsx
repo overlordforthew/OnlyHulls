@@ -112,6 +112,30 @@ function formatBoatType(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function buildSearchFocusLabel(input: {
+  search: string;
+  location: string;
+  tag: string;
+  filters: FilterState;
+}) {
+  if (input.location.trim()) {
+    return input.location.trim();
+  }
+  if (input.search.trim()) {
+    return input.search.trim();
+  }
+  if (input.tag.trim()) {
+    return input.tag.replace(/[-_]+/g, " ");
+  }
+  if (input.filters.hullType) {
+    return input.filters.hullType.replace(/[-_]+/g, " ");
+  }
+  if (input.filters.rigType) {
+    return input.filters.rigType.replace(/[-_]+/g, " ");
+  }
+  return "this market";
+}
+
 export default function BoatsPage() {
   return (
     <Suspense
@@ -346,6 +370,12 @@ function BoatsPageInner() {
     sort: sortField,
     dir: sortDir,
   };
+  const currentSearchParams = buildBoatSearchParams(currentSearchFilters);
+  const currentBrowseUrl = `${pathname}${currentSearchParams.toString() ? `?${currentSearchParams}` : ""}`;
+  const profileCallbackUrl = `/onboarding/profile?callbackUrl=${encodeURIComponent(currentBrowseUrl)}`;
+  const matchedCtaHref = isLoggedIn
+    ? profileCallbackUrl
+    : `/sign-in?callbackUrl=${encodeURIComponent(profileCallbackUrl)}`;
   const hasActiveSearchCriteria =
     search.trim().length > 0 ||
     locationFilter.trim().length > 0 ||
@@ -358,6 +388,12 @@ function BoatsPageInner() {
         appliedFilters.rigType ||
         appliedFilters.hullType
       );
+  const searchFocusLabel = buildSearchFocusLabel({
+    search,
+    location: locationFilter,
+    tag: activeTag,
+    filters: appliedFilters,
+  });
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
@@ -454,6 +490,32 @@ function BoatsPageInner() {
                 <p className="mt-2 text-sm text-primary">
                   {saveMessage}
                 </p>
+              )}
+              {hasActiveSearchCriteria && !loading && (
+                <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4">
+                  <p className="text-sm font-semibold text-foreground">
+                    {t("saveSearchLeadTitle", { label: searchFocusLabel })}
+                  </p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    {t("saveSearchLeadBody", { label: searchFocusLabel })}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={saveSearch}
+                      disabled={saveLoading}
+                      className="rounded-full bg-primary-btn px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-light disabled:opacity-50"
+                    >
+                      {saveLoading ? t("saving") : t("saveThisSearch")}
+                    </button>
+                    <Link
+                      href={matchedCtaHref}
+                      className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+                    >
+                      {t("getMatchedForSearch")}
+                    </Link>
+                  </div>
+                </div>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <p className="text-xs text-text-secondary">

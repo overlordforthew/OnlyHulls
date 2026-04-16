@@ -16,6 +16,7 @@ import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
+import { getSourceDecisionByName } from "@/lib/source-policy";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -58,6 +59,7 @@ export async function GET() {
       source: string;
       active_count: string;
       visible_count: string;
+      contact_clicks_30d: string;
       missing_model_count: string;
       missing_location_count: string;
       missing_image_count: string;
@@ -69,12 +71,16 @@ export async function GET() {
       shortlists_24h: string;
       connect_requests_24h: string;
       seller_listings_24h: string;
+      listing_submissions_24h: string;
+      claim_requests_24h: string;
       paid_checkouts_24h: string;
       payment_failures_24h: string;
       last_saved_search_at: string | null;
       last_shortlist_at: string | null;
       last_connect_request_at: string | null;
       last_seller_listing_at: string | null;
+      last_listing_submission_at: string | null;
+      last_claim_request_at: string | null;
       last_paid_checkout_at: string | null;
       last_payment_failure_at: string | null;
     };
@@ -161,13 +167,15 @@ export async function GET() {
            )::text AS low_price_count
          FROM boats b
          LEFT JOIN boat_dna d ON d.boat_id = b.id
-         WHERE b.status = 'active'`
+         WHERE b.status = 'active'
+           AND b.listing_source = 'imported'`
       ),
       query<SourceHealthRow>(
         `SELECT
            COALESCE(b.source_name, 'Platform') AS source,
            COUNT(*)::text AS active_count,
            COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
+           COALESCE(SUM(COALESCE(clicks.click_count_30d, 0)), 0)::text AS contact_clicks_30d,
            COUNT(*) FILTER (
              WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_model'
            )::text AS missing_model_count,
@@ -185,7 +193,13 @@ export async function GET() {
            )::text AS low_price_count
          FROM boats b
          LEFT JOIN boat_dna d ON d.boat_id = b.id
+         LEFT JOIN (
+           SELECT boat_id, COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int AS click_count_30d
+           FROM contact_clicks
+           GROUP BY boat_id
+         ) clicks ON clicks.boat_id = b.id
          WHERE b.status = 'active'
+           AND b.listing_source = 'imported'
          GROUP BY COALESCE(b.source_name, 'Platform')
          ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC, COUNT(*) DESC
          LIMIT 8`
@@ -196,12 +210,16 @@ export async function GET() {
            COUNT(*) FILTER (WHERE event_type = 'match_interested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS shortlists_24h,
            COUNT(*) FILTER (WHERE event_type = 'connect_requested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS connect_requests_24h,
            COUNT(*) FILTER (WHERE event_type = 'seller_listing_created' AND created_at >= NOW() - INTERVAL '24 hours')::text AS seller_listings_24h,
+           COUNT(*) FILTER (WHERE event_type = 'seller_listing_submitted' AND created_at >= NOW() - INTERVAL '24 hours')::text AS listing_submissions_24h,
+           COUNT(*) FILTER (WHERE event_type = 'listing_claim_requested' AND created_at >= NOW() - INTERVAL '24 hours')::text AS claim_requests_24h,
            COUNT(*) FILTER (WHERE event_type = 'checkout_completed' AND created_at >= NOW() - INTERVAL '24 hours')::text AS paid_checkouts_24h,
            COUNT(*) FILTER (WHERE event_type = 'invoice_payment_failed' AND created_at >= NOW() - INTERVAL '24 hours')::text AS payment_failures_24h,
            MAX(created_at) FILTER (WHERE event_type = 'saved_search_created') AS last_saved_search_at,
            MAX(created_at) FILTER (WHERE event_type = 'match_interested') AS last_shortlist_at,
            MAX(created_at) FILTER (WHERE event_type = 'connect_requested') AS last_connect_request_at,
            MAX(created_at) FILTER (WHERE event_type = 'seller_listing_created') AS last_seller_listing_at,
+           MAX(created_at) FILTER (WHERE event_type = 'seller_listing_submitted') AS last_listing_submission_at,
+           MAX(created_at) FILTER (WHERE event_type = 'listing_claim_requested') AS last_claim_request_at,
            MAX(created_at) FILTER (WHERE event_type = 'checkout_completed') AS last_paid_checkout_at,
            MAX(created_at) FILTER (WHERE event_type = 'invoice_payment_failed') AS last_payment_failure_at
          FROM funnel_events`
@@ -252,11 +270,14 @@ export async function GET() {
         source: row.source,
         activeCount: parseInt(row.active_count || "0", 10),
         visibleCount: parseInt(row.visible_count || "0", 10),
+        contactClicks30d: parseInt(row.contact_clicks_30d || "0", 10),
         missingModelCount: parseInt(row.missing_model_count || "0", 10),
         missingLocationCount: parseInt(row.missing_location_count || "0", 10),
         missingImageCount: parseInt(row.missing_image_count || "0", 10),
         thinSummaryCount: parseInt(row.thin_summary_count || "0", 10),
         lowPriceCount: parseInt(row.low_price_count || "0", 10),
+        decisionStatus: getSourceDecisionByName(row.source)?.status || "undecided",
+        decisionReason: getSourceDecisionByName(row.source)?.reason || null,
       })),
       ownerPulse: {
         signups24h: parseInt(signupPulse?.signups_24h || "0", 10),
@@ -264,6 +285,8 @@ export async function GET() {
         shortlists24h: parseInt(ownerPulse?.shortlists_24h || "0", 10),
         connectRequests24h: parseInt(ownerPulse?.connect_requests_24h || "0", 10),
         sellerListings24h: parseInt(ownerPulse?.seller_listings_24h || "0", 10),
+        listingSubmissions24h: parseInt(ownerPulse?.listing_submissions_24h || "0", 10),
+        claimRequests24h: parseInt(ownerPulse?.claim_requests_24h || "0", 10),
         paidCheckouts24h: parseInt(ownerPulse?.paid_checkouts_24h || "0", 10),
         paymentFailures24h: parseInt(ownerPulse?.payment_failures_24h || "0", 10),
         lastSignupAt: signupPulse?.last_signup_at || null,
@@ -271,6 +294,8 @@ export async function GET() {
         lastShortlistAt: ownerPulse?.last_shortlist_at || null,
         lastConnectRequestAt: ownerPulse?.last_connect_request_at || null,
         lastSellerListingAt: ownerPulse?.last_seller_listing_at || null,
+        lastListingSubmissionAt: ownerPulse?.last_listing_submission_at || null,
+        lastClaimRequestAt: ownerPulse?.last_claim_request_at || null,
         lastPaidCheckoutAt: ownerPulse?.last_paid_checkout_at || null,
         lastPaymentFailureAt: ownerPulse?.last_payment_failure_at || null,
       },

@@ -50,6 +50,7 @@ export default function ContactGateModal({
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
   const safeSourceUrl = getSafeExternalUrl(sourceUrl);
+  const openedRef = useRef(false);
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -60,13 +61,30 @@ export default function ContactGateModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    if (!openedRef.current) {
+      const sessionId = getSessionId();
+      fetch(`/api/boats/${boatId}/click`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clickType: "gate_open", sessionId }),
+      }).catch(() => {});
+      openedRef.current = true;
+    }
+
     document.addEventListener("keydown", handleEscape);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "";
     };
-  }, [isOpen, handleEscape]);
+  }, [boatId, isOpen, handleEscape]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      openedRef.current = false;
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

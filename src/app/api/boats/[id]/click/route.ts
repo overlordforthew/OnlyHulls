@@ -1,11 +1,12 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const clickSchema = z.object({
-  clickType: z.enum(["guest", "save_and_continue"]),
+  clickType: z.enum(["gate_open", "guest", "save_and_continue"]),
   sessionId: z.string().optional(),
 });
 
@@ -44,12 +45,29 @@ export async function POST(
       return NextResponse.json({ error: "Boat not found" }, { status: 404 });
     }
 
-    // Log the click (fire-and-forget)
+    if (clickType === "gate_open") {
+      void trackFunnelEvent({
+        eventType: "contact_gate_opened",
+        userId,
+        boatId,
+        payload: { sourceSite: boat.source_site, sessionId: sessionId || null },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // Log the outbound click (fire-and-forget)
     query(
       `INSERT INTO contact_clicks (boat_id, user_id, click_type, source_site, source_url, session_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [boatId, userId, clickType, boat.source_site, boat.source_url, sessionId || null]
     ).catch(() => {});
+
+    void trackFunnelEvent({
+      eventType: clickType === "save_and_continue" ? "contact_gate_saved" : "contact_gate_guest_continue",
+      userId,
+      boatId,
+      payload: { sourceSite: boat.source_site, sessionId: sessionId || null },
+    });
 
     // Save to dreamboard if authenticated + has buyer profile
     if (clickType === "save_and_continue" && userId) {

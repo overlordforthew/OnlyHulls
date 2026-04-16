@@ -7,12 +7,14 @@ import { logger } from "@/lib/logger";
 import {
   ensureUniqueListingSlug,
   generateListingSlug,
+  getListingReviewReadinessIssues,
   listingSchema,
   syncListingSearch,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
 import { mediaBackend, storageEnabled } from "@/lib/capabilities";
 import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -198,7 +200,7 @@ export async function PATCH(
     );
   }
   if (data.submitForReview) {
-    const reviewIssues = getReviewReadinessIssues(data, imageCount);
+    const reviewIssues = getListingReviewReadinessIssues(data, imageCount);
 
     if (reviewIssues.length > 0) {
       return NextResponse.json(
@@ -305,6 +307,13 @@ export async function PATCH(
     );
 
     if (nextStatus === "pending_review" && listing.status !== "pending_review") {
+      await trackFunnelEvent({
+        eventType: "seller_listing_submitted",
+        userId: listing.seller_id,
+        boatId: listing.id,
+        payload: { via: "listing_editor", previousStatus: listing.status },
+      });
+
       try {
         await sendOwnerAlertEmail({
           subject: `Listing ready for review: ${data.year} ${data.make} ${data.model}`,
@@ -372,36 +381,4 @@ function getNextStatus(currentStatus: string, submitForReview: boolean) {
   }
 
   return currentStatus;
-}
-
-function getReviewReadinessIssues(
-  data: z.infer<typeof updateListingSchema>,
-  imageCount: number
-) {
-  const issues: string[] = [];
-  const specCount = [
-    data.specs?.loa,
-    data.specs?.beam,
-    data.specs?.draft,
-    data.specs?.rig_type,
-    data.specs?.hull_material,
-    data.specs?.engine,
-    data.specs?.berths,
-    data.specs?.heads,
-  ].filter(Boolean).length;
-
-  if (imageCount < 3) {
-    issues.push("Add at least 3 photos.");
-  }
-  if (!data.locationText?.trim()) {
-    issues.push("Add a real location.");
-  }
-  if (!data.description?.trim() || data.description.trim().length < 120) {
-    issues.push("Add a stronger description with at least 120 characters.");
-  }
-  if (specCount < 3) {
-    issues.push("Fill in at least 3 core specs.");
-  }
-
-  return issues;
 }

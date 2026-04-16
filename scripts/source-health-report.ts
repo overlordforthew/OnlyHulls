@@ -6,6 +6,7 @@ type SourceHealthRow = {
   source: string;
   active_count: string;
   visible_count: string;
+  contact_clicks_30d: string;
   missing_model_count: string;
   missing_location_count: string;
   missing_image_count: string;
@@ -37,6 +38,7 @@ async function main() {
        COALESCE(b.source_name, 'Platform') AS source,
        COUNT(*)::text AS active_count,
        COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
+       COALESCE(SUM(COALESCE(clicks.click_count_30d, 0)), 0)::text AS contact_clicks_30d,
        COUNT(*) FILTER (
          WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_model'
        )::text AS missing_model_count,
@@ -54,6 +56,11 @@ async function main() {
        )::text AS low_price_count
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
+     LEFT JOIN (
+       SELECT boat_id, COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int AS click_count_30d
+       FROM contact_clicks
+       GROUP BY boat_id
+     ) clicks ON clicks.boat_id = b.id
      WHERE b.listing_source = 'imported'
        AND b.status = 'active'
      GROUP BY COALESCE(b.source_name, 'Platform')
@@ -73,6 +80,7 @@ async function main() {
       active,
       visible,
       visibleRate: pct(visible, active),
+      contactClicks30d: Number.parseInt(row.contact_clicks_30d, 10),
       decisionStatus: decision?.status ?? "undecided",
       decisionReason: decision?.reason ?? null,
       missingModel: Number.parseInt(row.missing_model_count, 10),
@@ -89,10 +97,10 @@ async function main() {
   }
 
   console.log("Source health (active imported inventory)");
-  console.log("source | active | visible | visible rate | decision | miss model | miss location | miss image | thin summary | low price");
+  console.log("source | active | visible | visible rate | clicks 30d | decision | miss model | miss location | miss image | thin summary | low price");
   for (const row of report) {
     console.log(
-      `${row.source} | ${row.active} | ${row.visible} | ${row.visibleRate} | ${row.decisionStatus} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
+      `${row.source} | ${row.active} | ${row.visible} | ${row.visibleRate} | ${row.contactClicks30d} | ${row.decisionStatus} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
     );
   }
 }

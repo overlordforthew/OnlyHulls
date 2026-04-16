@@ -12,6 +12,7 @@ import {
   sanitizeImportedBoatRecord,
 } from "@/lib/import-quality";
 import { ContactOwnerCTA } from "@/components/MatchCTA";
+import BoatLeadActions from "@/components/BoatLeadActions";
 import BoatCard from "@/components/BoatCard";
 import CurrencySelector from "@/components/CurrencySelector";
 import { getBoatDetailCopy, type BoatDetailCopy } from "@/i18n/copy/boat-detail";
@@ -304,6 +305,14 @@ export default async function BoatDetailPage({
     .map((mediaItem) => toAbsoluteUrl(mediaItem.url, appUrl))
     .filter((url): url is string => Boolean(url));
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
+  const similarBrowseParams = new URLSearchParams();
+  similarBrowseParams.set("q", boat.make);
+  if (boat.location_text) {
+    similarBrowseParams.set("location", boat.location_text);
+  }
+  similarBrowseParams.set("sort", "newest");
+  similarBrowseParams.set("dir", "desc");
+  const similarBrowseUrl = `/boats?${similarBrowseParams.toString()}`;
   const listingSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -585,13 +594,22 @@ export default async function BoatDetailPage({
                 </a>
               )}
             </div>
+
+            <BoatLeadActions
+              boatId={boat.id}
+              boatSlug={boat.slug || boat.id}
+              boatMake={boat.make}
+              locationText={boat.location_text}
+              browseSimilarUrl={similarBrowseUrl}
+              canClaimImportedListing={Boolean(boat.source_url)}
+            />
           </div>
         </div>
 
         {(relatedBoats.length > 0 || relatedHubLinks.length > 0) && (
           <div className="mt-12 space-y-8 border-t border-border pt-10">
             {relatedBoats.length > 0 && (
-              <section>
+              <section id="similar-boats">
                 <div className="max-w-2xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-tertiary">
                     {copy.keepComparingEyebrow}

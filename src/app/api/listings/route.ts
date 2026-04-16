@@ -2,15 +2,23 @@ import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getPlanByTier } from "@/lib/config/plans";
+import { getPublicAppUrl } from "@/lib/config/urls";
+import { sendOwnerAlertEmail } from "@/lib/email/resend";
 import {
   ensureUniqueListingSlug,
   generateListingSlug,
+  getListingReviewReadinessIssues,
   listingSchema,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
 import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const createListingSchema = listingSchema.extend({
+  submitForReview: z.boolean().optional(),
+});
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -18,8 +26,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await queryOne<{ id: string; role: string; subscription_tier: string }>(
-    "SELECT id, role, subscription_tier FROM users WHERE id = $1",
+  const user = await queryOne<{
+    id: string;
+    role: string;
+    subscription_tier: string;
+    email: string;
+    display_name: string | null;
+  }>(
+    "SELECT id, role, subscription_tier, email, display_name FROM users WHERE id = $1",
     [session.user.id]
   );
   if (!user) {
@@ -55,7 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const parsed = listingSchema.safeParse(body);
+  const parsed = createListingSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid listing data", details: parsed.error.issues },
@@ -83,15 +97,30 @@ export async function POST(req: Request) {
     );
   }
 
+  if (data.submitForReview) {
+    const reviewIssues = getListingReviewReadinessIssues(data, imageCount);
+
+    if (reviewIssues.length > 0) {
+      return NextResponse.json(
+        {
+          error: `This listing is not ready for review yet. ${reviewIssues.join(" ")}`,
+          details: reviewIssues,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   try {
     const slug = await ensureUniqueListingSlug(
       generateListingSlug(data.year, data.make, data.model, data.locationText)
     );
+    const initialStatus = data.submitForReview ? "pending_review" : "draft";
 
     const boat = await queryOne<{ id: string }>(
       `INSERT INTO boats (seller_id, slug, hull_id, make, model, year, asking_price, currency,
          status, location_text, location_lat, location_lng)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id`,
       [
         user.id,
@@ -102,6 +131,7 @@ export async function POST(req: Request) {
         data.year,
         data.askingPrice,
         data.currency,
+        initialStatus,
         data.locationText || null,
         data.locationLat || null,
         data.locationLng || null,
@@ -149,10 +179,41 @@ export async function POST(req: Request) {
       eventType: "seller_listing_created",
       userId: user.id,
       boatId: boat.id,
-      payload: { status: "draft" },
+      payload: { status: initialStatus, via: "manual" },
     });
 
-    return NextResponse.json({ id: boat.id, slug, status: "draft" });
+    if (initialStatus === "pending_review") {
+      await trackFunnelEvent({
+        eventType: "seller_listing_submitted",
+        userId: user.id,
+        boatId: boat.id,
+        payload: { via: "manual_create" },
+      });
+
+      try {
+        await sendOwnerAlertEmail({
+          subject: `Listing ready for review: ${data.year} ${data.make} ${data.model}`,
+          title: "Seller listing submitted for review",
+          intro: "A platform listing is ready for moderation and review.",
+          metadata: [
+            { label: "Listing", value: `${data.year} ${data.make} ${data.model}` },
+            {
+              label: "Seller",
+              value: `${user.display_name || "Unnamed seller"} (${user.email})`,
+            },
+            { label: "Location", value: data.locationText || "No location" },
+            { label: "Photos", value: String(imageCount) },
+            { label: "Status", value: initialStatus },
+          ],
+          ctaUrl: `${getPublicAppUrl()}/admin`,
+          ctaLabel: "Open admin review queue",
+        });
+      } catch (err) {
+        logger.warn({ err, boatId: boat.id }, "Failed to send owner listing review alert");
+      }
+    }
+
+    return NextResponse.json({ id: boat.id, slug, status: initialStatus });
   } catch (err) {
     logger.error({ err }, "POST /api/listings error");
     return NextResponse.json(

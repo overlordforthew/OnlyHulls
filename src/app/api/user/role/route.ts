@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { query, queryOne } from "@/lib/db";
+import { trackFunnelEvent } from "@/lib/funnel";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -60,6 +61,20 @@ export async function POST(req: Request) {
       nextTier,
       session.user.id,
     ]);
+
+    const selectedSellerRole =
+      (targetRole === "seller" || targetRole === "both") &&
+      user.role !== "seller" &&
+      user.role !== "both" &&
+      user.role !== "admin";
+
+    if (selectedSellerRole) {
+      await trackFunnelEvent({
+        eventType: "seller_role_selected",
+        userId: session.user.id,
+        payload: { role: targetRole, nextTier },
+      });
+    }
   } catch (err) {
     logger.error({ err }, "POST /api/user/role error");
     return NextResponse.json(

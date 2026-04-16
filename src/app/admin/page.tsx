@@ -14,10 +14,16 @@ interface Stats {
   funnel30d: {
     signups: number;
     buyerProfiles: number;
+    sellerRoleSelections: number;
     savedSearches: number;
     sellerListings: number;
+    sellerListingSubmissions: number;
+    listingClaims: number;
     matchInterested: number;
     connectRequests: number;
+    contactGateOpens: number;
+    contactGateSaves: number;
+    contactGateGuestContinue: number;
     paidCheckouts: number;
     paymentRenewals: number;
     paymentFailures: number;
@@ -44,6 +50,8 @@ interface Stats {
     shortlists24h: number;
     connectRequests24h: number;
     sellerListings24h: number;
+    listingSubmissions24h: number;
+    claimRequests24h: number;
     paidCheckouts24h: number;
     paymentFailures24h: number;
     lastSignupAt: string | null;
@@ -51,6 +59,8 @@ interface Stats {
     lastShortlistAt: string | null;
     lastConnectRequestAt: string | null;
     lastSellerListingAt: string | null;
+    lastListingSubmissionAt: string | null;
+    lastClaimRequestAt: string | null;
     lastPaidCheckoutAt: string | null;
     lastPaymentFailureAt: string | null;
   };
@@ -67,11 +77,14 @@ interface Stats {
     source: string;
     activeCount: number;
     visibleCount: number;
+    contactClicks30d: number;
     missingModelCount: number;
     missingLocationCount: number;
     missingImageCount: number;
     thinSummaryCount: number;
     lowPriceCount: number;
+    decisionStatus: string;
+    decisionReason: string | null;
   }>;
   serviceStatus: {
     billingEnabled: boolean;
@@ -119,13 +132,39 @@ interface PendingListing {
   quality_score: number;
 }
 
+interface ClaimRequest {
+  id: string;
+  status: "draft_created" | "reviewing" | "approved" | "rejected";
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  reviewed_at: string | null;
+  boat_id: string;
+  boat_slug: string | null;
+  boat_title: string;
+  boat_source_name: string | null;
+  boat_source_site: string | null;
+  boat_location_text: string | null;
+  claimant_user_id: string;
+  claimant_email: string;
+  claimant_display_name: string | null;
+  claimed_listing_id: string | null;
+  claimed_listing_slug: string | null;
+  claimed_listing_status: string | null;
+}
+
 type ActivityFilter =
   | "all"
   | "signup_created"
   | "saved_search_created"
+  | "seller_role_selected"
   | "match_interested"
   | "connect_requested"
   | "seller_listing_created"
+  | "seller_listing_submitted"
+  | "listing_claim_requested"
+  | "contact_gate_saved"
+  | "contact_gate_guest_continue"
   | "checkout_completed"
   | "invoice_payment_succeeded"
   | "invoice_payment_failed";
@@ -134,9 +173,14 @@ const ACTIVITY_FILTER_OPTIONS: Array<{ value: ActivityFilter; label: string }> =
   { value: "all", label: "All activity" },
   { value: "signup_created", label: "Signups" },
   { value: "saved_search_created", label: "Saved searches" },
+  { value: "seller_role_selected", label: "Seller roles" },
   { value: "match_interested", label: "Shortlists" },
   { value: "connect_requested", label: "Connects" },
   { value: "seller_listing_created", label: "Seller listings" },
+  { value: "seller_listing_submitted", label: "Listing submissions" },
+  { value: "listing_claim_requested", label: "Claim requests" },
+  { value: "contact_gate_saved", label: "Saved before outbound" },
+  { value: "contact_gate_guest_continue", label: "Guest outbound" },
   { value: "checkout_completed", label: "Paid starts" },
   { value: "invoice_payment_succeeded", label: "Paid renewals" },
   { value: "invoice_payment_failed", label: "Payment failures" },
@@ -148,14 +192,24 @@ function formatActivityTitle(activity: Stats["recentActivity"][number]) {
       return "New signup";
     case "buyer_profile_saved":
       return "Buyer profile updated";
+    case "seller_role_selected":
+      return "Seller access started";
     case "saved_search_created":
       return "Saved search created";
     case "seller_listing_created":
       return "Seller listing created";
+    case "seller_listing_submitted":
+      return "Seller listing submitted";
+    case "listing_claim_requested":
+      return "Imported listing claimed";
     case "match_interested":
       return "Boat added to shortlist";
     case "connect_requested":
       return "Connect request sent";
+    case "contact_gate_saved":
+      return "Saved before outbound click";
+    case "contact_gate_guest_continue":
+      return "Guest outbound click";
     case "checkout_completed":
       return "Paid checkout completed";
     case "invoice_payment_succeeded":
@@ -175,6 +229,10 @@ function formatActivityDetail(activity: Stats["recentActivity"][number]) {
       return `${person} created an account.`;
     case "buyer_profile_saved":
       return `${person} updated their buyer profile.`;
+    case "seller_role_selected": {
+      const role = typeof activity.payload.role === "string" ? activity.payload.role : "seller";
+      return `${person} unlocked ${role.replace(/[-_]+/g, " ")} access.`;
+    }
     case "saved_search_created": {
       const search = typeof activity.payload.search === "string" ? activity.payload.search : "";
       const tag = typeof activity.payload.tag === "string" ? activity.payload.tag : "";
@@ -186,6 +244,14 @@ function formatActivityDetail(activity: Stats["recentActivity"][number]) {
       return activity.boatTitle
         ? `${person} created ${activity.boatTitle}.`
         : `${person} created a new seller listing.`;
+    case "seller_listing_submitted":
+      return activity.boatTitle
+        ? `${person} submitted ${activity.boatTitle} for review.`
+        : `${person} submitted a seller listing for review.`;
+    case "listing_claim_requested":
+      return activity.boatTitle
+        ? `${person} claimed ${activity.boatTitle} into a seller draft.`
+        : `${person} claimed an imported listing into a seller draft.`;
     case "match_interested":
       return activity.boatTitle
         ? `${person} shortlisted ${activity.boatTitle}.`
@@ -194,6 +260,14 @@ function formatActivityDetail(activity: Stats["recentActivity"][number]) {
       return activity.boatTitle
         ? `${person} requested a connection for ${activity.boatTitle}.`
         : `${person} requested a seller connection.`;
+    case "contact_gate_saved":
+      return activity.boatTitle
+        ? `${person} saved ${activity.boatTitle} before leaving for the original listing.`
+        : `${person} saved a boat before leaving for the original listing.`;
+    case "contact_gate_guest_continue":
+      return activity.boatTitle
+        ? `${person} continued to the original listing for ${activity.boatTitle} without saving.`
+        : `${person} continued to an original listing without saving.`;
     case "checkout_completed": {
       const tier = typeof activity.payload.tier === "string" ? activity.payload.tier : "paid";
       return `${person} started the ${tier.replace(/[-_]+/g, " ")} plan checkout successfully.`;
@@ -272,6 +346,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<PendingListing[]>([]);
   const [cleanupQueue, setCleanupQueue] = useState<PendingListing[]>([]);
+  const [claimQueue, setClaimQueue] = useState<ClaimRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -305,20 +380,23 @@ export default function AdminPage() {
       if (moderationSearch.trim()) cleanupParams.set("q", moderationSearch.trim());
       if (moderationSource !== "all") cleanupParams.set("source", moderationSource);
 
-      const [statsRes, pendingRes, cleanupRes] = await Promise.all([
+      const [statsRes, pendingRes, cleanupRes, claimsRes] = await Promise.all([
         fetch("/api/admin/stats"),
         fetch(`/api/admin/listings?${moderationParams.toString()}`),
         fetch(`/api/admin/listings?${cleanupParams.toString()}`),
+        fetch("/api/admin/claims?limit=10"),
       ]);
-      const [statsData, pendingData, cleanupData] = await Promise.all([
+      const [statsData, pendingData, cleanupData, claimsData] = await Promise.all([
         statsRes.json(),
         pendingRes.json(),
         cleanupRes.json(),
+        claimsRes.json(),
       ]);
 
       setStats(statsData);
       setPending(pendingData.listings || []);
       setCleanupQueue(cleanupData.listings || []);
+      setClaimQueue(claimsData.claims || []);
       setLastUpdatedAt(new Date().toISOString());
       hasLoadedRef.current = true;
     } finally {
@@ -402,6 +480,39 @@ export default function AdminPage() {
     }
   }
 
+  async function handleClaimStatusUpdate(id: string, status: ClaimRequest["status"]) {
+    setActionLoading(`claim-${id}-${status}`);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/claims/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update claim request");
+      }
+
+      setClaimQueue((prev) =>
+        prev.map((claim) =>
+          claim.id === id
+            ? {
+                ...claim,
+                status,
+                reviewed_at: new Date().toISOString(),
+              }
+            : claim
+        )
+      );
+      setMessage(`Claim request marked ${status.replace(/_/g, " ")}.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to update claim request");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function runMaintenanceAction(
     actionKey: string,
     url: string,
@@ -446,7 +557,10 @@ export default function AdminPage() {
   const ownerAttention = recentActivity.filter((activity) =>
     [
       "signup_created",
+      "seller_role_selected",
       "seller_listing_created",
+      "seller_listing_submitted",
+      "listing_claim_requested",
       "connect_requested",
       "checkout_completed",
       "invoice_payment_failed",
@@ -676,6 +790,22 @@ export default function AdminPage() {
                 actionLabel="Open supply"
               />
               <StatCard
+                label="Listing Submissions (24h)"
+                value={stats.ownerPulse.listingSubmissions24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastListingSubmissionAt)}`}
+                highlight={stats.ownerPulse.listingSubmissions24h > 0}
+                actionHref="#claim-queue"
+                actionLabel="Open claim and review work"
+              />
+              <StatCard
+                label="Claim Requests (24h)"
+                value={stats.ownerPulse.claimRequests24h}
+                detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastClaimRequestAt)}`}
+                highlight={stats.ownerPulse.claimRequests24h > 0}
+                actionHref="#claim-queue"
+                actionLabel="Open claim queue"
+              />
+              <StatCard
                 label="Paid Starts (24h)"
                 value={stats.ownerPulse.paidCheckouts24h}
                 detail={`Last: ${formatRelativeTime(stats.ownerPulse.lastPaidCheckoutAt)}`}
@@ -705,10 +835,10 @@ export default function AdminPage() {
           <div className="mt-8 rounded-lg border border-border bg-surface p-4">
             <h2 className="text-lg font-semibold">Source Health</h2>
             <p className="mt-1 text-sm text-foreground/60">
-              Track which inventory sources are buyer-ready and where cleanup effort is still blocking visibility.
+              Track which imported sources are buyer-ready, where engagement is actually showing up, and where cleanup work is still blocking visibility.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-              <StatCard label="Tracked Boats" value={stats.importQualitySummary.activeCount} />
+              <StatCard label="Imported Boats" value={stats.importQualitySummary.activeCount} />
               <StatCard label="Buyer Visible" value={stats.importQualitySummary.visibleCount} highlight />
               <StatCard
                 label="Needs Cleanup"
@@ -728,6 +858,8 @@ export default function AdminPage() {
                     <th className="py-2 pr-4 font-medium">Source</th>
                     <th className="py-2 pr-4 font-medium">Active</th>
                     <th className="py-2 pr-4 font-medium">Visible</th>
+                    <th className="py-2 pr-4 font-medium">Clicks (30d)</th>
+                    <th className="py-2 pr-4 font-medium">Policy</th>
                     <th className="py-2 pr-4 font-medium">Missing location</th>
                     <th className="py-2 pr-4 font-medium">Missing images</th>
                     <th className="py-2 pr-4 font-medium">Thin summary</th>
@@ -749,6 +881,19 @@ export default function AdminPage() {
                         <td className="py-3 pr-4">
                           <div className="font-medium text-foreground">{source.visibleCount}</div>
                           <div className="text-xs text-foreground/50">{visibleRate} visible</div>
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.contactClicks30d}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <div className="font-medium capitalize text-foreground">
+                            {source.decisionStatus}
+                          </div>
+                          {source.decisionReason && (
+                            <div className="max-w-xs text-xs text-foreground/50">
+                              {source.decisionReason}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 pr-4 text-foreground/75">
                           {source.missingLocationCount}
@@ -775,10 +920,15 @@ export default function AdminPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-8">
               <StatCard label="Signups" value={stats.funnel30d.signups} />
               <StatCard label="Buyer Profiles" value={stats.funnel30d.buyerProfiles} />
+              <StatCard label="Seller Roles" value={stats.funnel30d.sellerRoleSelections} />
               <StatCard label="Saved Searches" value={stats.funnel30d.savedSearches} />
               <StatCard label="Seller Listings" value={stats.funnel30d.sellerListings} />
+              <StatCard label="Listing Submissions" value={stats.funnel30d.sellerListingSubmissions} />
+              <StatCard label="Claim Drafts" value={stats.funnel30d.listingClaims} />
               <StatCard label="Shortlist Saves" value={stats.funnel30d.matchInterested} />
+              <StatCard label="Gate Saves" value={stats.funnel30d.contactGateSaves} />
               <StatCard label="Connect Requests" value={stats.funnel30d.connectRequests} highlight />
+              <StatCard label="Guest Outbound" value={stats.funnel30d.contactGateGuestContinue} />
               <StatCard label="Paid Starts" value={stats.funnel30d.paidCheckouts} />
               <StatCard
                 label="Payment Failures"
@@ -924,6 +1074,101 @@ export default function AdminPage() {
           </div>
         </>
       )}
+
+      <div className="mt-12">
+        <div id="claim-queue" />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Claim Queue ({claimQueue.length})</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              Imported listings that have been pulled into seller-owned drafts. This is the bridge from scraped inventory into native supply.
+            </p>
+          </div>
+          <div className="text-sm text-foreground/60">
+            Review the request, open the draft, and keep the seller moving.
+          </div>
+        </div>
+        {claimQueue.length === 0 ? (
+          <p className="mt-4 text-foreground/60">No claim requests yet.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {claimQueue.map((claim) => (
+              <div
+                key={claim.id}
+                className="flex flex-col gap-4 rounded-lg border border-border p-4 lg:flex-row lg:items-start lg:justify-between"
+              >
+                <div>
+                  <p className="font-medium">{claim.boat_title}</p>
+                  <p className="text-sm text-foreground/60">
+                    {claim.boat_location_text || "Location pending"} · {claim.boat_source_name || claim.boat_source_site || "Imported source"}
+                  </p>
+                  <p className="text-xs text-foreground/40">
+                    Claimed by {claim.claimant_display_name?.trim() || "Unnamed user"} ({claim.claimant_email}) · {new Date(claim.created_at).toLocaleString()}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-primary">
+                      {claim.status.replace(/_/g, " ")}
+                    </span>
+                    {claim.claimed_listing_status && (
+                      <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                        Draft status: {claim.claimed_listing_status.replace(/_/g, " ")}
+                      </span>
+                    )}
+                    {claim.reviewed_at && (
+                      <span className="rounded-full border border-border px-2 py-1 text-foreground/70">
+                        Reviewed {formatRelativeTime(claim.reviewed_at)}
+                      </span>
+                    )}
+                  </div>
+                  {claim.note && (
+                    <p className="mt-3 text-sm text-foreground/60">{claim.note}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/boats/${claim.boat_slug || claim.boat_id}`}
+                    className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary"
+                  >
+                    Open source
+                  </Link>
+                  {claim.claimed_listing_id && (
+                    <Link
+                      href={`/listings/${claim.claimed_listing_id}`}
+                      className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary"
+                    >
+                      Open draft
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleClaimStatusUpdate(claim.id, "reviewing")}
+                    disabled={actionLoading === `claim-${claim.id}-reviewing`}
+                    className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+                  >
+                    Reviewing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleClaimStatusUpdate(claim.id, "approved")}
+                    disabled={actionLoading === `claim-${claim.id}-approved`}
+                    className="rounded-full bg-primary-btn px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleClaimStatusUpdate(claim.id, "rejected")}
+                    disabled={actionLoading === `claim-${claim.id}-rejected`}
+                    className="rounded-full border border-red-500/30 px-4 py-1.5 text-sm text-red-300 disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="mt-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="text-lg font-semibold">Maintenance</h2>

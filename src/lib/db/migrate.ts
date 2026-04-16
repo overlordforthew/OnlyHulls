@@ -252,6 +252,21 @@ const MIGRATION_MARKERS: MigrationMarker[] = [
       ) = 2 AS ok
     `,
   },
+  {
+    name: "022_boat_claim_requests.sql",
+    checkSql: `
+      SELECT
+        to_regclass('public.boat_claim_requests') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'boats'
+            AND column_name = 'claimed_from_boat_id'
+        )
+      AS ok
+    `,
+  },
 ];
 
 async function reconcileExistingMigrations(

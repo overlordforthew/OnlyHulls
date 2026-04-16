@@ -111,13 +111,30 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
     const created = searchParams.get("created");
     const saved = searchParams.get("saved");
     const resubmitted = searchParams.get("resubmitted");
+    const claimed = searchParams.get("claimed");
 
     if (created === "1") {
-      setMessage("Draft created. Add the missing details, photos, and then submit it for review.");
+      setMessage("Draft created. Head straight to photos, then review and submit once the listing looks sharp.");
+    } else if (claimed === "1") {
+      setMessage("Imported listing claimed. Review the copied details, tighten anything that looks off, and submit when ready.");
     } else if (resubmitted === "1") {
       setMessage("Listing updated and resubmitted for review.");
     } else if (saved === "1") {
       setMessage("Listing changes saved.");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const requestedStep = searchParams.get("step");
+    if (
+      requestedStep === "basics" ||
+      requestedStep === "specs" ||
+      requestedStep === "details" ||
+      requestedStep === "location" ||
+      requestedStep === "photos" ||
+      requestedStep === "review"
+    ) {
+      setStep(requestedStep);
     }
   }, [searchParams]);
 
@@ -248,7 +265,11 @@ export default function ListingEditor({ listingId }: { listingId?: string }) {
           throw new Error(result.error || "Failed to create listing");
         }
 
-        router.push(`/listings/${result.id}?created=1`);
+        const nextUrl =
+          result.status === "pending_review"
+            ? `/listings/${result.id}?created=1&step=review`
+            : `/listings/${result.id}?created=1&step=photos`;
+        router.push(nextUrl);
         return;
       }
 
