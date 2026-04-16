@@ -16,7 +16,9 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   webServer: shouldUseLocalWebServer
     ? {
-        command: `npm run dev -- --hostname 127.0.0.1 --port ${localPort}`,
+        command: process.env.CI
+          ? `npm run start -- --hostname 127.0.0.1 --port ${localPort}`
+          : `npm run dev -- --hostname 127.0.0.1 --port ${localPort}`,
         url: localBaseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
