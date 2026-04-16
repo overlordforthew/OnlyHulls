@@ -954,6 +954,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Sessa",
+      model: "Marine 26",
+      sourceSite: "theyachtmarket",
+      slug: "2008-sessa-marine-26-palma-de-mallorca",
+    }),
+    { make: "Sessa Marine", model: "26" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Sessa Marine",
+      model: "Marine 26",
+      sourceSite: "theyachtmarket",
+      slug: "2008-sessa-marine-26-palma-de-mallorca",
+    }),
+    { make: "Sessa Marine", model: "26" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Spirit",
       model: "Yachts C72",
       sourceSite: "theyachtmarket",
