@@ -540,6 +540,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Cheo",
+      model: "Lee Ketch 42&711",
+      sourceSite: "sailboatlistings",
+      slug: "1977-cheo-lee-ketch-42-711-slovenija-piran",
+    }),
+    { make: "Cheoy Lee", model: "Ketch 42&711" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Choye",
+      model: "Lee",
+      sourceSite: "sailboatlistings",
+      slug: "1979-choye-lee-maine",
+    }),
+    { make: "Cheoy Lee", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Grand",
       model: "Soleil 42 Lc",
       sourceSite: "theyachtmarket",
@@ -2094,6 +2112,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     choeyLee.ai_summary,
     "1970 Cheoy Lee Clipper 33 in California. 33ft LOA, ketch rig, monohull."
+  );
+
+  const choyeLee = sanitizeImportedBoatRecord({
+    year: 1979,
+    make: "Choye",
+    model: "Lee",
+    slug: "1979-choye-lee-maine",
+    source_site: "sailboatlistings",
+    location_text: "Maine",
+    ai_summary: "1979 Choye Lee in Maine. 35ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 35,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(choyeLee.make, "Cheoy Lee");
+  assert.equal(choyeLee.model, "");
+  assert.equal(
+    choyeLee.ai_summary,
+    "1979 Cheoy Lee in Maine. 35ft LOA, masthead sloop rig, monohull."
   );
 
   const omega = sanitizeImportedBoatRecord({

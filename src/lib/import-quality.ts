@@ -648,7 +648,7 @@ function canonicalizeMakeName(make: string) {
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
-  if (/^choey(?:\s+lee)?$/i.test(normalized)) return "Cheoy Lee";
+  if (/^(?:cheoy|choey|cheo|choye)(?:\s+lee)?$/i.test(normalized)) return "Cheoy Lee";
   if (/^(?:fountaine|fountain|fontaine|fountains)\s+pajot$/i.test(normalized)) {
     return "Fountaine Pajot";
   }
