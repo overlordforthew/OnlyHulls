@@ -540,6 +540,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Comuzzi",
+      model: "Yachts C32 Sport",
+      sourceSite: "theyachtmarket",
+      slug: "2024-comuzzi-yachts-c32-sport-adriatic-sea",
+    }),
+    { make: "Comuzzi Yachts", model: "C32 Sport" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Comuzzi Yachts",
+      model: "Yachts C32 Sport",
+      sourceSite: "theyachtmarket",
+      slug: "2024-comuzzi-yachts-c32-sport-adriatic-sea",
+    }),
+    { make: "Comuzzi Yachts", model: "C32 Sport" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Comuzzi",
+      model: "32",
+      sourceSite: "sailboatlistings",
+      slug: "2024-comuzzi-32-adriatic-sea",
+    }),
+    { make: "Comuzzi", model: "32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",
@@ -2692,6 +2719,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     rossiter.ai_summary,
     "1984 Rossiter Yachts Curlew 32 in Falmouth. 32ft LOA, monohull, classic lines."
+  );
+
+  const comuzzi = sanitizeImportedBoatRecord({
+    year: 2024,
+    make: "Comuzzi",
+    model: "Yachts C32 Sport",
+    slug: "2024-comuzzi-yachts-c32-sport-adriatic-sea",
+    source_site: "theyachtmarket",
+    location_text: "Adriatic Sea",
+    ai_summary:
+      "2024 Comuzzi Yachts C32 Sport in Adriatic Sea. 35.8ft LOA, monohull, day cruiser.",
+    specs: {
+      loa: 35.8,
+    },
+  });
+
+  assert.equal(comuzzi.make, "Comuzzi Yachts");
+  assert.equal(comuzzi.model, "C32 Sport");
+  assert.equal(
+    comuzzi.ai_summary,
+    "2024 Comuzzi Yachts C32 Sport in Adriatic Sea. 35.8ft LOA, monohull, day cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
