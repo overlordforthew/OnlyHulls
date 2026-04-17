@@ -648,6 +648,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Mastori",
+      model: "Yachts Gulet",
+      sourceSite: "theyachtmarket",
+      slug: "2007-mastori-yachts-gulet-bodrum",
+    }),
+    { make: "Mastori Yachts", model: "Gulet" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Mastori Yachts",
+      model: "Gulet",
+      sourceSite: "theyachtmarket",
+      slug: "2007-mastori-yachts-gulet-bodrum",
+    }),
+    { make: "Mastori Yachts", model: "Gulet" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Mastori",
+      model: "Gulet",
+      sourceSite: "theyachtmarket",
+      slug: "2007-mastori-gulet-bodrum",
+    }),
+    { make: "Mastori", model: "Gulet" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
