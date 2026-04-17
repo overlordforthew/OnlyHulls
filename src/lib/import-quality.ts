@@ -648,6 +648,9 @@ function canonicalizeMakeName(make: string) {
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^j\s*\/?\s*boats?$/i.test(normalized)) return "J/Boats";
+  if (/^mcp(?:\s+yachts)?$/i.test(normalized)) {
+    return /\byachts\b/i.test(normalized) ? "MCP Yachts" : "MCP";
+  }
   if (/^oqs(?:\s+yachts)?$/i.test(normalized)) {
     return /\byachts\b/i.test(normalized) ? "OQS Yachts" : "OQS";
   }
@@ -1037,6 +1040,11 @@ function repairCompoundBrandMakeModel(input: {
 
   if (/^oqs(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
     make = "OQS Yachts";
+    model = model.replace(/^yachts\b[\s-]*/i, "").trim();
+  }
+
+  if (/^mcp(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
+    make = "MCP Yachts";
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
   }
 

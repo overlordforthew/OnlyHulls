@@ -594,6 +594,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Mcp",
+      model: "Yachts Global Exp 68",
+      sourceSite: "theyachtmarket",
+      slug: "2025-mcp-yachts-global-exp-68-genoa",
+    }),
+    { make: "MCP Yachts", model: "Global Exp 68" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Mcp Yachts",
+      model: "Global Exp 68",
+      sourceSite: "theyachtmarket",
+      slug: "2025-mcp-yachts-global-exp-68-genoa",
+    }),
+    { make: "MCP Yachts", model: "Global Exp 68" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Mcp",
+      model: "Global Exp 68",
+      sourceSite: "theyachtmarket",
+      slug: "2025-mcp-global-exp-68-genoa",
+    }),
+    { make: "MCP", model: "Global Exp 68" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Nauta",
       model: "Yachts 54",
       sourceSite: "theyachtmarket",
