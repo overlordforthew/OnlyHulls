@@ -594,6 +594,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Nauta",
+      model: "Yachts 54",
+      sourceSite: "theyachtmarket",
+      slug: "1990-nauta-yachts-54-brittany",
+    }),
+    { make: "Nauta Yachts", model: "54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Nauta Yachts",
+      model: "54",
+      sourceSite: "theyachtmarket",
+      slug: "1990-nauta-yachts-54-brittany",
+    }),
+    { make: "Nauta Yachts", model: "54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Nauta",
+      model: "Wind 46",
+      sourceSite: "theyachtmarket",
+      slug: "1977-nauta-wind-46-mallorca",
+    }),
+    { make: "Nauta", model: "Wind 46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",
