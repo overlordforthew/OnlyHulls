@@ -783,6 +783,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Cheverton",
+      model: "Boats 40",
+      sourceSite: "theyachtmarket",
+      slug: "1984-cheverton-boats-40-ardrishaig",
+    }),
+    { make: "Cheverton Boats", model: "40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheverton Boats",
+      model: "Boats Crusader",
+      sourceSite: "theyachtmarket",
+      slug: "1962-cheverton-boats-crusader-suffolk-yacht-harbour",
+    }),
+    { make: "Cheverton Boats", model: "Crusader" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Cheverton",
+      model: "Boats 40",
+      sourceSite: "theyachtmarket",
+      slug: "1984-cheverton-40-ardrishaig",
+    }),
+    { make: "Cheverton", model: "Boats 40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
@@ -3096,6 +3123,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     matYachts.ai_summary,
     "2023 M A T Yachts 1220 in Bulgaria. 40ft LOA, monohull, bluewater-capable."
+  );
+
+  const chevertonBoats = sanitizeImportedBoatRecord({
+    year: 1984,
+    make: "Cheverton",
+    model: "Boats 40",
+    slug: "1984-cheverton-boats-40-ardrishaig",
+    source_site: "theyachtmarket",
+    location_text: "Ardrishaig, Argyll And Bute",
+    ai_summary: "1984 Cheverton Boats 40 in Ardrishaig, Argyll And Bute. 44.9ft LOA, monohull, classic offshore cruiser.",
+    specs: {
+      loa: 44.9,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(chevertonBoats.make, "Cheverton Boats");
+  assert.equal(chevertonBoats.model, "40");
+  assert.equal(
+    chevertonBoats.ai_summary,
+    "1984 Cheverton Boats 40 in Ardrishaig, Argyll And Bute. 44.9ft LOA, monohull, classic offshore cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
