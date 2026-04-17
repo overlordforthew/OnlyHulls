@@ -1377,6 +1377,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Alloy",
+      model: "Yachts 53m Ketch",
+      sourceSite: "theyachtmarket",
+      slug: "2002-alloy-yachts-53m-ketch-french-riviera",
+    }),
+    { make: "Alloy Yachts", model: "53m Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alloy Yachts",
+      model: "Yachts 53m Ketch",
+      sourceSite: "theyachtmarket",
+      slug: "2002-alloy-yachts-53m-ketch-french-riviera",
+    }),
+    { make: "Alloy Yachts", model: "53m Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alloy",
+      model: "Custom 42",
+      sourceSite: "theyachtmarket",
+      slug: "1990-alloy-custom-42-french-riviera",
+    }),
+    { make: "Alloy", model: "Custom 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
