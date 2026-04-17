@@ -756,6 +756,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "M A",
+      model: "T Yachts 1220",
+      sourceSite: "theyachtmarket",
+      slug: "2023-m-a-t-yachts-1220-bulgaria",
+    }),
+    { make: "M A T Yachts", model: "1220" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "M A T Yachts",
+      model: "1220",
+      sourceSite: "theyachtmarket",
+      slug: "2023-m-a-t-yachts-1220-bulgaria",
+    }),
+    { make: "M A T Yachts", model: "1220" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "M A",
+      model: "T Yachts 1070",
+      sourceSite: "theyachtmarket",
+      slug: "2023-m-a-t-yachts-1070-bulgaria",
+    }),
+    { make: "M A", model: "T Yachts 1070" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
@@ -3048,6 +3075,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     fastYachts.ai_summary,
     "2002 Fast Yachts 42 in Dún Laoghaire. 42.2ft LOA, monohull, offshore-ready."
+  );
+
+  const matYachts = sanitizeImportedBoatRecord({
+    year: 2023,
+    make: "M A",
+    model: "T Yachts 1220",
+    slug: "2023-m-a-t-yachts-1220-bulgaria",
+    source_site: "theyachtmarket",
+    location_text: "Bulgaria",
+    ai_summary: "2023 M A T Yachts 1220 in Bulgaria. 40ft LOA, monohull, bluewater-capable.",
+    specs: {
+      loa: 40,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(matYachts.make, "M A T Yachts");
+  assert.equal(matYachts.model, "1220");
+  assert.equal(
+    matYachts.ai_summary,
+    "2023 M A T Yachts 1220 in Bulgaria. 40ft LOA, monohull, bluewater-capable."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
