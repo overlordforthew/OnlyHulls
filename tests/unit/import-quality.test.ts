@@ -801,6 +801,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Character",
+      model: "Boats Lytham Pilot",
+      sourceSite: "theyachtmarket",
+      slug: "2021-character-boats-lytham-pilot-windermere",
+    }),
+    { make: "Character Boats", model: "Lytham Pilot" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Character",
+      model: "Boats Lytham Pilot",
+      sourceSite: "theyachtmarket",
+      slug: "2021-character-lytham-pilot-windermere",
+    }),
+    { make: "Character", model: "Boats Lytham Pilot" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Cheverton",
       model: "Boats 40",
       sourceSite: "theyachtmarket",
@@ -2380,7 +2398,7 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
     normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
-      sourceSite: "theyachtmarket",
+      sourceSite: "boatshop24",
       slug: "2021-character-boats-lytham-pilot-windermere",
     }),
     { make: "Character", model: "Boats Lytham Pilot" }
@@ -3171,6 +3189,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     chevertonBoats.ai_summary,
     "1984 Cheverton Boats 40 in Ardrishaig, Argyll And Bute. 44.9ft LOA, monohull, classic offshore cruiser."
+  );
+
+  const characterBoats = sanitizeImportedBoatRecord({
+    year: 2021,
+    make: "Character",
+    model: "Boats Lytham Pilot",
+    slug: "2021-character-boats-lytham-pilot-windermere",
+    source_site: "theyachtmarket",
+    location_text: "Windermere, Cumbria",
+    ai_summary:
+      "2021 Character Boats Lytham Pilot in Windermere, Cumbria. 12.5ft LOA, monohull, traditional day-sailer.",
+    specs: {
+      loa: 12.5,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(characterBoats.make, "Character Boats");
+  assert.equal(characterBoats.model, "Lytham Pilot");
+  assert.equal(
+    characterBoats.ai_summary,
+    "2021 Character Boats Lytham Pilot in Windermere, Cumbria. 12.5ft LOA, monohull, traditional day-sailer."
   );
 
   const moreBoats = sanitizeImportedBoatRecord({

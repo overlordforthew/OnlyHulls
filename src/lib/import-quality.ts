@@ -1102,6 +1102,16 @@ function repairCompoundBrandMakeModel(input: {
 
   if (
     sourceSite === "theyachtmarket" &&
+    /^character(?:\s+boats)?$/i.test(make) &&
+    modelStartsWith(/^boats\b[\s-]*lytham\s+pilot\b/i) &&
+    /(?:^|-)character-boats-lytham-pilot(?:-|$)/.test(slug)
+  ) {
+    make = "Character Boats";
+    model = model.replace(/^boats\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
     /^cheverton(?:\s+boats)?$/i.test(make) &&
     modelStartsWith(/^boats\b[\s-]*/i) &&
     /(?:^|-)cheverton-boats(?:-|$)/.test(slug)
