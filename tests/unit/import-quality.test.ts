@@ -873,6 +873,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "King",
+      model: "Marine Nmyd Irc One Off 54",
+      sourceSite: "theyachtmarket",
+      slug: "2017-king-marine-nmyd-irc-one-off-54-hamble",
+    }),
+    { make: "King Marine", model: "Nmyd Irc One Off 54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "King Marine",
+      model: "Marine Nmyd Irc One Off 54",
+      sourceSite: "theyachtmarket",
+      slug: "2017-king-marine-nmyd-irc-one-off-54-hamble",
+    }),
+    { make: "King Marine", model: "Nmyd Irc One Off 54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "King",
+      model: "Marine Nmyd Irc One Off 54",
+      sourceSite: "theyachtmarket",
+      slug: "2017-king-nmyd-irc-one-off-54-hamble",
+    }),
+    { make: "King", model: "Marine Nmyd Irc One Off 54" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3369,6 +3396,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     nortechMarine.ai_summary,
     "1993 Nortech Marine Hood 50 in Sotogrande, Andalusia. 49.7ft LOA, monohull, classic bluewater cruiser."
+  );
+
+  const kingMarine = sanitizeImportedBoatRecord({
+    year: 2017,
+    make: "King",
+    model: "Marine Nmyd Irc One Off 54",
+    slug: "2017-king-marine-nmyd-irc-one-off-54-hamble",
+    source_site: "theyachtmarket",
+    location_text: "Hamble, United Kingdom",
+    ai_summary: "2017 King Marine Nmyd Irc One Off 54 in Hamble, United Kingdom. 54ft LOA, monohull, racing yacht.",
+    specs: {
+      loa: 54,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(kingMarine.make, "King Marine");
+  assert.equal(kingMarine.model, "Nmyd Irc One Off 54");
+  assert.equal(
+    kingMarine.ai_summary,
+    "2017 King Marine Nmyd Irc One Off 54 in Hamble, United Kingdom. 54ft LOA, monohull, racing yacht."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
