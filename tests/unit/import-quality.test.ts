@@ -513,6 +513,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Rossiter",
+      model: "Yachts Curlew 32",
+      sourceSite: "theyachtmarket",
+      slug: "1984-rossiter-yachts-curlew-32-falmouth",
+    }),
+    { make: "Rossiter Yachts", model: "Curlew 32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Rossiter Yachts",
+      model: "Curlew 32",
+      sourceSite: "theyachtmarket",
+      slug: "1984-rossiter-yachts-curlew-32-falmouth",
+    }),
+    { make: "Rossiter Yachts", model: "Curlew 32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Rossiter",
+      model: "33",
+      sourceSite: "sailboatlistings",
+      slug: "1983-rossiter-33-maine",
+    }),
+    { make: "Rossiter", model: "33" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",
@@ -2645,6 +2672,26 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     gibsea.ai_summary,
     "1986 Gibsea 92 in Northern Ireland. 30ft LOA, masthead sloop rig, monohull."
+  );
+
+  const rossiter = sanitizeImportedBoatRecord({
+    year: 1984,
+    make: "Rossiter",
+    model: "Yachts Curlew 32",
+    slug: "1984-rossiter-yachts-curlew-32-falmouth",
+    source_site: "theyachtmarket",
+    location_text: "Falmouth",
+    ai_summary: "1984 Rossiter Yachts Curlew 32 in Falmouth. 32ft LOA, monohull, classic lines.",
+    specs: {
+      loa: 32,
+    },
+  });
+
+  assert.equal(rossiter.make, "Rossiter Yachts");
+  assert.equal(rossiter.model, "Curlew 32");
+  assert.equal(
+    rossiter.ai_summary,
+    "1984 Rossiter Yachts Curlew 32 in Falmouth. 32ft LOA, monohull, classic lines."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
