@@ -647,6 +647,9 @@ function canonicalizeMakeName(make: string) {
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
   if (/^j\s*\/?\s*boats?$/i.test(normalized)) return "J/Boats";
+  if (/^oqs(?:\s+yachts)?$/i.test(normalized)) {
+    return /\byachts\b/i.test(normalized) ? "OQS Yachts" : "OQS";
+  }
   if (/^(?:chris\s*craft|chriscraft|criscraft)$/i.test(normalized)) return "Chris Craft";
   if (/^carrol\s+marine$/i.test(normalized)) return "Carroll Marine";
   if (/^(?:cheoy|choey|cheo|choye)(?:\s+lee)?$/i.test(normalized) || /^cheoylee$/i.test(normalized)) {
@@ -1028,6 +1031,11 @@ function repairCompoundBrandMakeModel(input: {
 
   if (/^comuzzi(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
     make = "Comuzzi Yachts";
+    model = model.replace(/^yachts\b[\s-]*/i, "").trim();
+  }
+
+  if (/^oqs(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
+    make = "OQS Yachts";
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
   }
 
@@ -1749,7 +1757,7 @@ function normalizeImportedAiSummary(input: {
     .join(" ");
   const normalizedTitle = [input.year, input.make, input.model].filter(Boolean).join(" ");
 
-  if (!rawTitle || !normalizedTitle || rawTitle.toLowerCase() === normalizedTitle.toLowerCase()) {
+  if (!rawTitle || !normalizedTitle || rawTitle === normalizedTitle) {
     return summary;
   }
 

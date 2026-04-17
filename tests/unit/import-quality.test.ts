@@ -567,6 +567,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Oqs",
+      model: "Yachts Ocean Explorer 60",
+      sourceSite: "theyachtmarket",
+      slug: "2019-oqs-yachts-ocean-explorer-60-fort-lauderdale",
+    }),
+    { make: "OQS Yachts", model: "Ocean Explorer 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Oqs Yachts",
+      model: "Yachts Ocean Explorer 60",
+      sourceSite: "theyachtmarket",
+      slug: "2019-oqs-yachts-ocean-explorer-60-fort-lauderdale",
+    }),
+    { make: "OQS Yachts", model: "Ocean Explorer 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Oqs",
+      model: "Ocean Explorer 60",
+      sourceSite: "theyachtmarket",
+      slug: "2019-oqs-ocean-explorer-60-fort-lauderdale",
+    }),
+    { make: "OQS", model: "Ocean Explorer 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",
@@ -2740,6 +2767,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     comuzzi.ai_summary,
     "2024 Comuzzi Yachts C32 Sport in Adriatic Sea. 35.8ft LOA, monohull, day cruiser."
+  );
+
+  const oqs = sanitizeImportedBoatRecord({
+    year: 2019,
+    make: "Oqs",
+    model: "Yachts Ocean Explorer 60",
+    slug: "2019-oqs-yachts-ocean-explorer-60-fort-lauderdale",
+    source_site: "theyachtmarket",
+    location_text: "Fort Lauderdale, Florida",
+    ai_summary:
+      "2019 Oqs Yachts Ocean Explorer 60 in Fort Lauderdale, Florida. 60.7ft LOA, catamaran, expedition-ready.",
+    specs: {
+      loa: 60.7,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(oqs.make, "OQS Yachts");
+  assert.equal(oqs.model, "Ocean Explorer 60");
+  assert.equal(
+    oqs.ai_summary,
+    "2019 OQS Yachts Ocean Explorer 60 in Fort Lauderdale, Florida. 60.7ft LOA, catamaran, expedition-ready."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
