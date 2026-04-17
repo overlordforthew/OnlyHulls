@@ -798,8 +798,10 @@ function repairCompoundBrandMakeModel(input: {
   make: string;
   model: string;
   sourceSite?: string | null;
+  slug?: string | null;
 }) {
   const sourceSite = normalizeSpacing(input.sourceSite).toLowerCase();
+  const slug = String(input.slug || "").toLowerCase();
   if (
     sourceSite !== "theyachtmarket" &&
     sourceSite !== "sailboatlistings" &&
@@ -1065,6 +1067,16 @@ function repairCompoundBrandMakeModel(input: {
 
   if (/^magic(?:\s+yachts)?$/i.test(make) && modelStartsWith(/^yachts\b[\s-]*/i)) {
     make = "Magic Yachts";
+    model = model.replace(/^yachts\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^fast(?:\s+yachts)?$/i.test(make) &&
+    modelStartsWith(/^yachts\b[\s-]*42\b/i) &&
+    /(?:^|-)fast-yachts-42(?:-|$)/.test(slug)
+  ) {
+    make = "Fast Yachts";
     model = model.replace(/^yachts\b[\s-]*/i, "").trim();
   }
 
@@ -1849,6 +1861,7 @@ export function normalizeImportedMakeModel(input: {
     make,
     model,
     sourceSite: input.sourceSite,
+    slug: input.slug,
   }));
   model = stripSourceSpecificNoise(input.sourceSite, make, model);
   model = canonicalizeKnownModelCodes(make, model, input.sourceSite);

@@ -729,6 +729,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fast",
+      model: "Yachts 42",
+      sourceSite: "theyachtmarket",
+      slug: "2002-fast-yachts-42-d-n-laoghaire",
+    }),
+    { make: "Fast Yachts", model: "42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fast Yachts",
+      model: "Yachts 42",
+      sourceSite: "theyachtmarket",
+      slug: "2002-fast-yachts-42-d-n-laoghaire",
+    }),
+    { make: "Fast Yachts", model: "42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fast",
+      model: "Yachts 50",
+      sourceSite: "theyachtmarket",
+      slug: "2003-fast-50-marseille",
+    }),
+    { make: "Fast", model: "Yachts 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
@@ -3000,6 +3027,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     magic.ai_summary,
     "2015 Magic Yachts 96 Catamaran in French Riviera. 96.8ft LOA, catamaran, premium family cruiser."
+  );
+
+  const fastYachts = sanitizeImportedBoatRecord({
+    year: 2002,
+    make: "Fast",
+    model: "Yachts 42",
+    slug: "2002-fast-yachts-42-d-n-laoghaire",
+    source_site: "theyachtmarket",
+    location_text: "Dún Laoghaire",
+    ai_summary: "2002 Fast Yachts 42 in Dún Laoghaire. 42.2ft LOA, monohull, offshore-ready.",
+    specs: {
+      loa: 42.2,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(fastYachts.make, "Fast Yachts");
+  assert.equal(fastYachts.model, "42");
+  assert.equal(
+    fastYachts.ai_summary,
+    "2002 Fast Yachts 42 in Dún Laoghaire. 42.2ft LOA, monohull, offshore-ready."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
