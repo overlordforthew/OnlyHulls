@@ -783,6 +783,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "More",
+      model: "Boats 55",
+      sourceSite: "theyachtmarket",
+      slug: "2016-more-boats-55-at-request",
+    }),
+    { make: "More Boats", model: "55" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "More",
+      model: "Boats 55",
+      sourceSite: "theyachtmarket",
+      slug: "2016-more-55-at-request",
+    }),
+    { make: "More", model: "Boats 55" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Cheverton",
       model: "Boats 40",
       sourceSite: "theyachtmarket",
@@ -2358,6 +2376,15 @@ test("normalizeImportedMakeModel avoids compound-brand overreach on unrelated bo
     }),
     { make: "Dufour", model: "Gibsea 43" }
   );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Character",
+      model: "Boats Lytham Pilot",
+      sourceSite: "theyachtmarket",
+      slug: "2021-character-boats-lytham-pilot-windermere",
+    }),
+    { make: "Character", model: "Boats Lytham Pilot" }
+  );
 });
 
 test("normalizeImportedMakeModel promotes out of generic sailboat listing makes", () => {
@@ -3144,6 +3171,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     chevertonBoats.ai_summary,
     "1984 Cheverton Boats 40 in Ardrishaig, Argyll And Bute. 44.9ft LOA, monohull, classic offshore cruiser."
+  );
+
+  const moreBoats = sanitizeImportedBoatRecord({
+    year: 2016,
+    make: "More",
+    model: "Boats 55",
+    slug: "2016-more-boats-55-at-request",
+    source_site: "theyachtmarket",
+    location_text: "At Request",
+    ai_summary: "2016 More Boats 55 in At Request. 54.8ft LOA, monohull, premium cruiser.",
+    specs: {
+      loa: 54.8,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(moreBoats.make, "More Boats");
+  assert.equal(moreBoats.model, "55");
+  assert.equal(
+    moreBoats.ai_summary,
+    "2016 More Boats 55 in At Request. 54.8ft LOA, monohull, premium cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
