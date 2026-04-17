@@ -1280,11 +1280,19 @@ function stripSourceSpecificNoise(sourceSite: string | null | undefined, make: s
   return cleaned.trim();
 }
 
-function canonicalizeKnownModelCodes(make: string, model: string) {
+function canonicalizeKnownModelCodes(make: string, model: string, sourceSite?: string | null) {
   let cleaned = model;
+  const normalizedSourceSite = normalizeSpacing(sourceSite).toLowerCase();
 
   if (/^bali$/i.test(make)) {
     cleaned = cleaned.replace(/^(\d)\s+(\d)(?=$|\s)/, "$1.$2");
+  }
+
+  if (normalizedSourceSite === "theyachtmarket" && /^x-yachts$/i.test(make)) {
+    cleaned = cleaned
+      .replace(/^X(\d)\s+(\d)(?=\b)/i, "X$1.$2")
+      .replace(/^X\s+(\d)\s+(\d)(?=\b)/i, "X $1.$2")
+      .replace(/^X\s+(\d{2,3})(?=$|\s)/i, "X-$1");
   }
 
   if (/^j\/boats$/i.test(make)) {
@@ -1820,7 +1828,7 @@ export function normalizeImportedMakeModel(input: {
     sourceSite: input.sourceSite,
   }));
   model = stripSourceSpecificNoise(input.sourceSite, make, model);
-  model = canonicalizeKnownModelCodes(make, model);
+  model = canonicalizeKnownModelCodes(make, model, input.sourceSite);
   model = stripLeadingSlugYearFromModel(model, input.slug);
   model = stripRepeatedMakeFromModel(make, model);
   model = dedupeAdjacentModelTokens(model);

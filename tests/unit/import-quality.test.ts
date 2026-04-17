@@ -626,7 +626,43 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
       sourceSite: "theyachtmarket",
       slug: "2019-x-yachts-x4-9-en-route-barcelona-arriving-late-spring-2026",
     }),
-    { make: "X-Yachts", model: "X4 9" }
+    { make: "X-Yachts", model: "X4.9" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "X-Yachts",
+      model: "X4 9 Mkii",
+      sourceSite: "theyachtmarket",
+      slug: "2026-x-yachts-x4-9-mkii-haderslev",
+    }),
+    { make: "X-Yachts", model: "X4.9 Mkii" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "X-Yachts",
+      model: "X 4 6",
+      sourceSite: "theyachtmarket",
+      slug: "2021-x-yachts-x-4-6-boston",
+    }),
+    { make: "X-Yachts", model: "X 4.6" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "X-Yachts",
+      model: "X 50",
+      sourceSite: "theyachtmarket",
+      slug: "2004-x-yachts-x-50-tyrrhenian-sea-liguria",
+    }),
+    { make: "X-Yachts", model: "X-50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "X-Yachts",
+      model: "Xp 44",
+      sourceSite: "theyachtmarket",
+      slug: "2018-x-yachts-xp-44-port-hamble-marina",
+    }),
+    { make: "X-Yachts", model: "Xp 44" }
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
