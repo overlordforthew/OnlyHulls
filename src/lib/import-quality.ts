@@ -1101,6 +1101,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^caledonia(?:\s+marine\s+systems)?$/i.test(make) &&
+    modelStartsWith(/^marine\s+systems\b[\s-]*halifax\s+37\b/i) &&
+    /(?:^|-)caledonia-marine-systems-halifax-37(?:-|$)/.test(slug)
+  ) {
+    make = "Caledonia Marine Systems";
+    model = model.replace(/^marine\s+systems\b[\s-]*/i, "").trim();
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^character(?:\s+boats)?$/i.test(make) &&
     modelStartsWith(/^boats\b[\s-]*lytham\s+pilot\b/i) &&

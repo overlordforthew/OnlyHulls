@@ -801,6 +801,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Caledonia",
+      model: "Marine Systems Halifax 37",
+      sourceSite: "sailboatlistings",
+      slug: "2019-caledonia-marine-systems-halifax-37-vieques",
+    }),
+    { make: "Caledonia Marine Systems", model: "Halifax 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Caledonia",
+      model: "Marine Systems Halifax 37",
+      sourceSite: "sailboatlistings",
+      slug: "2019-caledonia-halifax-37-vieques",
+    }),
+    { make: "Caledonia", model: "Marine Systems Halifax 37" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3232,6 +3250,29 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     moreBoats.ai_summary,
     "2016 More Boats 55 in At Request. 54.8ft LOA, monohull, premium cruiser."
+  );
+
+  const caledoniaMarineSystems = sanitizeImportedBoatRecord({
+    year: 2019,
+    make: "Caledonia",
+    model: "Marine Systems Halifax 37",
+    slug: "2019-caledonia-marine-systems-halifax-37-vieques",
+    source_site: "sailboatlistings",
+    location_text: "Vieques, Puerto Rico",
+    ai_summary:
+      "2019 Caledonia Marine Systems Halifax 37 in Vieques, Puerto Rico. 37ft LOA, fractional sloop rig, catamaran.",
+    specs: {
+      loa: 37,
+      rig_type: "fractional sloop",
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(caledoniaMarineSystems.make, "Caledonia Marine Systems");
+  assert.equal(caledoniaMarineSystems.model, "Halifax 37");
+  assert.equal(
+    caledoniaMarineSystems.ai_summary,
+    "2019 Caledonia Marine Systems Halifax 37 in Vieques, Puerto Rico. 37ft LOA, fractional sloop rig, catamaran."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
