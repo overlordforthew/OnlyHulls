@@ -1404,6 +1404,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Adventure",
+      model: "Yachts 55",
+      sourceSite: "theyachtmarket",
+      slug: "2015-adventure-yachts-55-denmark",
+    }),
+    { make: "Adventure Yachts", model: "55" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Adventure Yachts",
+      model: "Yachts 55",
+      sourceSite: "theyachtmarket",
+      slug: "2015-adventure-yachts-55-denmark",
+    }),
+    { make: "Adventure Yachts", model: "55" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Adventure",
+      model: "40",
+      sourceSite: "theyachtmarket",
+      slug: "2015-adventure-40-denmark",
+    }),
+    { make: "Adventure", model: "40" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Discovery",
       model: "Yachts 58",
       sourceSite: "theyachtmarket",
