@@ -621,6 +621,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "X Yachts",
+      model: "X4 9",
+      sourceSite: "theyachtmarket",
+      slug: "2019-x-yachts-x4-9-en-route-barcelona-arriving-late-spring-2026",
+    }),
+    { make: "X-Yachts", model: "X4 9" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "X-Yachts",
+      model: "X-50",
+      sourceSite: "theyachtmarket",
+      slug: "2005-x-yachts-x-50-contact-de-valk-istria",
+    }),
+    { make: "X-Yachts", model: "X-50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Chriscraft",
       model: "Sparkman & Stephens Designed Sailyacht",
       sourceSite: "sailboatlistings",

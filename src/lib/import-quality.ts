@@ -643,6 +643,7 @@ export function resolveImportedDedupLocationText(
 
 function canonicalizeMakeName(make: string) {
   const normalized = normalizeSpacing(make);
+  if (/^x(?:\s+|-)yachts?$/i.test(normalized)) return "X-Yachts";
   if (/^o\s+day$/i.test(normalized)) return "O'Day";
   if (/^mac\s*gregor$/i.test(normalized)) return "MacGregor";
   if (/^c\s*&?\s*c$/i.test(normalized)) return "C&C";
