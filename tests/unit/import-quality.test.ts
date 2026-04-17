@@ -846,6 +846,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Nortech",
+      model: "Marine Hood 50",
+      sourceSite: "theyachtmarket",
+      slug: "1993-nortech-marine-hood-50-sotogrande",
+    }),
+    { make: "Nortech Marine", model: "Hood 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Nortech Marine",
+      model: "Marine Hood 50",
+      sourceSite: "theyachtmarket",
+      slug: "1993-nortech-marine-hood-50-sotogrande",
+    }),
+    { make: "Nortech Marine", model: "Hood 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Nortech",
+      model: "Marine Hood 50",
+      sourceSite: "theyachtmarket",
+      slug: "1993-nortech-hood-50-sotogrande",
+    }),
+    { make: "Nortech", model: "Marine Hood 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3321,6 +3348,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     traditionMarine.ai_summary,
     "2001 Tradition Marine Tm 42 in Barcelona, Catalonia. 42.2ft LOA, monohull, classic cruiser."
+  );
+
+  const nortechMarine = sanitizeImportedBoatRecord({
+    year: 1993,
+    make: "Nortech",
+    model: "Marine Hood 50",
+    slug: "1993-nortech-marine-hood-50-sotogrande",
+    source_site: "theyachtmarket",
+    location_text: "Sotogrande, Andalusia",
+    ai_summary: "1993 Nortech Marine Hood 50 in Sotogrande, Andalusia. 49.7ft LOA, monohull, classic bluewater cruiser.",
+    specs: {
+      loa: 49.7,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(nortechMarine.make, "Nortech Marine");
+  assert.equal(nortechMarine.model, "Hood 50");
+  assert.equal(
+    nortechMarine.ai_summary,
+    "1993 Nortech Marine Hood 50 in Sotogrande, Andalusia. 49.7ft LOA, monohull, classic bluewater cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
