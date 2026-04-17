@@ -675,6 +675,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Morris",
+      model: "Yachts 46",
+      sourceSite: "theyachtmarket",
+      slug: "1997-morris-yachts-46-kremic-marina",
+    }),
+    { make: "Morris Yachts", model: "46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Morris Yachts",
+      model: "Yachts 46",
+      sourceSite: "theyachtmarket",
+      slug: "1997-morris-yachts-46-kremic-marina",
+    }),
+    { make: "Morris Yachts", model: "46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Morris",
+      model: "46",
+      sourceSite: "theyachtmarket",
+      slug: "1997-morris-46-kremic-marina",
+    }),
+    { make: "Morris", model: "46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
