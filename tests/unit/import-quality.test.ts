@@ -819,6 +819,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Tradition",
+      model: "Marine Tm 42",
+      sourceSite: "theyachtmarket",
+      slug: "2001-tradition-marine-tm-42-barcelona",
+    }),
+    { make: "Tradition Marine", model: "Tm 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Tradition Marine",
+      model: "Marine Tm 42",
+      sourceSite: "theyachtmarket",
+      slug: "2001-tradition-marine-tm-42-barcelona",
+    }),
+    { make: "Tradition Marine", model: "Tm 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Tradition",
+      model: "Marine Tm 42",
+      sourceSite: "theyachtmarket",
+      slug: "2001-tradition-tm-42-barcelona",
+    }),
+    { make: "Tradition", model: "Marine Tm 42" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3273,6 +3300,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     caledoniaMarineSystems.ai_summary,
     "2019 Caledonia Marine Systems Halifax 37 in Vieques, Puerto Rico. 37ft LOA, fractional sloop rig, catamaran."
+  );
+
+  const traditionMarine = sanitizeImportedBoatRecord({
+    year: 2001,
+    make: "Tradition",
+    model: "Marine Tm 42",
+    slug: "2001-tradition-marine-tm-42-barcelona",
+    source_site: "theyachtmarket",
+    location_text: "Barcelona, Catalonia",
+    ai_summary: "2001 Tradition Marine Tm 42 in Barcelona, Catalonia. 42.2ft LOA, monohull, classic cruiser.",
+    specs: {
+      loa: 42.2,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(traditionMarine.make, "Tradition Marine");
+  assert.equal(traditionMarine.model, "Tm 42");
+  assert.equal(
+    traditionMarine.ai_summary,
+    "2001 Tradition Marine Tm 42 in Barcelona, Catalonia. 42.2ft LOA, monohull, classic cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
