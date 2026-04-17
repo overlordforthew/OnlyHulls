@@ -702,6 +702,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Magic",
+      model: "Yachts 96 Catamaran",
+      sourceSite: "theyachtmarket",
+      slug: "2015-magic-yachts-96-catamaran-french-riviera",
+    }),
+    { make: "Magic Yachts", model: "96 Catamaran" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Magic Yachts",
+      model: "Yachts 96 Catamaran",
+      sourceSite: "theyachtmarket",
+      slug: "2015-magic-yachts-96-catamaran-french-riviera",
+    }),
+    { make: "Magic Yachts", model: "96 Catamaran" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Maxi",
+      model: "Magic",
+      sourceSite: "theyachtmarket",
+      slug: "1984-maxi-magic-siek",
+    }),
+    { make: "Maxi", model: "Magic" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "X Yachts",
       model: "X4 9",
       sourceSite: "theyachtmarket",
@@ -2951,6 +2978,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     oqs.ai_summary,
     "2019 OQS Yachts Ocean Explorer 60 in Fort Lauderdale, Florida. 60.7ft LOA, catamaran, expedition-ready."
+  );
+
+  const magic = sanitizeImportedBoatRecord({
+    year: 2015,
+    make: "Magic",
+    model: "Yachts 96 Catamaran",
+    slug: "2015-magic-yachts-96-catamaran-french-riviera",
+    source_site: "theyachtmarket",
+    location_text: "French Riviera",
+    ai_summary:
+      "2015 Magic Yachts 96 Catamaran in French Riviera. 96.8ft LOA, catamaran, premium family cruiser.",
+    specs: {
+      loa: 96.8,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(magic.make, "Magic Yachts");
+  assert.equal(magic.model, "96 Catamaran");
+  assert.equal(
+    magic.ai_summary,
+    "2015 Magic Yachts 96 Catamaran in French Riviera. 96.8ft LOA, catamaran, premium family cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
