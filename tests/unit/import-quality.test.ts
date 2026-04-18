@@ -1035,6 +1035,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Latini",
+      model: "Marine 52",
+      sourceSite: "theyachtmarket",
+      slug: "2002-latini-marine-52-dalmatia",
+    }),
+    { make: "Latini Marine", model: "52" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Latini Marine",
+      model: "Marine 52",
+      sourceSite: "theyachtmarket",
+      slug: "2002-latini-marine-52-dalmatia",
+    }),
+    { make: "Latini Marine", model: "52" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Latini",
+      model: "Marine 52",
+      sourceSite: "theyachtmarket",
+      slug: "2002-latini-52-dalmatia",
+    }),
+    { make: "Latini", model: "Marine 52" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3657,6 +3684,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     sharkMarine.ai_summary,
     "2017 Shark Marine 50 in Marseille, France. 50ft LOA, catamaran, performance-oriented sailing catamaran."
+  );
+
+  const latiniMarine = sanitizeImportedBoatRecord({
+    year: 2002,
+    make: "Latini",
+    model: "Marine 52",
+    slug: "2002-latini-marine-52-dalmatia",
+    source_site: "theyachtmarket",
+    location_text: "Dalmatia",
+    ai_summary: "2002 Latini Marine 52 in Dalmatia. 52.5ft LOA, monohull, bluewater cruiser.",
+    specs: {
+      loa: 52.5,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(latiniMarine.make, "Latini Marine");
+  assert.equal(latiniMarine.model, "52");
+  assert.equal(
+    latiniMarine.ai_summary,
+    "2002 Latini Marine 52 in Dalmatia. 52.5ft LOA, monohull, bluewater cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
