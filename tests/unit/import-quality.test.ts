@@ -1143,6 +1143,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Asia",
+      model: "Catamarans Stealth X 47",
+      sourceSite: "theyachtmarket",
+      slug: "2023-asia-catamarans-stealth-x-47-phuket",
+    }),
+    { make: "Asia Catamarans", model: "Stealth X 47" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Asia Catamarans",
+      model: "Catamarans Stealth X 47",
+      sourceSite: "theyachtmarket",
+      slug: "2023-asia-catamarans-stealth-x-47-phuket",
+    }),
+    { make: "Asia Catamarans", model: "Stealth X 47" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Asia",
+      model: "Catamarans Stealth X 47",
+      sourceSite: "theyachtmarket",
+      slug: "2023-asia-stealth-x-47-phuket",
+    }),
+    { make: "Asia", model: "Catamarans Stealth X 47" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3851,6 +3878,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     mcconnelMarine.ai_summary,
     "1982 McConnel Marine Ltd Custom Pilot Cutter in Mallorca, Balearic Islands. 50ft LOA, monohull, bluewater cutter."
+  );
+
+  const asiaCatamarans = sanitizeImportedBoatRecord({
+    year: 2023,
+    make: "Asia",
+    model: "Catamarans Stealth X 47",
+    slug: "2023-asia-catamarans-stealth-x-47-phuket",
+    source_site: "theyachtmarket",
+    location_text: "Phuket",
+    ai_summary:
+      "2023 Asia Catamarans Stealth X 47 in Phuket. 45.9ft LOA, catamaran, premium charter catamaran.",
+    specs: {
+      loa: 45.9,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(asiaCatamarans.make, "Asia Catamarans");
+  assert.equal(asiaCatamarans.model, "Stealth X 47");
+  assert.equal(
+    asiaCatamarans.ai_summary,
+    "2023 Asia Catamarans Stealth X 47 in Phuket. 45.9ft LOA, catamaran, premium charter catamaran."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
