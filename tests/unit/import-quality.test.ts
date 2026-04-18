@@ -1116,6 +1116,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Mcconnel",
+      model: "Marine Ltd Custom Pilot Cutter",
+      sourceSite: "theyachtmarket",
+      slug: "1982-mcconnel-marine-ltd-custom-pilot-cutter-mallorca",
+    }),
+    { make: "McConnel Marine Ltd", model: "Custom Pilot Cutter" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "McConnel Marine Ltd",
+      model: "Marine Ltd Custom Pilot Cutter",
+      sourceSite: "theyachtmarket",
+      slug: "1982-mcconnel-marine-ltd-custom-pilot-cutter-mallorca",
+    }),
+    { make: "McConnel Marine Ltd", model: "Custom Pilot Cutter" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Mcconnel",
+      model: "Marine Ltd Custom Pilot Cutter",
+      sourceSite: "theyachtmarket",
+      slug: "1982-mcconnel-custom-pilot-cutter-mallorca",
+    }),
+    { make: "Mcconnel", model: "Marine Ltd Custom Pilot Cutter" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3802,6 +3829,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     technologieMarine.ai_summary,
     "1999 Technologie Marine Entincelle 60 in Terra Ceia, Florida. 60ft LOA, catamaran, bluewater liveaboard."
+  );
+
+  const mcconnelMarine = sanitizeImportedBoatRecord({
+    year: 1982,
+    make: "Mcconnel",
+    model: "Marine Ltd Custom Pilot Cutter",
+    slug: "1982-mcconnel-marine-ltd-custom-pilot-cutter-mallorca",
+    source_site: "theyachtmarket",
+    location_text: "Mallorca, Balearic Islands",
+    ai_summary:
+      "1982 McConnel Marine Ltd Custom Pilot Cutter in Mallorca, Balearic Islands. 50ft LOA, monohull, bluewater cutter.",
+    specs: {
+      loa: 50,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(mcconnelMarine.make, "McConnel Marine Ltd");
+  assert.equal(mcconnelMarine.model, "Custom Pilot Cutter");
+  assert.equal(
+    mcconnelMarine.ai_summary,
+    "1982 McConnel Marine Ltd Custom Pilot Cutter in Mallorca, Balearic Islands. 50ft LOA, monohull, bluewater cutter."
   );
 
   const jBoats = sanitizeImportedBoatRecord({

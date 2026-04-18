@@ -1222,6 +1222,16 @@ function repairCompoundBrandMakeModel(input: {
 
   if (
     sourceSite === "theyachtmarket" &&
+    /^mc\s*connel(?:\s+marine\s+ltd)?$/i.test(make) &&
+    modelStartsWith(/^marine\b[\s-]*ltd\b[\s-]*custom\b[\s-]*pilot\b[\s-]*cutter\b/i) &&
+    /(?:^|-)mcconnel-marine-ltd-custom-pilot-cutter(?:-|$)/.test(slug)
+  ) {
+    make = "McConnel Marine Ltd";
+    model = model.replace(/^marine\b[\s-]*ltd\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
     /^character(?:\s+boats)?$/i.test(make) &&
     modelStartsWith(/^boats\b[\s-]*lytham\s+pilot\b/i) &&
     /(?:^|-)character-boats-lytham-pilot(?:-|$)/.test(slug)
