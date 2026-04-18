@@ -1241,6 +1241,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^performance(?:\s+catamarans)?$/i.test(make) &&
+    /^catamarans\s+gemini\s+105m$/i.test(model) &&
+    /(?:^|-)performance-catamarans-gemini-105m(?:-|$)/.test(slug)
+  ) {
+    make = "Performance Catamarans";
+    model = "Gemini 105m";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&

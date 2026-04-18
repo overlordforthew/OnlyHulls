@@ -918,6 +918,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Performance",
+      model: "Catamarans Gemini 105m",
+      sourceSite: "sailboatlistings",
+      slug: "1998-performance-catamarans-gemini-105m-crystal-river",
+    }),
+    { make: "Performance Catamarans", model: "Gemini 105m" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Performance",
+      model: "Catamarans Gemini 105m",
+      sourceSite: "sailboatlistings",
+      slug: "1998-performance-catamarans-gemini-105mc-crystal-river",
+    }),
+    { make: "Performance", model: "Catamarans Gemini 105m" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
@@ -4097,6 +4115,29 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     dolphinCatamarans.ai_summary,
     "2006 Dolphin Catamarans Dolphin 460 in St Augustine. 44.9ft LOA, catamaran, premium cruising catamaran."
+  );
+
+  const performanceCatamarans = sanitizeImportedBoatRecord({
+    year: 1998,
+    make: "Performance",
+    model: "Catamarans Gemini 105m",
+    slug: "1998-performance-catamarans-gemini-105m-crystal-river",
+    source_site: "sailboatlistings",
+    location_text: "Crystal River, Florida",
+    ai_summary:
+      "1998 Performance Catamarans Gemini 105m listed in Crystal River, Florida. 34ft LOA, masthead sloop rig, catamaran hull.",
+    specs: {
+      loa: 34,
+      vessel_type: "catamaran",
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(performanceCatamarans.make, "Performance Catamarans");
+  assert.equal(performanceCatamarans.model, "Gemini 105m");
+  assert.equal(
+    performanceCatamarans.ai_summary,
+    "1998 Performance Catamarans Gemini 105m listed in Crystal River, Florida. 34ft LOA, masthead sloop rig, catamaran hull."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
