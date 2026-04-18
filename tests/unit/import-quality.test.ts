@@ -1062,6 +1062,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Alesia",
+      model: "Marine Goelette 50",
+      sourceSite: "theyachtmarket",
+      slug: "2020-alesia-marine-goelette-50-france",
+    }),
+    { make: "Alesia Marine", model: "Goelette 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alesia Marine",
+      model: "Marine Goelette 50",
+      sourceSite: "theyachtmarket",
+      slug: "2020-alesia-marine-goelette-50-france",
+    }),
+    { make: "Alesia Marine", model: "Goelette 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alesia",
+      model: "Marine Goelette 50",
+      sourceSite: "theyachtmarket",
+      slug: "2020-alesia-goelette-50-france",
+    }),
+    { make: "Alesia", model: "Marine Goelette 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3705,6 +3732,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     latiniMarine.ai_summary,
     "2002 Latini Marine 52 in Dalmatia. 52.5ft LOA, monohull, bluewater cruiser."
+  );
+
+  const alesiaMarine = sanitizeImportedBoatRecord({
+    year: 2020,
+    make: "Alesia",
+    model: "Marine Goelette 50",
+    slug: "2020-alesia-marine-goelette-50-france",
+    source_site: "theyachtmarket",
+    location_text: "France",
+    ai_summary: "2020 Alesia Marine Goelette 50 in France. 50.2ft LOA, monohull, bluewater cruiser.",
+    specs: {
+      loa: 50.2,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(alesiaMarine.make, "Alesia Marine");
+  assert.equal(alesiaMarine.model, "Goelette 50");
+  assert.equal(
+    alesiaMarine.ai_summary,
+    "2020 Alesia Marine Goelette 50 in France. 50.2ft LOA, monohull, bluewater cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
