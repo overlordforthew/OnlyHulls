@@ -981,6 +981,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Blakes",
+      model: "Marine Cruising Folkboat",
+      sourceSite: "theyachtmarket",
+      slug: "1972-blakes-marine-cruising-folkboat-portland-marina",
+    }),
+    { make: "Blakes Marine", model: "Cruising Folkboat" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Blakes Marine",
+      model: "Marine Cruising Folkboat",
+      sourceSite: "theyachtmarket",
+      slug: "1972-blakes-marine-cruising-folkboat-portland-marina",
+    }),
+    { make: "Blakes Marine", model: "Cruising Folkboat" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Blakes",
+      model: "Marine Cruising Folkboat",
+      sourceSite: "theyachtmarket",
+      slug: "1972-blakes-cruising-folkboat-portland-marina",
+    }),
+    { make: "Blakes", model: "Marine Cruising Folkboat" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3561,6 +3588,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     fastnetMarine.ai_summary,
     "1988 Fastnet Marine Fastnet 34 in Southampton, United Kingdom. 34ft LOA, monohull, classic cruiser-racer."
+  );
+
+  const blakesMarine = sanitizeImportedBoatRecord({
+    year: 1972,
+    make: "Blakes",
+    model: "Marine Cruising Folkboat",
+    slug: "1972-blakes-marine-cruising-folkboat-portland-marina",
+    source_site: "theyachtmarket",
+    location_text: "Portland Marina, United Kingdom",
+    ai_summary: "1972 Blakes Marine Cruising Folkboat in Portland Marina, United Kingdom. 26.2ft LOA, monohull, budget-friendly weekender.",
+    specs: {
+      loa: 26.2,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(blakesMarine.make, "Blakes Marine");
+  assert.equal(blakesMarine.model, "Cruising Folkboat");
+  assert.equal(
+    blakesMarine.ai_summary,
+    "1972 Blakes Marine Cruising Folkboat in Portland Marina, United Kingdom. 26.2ft LOA, monohull, budget-friendly weekender."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
