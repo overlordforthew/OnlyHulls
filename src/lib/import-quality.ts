@@ -29,6 +29,7 @@ function toSqlStringList(values: Iterable<string>) {
 }
 
 const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
+const BROKER_CONTACT_LOCATION_SQL_PATTERN = "^contact[[:space:]]+de[[:space:]]+valk([[:space:]]|$)";
 const HELD_SOURCE_SITE_SQL_VALUES = toSqlStringList(
   getHeldSourceKeys().map((sourceKey) => sourceKey.toLowerCase())
 );
@@ -591,6 +592,10 @@ function isQuestionMarkPlaceholderLocation(value: string) {
   return value.replace(/[?,\s]+/g, "").length === 0;
 }
 
+function isBrokerContactLocation(value: string) {
+  return /^contact\s+de\s+valk(?:\s|$)/i.test(value);
+}
+
 export function normalizeImportedLocation(value?: string | null) {
   let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
@@ -610,6 +615,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (!normalized) return "";
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
+  if (isBrokerContactLocation(normalized)) return "";
 
   const exactOverride = lookupLocationOverride(normalized);
   if (exactOverride) return exactOverride;
@@ -639,6 +645,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (!collapsed) return "";
   if (isQuestionMarkPlaceholderLocation(collapsed)) return "";
   if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
+  if (isBrokerContactLocation(collapsed)) return "";
 
   return collapsed;
 }
@@ -2329,6 +2336,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND ${normalizedLocationSql} <> ''
     AND ${nonQuestionLocationSql} <> ''
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
+    AND ${normalizedLocationSql} !~ '${BROKER_CONTACT_LOCATION_SQL_PATTERN}'
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND EXISTS (

@@ -31,6 +31,7 @@ test("public visibility suppresses imported listings from held sources", () => {
   assert.match(heldSuppressionSql, /catamarans\.com/);
   assert.match(publicSql, /source_url IS NULL/);
   assert.match(publicSql, /catamarans_com/);
+  assert.match(baseSql, /contact\[\[:space:\]\]\+de\[\[:space:\]\]\+valk/);
 });
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
@@ -65,7 +66,25 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
   assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
   assert.equal(normalizeImportedLocation("Price"), "");
+  assert.equal(normalizeImportedLocation("Contact De Valk Hindeloopen"), "");
+  assert.equal(normalizeImportedLocation("Contact De Valk Almeria, Andalusia"), "");
   assert.equal(normalizeImportedLocation("???????"), "");
+});
+
+test("broker contact text is treated as a missing imported location", () => {
+  assert.deepEqual(
+    buildImportQualityFlags({
+      make: "Koopmans",
+      model: "42",
+      slug: "1984-koopmans-42-contact-de-valk-hindeloopen",
+      locationText: "Contact De Valk Hindeloopen",
+      imageCount: 6,
+      priceUsd: 75000,
+      summary:
+        "This imported listing has enough summary detail to clear the normal quality checks.",
+    }),
+    ["missing_location"]
+  );
 });
 
 test("normalizeImportedLocation fixes live TheYachtMarket UK and Greece tails", () => {
