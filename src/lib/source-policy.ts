@@ -97,7 +97,7 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     status: "hold",
     sourceName: "Catamarans.com",
     reason:
-      "Hold new imports until location extraction is materially better and powerboat/RIB bleed is filtered out; production source health on 2026-04-15 still showed only 10 visible listings out of 88 active rows, with 78 missing locations and 21 active used-power URLs.",
+      "Hold new imports and suppress residual public visibility until location extraction, powerboat/RIB filtering, and source/model consistency improve; production review on 2026-04-18 showed 76 active rows, 8 pre-policy visible rows, 68 missing locations, 15 active used-power URLs, and 0 contact clicks in the last 30 days.",
   },
 };
 
@@ -107,6 +107,25 @@ const SOURCE_DECISIONS_BY_NAME = new Map(
 
 export function getSourceDecisionByKey(sourceKey: string) {
   return SOURCE_DECISIONS_BY_KEY[sourceKey] ?? null;
+}
+
+export function getSourceDecisionEntries() {
+  return Object.entries(SOURCE_DECISIONS_BY_KEY).map(([sourceKey, decision]) => ({
+    sourceKey,
+    ...decision,
+  }));
+}
+
+export function getHeldSourceKeys() {
+  return getSourceDecisionEntries()
+    .filter((decision) => decision.status === "hold")
+    .map((decision) => decision.sourceKey);
+}
+
+export function getHeldSourceNames() {
+  return getSourceDecisionEntries()
+    .filter((decision) => decision.status === "hold")
+    .map((decision) => decision.sourceName);
 }
 
 export function getSourceDecisionByName(sourceName: string | null | undefined) {

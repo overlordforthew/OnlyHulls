@@ -1,10 +1,15 @@
 import { pool, query } from "../src/lib/db";
-import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
+import {
+  buildBaseVisibleImportQualitySql,
+  buildVisibleImportQualitySql,
+} from "../src/lib/import-quality";
+import { buildSourceHealthPolicySignals } from "../src/lib/source-health";
 import { getSourceDecisionByName } from "../src/lib/source-policy";
 
 type SourceHealthRow = {
   source: string;
   active_count: string;
+  quality_visible_count: string;
   visible_count: string;
   contact_clicks_30d: string;
   missing_model_count: string;
@@ -37,6 +42,7 @@ async function main() {
     `SELECT
        COALESCE(b.source_name, 'Platform') AS source,
        COUNT(*)::text AS active_count,
+       COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySql("b")})::text AS quality_visible_count,
        COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
        COALESCE(SUM(COALESCE(clicks.click_count_30d, 0)), 0)::text AS contact_clicks_30d,
        COUNT(*) FILTER (
@@ -72,17 +78,25 @@ async function main() {
 
   const report = rows.map((row) => {
     const active = Number.parseInt(row.active_count, 10);
+    const qualityVisibleBeforePolicy = Number.parseInt(row.quality_visible_count, 10);
     const visible = Number.parseInt(row.visible_count, 10);
     const decision = getSourceDecisionByName(row.source);
 
     return {
       source: row.source,
       active,
+      qualityVisibleBeforePolicy,
       visible,
       visibleRate: pct(visible, active),
       contactClicks30d: Number.parseInt(row.contact_clicks_30d, 10),
       decisionStatus: decision?.status ?? "undecided",
       decisionReason: decision?.reason ?? null,
+      policySignals: buildSourceHealthPolicySignals({
+        source: row.source,
+        active,
+        visible,
+        qualityVisibleBeforePolicy,
+      }),
       missingModel: Number.parseInt(row.missing_model_count, 10),
       missingLocation: Number.parseInt(row.missing_location_count, 10),
       missingImage: Number.parseInt(row.missing_image_count, 10),
@@ -97,10 +111,10 @@ async function main() {
   }
 
   console.log("Source health (active imported inventory)");
-  console.log("source | active | visible | visible rate | clicks 30d | decision | miss model | miss location | miss image | thin summary | low price");
+  console.log("source | active | pre-policy visible | public visible | visible rate | clicks 30d | decision | policy signals | miss model | miss location | miss image | thin summary | low price");
   for (const row of report) {
     console.log(
-      `${row.source} | ${row.active} | ${row.visible} | ${row.visibleRate} | ${row.contactClicks30d} | ${row.decisionStatus} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
+      `${row.source} | ${row.active} | ${row.qualityVisibleBeforePolicy} | ${row.visible} | ${row.visibleRate} | ${row.contactClicks30d} | ${row.decisionStatus} | ${row.policySignals.join(",") || "-"} | ${row.missingModel} | ${row.missingLocation} | ${row.missingImage} | ${row.thinSummary} | ${row.lowPrice}`
     );
   }
 }

@@ -4,8 +4,11 @@ import assert from "node:assert/strict";
 import {
   buildImportedSlugFallback,
   buildImportedSlug,
+  buildBaseVisibleImportQualitySql,
+  buildHeldSourceSuppressionSql,
   buildImportQualityFlags,
   buildImportedSummary,
+  buildVisibleImportQualitySql,
   mergeStickyImportQualityFlags,
   hasImportedSaleStatusMarker,
   normalizeImportedLocation,
@@ -15,6 +18,20 @@ import {
   sanitizeImportedDimensions,
   sanitizeImportedSpecs,
 } from "../../src/lib/import-quality";
+
+test("public visibility suppresses imported listings from held sources", () => {
+  const baseSql = buildBaseVisibleImportQualitySql("b");
+  const heldSuppressionSql = buildHeldSourceSuppressionSql("b");
+  const publicSql = buildVisibleImportQualitySql("b");
+
+  assert.doesNotMatch(baseSql, /catamarans_com/);
+  assert.match(heldSuppressionSql, /source_site/);
+  assert.match(heldSuppressionSql, /source_name/);
+  assert.match(heldSuppressionSql, /catamarans_com/);
+  assert.match(heldSuppressionSql, /catamarans\.com/);
+  assert.match(publicSql, /source_url IS NULL/);
+  assert.match(publicSql, /catamarans_com/);
+});
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
   assert.equal(

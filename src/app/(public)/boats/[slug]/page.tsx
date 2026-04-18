@@ -49,6 +49,7 @@ interface BoatDetail {
   source_url: string | null;
   source_site: string | null;
   hero_url: string | null;
+  public_visible?: boolean;
 }
 
 function buildBoatTitle(boat: Pick<BoatDetail, "year" | "make" | "model">) {
@@ -94,7 +95,8 @@ async function getPublicBoat(slug: string): Promise<BoatDetail | null> {
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
+            (${buildVisibleImportQualitySql("b")}) as public_visible
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
@@ -119,7 +121,8 @@ async function getBoatForViewer(
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
             d.condition_score, d.ai_summary,
-            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url
+            (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
+            (${buildVisibleImportQualitySql("b")}) as public_visible
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      LEFT JOIN users u ON u.id = b.seller_id
@@ -134,17 +137,7 @@ async function getBoatForViewer(
   const normalizedBoat = sanitizeImportedBoatRecord(boat) as BoatDetail;
 
   if (normalizedBoat.status === "active") {
-    if (
-      normalizedBoat.source_url &&
-      (
-        !normalizedBoat.hero_url ||
-        !hasUsableImportedLocation(normalizedBoat.location_text) ||
-        Number(normalizedBoat.asking_price_usd || normalizedBoat.asking_price) < 3000
-      )
-    ) {
-      return null;
-    }
-    return normalizedBoat;
+    return normalizedBoat.public_visible ? normalizedBoat : null;
   }
 
   if (viewerRole === "admin" || normalizedBoat.seller_id === viewerId) {

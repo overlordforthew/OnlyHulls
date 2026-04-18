@@ -1,6 +1,6 @@
 # Boat Listing Sites — Operational Source Directory
 
-**Last updated: 2026-04-10**
+**Last updated: 2026-04-18**
 **Purpose:** This is the operational source-of-truth for marketplace acquisition decisions in OnlyHulls.
 
 This document is a portfolio, not a bucket. A site being technically reachable does **not** mean it belongs in the daily pipeline.
@@ -36,7 +36,7 @@ This document is a portfolio, not a bucket. A site being technically reachable d
 | Core | Dream Yacht Sales | `dreamyachtsales.com` | High-fit cat inventory, now clearing quality gates with real images and locations | **ACTIVE** |
 | Core | CatamaranSite | `catamaransite.com` | Curated cat inventory, now partially recovered into visible buyer-facing stock | **ACTIVE** |
 | Core | Moorings Brokerage | `mooringsbrokerage.com` | Charter exit cats, clean niche inventory | **ACTIVE** |
-| Recovery | Catamarans.com | `catamarans.com` | Thematic fit is high, but current location extraction still leaves most rows hidden | **HOLD** |
+| Recovery | Catamarans.com | `catamarans.com` | Thematic fit is high, but current extraction still leaves weak residual rows that should stay suppressed from public browse | **HOLD** |
 | Recovery | Denison Yachting | `denisonyachtsales.com` | Large SSR volume, but current scraper still produces buyer-invisible shells | **HOLD** |
 | Controlled Test | Rightboat | `rightboat.com` | Good sail inventory, but rate-limits aggressively | **TEST** |
 | Commercial | Boats.com | `boats.com` | Massive inventory, but should be official API/commercial | **API / COMMERCIAL** |
@@ -74,7 +74,8 @@ These are the next sources to recover only if they prove buyer-visible value.
   - detail pages have solid price, image, and spec coverage
 - Why it is still held:
   - location extraction remains weak on most rows
-  - recent recovery pass improved visibility, but not enough for daily cron
+  - source/model consistency still has buyer-trust issues in the residual visible set
+  - public browse should suppress held-source residual rows until the source is recovered intentionally
 
 ### 2. Denison Yachting
 - Domain: `denisonyachtsales.com`

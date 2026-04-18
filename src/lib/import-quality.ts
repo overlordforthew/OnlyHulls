@@ -1,3 +1,5 @@
+import { getHeldSourceKeys, getHeldSourceNames } from "@/lib/source-policy";
+
 export const MIN_VISIBLE_IMPORTED_PRICE_USD = 3000;
 export const MIN_VISIBLE_IMPORTED_IMAGES = 1;
 export const MIN_GOOD_SUMMARY_LENGTH = 40;
@@ -27,6 +29,22 @@ function toSqlStringList(values: Iterable<string>) {
 }
 
 const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
+const HELD_SOURCE_SITE_SQL_VALUES = toSqlStringList(
+  getHeldSourceKeys().map((sourceKey) => sourceKey.toLowerCase())
+);
+const HELD_SOURCE_NAME_SQL_VALUES = toSqlStringList(
+  getHeldSourceNames().map((sourceName) => sourceName.toLowerCase())
+);
+
+export function buildHeldSourceSuppressionSql(alias = "b") {
+  const sourceSiteSql = `LOWER(COALESCE(NULLIF(TRIM(${alias}.source_site), ''), ''))`;
+  const sourceNameSql = `LOWER(COALESCE(NULLIF(TRIM(${alias}.source_name), ''), ''))`;
+
+  return `(
+    ${sourceSiteSql} NOT IN (${HELD_SOURCE_SITE_SQL_VALUES})
+    AND ${sourceNameSql} NOT IN (${HELD_SOURCE_NAME_SQL_VALUES})
+  )`;
+}
 
 const LOCATION_LABEL_PREFIXES = [
   /^location\s*:\s*/i,
@@ -2299,7 +2317,7 @@ export function buildImportDocumentationStatus(input: {
   };
 }
 
-export function buildVisibleImportQualitySql(alias = "b") {
+export function buildBaseVisibleImportQualitySql(alias = "b") {
   const normalizedLocationSql = `LOWER(COALESCE(NULLIF(REGEXP_REPLACE(TRIM(${alias}.location_text), '[,\\s]+$', '', 'g'), ''), ''))`;
   const nonQuestionLocationSql = `REPLACE(REPLACE(REPLACE(${normalizedLocationSql}, '?', ''), ' ', ''), ',', '')`;
 
@@ -2330,6 +2348,16 @@ export function buildVisibleImportQualitySql(alias = "b") {
     ), true)
   )
  )`;
+}
+
+export function buildVisibleImportQualitySql(alias = "b") {
+  return `(
+    ${buildBaseVisibleImportQualitySql(alias)}
+    AND (
+      ${alias}.source_url IS NULL
+      OR ${buildHeldSourceSuppressionSql(alias)}
+    )
+  )`;
 }
 
 export const VISIBLE_IMPORT_QUALITY_SQL = buildVisibleImportQualitySql();

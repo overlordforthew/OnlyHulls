@@ -4,8 +4,11 @@ import assert from "node:assert/strict";
 import {
   assertSourceImportAllowed,
   getDailySourceDecision,
+  getHeldSourceKeys,
+  getHeldSourceNames,
   getSourceDecisionByKey,
   getSourceDecisionByName,
+  getSourceDecisionEntries,
   shouldRunSourceInDailyPortfolio,
 } from "../../src/lib/source-policy";
 
@@ -92,7 +95,7 @@ const EXPECTED_DECISIONS = [
     key: "catamarans_com",
     name: "Catamarans.com",
     status: "hold",
-    reasonPrefix: "Hold new imports until",
+    reasonPrefix: "Hold new imports and suppress",
   },
 ] as const;
 
@@ -130,6 +133,18 @@ test("source policy exposes the daily scrape run decision", () => {
   assert.equal(undecided.run, false);
   assert.equal(undecided.status, "undecided");
   assert.match(undecided.reason, /not in the daily portfolio yet/i);
+});
+
+test("source policy exposes held sources for public visibility suppression", () => {
+  const entries = getSourceDecisionEntries();
+  const heldKeys = getHeldSourceKeys();
+  const heldNames = getHeldSourceNames();
+
+  assert.equal(entries.length, EXPECTED_DECISIONS.length);
+  assert.ok(heldKeys.includes("catamarans_com"));
+  assert.ok(heldNames.includes("Catamarans.com"));
+  assert.ok(!heldKeys.includes("sailboatlistings"));
+  assert.equal(heldKeys.length, heldNames.length);
 });
 
 test("source policy blocks only held imports", () => {
