@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cdnx.theyachtmarket.com",
       },
+      {
+        protocol: "https",
+        hostname: "www.yachtsite.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.catamarans.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.dreamyachtsales.com",
+      },
     ],
   },
 };

@@ -1,3 +1,10 @@
+const PRIVATE_HOST_RE =
+  /^(127\.\d+\.\d+\.\d+|0\.0\.0\.0|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|localhost(\.localdomain)?|metadata\.google\.internal|\[::1\])$/i;
+
+function isPrivateHost(hostname: string): boolean {
+  return PRIVATE_HOST_RE.test(hostname);
+}
+
 export function getSafeExternalUrl(url: string | null | undefined): string | null {
   const normalized = String(url || "").trim();
   if (!normalized) {
@@ -7,6 +14,12 @@ export function getSafeExternalUrl(url: string | null | undefined): string | nul
   try {
     const parsed = new URL(normalized);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    if (isPrivateHost(parsed.hostname)) {
+      return null;
+    }
+    if (parsed.username || parsed.password) {
       return null;
     }
 
