@@ -1191,6 +1191,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^calgan(?:\s+marine)?$/i.test(make) &&
+    /^marine\s+crown$/i.test(model) &&
+    /(?:^|-)calgan-marine-crown(?:-|$)/.test(slug)
+  ) {
+    make = "Calgan Marine";
+    model = "Crown 34";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&

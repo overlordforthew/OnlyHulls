@@ -819,6 +819,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Calgan",
+      model: "Marine Crown",
+      sourceSite: "sailboatlistings",
+      slug: "1979-calgan-marine-crown-sidney-vancouver-island",
+    }),
+    { make: "Calgan Marine", model: "Crown 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Calgan",
+      model: "Marine Crown",
+      sourceSite: "sailboatlistings",
+      slug: "1979-calgan-marine-cutter-sidney-vancouver-island",
+    }),
+    { make: "Calgan", model: "Marine Crown" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
