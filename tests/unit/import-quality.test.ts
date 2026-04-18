@@ -1197,6 +1197,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Dolphin",
+      model: "Catamarans Dolphin 460",
+      sourceSite: "theyachtmarket",
+      slug: "2006-dolphin-catamarans-dolphin-460-st-augustine",
+    }),
+    { make: "Dolphin Catamarans", model: "Dolphin 460" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Dolphin Catamarans",
+      model: "Catamarans Dolphin 460",
+      sourceSite: "theyachtmarket",
+      slug: "2006-dolphin-catamarans-dolphin-460-st-augustine",
+    }),
+    { make: "Dolphin Catamarans", model: "Dolphin 460" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Dolphin",
+      model: "Catamarans Dolphin 460",
+      sourceSite: "theyachtmarket",
+      slug: "2006-dolphin-dolphin-460-st-augustine",
+    }),
+    { make: "Dolphin", model: "Catamarans Dolphin 460" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3949,6 +3976,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     antaresCatamarans.ai_summary,
     "2021 Antares Catamarans 44 Gs in Mathews. 44.3ft LOA, catamaran, premium bluewater cruiser."
+  );
+
+  const dolphinCatamarans = sanitizeImportedBoatRecord({
+    year: 2006,
+    make: "Dolphin",
+    model: "Catamarans Dolphin 460",
+    slug: "2006-dolphin-catamarans-dolphin-460-st-augustine",
+    source_site: "theyachtmarket",
+    location_text: "St Augustine",
+    ai_summary:
+      "2006 Dolphin Catamarans Dolphin 460 in St Augustine. 44.9ft LOA, catamaran, premium cruising catamaran.",
+    specs: {
+      loa: 44.9,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(dolphinCatamarans.make, "Dolphin Catamarans");
+  assert.equal(dolphinCatamarans.model, "Dolphin 460");
+  assert.equal(
+    dolphinCatamarans.ai_summary,
+    "2006 Dolphin Catamarans Dolphin 460 in St Augustine. 44.9ft LOA, catamaran, premium cruising catamaran."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
