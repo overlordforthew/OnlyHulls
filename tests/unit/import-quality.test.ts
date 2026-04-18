@@ -873,6 +873,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Morgan",
+      model: "Marine Morgan 43 CC",
+      sourceSite: "sailboatlistings",
+      slug: "1985-morgan-marine-morgan-43-cc-noumea-new-caledonia",
+    }),
+    { make: "Morgan Marine", model: "Morgan 43 CC" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Morgan",
+      model: "Marine Morgan 43 CC",
+      sourceSite: "sailboatlistings",
+      slug: "1985-morgan-marine-morgan-44-cc-noumea-new-caledonia",
+    }),
+    { make: "Morgan", model: "Marine Morgan 43 CC" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
