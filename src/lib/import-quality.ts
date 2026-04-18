@@ -1211,6 +1211,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^nordest(?:\s+marine)?$/i.test(make) &&
+    /^marine\s+crowther\s+63$/i.test(model) &&
+    /(?:^|-)nordest-marine-crowther-63(?:-|$)/.test(slug)
+  ) {
+    make = "Nordest Marine";
+    model = "Crowther 63";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&

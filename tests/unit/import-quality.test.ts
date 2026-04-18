@@ -855,6 +855,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Nordest",
+      model: "Marine Crowther 63",
+      sourceSite: "sailboatlistings",
+      slug: "1996-nordest-marine-crowther-63-tahiti",
+    }),
+    { make: "Nordest Marine", model: "Crowther 63" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Nordest",
+      model: "Marine Crowther 63",
+      sourceSite: "sailboatlistings",
+      slug: "1996-nordest-marine-crowther-64-tahiti",
+    }),
+    { make: "Nordest", model: "Marine Crowther 63" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
