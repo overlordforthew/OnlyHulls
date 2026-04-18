@@ -1008,6 +1008,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Shark",
+      model: "Marine 50",
+      sourceSite: "theyachtmarket",
+      slug: "2017-shark-marine-50-marseille",
+    }),
+    { make: "Shark Marine", model: "50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Shark Marine",
+      model: "Marine 50",
+      sourceSite: "theyachtmarket",
+      slug: "2017-shark-marine-50-marseille",
+    }),
+    { make: "Shark Marine", model: "50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Shark",
+      model: "Marine 50",
+      sourceSite: "theyachtmarket",
+      slug: "2017-shark-50-marseille",
+    }),
+    { make: "Shark", model: "Marine 50" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3609,6 +3636,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     blakesMarine.ai_summary,
     "1972 Blakes Marine Cruising Folkboat in Portland Marina, United Kingdom. 26.2ft LOA, monohull, budget-friendly weekender."
+  );
+
+  const sharkMarine = sanitizeImportedBoatRecord({
+    year: 2017,
+    make: "Shark",
+    model: "Marine 50",
+    slug: "2017-shark-marine-50-marseille",
+    source_site: "theyachtmarket",
+    location_text: "Marseille, France",
+    ai_summary: "2017 Shark Marine 50 in Marseille, France. 50ft LOA, catamaran, performance-oriented sailing catamaran.",
+    specs: {
+      loa: 50,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(sharkMarine.make, "Shark Marine");
+  assert.equal(sharkMarine.model, "50");
+  assert.equal(
+    sharkMarine.ai_summary,
+    "2017 Shark Marine 50 in Marseille, France. 50ft LOA, catamaran, performance-oriented sailing catamaran."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
