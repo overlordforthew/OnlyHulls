@@ -1201,6 +1201,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^fora(?:\s+marine)?$/i.test(make) &&
+    /^marine\s+rm\s+1200$/i.test(model) &&
+    /(?:^|-)fora-marine-rm-1200(?:-|$)/.test(slug)
+  ) {
+    make = "FORA Marine";
+    model = "RM 1200";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&

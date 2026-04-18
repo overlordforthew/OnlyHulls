@@ -837,6 +837,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "FORA",
+      model: "Marine RM 1200",
+      sourceSite: "sailboatlistings",
+      slug: "2008-fora-marine-rm-1200-saint-martin",
+    }),
+    { make: "FORA Marine", model: "RM 1200" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "FORA",
+      model: "Marine RM 1200",
+      sourceSite: "sailboatlistings",
+      slug: "2008-fora-marine-rm-1300-saint-martin",
+    }),
+    { make: "FORA", model: "Marine RM 1200" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
