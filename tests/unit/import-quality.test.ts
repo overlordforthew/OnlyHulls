@@ -954,6 +954,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Fastnet",
+      model: "Marine Fastnet 34",
+      sourceSite: "theyachtmarket",
+      slug: "1988-fastnet-marine-fastnet-34-southampton",
+    }),
+    { make: "Fastnet Marine", model: "Fastnet 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fastnet Marine",
+      model: "Marine Fastnet 34",
+      sourceSite: "theyachtmarket",
+      slug: "1988-fastnet-marine-fastnet-34-southampton",
+    }),
+    { make: "Fastnet Marine", model: "Fastnet 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Fastnet",
+      model: "Marine Fastnet 34",
+      sourceSite: "theyachtmarket",
+      slug: "1988-fastnet-fastnet-34-southampton",
+    }),
+    { make: "Fastnet", model: "Marine Fastnet 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3513,6 +3540,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     greenMarine.ai_summary,
     "2014 Green Marine Volvo 65 in Lisbon, Portugal. 66.9ft LOA, monohull, racing yacht."
+  );
+
+  const fastnetMarine = sanitizeImportedBoatRecord({
+    year: 1988,
+    make: "Fastnet",
+    model: "Marine Fastnet 34",
+    slug: "1988-fastnet-marine-fastnet-34-southampton",
+    source_site: "theyachtmarket",
+    location_text: "Southampton, United Kingdom",
+    ai_summary: "1988 Fastnet Marine Fastnet 34 in Southampton, United Kingdom. 34ft LOA, monohull, classic cruiser-racer.",
+    specs: {
+      loa: 34,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(fastnetMarine.make, "Fastnet Marine");
+  assert.equal(fastnetMarine.model, "Fastnet 34");
+  assert.equal(
+    fastnetMarine.ai_summary,
+    "1988 Fastnet Marine Fastnet 34 in Southampton, United Kingdom. 34ft LOA, monohull, classic cruiser-racer."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
