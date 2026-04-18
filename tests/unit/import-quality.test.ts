@@ -927,6 +927,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Green",
+      model: "Marine Volvo 65",
+      sourceSite: "theyachtmarket",
+      slug: "2014-green-marine-volvo-65-lisbon",
+    }),
+    { make: "Green Marine", model: "Volvo 65" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Green Marine",
+      model: "Marine Volvo 65",
+      sourceSite: "theyachtmarket",
+      slug: "2014-green-marine-volvo-65-lisbon",
+    }),
+    { make: "Green Marine", model: "Volvo 65" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Green",
+      model: "Marine Volvo 65",
+      sourceSite: "theyachtmarket",
+      slug: "2014-green-volvo-65-lisbon",
+    }),
+    { make: "Green", model: "Marine Volvo 65" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3465,6 +3492,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     squaltMarine.ai_summary,
     "2019 Squalt Marine Ck 64 in Le Marin, Martinique. 64.2ft LOA, monohull, center-cockpit cruiser."
+  );
+
+  const greenMarine = sanitizeImportedBoatRecord({
+    year: 2014,
+    make: "Green",
+    model: "Marine Volvo 65",
+    slug: "2014-green-marine-volvo-65-lisbon",
+    source_site: "theyachtmarket",
+    location_text: "Lisbon, Portugal",
+    ai_summary: "2014 Green Marine Volvo 65 in Lisbon, Portugal. 66.9ft LOA, monohull, racing yacht.",
+    specs: {
+      loa: 66.9,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(greenMarine.make, "Green Marine");
+  assert.equal(greenMarine.model, "Volvo 65");
+  assert.equal(
+    greenMarine.ai_summary,
+    "2014 Green Marine Volvo 65 in Lisbon, Portugal. 66.9ft LOA, monohull, racing yacht."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
