@@ -1231,6 +1231,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^bali(?:\s+catamarans)?$/i.test(make) &&
+    /^catamarans\s+bali\s+4(?:[.\s]?5)$/i.test(model) &&
+    /(?:^|-)bali-catamarans-bali-4-5(?:-|$)/.test(slug)
+  ) {
+    make = "Bali Catamarans";
+    model = "Bali 4.5";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&

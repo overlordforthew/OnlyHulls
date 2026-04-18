@@ -891,6 +891,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Bali",
+      model: "Catamarans Bali 4.5",
+      sourceSite: "sailboatlistings",
+      slug: "2017-bali-catamarans-bali-4-5-cancun",
+    }),
+    { make: "Bali Catamarans", model: "Bali 4.5" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bali Catamarans",
+      model: "Catamarans Bali 4.5",
+      sourceSite: "sailboatlistings",
+      slug: "2017-bali-catamarans-bali-4-5-cancun",
+    }),
+    { make: "Bali Catamarans", model: "Bali 4.5" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Bali",
+      model: "Catamarans Bali 46",
+      sourceSite: "sailboatlistings",
+      slug: "2021-bali-catamarans-bali-46-tortola",
+    }),
+    { make: "Bali", model: "Catamarans Bali 46" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
