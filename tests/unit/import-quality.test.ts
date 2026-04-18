@@ -1089,6 +1089,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Technologie",
+      model: "Marine Entincelle 60",
+      sourceSite: "theyachtmarket",
+      slug: "1999-technologie-marine-entincelle-60-terra-ceia",
+    }),
+    { make: "Technologie Marine", model: "Entincelle 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Technologie Marine",
+      model: "Marine Entincelle 60",
+      sourceSite: "theyachtmarket",
+      slug: "1999-technologie-marine-entincelle-60-terra-ceia",
+    }),
+    { make: "Technologie Marine", model: "Entincelle 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Technologie",
+      model: "Marine Entincelle 60",
+      sourceSite: "theyachtmarket",
+      slug: "1999-technologie-entincelle-60-terra-ceia",
+    }),
+    { make: "Technologie", model: "Marine Entincelle 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3753,6 +3780,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     alesiaMarine.ai_summary,
     "2020 Alesia Marine Goelette 50 in France. 50.2ft LOA, monohull, bluewater cruiser."
+  );
+
+  const technologieMarine = sanitizeImportedBoatRecord({
+    year: 1999,
+    make: "Technologie",
+    model: "Marine Entincelle 60",
+    slug: "1999-technologie-marine-entincelle-60-terra-ceia",
+    source_site: "theyachtmarket",
+    location_text: "Terra Ceia, Florida",
+    ai_summary:
+      "1999 Technologie Marine Entincelle 60 in Terra Ceia, Florida. 60ft LOA, catamaran, bluewater liveaboard.",
+    specs: {
+      loa: 60,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(technologieMarine.make, "Technologie Marine");
+  assert.equal(technologieMarine.model, "Entincelle 60");
+  assert.equal(
+    technologieMarine.ai_summary,
+    "1999 Technologie Marine Entincelle 60 in Terra Ceia, Florida. 60ft LOA, catamaran, bluewater liveaboard."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
