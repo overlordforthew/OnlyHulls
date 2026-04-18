@@ -900,6 +900,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Squalt",
+      model: "Marine Ck 64",
+      sourceSite: "theyachtmarket",
+      slug: "2019-squalt-marine-ck-64-le-marin",
+    }),
+    { make: "Squalt Marine", model: "Ck 64" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Squalt Marine",
+      model: "Marine Ck 64",
+      sourceSite: "theyachtmarket",
+      slug: "2019-squalt-marine-ck-64-le-marin",
+    }),
+    { make: "Squalt Marine", model: "Ck 64" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Squalt",
+      model: "Marine Ck 64",
+      sourceSite: "theyachtmarket",
+      slug: "2019-squalt-ck-64-le-marin",
+    }),
+    { make: "Squalt", model: "Marine Ck 64" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3417,6 +3444,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     kingMarine.ai_summary,
     "2017 King Marine Nmyd Irc One Off 54 in Hamble, United Kingdom. 54ft LOA, monohull, racing yacht."
+  );
+
+  const squaltMarine = sanitizeImportedBoatRecord({
+    year: 2019,
+    make: "Squalt",
+    model: "Marine Ck 64",
+    slug: "2019-squalt-marine-ck-64-le-marin",
+    source_site: "theyachtmarket",
+    location_text: "Le Marin, Martinique",
+    ai_summary: "2019 Squalt Marine Ck 64 in Le Marin, Martinique. 64.2ft LOA, monohull, center-cockpit cruiser.",
+    specs: {
+      loa: 64.2,
+      vessel_type: "monohull",
+    },
+  });
+
+  assert.equal(squaltMarine.make, "Squalt Marine");
+  assert.equal(squaltMarine.model, "Ck 64");
+  assert.equal(
+    squaltMarine.ai_summary,
+    "2019 Squalt Marine Ck 64 in Le Marin, Martinique. 64.2ft LOA, monohull, center-cockpit cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({
