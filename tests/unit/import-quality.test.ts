@@ -1170,6 +1170,33 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Antares",
+      model: "Catamarans 44 Gs",
+      sourceSite: "theyachtmarket",
+      slug: "2021-antares-catamarans-44-gs-mathews",
+    }),
+    { make: "Antares Catamarans", model: "44 Gs" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Antares Catamarans",
+      model: "Catamarans 44 Gs",
+      sourceSite: "theyachtmarket",
+      slug: "2021-antares-catamarans-44-gs-mathews",
+    }),
+    { make: "Antares Catamarans", model: "44 Gs" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Antares",
+      model: "Catamarans 44 Gs",
+      sourceSite: "theyachtmarket",
+      slug: "2021-antares-44-gs-mathews",
+    }),
+    { make: "Antares", model: "Catamarans 44 Gs" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Character",
       model: "Boats Lytham Pilot",
       sourceSite: "theyachtmarket",
@@ -3900,6 +3927,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     asiaCatamarans.ai_summary,
     "2023 Asia Catamarans Stealth X 47 in Phuket. 45.9ft LOA, catamaran, premium charter catamaran."
+  );
+
+  const antaresCatamarans = sanitizeImportedBoatRecord({
+    year: 2021,
+    make: "Antares",
+    model: "Catamarans 44 Gs",
+    slug: "2021-antares-catamarans-44-gs-mathews",
+    source_site: "theyachtmarket",
+    location_text: "Mathews",
+    ai_summary:
+      "2021 Antares Catamarans 44 Gs in Mathews. 44.3ft LOA, catamaran, premium bluewater cruiser.",
+    specs: {
+      loa: 44.3,
+      vessel_type: "catamaran",
+    },
+  });
+
+  assert.equal(antaresCatamarans.make, "Antares Catamarans");
+  assert.equal(antaresCatamarans.model, "44 Gs");
+  assert.equal(
+    antaresCatamarans.ai_summary,
+    "2021 Antares Catamarans 44 Gs in Mathews. 44.3ft LOA, catamaran, premium bluewater cruiser."
   );
 
   const jBoats = sanitizeImportedBoatRecord({

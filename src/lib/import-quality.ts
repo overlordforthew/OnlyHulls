@@ -1242,6 +1242,16 @@ function repairCompoundBrandMakeModel(input: {
 
   if (
     sourceSite === "theyachtmarket" &&
+    /^antares(?:\s+catamarans)?$/i.test(make) &&
+    modelStartsWith(/^catamarans\b[\s-]*44\b[\s-]*gs\b/i) &&
+    /(?:^|-)antares-catamarans-44-gs(?:-|$)/.test(slug)
+  ) {
+    make = "Antares Catamarans";
+    model = model.replace(/^catamarans\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
     /^character(?:\s+boats)?$/i.test(make) &&
     modelStartsWith(/^boats\b[\s-]*lytham\s+pilot\b/i) &&
     /(?:^|-)character-boats-lytham-pilot(?:-|$)/.test(slug)
