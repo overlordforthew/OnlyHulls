@@ -153,10 +153,10 @@ async function getBoatMedia(boatId: string) {
     id: string;
     type: "image" | "video";
     url: string;
-    thumbnail_url: string | null;
+    thumbnailUrl: string | null;
     caption: string | null;
   }>(
-    `SELECT id, type, url, thumbnail_url, caption
+    `SELECT id, type, url, thumbnail_url AS "thumbnailUrl", caption
      FROM boat_media
      WHERE boat_id = $1
      ORDER BY sort_order`,

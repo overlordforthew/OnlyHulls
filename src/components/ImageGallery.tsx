@@ -77,19 +77,19 @@ export function ImageGallery({
           <iframe
             src={currentVideo.embedUrl}
             title={currentItem.caption || `${alt} video`}
-            className="aspect-[16/9] w-full border-0 bg-black"
+            className="mx-auto aspect-[16/9] w-full max-w-[960px] border-0 bg-black"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
         ) : (
-          <div className="relative aspect-[16/9] w-full">
+          <div className="relative mx-auto aspect-[16/9] w-full max-w-[960px] bg-black">
             <Image
               src={currentItem.url}
               alt={currentItem.caption || alt}
               fill
-              className="object-cover"
-              sizes="100vw"
+              className="object-contain"
+              sizes="(min-width: 1024px) 960px, 100vw"
               loading="eager"
               priority={safeCurrent === 0}
               unoptimized={!currentImageIsLocal}
@@ -129,37 +129,43 @@ export function ImageGallery({
       {/* Thumbnail strip */}
         {displayMedia.length > 1 && (
           <div ref={thumbsRef} className="flex gap-2 overflow-x-auto">
-            {displayMedia.map((m, i) => (
-              <button
-                key={m.id}
-                onClick={() => setCurrent(i)}
-                className={`relative h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
-                  i === safeCurrent
-                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-              >
-                {m.type === "video" ? (
-                  <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
-                    <div className="flex flex-col items-center gap-1">
-                      <PlayCircle className="h-8 w-8" />
-                      <span className="text-xs font-medium">Video</span>
+            {displayMedia.map((m, i) => {
+              const thumbnailUrl = m.thumbnailUrl || m.url;
+
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setCurrent(i)}
+                  className={`relative h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
+                    i === safeCurrent
+                      ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                      : "opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  {m.type === "video" ? (
+                    <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
+                      <div className="flex flex-col items-center gap-1">
+                        <PlayCircle className="h-8 w-8" />
+                        <span className="text-xs font-medium">Video</span>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <Image
-                    src={m.url}
-                    alt={m.caption || alt}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 9rem, 11rem"
-                    unoptimized={!isLocalMediaUrl(m.url)}
-                    quality={isLocalMediaUrl(m.url) ? 80 : undefined}
-                    onError={() => markImageFailed(m.url)}
-                  />
-                )}
-              </button>
-            ))}
+                  ) : (
+                    <Image
+                      src={thumbnailUrl}
+                      alt={m.caption || alt}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 9rem, 11rem"
+                      unoptimized={!isLocalMediaUrl(thumbnailUrl)}
+                      quality={isLocalMediaUrl(thumbnailUrl) ? 80 : undefined}
+                      onError={() => {
+                        if (thumbnailUrl === m.url) markImageFailed(m.url);
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
     </div>
