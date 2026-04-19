@@ -351,6 +351,13 @@ export default async function BoatDetailPage({
         name: boat.location_text,
       },
     }),
+    additionalProperty: [
+      {
+        "@type": "PropertyValue",
+        name: copy.specLabels.year,
+        value: boat.year,
+      },
+    ],
   };
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -470,6 +477,7 @@ export default async function BoatDetailPage({
             <div>
               <h2 className="text-xl font-bold">{copy.specifications}</h2>
               <div className="mt-4 grid grid-cols-2 gap-1">
+                <SpecRow label={copy.specLabels.year} value={String(boat.year)} />
                 {specs.loa ? <SpecRow label={copy.specLabels.loa} value={`${specs.loa}ft`} /> : null}
                 {specs.beam ? <SpecRow label={copy.specLabels.beam} value={`${specs.beam}ft`} /> : null}
                 {specs.draft ? <SpecRow label={copy.specLabels.draft} value={`${specs.draft}ft`} /> : null}

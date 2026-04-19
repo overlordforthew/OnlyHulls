@@ -20,6 +20,7 @@ export interface BoatDetailCopy {
   whyThisBoatDescription: string;
   specifications: string;
   specLabels: {
+    year: string;
     loa: string;
     beam: string;
     draft: string;
@@ -105,6 +106,7 @@ const EN_BOAT_DETAIL_COPY: BoatDetailCopy = {
     "A fast read on the setup, market context, and best next comparison move.",
   specifications: "Specifications",
   specLabels: {
+    year: "Year",
     loa: "LOA",
     beam: "Beam",
     draft: "Draft",
@@ -192,6 +194,7 @@ const ES_BOAT_DETAIL_COPY: BoatDetailCopy = {
     "Una lectura rápida del barco, del mercado y del siguiente paso más útil para compararlo.",
   specifications: "Especificaciones",
   specLabels: {
+    year: "Año",
     loa: "Eslora",
     beam: "Manga",
     draft: "Calado",
