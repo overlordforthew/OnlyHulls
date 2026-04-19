@@ -284,6 +284,10 @@
       "two": "Cuenta gratis para guardar y comparar",
       "three": "Contacto directo con el vendedor sin comisión de broker"
     },
+    "whatLabel": "Qué",
+    "whereLabel": "Dónde",
+    "locationPlaceholder": "Cualquier ubicación",
+    "popularMarkets": "Popular:",
     "stats": {
       "boatsListed": "Barcos publicados",
       "commission": "Comisión",
@@ -494,6 +498,10 @@
     "openCompare": "Abrir comparación",
     "comparePage": "Página de comparación",
     "searchPlaceholder": "Buscar barcos...",
+    "locationPlaceholder": "Dónde",
+    "popularMarkets": "Mercados populares",
+    "locationChip": "Ubicación: {location}",
+    "clearLocation": "Quitar ubicación",
     "searchButton": "Buscar",
     "clearFilter": "Quitar filtro",
     "minPrice": "Precio mín.",

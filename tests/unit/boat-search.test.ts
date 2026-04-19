@@ -70,6 +70,19 @@ test("boat search preserves dedicated location filters separately from text sear
   assert.equal(where.params[0], "%bahamas%");
 });
 
+test("boat search canonicalizes known location aliases and expands market terms", () => {
+  const filters = filtersFromSearchParams(new URLSearchParams("location=PR"));
+
+  assert.equal(filters.location, "puerto-rico");
+
+  const params = buildBoatSearchParams({ location: "Fajardo" });
+  assert.equal(params.get("location"), "puerto-rico");
+
+  const where = buildWhereClause(filters);
+  assert.match(where.where, /location_text/i);
+  assert.deepEqual(where.params.slice(0, 3), ["%puerto rico%", "%san juan%", "%fajardo%"]);
+});
+
 test("saved search signature keeps location and currency distinct", () => {
   const signature = JSON.parse(
     buildSavedSearchSignature({ location: "bahamas", minPrice: "200000", currency: "GBP" })

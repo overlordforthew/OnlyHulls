@@ -284,6 +284,10 @@
       "two": "Free account to save and compare",
       "three": "Direct seller contact with no broker commission"
     },
+    "whatLabel": "What",
+    "whereLabel": "Where",
+    "locationPlaceholder": "Any location",
+    "popularMarkets": "Popular:",
     "stats": {
       "boatsListed": "Boats Listed",
       "commission": "Commission",
@@ -494,6 +498,10 @@
     "openCompare": "Open compare",
     "comparePage": "Compare page",
     "searchPlaceholder": "Search boats...",
+    "locationPlaceholder": "Where",
+    "popularMarkets": "Popular markets",
+    "locationChip": "Location: {location}",
+    "clearLocation": "Clear location",
     "searchButton": "Search",
     "clearFilter": "Clear filter",
     "minPrice": "Min price",

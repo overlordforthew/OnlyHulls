@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { getSeoHubBoatCount, getSeoHubBoats, type BoatRow } from "@/lib/db/queries";
+import { buildLocationLikePattern, getLocationSearchTerms } from "@/lib/locations/top-markets";
 import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 
 export interface SeoHubDefinition {
@@ -32,25 +33,6 @@ const CATAMARAN_MAKES = [
   "seawind",
 ];
 
-const CARIBBEAN_PATTERNS = [
-  "%caribbean%",
-  "%bahamas%",
-  "%puerto rico%",
-  "%virgin islands%",
-  "%bvi%",
-  "%tortola%",
-  "%grenada%",
-  "%antigua%",
-  "%st martin%",
-  "%saint martin%",
-  "%st. maarten%",
-  "%martinique%",
-  "%st thomas%",
-  "%saint thomas%",
-  "%trinidad%",
-  "%barbados%",
-];
-
 function buildCatamaranWhereSql(paramOffset = 0) {
   const makeParams = CATAMARAN_MAKES.map((_, index) => `$${paramOffset + index + 1}`).join(", ");
   return `(
@@ -64,11 +46,21 @@ function buildCatamaranWhereSql(paramOffset = 0) {
   )`;
 }
 
-function buildCaribbeanWhereSql(paramOffset = 0) {
-  const clauses = CARIBBEAN_PATTERNS.map(
-    (_, index) => `LOWER(COALESCE(b.location_text, '')) LIKE $${paramOffset + index + 1}`
-  );
-  return `(${clauses.join(" OR ")})`;
+function buildLocationMarketQuery(slug: string, paramOffset = 0) {
+  const terms = getLocationSearchTerms(slug);
+  const queryWhere = terms.length
+    ? `(${terms
+        .map(
+          (_, index) =>
+            `LOWER(COALESCE(b.location_text, '')) LIKE $${paramOffset + index + 1} ESCAPE '\\'`
+        )
+        .join(" OR ")})`
+    : "FALSE";
+
+  return {
+    queryWhere,
+    queryParams: terms.map(buildLocationLikePattern),
+  };
 }
 
 export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
@@ -182,8 +174,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     intro:
       "Florida is one of the deepest regional markets in the current catalog, so this page captures a strong local-intent search pattern.",
     eyebrow: "Top Boat Market",
-    queryWhere: "LOWER(COALESCE(b.location_text, '')) LIKE $1",
-    queryParams: ["%florida%"],
+    ...buildLocationMarketQuery("florida"),
     countLabel: "live Florida listings",
     relatedLinks: buildSeoHubLinks("/boats/location/florida"),
   },
@@ -198,8 +189,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     intro:
       "The Caribbean hub groups high-intent island markets like Puerto Rico, the Bahamas, Tortola, and the Virgin Islands into one rankable page.",
     eyebrow: "Cruising Region",
-    queryWhere: buildCaribbeanWhereSql(),
-    queryParams: CARIBBEAN_PATTERNS,
+    ...buildLocationMarketQuery("caribbean"),
     countLabel: "live Caribbean listings",
     relatedLinks: buildSeoHubLinks("/boats/location/caribbean"),
   },
@@ -214,8 +204,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     intro:
       "Puerto Rico is a strong Caribbean search market with recurring island inventory, so it deserves a dedicated local landing page.",
     eyebrow: "Island Market",
-    queryWhere: "LOWER(COALESCE(b.location_text, '')) LIKE $1",
-    queryParams: ["%puerto rico%"],
+    ...buildLocationMarketQuery("puerto-rico"),
     countLabel: "live Puerto Rico listings",
     relatedLinks: buildSeoHubLinks("/boats/location/puerto-rico"),
   },
@@ -230,8 +219,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     intro:
       "The Bahamas is one of the clearest Caribbean cruising search patterns, so this page gives it a stable, rankable regional hub.",
     eyebrow: "Island Market",
-    queryWhere: "LOWER(COALESCE(b.location_text, '')) LIKE $1",
-    queryParams: ["%bahamas%"],
+    ...buildLocationMarketQuery("bahamas"),
     countLabel: "live Bahamas listings",
     relatedLinks: buildSeoHubLinks("/boats/location/bahamas"),
   },
