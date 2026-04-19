@@ -341,7 +341,7 @@ export async function GET() {
                )
                AND b.location_confidence IN ('city', 'exact')
                AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
-               AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
+               AND b.location_geocode_status = 'pending'
            )::text AS geocode_ready_count,
            COUNT(*) FILTER (WHERE b.location_geocode_status = 'pending')::text AS geocode_pending_count,
            COUNT(*) FILTER (WHERE b.location_geocode_status = 'review')::text AS geocode_review_count,
@@ -399,7 +399,7 @@ export async function GET() {
            )
            AND b.location_confidence IN ('city', 'exact')
            AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
-           AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
+           AND b.location_geocode_status = 'pending'
          GROUP BY LOWER(TRIM(b.location_text))
          ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
          LIMIT 12`

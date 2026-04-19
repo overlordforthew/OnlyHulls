@@ -57,6 +57,22 @@ test("buildGeocodeQuery rejects generic or region-only locations", () => {
     }),
     "ready"
   );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Maryland",
+      country: "United States",
+      confidence: "region",
+    }),
+    null
+  );
+  assert.equal(
+    getGeocodeCandidateReason({
+      locationText: "Maryland",
+      country: "United States",
+      confidence: "region",
+    }),
+    "needs_more_specific_location"
+  );
 });
 
 test("geocodeWithNominatim requires an identifying user agent", async () => {
@@ -113,6 +129,43 @@ test("geocodeWithNominatim parses a city result without network access", async (
     assert.match(requested[0].url, /q=Cannes%2C\+France/);
     assert.match(requested[0].url, /countrycodes=fr/);
     assert.equal(requested[0].userAgent, "OnlyHulls test");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithNominatim does not treat county boundaries as city precision", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify([
+        {
+          lat: "35.8725573",
+          lon: "-76.6215245",
+          display_name: "Washington County, North Carolina, United States",
+          addresstype: "county",
+          type: "administrative",
+          class: "boundary",
+          place_rank: 12,
+          importance: 0.55,
+        },
+      ]),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithNominatim(
+      {
+        queryText: "Washington, North Carolina, United States",
+        queryKey: "washington north carolina united states",
+        countryHint: "us",
+      },
+      baseConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "region");
   } finally {
     globalThis.fetch = originalFetch;
   }

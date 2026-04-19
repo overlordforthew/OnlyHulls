@@ -11,6 +11,11 @@ import {
 } from "../src/lib/locations/geocoding";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
+// Public Nominatim is for small validation runs only: single process, <= 1 request/sec,
+// real User-Agent/contact email, cached results, and immediate backoff on 429/503.
+// Keep PUBLIC_MAP_ENABLED=false until precision and random pin audits pass.
+// Drop boat_geocode_backup_* tables only after the corresponding batch is verified.
+
 type BoatGeocodeCandidate = {
   id: string;
   location_text: string | null;
@@ -23,6 +28,7 @@ type BoatGeocodeCandidate = {
 };
 
 type GeocodeCacheRow = {
+  query_key?: string;
   status: GeocodeStatus;
   latitude: number | null;
   longitude: number | null;
@@ -33,6 +39,51 @@ type GeocodeCacheRow = {
   payload: unknown;
   error: string | null;
 };
+
+type PreparedCandidate = BoatGeocodeCandidate & {
+  geocodeQuery: ReturnType<typeof buildGeocodeQuery>;
+  reason: string;
+};
+
+type ReadyCandidate = PreparedCandidate & {
+  geocodeQuery: NonNullable<PreparedCandidate["geocodeQuery"]>;
+};
+
+type PrecisionSplit = Record<GeocodePrecision, number>;
+type StatusSplit = Record<GeocodeStatus, number>;
+
+type GeographyMismatch = {
+  boatId: string;
+  locationText: string | null;
+  type: "country" | "region";
+  expected: string;
+  actual: string;
+  placeName: string | null;
+};
+
+type SamplePin = {
+  boatId: string;
+  locationText: string | null;
+  queryText: string;
+  latitude: number | null;
+  longitude: number | null;
+  precision: GeocodePrecision;
+  placeName: string | null;
+  auditUrl: string | null;
+};
+
+const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
+const BATCH_UNIQUE_APPLY_THRESHOLD = 200;
+const SAMPLE_PIN_LIMIT = 20;
+const BROAD_REGION_NAMES = new Set([
+  "caribbean",
+  "channel islands",
+  "chesapeake bay",
+  "great lakes",
+  "mediterranean",
+  "new england",
+  "pacific northwest",
+]);
 
 function getArgValue(name: string) {
   const prefix = `${name}=`;
@@ -53,6 +104,10 @@ function isProviderBackoffResult(result: GeocodeResult) {
   return result.error === "http_429" || result.error === "http_503";
 }
 
+function hasFlag(name: string) {
+  return process.argv.includes(name);
+}
+
 function shouldApplyResult(result: GeocodeResult) {
   return (
     result.status === "geocoded" &&
@@ -63,6 +118,161 @@ function shouldApplyResult(result: GeocodeResult) {
 
 function coordinatesAreApproximate(precision: GeocodePrecision) {
   return !["exact", "street", "marina"].includes(precision);
+}
+
+function emptyPrecisionSplit(): PrecisionSplit {
+  return {
+    exact: 0,
+    street: 0,
+    marina: 0,
+    city: 0,
+    region: 0,
+    country: 0,
+    unknown: 0,
+  };
+}
+
+function emptyStatusSplit(): StatusSplit {
+  return {
+    skipped: 0,
+    geocoded: 0,
+    failed: 0,
+    review: 0,
+  };
+}
+
+function incrementCount(record: Record<string, number>, key: string | null | undefined) {
+  const normalized = key || "unknown";
+  record[normalized] = (record[normalized] || 0) + 1;
+}
+
+function normalizeAuditValue(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatBackupTableName() {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, "")
+    .slice(0, 14);
+  return `boat_geocode_backup_${stamp}`;
+}
+
+function getPayloadCountryCode(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as Record<string, unknown>;
+  const address = record.address;
+  if (!address || typeof address !== "object") return null;
+  const countryCode = (address as Record<string, unknown>).country_code;
+
+  return typeof countryCode === "string" ? countryCode.toLowerCase() : null;
+}
+
+function getPayloadAddressStrings(payload: unknown, fields: string[]) {
+  if (!payload || typeof payload !== "object") return [];
+  const record = payload as Record<string, unknown>;
+  const address = record.address;
+  if (!address || typeof address !== "object") return [];
+  const addressRecord = address as Record<string, unknown>;
+
+  return fields
+    .map((field) => addressRecord[field])
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
+function getPayloadRegionValues(payload: unknown) {
+  return getPayloadAddressStrings(payload, [
+    "state",
+    "province",
+    "region",
+    "county",
+    "state_district",
+    "island",
+  ]);
+}
+
+function shouldAuditRegionMismatch(boat: BoatGeocodeCandidate) {
+  const expectedRegion = normalizeAuditValue(boat.location_region);
+  if (!expectedRegion || BROAD_REGION_NAMES.has(expectedRegion)) return false;
+  if (expectedRegion === normalizeAuditValue(boat.location_country)) return false;
+
+  return true;
+}
+
+function getGeographyMismatch(
+  boat: BoatGeocodeCandidate,
+  expectedCountryCode: string | null,
+  result: GeocodeResult
+): GeographyMismatch | null {
+  const actualCountryCode = getPayloadCountryCode(result.payload);
+  if (expectedCountryCode && actualCountryCode && actualCountryCode !== expectedCountryCode) {
+    return {
+      boatId: boat.id,
+      locationText: boat.location_text,
+      type: "country",
+      expected: expectedCountryCode,
+      actual: actualCountryCode,
+      placeName: result.placeName,
+    };
+  }
+
+  if (!shouldAuditRegionMismatch(boat)) return null;
+
+  const expectedRegion = normalizeAuditValue(boat.location_region);
+  const actualRegions = getPayloadRegionValues(result.payload);
+  const normalizedActualRegions = actualRegions.map(normalizeAuditValue).filter(Boolean);
+  if (normalizedActualRegions.length === 0) return null;
+
+  const hasExpectedRegion = normalizedActualRegions.some(
+    (region) => region === expectedRegion || region.includes(expectedRegion) || expectedRegion.includes(region)
+  );
+  if (hasExpectedRegion) return null;
+
+  return {
+    boatId: boat.id,
+    locationText: boat.location_text,
+    type: "region",
+    expected: String(boat.location_region || ""),
+    actual: actualRegions.join(", "),
+    placeName: result.placeName,
+  };
+}
+
+function buildPinAuditUrl(latitude: number | null, longitude: number | null) {
+  if (typeof latitude !== "number" || typeof longitude !== "number") return null;
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=10/${latitude}/${longitude}`;
+}
+
+function appendGeocodeAudit(
+  summary: { geographyMismatches: GeographyMismatch[]; samplePins: SamplePin[] },
+  boat: BoatGeocodeCandidate,
+  geocodeQuery: ReadyCandidate["geocodeQuery"],
+  result: GeocodeResult
+) {
+  if (result.status !== "geocoded") return;
+
+  const mismatch = getGeographyMismatch(boat, geocodeQuery.countryHint, result);
+  if (mismatch) summary.geographyMismatches.push(mismatch);
+
+  if (summary.samplePins.length >= SAMPLE_PIN_LIMIT) return;
+  summary.samplePins.push({
+    boatId: boat.id,
+    locationText: boat.location_text,
+    queryText: geocodeQuery.queryText,
+    latitude: result.latitude,
+    longitude: result.longitude,
+    precision: result.precision,
+    placeName: result.placeName,
+    auditUrl: buildPinAuditUrl(result.latitude, result.longitude),
+  });
 }
 
 function fromCache(row: GeocodeCacheRow): GeocodeResult {
@@ -77,6 +287,22 @@ function fromCache(row: GeocodeCacheRow): GeocodeResult {
     payload: row.payload,
     error: row.error,
   };
+}
+
+async function getCachedResults(queryKeys: string[]) {
+  if (queryKeys.length === 0) return new Map<string, GeocodeResult>();
+  const rows = await query<GeocodeCacheRow>(
+    `SELECT query_key, status, latitude, longitude, precision, score, place_name, provider, payload, error
+     FROM location_geocode_cache
+     WHERE query_key = ANY($1::text[])`,
+    [queryKeys]
+  );
+
+  return new Map(
+    rows
+      .filter((row): row is GeocodeCacheRow & { query_key: string } => Boolean(row.query_key))
+      .map((row) => [row.query_key, fromCache(row)])
+  );
 }
 
 async function getCachedResult(queryKey: string) {
@@ -179,11 +405,68 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
   );
 }
 
+async function createBackupSnapshot(candidateIds: string[]) {
+  if (candidateIds.length === 0) return null;
+  const tableName = formatBackupTableName();
+  await query(
+    `CREATE TABLE ${tableName} AS
+     SELECT
+       id,
+       location_lat,
+       location_lng,
+       location_geocoded_at,
+       location_geocode_status,
+       location_geocode_provider,
+       location_geocode_query,
+       location_geocode_place_name,
+       location_geocode_precision,
+       location_geocode_score,
+       location_geocode_error,
+       location_geocode_attempted_at,
+       location_geocode_payload,
+       updated_at,
+       NOW() AS backed_up_at
+     FROM boats
+     WHERE id = ANY($1::uuid[])`,
+    [candidateIds]
+  );
+
+  return tableName;
+}
+
+function prepareCandidate(boat: BoatGeocodeCandidate): PreparedCandidate {
+  const geocodeQuery = buildGeocodeQuery({
+    locationText: boat.location_text,
+    country: boat.location_country,
+    region: boat.location_region,
+    marketSlugs: boat.location_market_slugs,
+    confidence: boat.location_confidence,
+  });
+  const reason = getGeocodeCandidateReason({
+    locationText: boat.location_text,
+    country: boat.location_country,
+    region: boat.location_region,
+    marketSlugs: boat.location_market_slugs,
+    confidence: boat.location_confidence,
+  });
+
+  return {
+    ...boat,
+    geocodeQuery,
+    reason,
+  };
+}
+
 async function main() {
   const limit = getLimit();
-  const apply = process.argv.includes("--apply");
+  const apply = hasFlag("--apply");
+  const allowLargeBatch = hasFlag("--allow-large-batch");
+  const includeReview = hasFlag("--include-review");
   const config = getGeocodingConfig();
   const visibleSql = buildVisibleImportQualitySql("b");
+  const statusSql = includeReview
+    ? "b.location_geocode_status IN ('pending', 'review', 'failed')"
+    : "b.location_geocode_status = 'pending'";
   const rows = await query<BoatGeocodeCandidate>(
     `SELECT b.id, b.location_text, b.location_country, b.location_region,
             COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
@@ -199,7 +482,7 @@ async function main() {
          OR b.location_lat NOT BETWEEN -90 AND 90
          OR b.location_lng NOT BETWEEN -180 AND 180
        )
-       AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
+       AND ${statusSql}
      ORDER BY CASE b.location_confidence
                 WHEN 'city' THEN 0
                 WHEN 'region' THEN 1
@@ -207,61 +490,94 @@ async function main() {
               END,
               CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) DESC,
               b.updated_at DESC,
-              b.id
-     LIMIT $1`,
-    [limit]
+              b.id`
   );
+  const candidates = rows.map(prepareCandidate);
+  const geocodableCandidates = candidates.filter(
+    (candidate): candidate is ReadyCandidate => candidate.geocodeQuery !== null
+  );
+  const selectedCandidates = geocodableCandidates.slice(0, limit);
+  const nextCandidates = geocodableCandidates.slice(limit, limit * 2);
+  const uniqueReadyQueryKeys = Array.from(
+    new Set(geocodableCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
+  );
+  const selectedQueryKeys = Array.from(
+    new Set(selectedCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
+  );
+  const cacheByKey = await getCachedResults(uniqueReadyQueryKeys);
+  let backupTable: string | null = null;
   const summary = {
     provider: config.provider,
     enabled: config.enabled,
     mode: apply ? "apply" : "dry-run",
-    scanned: rows.length,
-    ready: 0,
+    includeReview,
+    totalCandidates: candidates.length,
+    geocodableCandidates: geocodableCandidates.length,
+    uniqueReadyQueries: uniqueReadyQueryKeys.length,
+    selectedRows: selectedCandidates.length,
+    selectedUniqueQueries: selectedQueryKeys.length,
     cached: 0,
     geocoded: 0,
     review: 0,
     failed: 0,
     skipped: 0,
+    precisionSplit: emptyPrecisionSplit(),
+    statusSplit: emptyStatusSplit(),
+    failureReasons: {} as Record<string, number>,
+    nonGeocodableReasons: {} as Record<string, number>,
+    geographyMismatches: [] as GeographyMismatch[],
+    samplePins: [] as SamplePin[],
+    nextBatch: {
+      rows: nextCandidates.length,
+      cacheHits: 0,
+      cacheHitRatio: 0,
+    },
+    backupTable: backupTable as string | null,
+    warnings: [] as string[],
     stoppedReason: null as string | null,
   };
 
-  for (const boat of rows) {
-    const geocodeQuery = buildGeocodeQuery({
-      locationText: boat.location_text,
-      country: boat.location_country,
-      region: boat.location_region,
-      marketSlugs: boat.location_market_slugs,
-      confidence: boat.location_confidence,
-    });
+  for (const candidate of candidates) {
+    if (!candidate.geocodeQuery) incrementCount(summary.nonGeocodableReasons, candidate.reason);
+  }
 
-    if (!geocodeQuery) {
-      summary.skipped += 1;
-      if (apply && getGeocodeCandidateReason({
-        locationText: boat.location_text,
-        country: boat.location_country,
-        region: boat.location_region,
-        marketSlugs: boat.location_market_slugs,
-        confidence: boat.location_confidence,
-      }) !== "needs_more_specific_location") {
-        await query(
-          `UPDATE boats
-           SET location_geocode_status = 'skipped',
-               location_geocode_error = $2,
-               location_geocode_attempted_at = NOW()
-           WHERE id = $1`,
-          [boat.id, "not_geocodable"]
-        );
-      }
-      continue;
-    }
+  if (
+    config.provider === "nominatim" &&
+    uniqueReadyQueryKeys.length > POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD
+  ) {
+    summary.warnings.push(
+      `population_unique_queries_${uniqueReadyQueryKeys.length}_exceeds_${POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD}_choose_paid_provider_before_full_backfill`
+    );
+  }
 
-    summary.ready += 1;
-    const cached = await getCachedResult(geocodeQuery.queryKey);
+  if (apply && selectedQueryKeys.length > BATCH_UNIQUE_APPLY_THRESHOLD && !allowLargeBatch) {
+    summary.stoppedReason = `selected_unique_queries_${selectedQueryKeys.length}_exceeds_${BATCH_UNIQUE_APPLY_THRESHOLD}`;
+    console.error(
+      `Refusing --apply: selected batch has ${selectedQueryKeys.length} unique geocode queries, above ${BATCH_UNIQUE_APPLY_THRESHOLD}. Reduce --limit or pass --allow-large-batch.`
+    );
+    console.log(JSON.stringify(summary, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+
+  if (apply && selectedCandidates.length > 0) {
+    backupTable = await createBackupSnapshot(selectedCandidates.map((candidate) => candidate.id));
+    summary.backupTable = backupTable;
+  }
+
+  for (const boat of selectedCandidates) {
+    const geocodeQuery = boat.geocodeQuery;
+
+    const cached = cacheByKey.get(geocodeQuery.queryKey) || (await getCachedResult(geocodeQuery.queryKey));
     if (cached) {
       summary.cached += 1;
+      summary.statusSplit[cached.status] += 1;
+      summary.precisionSplit[cached.precision] += 1;
       if (cached.status === "geocoded") summary.geocoded += 1;
       if (cached.status === "review") summary.review += 1;
       if (cached.status === "failed") summary.failed += 1;
+      if (cached.error) incrementCount(summary.failureReasons, cached.error);
+      appendGeocodeAudit(summary, boat, geocodeQuery, cached);
       if (apply) await applyResult(boat, geocodeQuery.queryText, cached);
       continue;
     }
@@ -269,13 +585,18 @@ async function main() {
     if (!apply || !config.enabled || config.provider !== "nominatim") continue;
 
     const result = await geocodeWithNominatim(geocodeQuery, config);
+    summary.statusSplit[result.status] += 1;
+    summary.precisionSplit[result.precision] += 1;
     if (result.status === "geocoded") summary.geocoded += 1;
     if (result.status === "review") summary.review += 1;
     if (result.status === "failed") summary.failed += 1;
     if (result.status === "skipped") summary.skipped += 1;
+    if (result.error) incrementCount(summary.failureReasons, result.error);
+    appendGeocodeAudit(summary, boat, geocodeQuery, result);
 
     if (apply) {
       if (result.status !== "skipped") await cacheResult(geocodeQuery.queryKey, geocodeQuery.queryText, result);
+      if (result.status !== "skipped") cacheByKey.set(geocodeQuery.queryKey, result);
       await applyResult(boat, geocodeQuery.queryText, result);
     }
 
@@ -286,6 +607,14 @@ async function main() {
 
     if (config.delayMs > 0) await sleep(config.delayMs);
   }
+
+  summary.nextBatch.cacheHits = nextCandidates.filter((candidate) =>
+    cacheByKey.has(candidate.geocodeQuery.queryKey)
+  ).length;
+  summary.nextBatch.cacheHitRatio =
+    summary.nextBatch.rows > 0
+      ? Number((summary.nextBatch.cacheHits / summary.nextBatch.rows).toFixed(3))
+      : 0;
 
   console.log(JSON.stringify(summary, null, 2));
 }

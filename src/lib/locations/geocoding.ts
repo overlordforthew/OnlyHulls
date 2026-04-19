@@ -121,6 +121,7 @@ const COUNTRY_CODES: Record<string, string> = {
   "united states": "us",
   "united states virgin islands": "vi",
 };
+const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "county", "island"]);
 
 function normalizeLookupValue(value?: string | null) {
   return String(value || "")
@@ -228,10 +229,11 @@ function inferNominatimPrecision(result: Record<string, unknown>): GeocodePrecis
 
   if (["marina", "harbour", "harbor", "dock", "mooring"].includes(type)) return "marina";
   if (["house", "building", "amenity"].includes(addresstype) || placeRank >= 28) return "street";
+  if (ADMIN_REGION_ADDRESS_TYPES.has(addresstype) || ADMIN_REGION_ADDRESS_TYPES.has(type)) return "region";
   if (["city", "town", "village", "hamlet", "municipality", "suburb"].includes(addresstype)) return "city";
   if (["city", "town", "village", "hamlet", "municipality", "suburb"].includes(type)) return "city";
-  if (["boundary", "place"].includes(className) && placeRank >= 12 && placeRank <= 18) return "city";
-  if (["state", "region", "province", "county", "island"].includes(addresstype) || placeRank >= 6) return "region";
+  if (["boundary", "place"].includes(className) && placeRank >= 14 && placeRank <= 18) return "city";
+  if (placeRank >= 6) return "region";
   if (addresstype === "country" || placeRank <= 4) return "country";
   return "unknown";
 }

@@ -186,6 +186,25 @@ test("location inference covers low-volume marina tail without overpromising coo
   const greatLakes = inferLocationMarketSignals({ locationText: "Au Gres, Michigan" });
   assert.deepEqual(greatLakes.marketSlugs, ["united-states", "great-lakes"]);
   assert.equal(greatLakes.country, "United States");
+  assert.equal(greatLakes.confidence, "city");
+});
+
+test("location inference keeps broad state-only aliases at regional confidence", () => {
+  const maryland = inferLocationMarketSignals({ locationText: "Maryland" });
+  assert.deepEqual(maryland.marketSlugs, ["united-states", "chesapeake-bay"]);
+  assert.equal(maryland.confidence, "region");
+
+  const michigan = inferLocationMarketSignals({ locationText: "Michigan" });
+  assert.deepEqual(michigan.marketSlugs, ["united-states", "great-lakes"]);
+  assert.equal(michigan.confidence, "region");
+
+  const rhodeIsland = inferLocationMarketSignals({ locationText: "Rhode Island" });
+  assert.deepEqual(rhodeIsland.marketSlugs, ["united-states", "new-england"]);
+  assert.equal(rhodeIsland.confidence, "region");
+
+  const annapolis = inferLocationMarketSignals({ locationText: "Annapolis" });
+  assert.deepEqual(annapolis.marketSlugs, ["united-states", "chesapeake-bay"]);
+  assert.equal(annapolis.confidence, "city");
 });
 
 test("saved search signature keeps location and currency distinct", () => {

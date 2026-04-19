@@ -914,6 +914,16 @@ function containsNormalizedTerm(normalizedText: string, candidate: string) {
   return ` ${normalizedText} `.includes(` ${normalizedCandidate} `);
 }
 
+const BROAD_ADMIN_ALIASES = new Set([
+  "connecticut",
+  "maine",
+  "maryland",
+  "michigan",
+  "ohio",
+  "rhode island",
+  "virginia",
+]);
+
 function hasFiniteCoordinates(latitude?: number | null, longitude?: number | null) {
   return (
     typeof latitude === "number" &&
@@ -1014,7 +1024,10 @@ export function inferLocationMarketSignals(input: {
     hasLocationDetail ||
     matchedMarkets.some((market) =>
       Boolean(market.country) &&
-      market.aliases.some((term) => containsNormalizedTerm(normalizedLocation, term))
+      market.aliases.some((term) => {
+        if (BROAD_ADMIN_ALIASES.has(normalizeLocationLookupValue(term))) return false;
+        return containsNormalizedTerm(normalizedLocation, term);
+      })
     );
   const confidence: LocationConfidence = hasCoordinates && !coordinatesApproximate
     ? "exact"
