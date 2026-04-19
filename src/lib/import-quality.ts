@@ -30,6 +30,8 @@ function toSqlStringList(values: Iterable<string>) {
 
 const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
 const BROKER_CONTACT_LOCATION_SQL_PATTERN = "^contact[[:space:]]+de[[:space:]]+valk([[:space:]]|$)";
+const URLISH_LOCATION_SQL_PATTERN =
+  "(https?://|www\\.|(^|[[:space:],])[-_[:alnum:]]+\\.(com|net|org|co|fr|de|es|it|nl|io)([[:space:],/.-]|$))";
 const HELD_SOURCE_SITE_SQL_VALUES = toSqlStringList(
   getHeldSourceKeys().map((sourceKey) => sourceKey.toLowerCase())
 );
@@ -494,6 +496,11 @@ function normalizeLocationPart(value: string) {
     .trim();
   if (!normalized) return "";
 
+  const enroutePrefix = normalized.match(/^enroute\s+(.+)$/i);
+  if (enroutePrefix) {
+    return normalizeLocationPart(enroutePrefix[1]);
+  }
+
   const override = lookupLocationOverride(normalized);
   if (override) return override;
   const repeatedParenthetical = normalized.match(/^(.+?)\s*\(([^)]+)\)$/);
@@ -559,6 +566,15 @@ function extractFallbackLocationFromNarrative(value: string) {
 
 function trimNarrativeLocationTail(value: string) {
   const normalized = value.replace(/^in\s+(?=[A-Z])/i, "").trim();
+  const unmatchedCloseParenIndex = normalized.indexOf(")");
+  if (
+    unmatchedCloseParenIndex > 0 &&
+    !normalized.slice(0, unmatchedCloseParenIndex).includes("(")
+  ) {
+    const beforeParen = normalized.slice(0, unmatchedCloseParenIndex).trim();
+    if (beforeParen) return beforeParen;
+  }
+
   const breakIndex = findNarrativeLocationBreak(normalized);
 
   if (breakIndex === -1) {
@@ -596,6 +612,12 @@ function isBrokerContactLocation(value: string) {
   return /^contact\s+de\s+valk(?:\s|$)/i.test(value);
 }
 
+function isUrlishLocation(value: string) {
+  return /(?:https?:\/\/|www\.|(?:^|[\s,])[\w-]+\.(?:com|net|org|co|fr|de|es|it|nl|io)(?:$|[\s,/.-]))/i.test(
+    value
+  );
+}
+
 export function normalizeImportedLocation(value?: string | null) {
   let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
@@ -616,6 +638,9 @@ export function normalizeImportedLocation(value?: string | null) {
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
   if (isBrokerContactLocation(normalized)) return "";
+  if (isUrlishLocation(normalized)) return "";
+
+  normalized = normalized.replace(/^enroute\s+(?=\S)/i, "");
 
   const exactOverride = lookupLocationOverride(normalized);
   if (exactOverride) return exactOverride;
@@ -646,6 +671,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (isQuestionMarkPlaceholderLocation(collapsed)) return "";
   if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
   if (isBrokerContactLocation(collapsed)) return "";
+  if (isUrlishLocation(collapsed)) return "";
 
   return collapsed;
 }
@@ -729,6 +755,7 @@ const IMPORTED_SALE_STATUS_SQL_PATTERN =
 const SALE_STATUS_DELIMITER_PATTERN = "[\\s-]+";
 const LOCATION_NARRATIVE_BREAK_PATTERNS = [
   /\b[\p{Lu}\d][\p{L}\d.'/-]*(?:\s+[\p{Lu}\d][\p{L}\d.'/-]*){0,3}\s+is\s+a\s+\d{4}\b/ui,
+  /\bthe\s+[\p{L}\d.'/-]+(?:\s+[\p{L}\d.'/-]+){0,3}\s+(?:has|is|was)\b/ui,
   /\b(?:a\s+duty\s+and\s+tax\s+free\s+port|the\s+vessel\s+was\s+previously|was\s+previously\s+part|out\s+of\s+water\s+survey|available\s+upon\s+request|scheduled\s+to\s+be\s+relocated|at\s+head\s+of\s+the\s+sea|we\s+are\s+scheduling\s+viewings|we\s+will\s+be\s+happy|we\s+promise\s+to|for\s+serious\s+inquiry)\b/i,
 ];
 const LOCATION_REGION_FALLBACKS = [...COMMON_LOCATION_SUFFIXES].sort(
@@ -2344,6 +2371,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND ${nonQuestionLocationSql} <> ''
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
     AND ${normalizedLocationSql} !~ '${BROKER_CONTACT_LOCATION_SQL_PATTERN}'
+    AND ${normalizedLocationSql} !~ '${URLISH_LOCATION_SQL_PATTERN}'
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND ${usableImportedImageExistsSql}

@@ -32,6 +32,7 @@ test("public visibility suppresses imported listings from held sources", () => {
   assert.match(publicSql, /source_url IS NULL/);
   assert.match(publicSql, /catamarans_com/);
   assert.match(baseSql, /contact\[\[:space:\]\]\+de\[\[:space:\]\]\+valk/);
+  assert.match(baseSql, /www\\\./);
   assert.match(baseSql, /\/assets\/images\/noimage/);
 });
 
@@ -69,6 +70,7 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
   assert.equal(normalizeImportedLocation("Price"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Hindeloopen"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Almeria, Andalusia"), "");
+  assert.equal(normalizeImportedLocation("www.byacht.com"), "");
   assert.equal(normalizeImportedLocation("???????"), "");
 });
 
@@ -81,6 +83,22 @@ test("broker contact text is treated as a missing imported location", () => {
       locationText: "Contact De Valk Hindeloopen",
       imageCount: 6,
       priceUsd: 75000,
+      summary:
+        "This imported listing has enough summary detail to clear the normal quality checks.",
+    }),
+    ["missing_location"]
+  );
+});
+
+test("website text is treated as a missing imported location", () => {
+  assert.deepEqual(
+    buildImportQualityFlags({
+      make: "CNB",
+      model: "66 Sloop",
+      slug: "2021-cnb-66-sloop-www-byacht-com",
+      locationText: "www.byacht.com",
+      imageCount: 6,
+      priceUsd: 2257200,
       summary:
         "This imported listing has enough summary detail to clear the normal quality checks.",
     }),
@@ -262,6 +280,12 @@ test("normalizeImportedLocation trims narrative tails from scraped location text
       "Toronto, Canada - Out Of Water Survey 2024 Available Upon Request For Serious Inquiry"
     ),
     "Toronto, Canada"
+  );
+  assert.equal(
+    normalizeImportedLocation(
+      "Enroute New York) The Beneteau 411 Has Classic Beneteau Style And Luxury"
+    ),
+    "New York"
   );
   assert.equal(
     normalizeImportedLocation("Treasure Cay Abaco Bahamas Duty Paid"),
