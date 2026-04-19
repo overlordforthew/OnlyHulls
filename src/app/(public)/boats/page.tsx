@@ -63,6 +63,9 @@ interface Boat {
   location_market_slugs?: string[];
   location_confidence?: string | null;
   location_approximate?: boolean | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  location_geocode_precision?: string | null;
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;

@@ -121,6 +121,15 @@ interface Stats {
       region: string | null;
     }>;
   };
+  mediaHealth: {
+    externalImageCount: number;
+    checkedCount: number;
+    okCount: number;
+    failedCount: number;
+    blockedCount: number;
+    uncheckedCount: number;
+    checked24hCount: number;
+  };
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -663,6 +672,7 @@ export default function AdminPage() {
     marketTagRate >= 95 &&
     cityOrBetterRate >= 85 &&
     mappableCoordinateRate >= 85;
+  const mediaHealth = stats?.mediaHealth;
 
   if (loading) {
     return (
@@ -1011,6 +1021,49 @@ export default function AdminPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">External Media Health</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  Imported image fetch checks for catching broken source-hosted media before it hits buyer pages.
+                </p>
+              </div>
+              <span
+                className={`inline-flex self-start rounded-full border px-3 py-1 text-xs font-semibold ${
+                  (mediaHealth?.failedCount || 0) + (mediaHealth?.blockedCount || 0) > 0
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                    : "border-green-500/40 bg-green-500/10 text-green-600"
+                }`}
+              >
+                {(mediaHealth?.checkedCount || 0) > 0 ? "Audit started" : "Audit not started"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="External Images"
+                value={mediaHealth?.externalImageCount || 0}
+                detail="Source-hosted image URLs on public visible imported boats."
+              />
+              <StatCard
+                label="Checked"
+                value={mediaHealth?.checkedCount || 0}
+                detail={`${(mediaHealth?.checked24hCount || 0).toLocaleString()} checked in the last 24 hours.`}
+              />
+              <StatCard
+                label="Healthy"
+                value={mediaHealth?.okCount || 0}
+                detail="Returned image MIME type with non-empty bytes."
+              />
+              <StatCard
+                label="Needs Media Fix"
+                value={(mediaHealth?.failedCount || 0) + (mediaHealth?.blockedCount || 0)}
+                detail={`${(mediaHealth?.failedCount || 0).toLocaleString()} failed, ${(mediaHealth?.blockedCount || 0).toLocaleString()} blocked.`}
+                highlight={((mediaHealth?.failedCount || 0) + (mediaHealth?.blockedCount || 0)) > 0}
+              />
             </div>
           </div>
 

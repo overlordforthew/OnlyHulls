@@ -91,6 +91,7 @@ export function ImageGallery({
               className="object-cover"
               sizes="100vw"
               loading="eager"
+              priority={safeCurrent === 0}
               unoptimized={!currentImageIsLocal}
               quality={currentImageIsLocal ? 90 : undefined}
               onError={() => markImageFailed(currentItem.url)}

@@ -124,6 +124,15 @@ export async function GET() {
       country: string | null;
       region: string | null;
     };
+    type MediaHealthSummaryRow = {
+      external_image_count: string;
+      checked_count: string;
+      ok_count: string;
+      failed_count: string;
+      blocked_count: string;
+      unchecked_count: string;
+      checked_24h_count: string;
+    };
 
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
@@ -144,6 +153,7 @@ export async function GET() {
       recentActivity,
       importQualitySummary,
       sourceHealth,
+      mediaHealthSummary,
       ownerPulse,
       signupPulse,
       locationReadinessSummary,
@@ -243,6 +253,23 @@ export async function GET() {
          GROUP BY COALESCE(b.source_name, 'Platform')
          ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC, COUNT(*) DESC
          LIMIT 8`
+      ),
+      queryOne<MediaHealthSummaryRow>(
+        `SELECT
+           COUNT(*)::text AS external_image_count,
+           COUNT(*) FILTER (WHERE COALESCE(bm.fetch_status, 'unchecked') <> 'unchecked')::text AS checked_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'ok')::text AS ok_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'failed')::text AS failed_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'blocked')::text AS blocked_count,
+           COUNT(*) FILTER (WHERE COALESCE(bm.fetch_status, 'unchecked') = 'unchecked')::text AS unchecked_count,
+           COUNT(*) FILTER (WHERE bm.last_checked_at >= NOW() - INTERVAL '24 hours')::text AS checked_24h_count
+         FROM boat_media bm
+         JOIN boats b ON b.id = bm.boat_id
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE bm.type = 'image'
+           AND bm.url ~* '^https?://'
+           AND b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}`
       ),
       queryOne<OwnerPulseRow>(
         `SELECT
@@ -476,6 +503,15 @@ export async function GET() {
           country: row.country,
           region: row.region,
         })),
+      },
+      mediaHealth: {
+        externalImageCount: parseInt(mediaHealthSummary?.external_image_count || "0", 10),
+        checkedCount: parseInt(mediaHealthSummary?.checked_count || "0", 10),
+        okCount: parseInt(mediaHealthSummary?.ok_count || "0", 10),
+        failedCount: parseInt(mediaHealthSummary?.failed_count || "0", 10),
+        blockedCount: parseInt(mediaHealthSummary?.blocked_count || "0", 10),
+        uncheckedCount: parseInt(mediaHealthSummary?.unchecked_count || "0", 10),
+        checked24hCount: parseInt(mediaHealthSummary?.checked_24h_count || "0", 10),
       },
       serviceStatus: {
         billingEnabled: billingEnabled(),
