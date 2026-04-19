@@ -16,6 +16,7 @@ import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
+import { TOP_LOCATION_MARKETS } from "@/lib/locations/top-markets";
 import { getSourceDecisionByName } from "@/lib/source-policy";
 import { NextResponse } from "next/server";
 
@@ -88,6 +89,25 @@ export async function GET() {
       signups_24h: string;
       last_signup_at: string | null;
     };
+    type LocationReadinessSummaryRow = {
+      active_visible_count: string;
+      with_location_text_count: string;
+      with_market_slugs_count: string;
+      city_or_better_count: string;
+      exact_coordinates_count: string;
+      approximate_count: string;
+      missing_location_count: string;
+      unclassified_location_count: string;
+    };
+    type LocationMarketCountRow = {
+      slug: string;
+      count: string;
+    };
+    type UnclassifiedLocationRow = {
+      location_text: string;
+      count: string;
+      source_count: string;
+    };
 
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
@@ -110,6 +130,9 @@ export async function GET() {
       sourceHealth,
       ownerPulse,
       signupPulse,
+      locationReadinessSummary,
+      locationMarketCounts,
+      unclassifiedLocations,
     ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
@@ -231,7 +254,68 @@ export async function GET() {
          FROM users
          WHERE ${liveUserWhere}`
       ),
+      queryOne<LocationReadinessSummaryRow>(
+        `SELECT
+           COUNT(*)::text AS active_visible_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           )::text AS with_location_text_count,
+           COUNT(*) FILTER (
+             WHERE CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+           )::text AS with_market_slugs_count,
+           COUNT(*) FILTER (
+             WHERE b.location_confidence IN ('city', 'exact')
+           )::text AS city_or_better_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+           )::text AS exact_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_approximate = true
+               AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           )::text AS approximate_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') = ''
+           )::text AS missing_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+               AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
+           )::text AS unclassified_location_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}`
+      ),
+      query<LocationMarketCountRow>(
+        `SELECT location_market.market_slug AS slug, COUNT(*)::text AS count
+         FROM boats b
+         CROSS JOIN LATERAL UNNEST(COALESCE(b.location_market_slugs, '{}'::text[])) AS location_market(market_slug)
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+         GROUP BY location_market.market_slug
+         ORDER BY COUNT(*) DESC, location_market.market_slug
+         LIMIT 12`
+      ),
+      query<UnclassifiedLocationRow>(
+        `SELECT
+           MIN(b.location_text) AS location_text,
+           COUNT(*)::text AS count,
+           COUNT(DISTINCT COALESCE(b.source_name, 'Platform'))::text AS source_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
+         GROUP BY LOWER(TRIM(b.location_text))
+         ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
+         LIMIT 12`
+      ),
     ]);
+    const locationMarketBySlug = new Map(
+      TOP_LOCATION_MARKETS.map((market) => [market.slug, market])
+    );
 
     return NextResponse.json({
       totalUsers: parseInt(users?.count || "0"),
@@ -298,6 +382,26 @@ export async function GET() {
         lastClaimRequestAt: ownerPulse?.last_claim_request_at || null,
         lastPaidCheckoutAt: ownerPulse?.last_paid_checkout_at || null,
         lastPaymentFailureAt: ownerPulse?.last_payment_failure_at || null,
+      },
+      locationReadiness: {
+        activeVisibleCount: parseInt(locationReadinessSummary?.active_visible_count || "0", 10),
+        withLocationTextCount: parseInt(locationReadinessSummary?.with_location_text_count || "0", 10),
+        withMarketSlugsCount: parseInt(locationReadinessSummary?.with_market_slugs_count || "0", 10),
+        cityOrBetterCount: parseInt(locationReadinessSummary?.city_or_better_count || "0", 10),
+        exactCoordinatesCount: parseInt(locationReadinessSummary?.exact_coordinates_count || "0", 10),
+        approximateCount: parseInt(locationReadinessSummary?.approximate_count || "0", 10),
+        missingLocationCount: parseInt(locationReadinessSummary?.missing_location_count || "0", 10),
+        unclassifiedLocationCount: parseInt(locationReadinessSummary?.unclassified_location_count || "0", 10),
+        topMarkets: locationMarketCounts.map((row) => ({
+          slug: row.slug,
+          label: locationMarketBySlug.get(row.slug)?.label || row.slug.replace(/-/g, " "),
+          count: parseInt(row.count || "0", 10),
+        })),
+        unclassifiedLocations: unclassifiedLocations.map((row) => ({
+          locationText: row.location_text,
+          count: parseInt(row.count || "0", 10),
+          sourceCount: parseInt(row.source_count || "0", 10),
+        })),
       },
       serviceStatus: {
         billingEnabled: billingEnabled(),

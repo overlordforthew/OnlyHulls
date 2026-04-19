@@ -87,6 +87,26 @@ interface Stats {
     decisionStatus: string;
     decisionReason: string | null;
   }>;
+  locationReadiness: {
+    activeVisibleCount: number;
+    withLocationTextCount: number;
+    withMarketSlugsCount: number;
+    cityOrBetterCount: number;
+    exactCoordinatesCount: number;
+    approximateCount: number;
+    missingLocationCount: number;
+    unclassifiedLocationCount: number;
+    topMarkets: Array<{
+      slug: string;
+      label: string;
+      count: number;
+    }>;
+    unclassifiedLocations: Array<{
+      locationText: string;
+      count: number;
+      sourceCount: number;
+    }>;
+  };
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
@@ -342,6 +362,15 @@ function formatProviderLabel(provider: string) {
     default:
       return "None";
   }
+}
+
+function percentOf(value: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((value / total) * 1000) / 10;
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
 }
 
 export default function AdminPage() {
@@ -607,6 +636,15 @@ export default function AdminPage() {
     (activity) => activity.eventType === "connect_requested"
   );
   const recentUnverifiedSignups = (stats?.recentSignups || []).filter((signup) => !signup.emailVerified).length;
+  const locationReadiness = stats?.locationReadiness;
+  const locationReadinessTotal = locationReadiness?.activeVisibleCount || 0;
+  const marketTagRate = percentOf(locationReadiness?.withMarketSlugsCount || 0, locationReadinessTotal);
+  const cityOrBetterRate = percentOf(locationReadiness?.cityOrBetterCount || 0, locationReadinessTotal);
+  const exactCoordinateRate = percentOf(locationReadiness?.exactCoordinatesCount || 0, locationReadinessTotal);
+  const mapReady =
+    marketTagRate >= 95 &&
+    cityOrBetterRate >= 85 &&
+    exactCoordinateRate >= 85;
 
   if (loading) {
     return (
@@ -946,6 +984,119 @@ export default function AdminPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-border bg-surface p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Location Readiness</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  Map gate: {mapReady ? "ready for product design" : "keep improving coverage before a live map"}.
+                </p>
+              </div>
+              <span
+                className={`inline-flex self-start rounded-full border px-3 py-1 text-xs font-semibold ${
+                  mapReady
+                    ? "border-green-500/40 bg-green-500/10 text-green-600"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                }`}
+              >
+                {mapReady ? "Map data ready" : "Map data not ready"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <ProgressCard
+                label="Market tagged"
+                value={locationReadiness?.withMarketSlugsCount || 0}
+                total={locationReadinessTotal}
+                targetPercent={95}
+              />
+              <ProgressCard
+                label="City or better"
+                value={locationReadiness?.cityOrBetterCount || 0}
+                total={locationReadinessTotal}
+                targetPercent={85}
+              />
+              <ProgressCard
+                label="Exact coordinates"
+                value={locationReadiness?.exactCoordinatesCount || 0}
+                total={locationReadinessTotal}
+                targetPercent={85}
+              />
+              <ProgressCard
+                label="Known location text"
+                value={locationReadiness?.withLocationTextCount || 0}
+                total={locationReadinessTotal}
+                targetPercent={95}
+              />
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Buyer Visible Boats"
+                value={locationReadinessTotal}
+                info="Active public listings after import-quality suppression."
+              />
+              <StatCard
+                label="Approximate Only"
+                value={locationReadiness?.approximateCount || 0}
+                detail="Useful for regional search, not enough for precise map pins."
+                highlight={(locationReadiness?.approximateCount || 0) > 0}
+              />
+              <StatCard
+                label="Unclassified Text"
+                value={locationReadiness?.unclassifiedLocationCount || 0}
+                detail="Location text exists, but no curated market slug matched."
+                highlight={(locationReadiness?.unclassifiedLocationCount || 0) > 0}
+              />
+              <StatCard
+                label="Missing Location"
+                value={locationReadiness?.missingLocationCount || 0}
+                detail="These listings cannot support regional search or maps."
+                highlight={(locationReadiness?.missingLocationCount || 0) > 0}
+              />
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-border p-4">
+                <h3 className="text-sm font-semibold text-foreground">Top Tagged Markets</h3>
+                <div className="mt-3 space-y-3">
+                  {(locationReadiness?.topMarkets || []).length === 0 ? (
+                    <p className="text-sm text-foreground/60">No market tags yet.</p>
+                  ) : (
+                    locationReadiness!.topMarkets.map((market) => (
+                      <MetricRow
+                        key={market.slug}
+                        label={market.label}
+                        value={market.count}
+                        percent={percentOf(market.count, locationReadinessTotal)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border p-4">
+                <h3 className="text-sm font-semibold text-foreground">Unclassified Location Text</h3>
+                <div className="mt-3 space-y-3">
+                  {(locationReadiness?.unclassifiedLocations || []).length === 0 ? (
+                    <p className="text-sm text-foreground/60">All visible location text maps to curated markets.</p>
+                  ) : (
+                    locationReadiness!.unclassifiedLocations.map((row) => (
+                      <div
+                        key={`${row.locationText}-${row.count}`}
+                        className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm last:border-b-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{row.locationText}</p>
+                          <p className="text-xs text-foreground/50">
+                            {row.sourceCount} source{row.sourceCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold text-foreground">{row.count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1575,6 +1726,79 @@ function StatCard({
 
 function formatQualityFlag(flag: string) {
   return flag.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function ProgressCard({
+  label,
+  value,
+  total,
+  targetPercent,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  targetPercent: number;
+}) {
+  const percent = percentOf(value, total);
+  const passesTarget = percent >= targetPercent;
+
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-foreground/60">{label}</p>
+          <p className="mt-1 text-2xl font-bold">{formatPercent(percent)}</p>
+        </div>
+        <span
+          className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
+            passesTarget
+              ? "border-green-500/40 bg-green-500/10 text-green-600"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+          }`}
+        >
+          {targetPercent}% target
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${
+            passesTarget ? "bg-green-500" : "bg-amber-500"
+          }`}
+          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs text-foreground/55">
+        {value.toLocaleString()} of {total.toLocaleString()} active public listings
+      </p>
+    </div>
+  );
+}
+
+function MetricRow({
+  label,
+  value,
+  percent,
+}: {
+  label: string;
+  value: number;
+  percent: number;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-medium text-foreground">{label}</span>
+        <span className="shrink-0 text-foreground/70">
+          {value.toLocaleString()} · {formatPercent(percent)}
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function HealthCard({
