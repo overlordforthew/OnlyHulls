@@ -7,6 +7,7 @@ import sys
 import tempfile
 from html import unescape
 from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
 
@@ -14,6 +15,13 @@ BASE = "https://www.catamaransite.com"
 LIST_URL = f"{BASE}/yachts-for-sale/"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 ARTICLE_RE = re.compile(r"<article\b[^>]*class=\"[^\"]*card[^\"]*\"[^>]*>.*?</article>", re.S | re.I)
+IMAGE_EXT_RE = re.compile(r"\.(?:jpe?g|png|webp)(?:[?#].*)?$", re.I)
+IMAGE_SIZE_RE = re.compile(r"-(\d{2,5})x(\d{2,5})(?=\.(?:jpe?g|png|webp)(?:[?#].*)?$)", re.I)
+IMAGE_SCALED_SUFFIX_RE = re.compile(r"-scaled(?=\.(?:jpe?g|png|webp)(?:[?#].*)?$)", re.I)
+IMAGE_VALUE_RE = re.compile(
+    r"\b(?:src|data-src|data-lazy-src|data-original|srcset|data-srcset)=\"([^\"]+)\"",
+    re.I,
+)
 EURO = "\u20ac"
 TEMP_DIR = tempfile.gettempdir()
 if os.name != "nt" and TEMP_DIR.startswith("/tmp/user/"):
@@ -30,24 +38,84 @@ def is_placeholder_image(url: str) -> bool:
     return not lowered or "catsite-logo" in lowered or lowered.startswith("data:image/")
 
 
-def fetch_detail_fallback(url: str) -> dict[str, str]:
+def fetch_html(url: str) -> str | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=30)
         if resp.status_code != 200:
-            return {}
+            return None
+        return resp.text
     except requests.RequestException:
+        return None
+
+
+def iter_image_values(raw_value: str):
+    for part in raw_value.split(","):
+        url = part.strip().split(" ")[0].strip()
+        if url and not url.startswith("data:"):
+            yield unescape(url)
+
+
+def image_group_key(url: str) -> str:
+    url_without_query = re.sub(r"[?#].*$", "", url)
+    without_size = IMAGE_SIZE_RE.sub("", url_without_query)
+    return IMAGE_SCALED_SUFFIX_RE.sub("", without_size).lower()
+
+
+def image_quality(url: str) -> int:
+    match = IMAGE_SIZE_RE.search(url)
+    if not match:
+        return 10**12
+    return int(match.group(1)) * int(match.group(2))
+
+
+def is_detail_listing_image(url: str) -> bool:
+    lowered = url.lower()
+    if "/wp-content/uploads/" not in lowered:
+        return False
+    if not IMAGE_EXT_RE.search(lowered):
+        return False
+    if any(token in lowered for token in ["logo", "placeholder", "avatar", "icon", "spinner"]):
+        return False
+    return True
+
+
+def extract_detail_images(html: str, page_url: str, limit: int = 24) -> list[str]:
+    """Prefer real CatamaranSite gallery photos over logos and responsive thumbnails."""
+    best_by_group: dict[str, tuple[int, int, str]] = {}
+
+    for order, match in enumerate(IMAGE_VALUE_RE.finditer(html)):
+        for value in iter_image_values(match.group(1)):
+            image_url = urljoin(page_url, value)
+            if not is_detail_listing_image(image_url):
+                continue
+
+            key = image_group_key(image_url)
+            quality = image_quality(image_url)
+            previous = best_by_group.get(key)
+            if previous is None or quality > previous[0]:
+                best_by_group[key] = (quality, order, image_url)
+
+    ordered = sorted(best_by_group.values(), key=lambda item: item[1])
+    return [image_url for _, _, image_url in ordered[:limit]]
+
+
+def fetch_detail_fallback(url: str) -> dict:
+    html = fetch_html(url)
+    if not html:
         return {}
 
-    html = resp.text
     og_image = re.search(r'property="og:image"\s+content="([^"]+)"', html, re.I)
     location = ""
     location_match = re.search(r"<strong>\s*Location\s*</strong>\s*</p>\s*<p[^>]*>\s*([^<]+?)\s*</p>", html, re.I)
     if location_match:
         location = clean_html_text(location_match.group(1))
 
-    result: dict[str, str] = {}
-    if og_image:
-        result["image"] = og_image.group(1).strip()
+    result: dict = {}
+    images = extract_detail_images(html, url)
+    if images:
+        result["images"] = images
+    elif og_image:
+        result["images"] = [og_image.group(1).strip()]
     if location:
         result["location"] = location
     return result
@@ -67,14 +135,10 @@ def parse_price(text: str) -> str | None:
 
 
 def parse_detail_listing(url: str) -> dict | None:
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-        if resp.status_code != 200:
-            return None
-    except requests.RequestException:
+    html = fetch_html(url)
+    if not html:
         return None
 
-    html = resp.text
     title_match = re.search(r'property="og:title"\s+content="([^"]+)"', html, re.I)
     description_match = re.search(r'property="og:description"\s+content="([^"]+)"', html, re.I)
     fallback_title = re.search(r"<title>(.*?)</title>", html, re.I | re.S)
@@ -122,7 +186,9 @@ def parse_detail_listing(url: str) -> dict | None:
             location = clean_html_text(location_from_title.group(1))
 
     og_image = re.search(r'property="og:image"\s+content="([^"]+)"', html, re.I)
-    image = og_image.group(1).strip() if og_image else ""
+    images = extract_detail_images(html, url)
+    if not images and og_image:
+        images = [og_image.group(1).strip()]
 
     if not name or not price:
         return None
@@ -131,7 +197,7 @@ def parse_detail_listing(url: str) -> dict | None:
         "url": url,
         "name": name,
         "price": price,
-        "images": [image] if image else [],
+        "images": images,
     }
     if year:
         boat["year"] = year
@@ -173,10 +239,16 @@ def parse_card(article_html: str) -> dict | None:
         location_match = re.search(r"Location\s+(.+?)\s+Asking", text, re.I)
         location = location_match.group(1).strip() if location_match else ""
 
+    detail = fetch_detail_fallback(href_match.group(1))
+    detail_images = detail.get("images", [])
+    if detail_images:
+        image_list = detail_images
+    else:
+        image_list = [image] if image else []
+
     if is_placeholder_image(image) or not location:
-        detail = fetch_detail_fallback(href_match.group(1))
         if is_placeholder_image(image):
-            image = detail.get("image", image)
+            image_list = detail_images or image_list
         if not location:
             location = detail.get("location", location)
 
@@ -187,7 +259,7 @@ def parse_card(article_html: str) -> dict | None:
         "url": href_match.group(1),
         "name": title,
         "price": price,
-        "images": [image] if image else [],
+        "images": image_list,
     }
     if year:
         boat["year"] = year
