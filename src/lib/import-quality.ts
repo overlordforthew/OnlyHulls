@@ -2327,6 +2327,13 @@ export function buildImportDocumentationStatus(input: {
 export function buildBaseVisibleImportQualitySql(alias = "b") {
   const normalizedLocationSql = `LOWER(COALESCE(NULLIF(REGEXP_REPLACE(TRIM(${alias}.location_text), '[,\\s]+$', '', 'g'), ''), ''))`;
   const nonQuestionLocationSql = `REPLACE(REPLACE(REPLACE(${normalizedLocationSql}, '?', ''), ' ', ''), ',', '')`;
+  const usableImportedImageExistsSql = `EXISTS (
+      SELECT 1
+      FROM boat_media bm
+      WHERE bm.boat_id = ${alias}.id
+        AND bm.type = 'image'
+        AND LOWER(COALESCE(bm.url, '')) NOT LIKE '%/assets/images/noimage%'
+    )`;
 
   return `(
   ${alias}.source_url IS NULL
@@ -2339,12 +2346,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND ${normalizedLocationSql} !~ '${BROKER_CONTACT_LOCATION_SQL_PATTERN}'
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
-    AND EXISTS (
-      SELECT 1
-      FROM boat_media bm
-      WHERE bm.boat_id = ${alias}.id
-        AND bm.type = 'image'
-    )
+    AND ${usableImportedImageExistsSql}
     AND COALESCE((
       SELECT CASE
         WHEN jsonb_typeof(d.documentation_status -> 'import_quality_visible') = 'boolean'

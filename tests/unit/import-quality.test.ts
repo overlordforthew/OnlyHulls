@@ -32,6 +32,7 @@ test("public visibility suppresses imported listings from held sources", () => {
   assert.match(publicSql, /source_url IS NULL/);
   assert.match(publicSql, /catamarans_com/);
   assert.match(baseSql, /contact\[\[:space:\]\]\+de\[\[:space:\]\]\+valk/);
+  assert.match(baseSql, /\/assets\/images\/noimage/);
 });
 
 test("normalizeImportedLocation repairs mojibake place names", () => {

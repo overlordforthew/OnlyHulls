@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   getSafeExternalUrl,
   getSafeExternalUrlList,
+  isKnownPlaceholderImageUrl,
   isSafeExternalUrl,
 } from "../../src/lib/url-safety";
 
@@ -45,5 +46,19 @@ test("getSafeExternalUrlList keeps order, removes invalid values, and de-dupes r
       "/relative",
     ]),
     ["https://example.com/a", "http://example.com/b"]
+  );
+});
+
+test("getSafeExternalUrlList removes known source placeholder images", () => {
+  assert.equal(
+    isKnownPlaceholderImageUrl("https://cdnx.theyachtmarket.com/assets/images/noimage.gif"),
+    true
+  );
+  assert.deepEqual(
+    getSafeExternalUrlList([
+      "https://cdnx.theyachtmarket.com/assets/images/noimage.gif",
+      "https://cdnx.theyachtmarket.com/img/174173406/2/corbin-39-1981-0001.jpg",
+    ]),
+    ["https://cdnx.theyachtmarket.com/img/174173406/2/corbin-39-1981-0001.jpg"]
   );
 });

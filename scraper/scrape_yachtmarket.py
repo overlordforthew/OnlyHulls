@@ -246,6 +246,29 @@ def normalize_gallery_image_url(img_url):
     return re.sub(r"/img/(\d+)/\d+/", r"/img/\1/2/", img_url)
 
 
+def is_placeholder_image_url(img_url):
+    lowered = (img_url or "").lower()
+    return not lowered or "/assets/images/noimage" in lowered
+
+
+def iter_image_attrs(tag):
+    values = []
+    for attr in ("srcset", "data-srcset"):
+        m = re.search(rf'{attr}="([^"]+)"', tag, re.I)
+        if m:
+            for part in m.group(1).split(","):
+                candidate = part.strip().split(" ")[0]
+                if candidate:
+                    values.append(candidate)
+
+    for attr in ("src", "data-src"):
+        m = re.search(rf'{attr}="([^"]+)"', tag, re.I)
+        if m:
+            values.append(m.group(1).strip())
+
+    return values
+
+
 def extract_images(html):
     """Extract only the primary boat gallery images."""
     images = []
@@ -255,36 +278,42 @@ def extract_images(html):
         if not url:
             return
         normalized = normalize_gallery_image_url(url)
+        if is_placeholder_image_url(normalized):
+            return
         if normalized not in seen:
             seen.add(normalized)
             images.append(normalized)
 
     main_img = re.search(
-        r'id="ContentPlaceHolder1_ContentPlaceHolder1_imgMainBoat"[^>]+src="([^"]+)"',
+        r'<img[^>]+id="ContentPlaceHolder1_ContentPlaceHolder1_imgMainBoat"[^>]*>',
         html,
-        re.S,
+        re.I | re.S,
     )
     if main_img:
-        add(main_img.group(1))
+        for url in iter_image_attrs(main_img.group(0)):
+            add(url)
 
     for match in re.finditer(
-        r'<span id="thumb\d+" class="darken gallery smallThumbCLS">\s*<img[^>]+src="([^"]+)"',
+        r'<span[^>]+id="thumb\d+"[^>]*class="[^"]*\bsmallThumbCLS\b[^"]*"[^>]*>\s*(<img[^>]+>)',
         html,
-        re.S,
+        re.I | re.S,
     ):
-        add(match.group(1))
-
-    if images:
-        return images
-
-    # Fallback for template variants without the standard gallery markup.
-    for match in re.finditer(
-        r'((?:https?:)?//cdnx\.theyachtmarket\.com/img/(\d+)/\d+/[^"\'>\s]+\.jpg)',
-        html,
-    ):
-        add(match.group(1))
+        for url in iter_image_attrs(match.group(1)):
+            add(url)
 
     return images
+
+
+def is_detail_page(html, bid):
+    """Avoid parsing redirected search/result pages as listing detail pages."""
+    if re.search(r"<h1>\s*Boats for sale\s*</h1>", html, re.I):
+        return False
+
+    return (
+        f"boatid={bid}" in html
+        or f"getBoatViewsLive({bid})" in html
+        or f"/id{bid}/" in html
+    )
 
 
 def extract_specs(html):
@@ -526,6 +555,10 @@ def scrape_detail(bid, url, throttle):
             return None
 
     throttle.on_success()
+
+    if not is_detail_page(html, bid):
+        print(f"  [skip] detail page unavailable for {url}", flush=True)
+        return None
 
     # Layer 1: Structured metadata
     og = extract_og_meta(html)

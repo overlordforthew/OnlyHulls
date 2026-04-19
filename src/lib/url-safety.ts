@@ -5,6 +5,11 @@ function isPrivateHost(hostname: string): boolean {
   return PRIVATE_HOST_RE.test(hostname);
 }
 
+export function isKnownPlaceholderImageUrl(url: string | null | undefined): boolean {
+  const normalized = String(url || "").trim().toLowerCase();
+  return normalized.includes("/assets/images/noimage");
+}
+
 export function getSafeExternalUrl(url: string | null | undefined): string | null {
   const normalized = String(url || "").trim();
   if (!normalized) {
@@ -37,7 +42,7 @@ export function getSafeExternalUrlList(
 
   for (const candidate of urls || []) {
     const safeUrl = getSafeExternalUrl(candidate);
-    if (!safeUrl || seen.has(safeUrl)) {
+    if (!safeUrl || isKnownPlaceholderImageUrl(safeUrl) || seen.has(safeUrl)) {
       continue;
     }
 
