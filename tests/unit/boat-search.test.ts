@@ -83,6 +83,12 @@ test("boat search canonicalizes known location aliases and expands market terms"
   assert.deepEqual(where.params.slice(0, 3), ["%puerto rico%", "%san juan%", "%fajardo%"]);
 });
 
+test("boat search keeps exact child markets from collapsing into regional rollups", () => {
+  assert.equal(buildBoatSearchParams({ location: "BVI" }).get("location"), "bvi");
+  assert.equal(buildBoatSearchParams({ location: "Greece" }).get("location"), "greece");
+  assert.equal(buildBoatSearchParams({ location: "Spain" }).get("location"), "spain");
+});
+
 test("saved search signature keeps location and currency distinct", () => {
   const signature = JSON.parse(
     buildSavedSearchSignature({ location: "bahamas", minPrice: "200000", currency: "GBP" })

@@ -32,7 +32,7 @@ export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
     slug: "caribbean",
     label: "Caribbean",
     hubHref: "/boats/location/caribbean",
-    aliases: ["west indies", "bvi", "usvi", "virgin islands", "tortola", "st martin", "saint martin", "grenada", "antigua", "martinique"],
+    aliases: ["west indies", "virgin islands"],
     searchTerms: [
       "caribbean",
       "bahamas",
@@ -68,7 +68,7 @@ export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
   {
     slug: "mediterranean",
     label: "Mediterranean",
-    aliases: ["med", "mallorca", "sardinia", "balearics", "ionian", "aegean"],
+    aliases: ["med"],
     searchTerms: ["mediterranean", "mallorca", "sardinia", "balearics", "ionian", "aegean", "greece", "spain", "france", "italy", "croatia"],
   },
   {
@@ -179,10 +179,19 @@ export function getTopLocationMarket(value?: string | null) {
   if (!normalized) return null;
 
   return (
-    TOP_LOCATION_MARKETS.find((market) => {
-      const candidates = [market.slug, market.label, ...market.aliases, ...market.searchTerms];
-      return candidates.some((candidate) => normalizeLocationLookupValue(candidate) === normalized);
-    }) || null
+    findMarketByCandidates(normalized, (market) => [market.slug, market.label]) ||
+    findMarketByCandidates(normalized, (market) => market.aliases) ||
+    findMarketByCandidates(normalized, (market) => market.searchTerms) ||
+    null
+  );
+}
+
+function findMarketByCandidates(
+  normalized: string,
+  getCandidates: (market: TopLocationMarket) => string[]
+) {
+  return TOP_LOCATION_MARKETS.find((market) =>
+    getCandidates(market).some((candidate) => normalizeLocationLookupValue(candidate) === normalized)
   );
 }
 
