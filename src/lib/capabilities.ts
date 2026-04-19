@@ -93,3 +93,7 @@ export function locationGeocodingEnabled(): boolean {
 
   return provider !== "disabled" && hasConfiguredValue(userAgent);
 }
+
+export function publicMapEnabled(): boolean {
+  return String(process.env.PUBLIC_MAP_ENABLED || "").trim().toLowerCase() === "true";
+}

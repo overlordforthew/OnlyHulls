@@ -11,6 +11,7 @@ import {
   matchIntelligenceConfigured,
   matchIntelligenceProvider,
   openAIEnabled,
+  publicMapEnabled,
   semanticMatchingEnabled,
   storageEnabled,
 } from "@/lib/capabilities";
@@ -519,6 +520,7 @@ export async function GET() {
         openAIEnabled: openAIEnabled(),
         locationGeocodingEnabled: locationGeocodingEnabled(),
         locationGeocodingProvider: locationGeocodingProvider(),
+        publicMapEnabled: publicMapEnabled(),
         matchIntelligenceEnabled: matchIntelligenceConfigured(),
         matchIntelligenceProvider: matchIntelligenceProvider(),
         semanticMatchingEnabled: semanticMatchingEnabled(),

@@ -12,6 +12,7 @@ import {
   parseMapMarkerLimit,
   type MapBounds,
 } from "@/lib/locations/map-bounds";
+import { publicMapEnabled } from "@/lib/capabilities";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 
@@ -78,6 +79,10 @@ export async function GET(req: Request) {
   const startedAt = Date.now();
 
   try {
+    if (!publicMapEnabled()) {
+      return NextResponse.json({ error: "Map is not enabled." }, { status: 404 });
+    }
+
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rl = await rateLimit(`boats-map:${ip}`, 120, 60, { failClosed: false });
     if (!rl.allowed) {

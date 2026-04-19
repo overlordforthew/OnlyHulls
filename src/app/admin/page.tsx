@@ -136,6 +136,7 @@ interface Stats {
     openAIEnabled: boolean;
     locationGeocodingEnabled: boolean;
     locationGeocodingProvider: string;
+    publicMapEnabled: boolean;
     matchIntelligenceEnabled: boolean;
     matchIntelligenceProvider: string;
     semanticMatchingEnabled: boolean;
@@ -728,7 +729,7 @@ export default function AdminPage() {
             <StatCard label="Introductions" value={stats.totalIntroductions} />
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-8">
             <HealthCard
               label="Billing"
               value={stats.serviceStatus.billingEnabled ? "Configured" : "Missing"}
@@ -770,6 +771,11 @@ export default function AdminPage() {
                   : "Off"
               }
               healthy={stats.serviceStatus.locationGeocodingEnabled}
+            />
+            <HealthCard
+              label="Public Map"
+              value={stats.serviceStatus.publicMapEnabled ? "Enabled" : "Gated"}
+              healthy={stats.serviceStatus.publicMapEnabled}
             />
             <HealthCard
               label="Search Docs"
