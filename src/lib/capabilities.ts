@@ -76,3 +76,20 @@ export function matchIntelligenceConfigured(): boolean {
 export function matchIntelligenceProvider(): string {
   return getMatchIntelligenceProvider();
 }
+
+export function locationGeocodingProvider(): string {
+  const provider = String(
+    process.env.LOCATION_GEOCODING_PROVIDER || process.env.GEOCODING_PROVIDER || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return provider || "disabled";
+}
+
+export function locationGeocodingEnabled(): boolean {
+  const provider = locationGeocodingProvider();
+  const userAgent = process.env.LOCATION_GEOCODING_USER_AGENT || process.env.GEOCODING_USER_AGENT;
+
+  return provider !== "disabled" && hasConfiguredValue(userAgent);
+}

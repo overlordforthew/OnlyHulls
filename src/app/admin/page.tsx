@@ -93,9 +93,16 @@ interface Stats {
     withMarketSlugsCount: number;
     cityOrBetterCount: number;
     exactCoordinatesCount: number;
+    mappableCoordinatesCount: number;
     approximateCount: number;
     missingLocationCount: number;
     unclassifiedLocationCount: number;
+    geocodeReadyCount: number;
+    geocodePendingCount: number;
+    geocodeReviewCount: number;
+    geocodeFailedCount: number;
+    geocodeSkippedCount: number;
+    geocodedCount: number;
     topMarkets: Array<{
       slug: string;
       label: string;
@@ -106,11 +113,20 @@ interface Stats {
       count: number;
       sourceCount: number;
     }>;
+    geocodeCandidates: Array<{
+      locationText: string;
+      count: number;
+      confidence: string | null;
+      country: string | null;
+      region: string | null;
+    }>;
   };
   serviceStatus: {
     billingEnabled: boolean;
     emailEnabled: boolean;
     openAIEnabled: boolean;
+    locationGeocodingEnabled: boolean;
+    locationGeocodingProvider: string;
     matchIntelligenceEnabled: boolean;
     matchIntelligenceProvider: string;
     semanticMatchingEnabled: boolean;
@@ -359,8 +375,10 @@ function formatProviderLabel(provider: string) {
       return "OpenRouter";
     case "ollama":
       return "Ollama";
+    case "nominatim":
+      return "Nominatim";
     default:
-      return "None";
+      return provider === "disabled" ? "None" : provider;
   }
 }
 
@@ -640,11 +658,11 @@ export default function AdminPage() {
   const locationReadinessTotal = locationReadiness?.activeVisibleCount || 0;
   const marketTagRate = percentOf(locationReadiness?.withMarketSlugsCount || 0, locationReadinessTotal);
   const cityOrBetterRate = percentOf(locationReadiness?.cityOrBetterCount || 0, locationReadinessTotal);
-  const exactCoordinateRate = percentOf(locationReadiness?.exactCoordinatesCount || 0, locationReadinessTotal);
+  const mappableCoordinateRate = percentOf(locationReadiness?.mappableCoordinatesCount || 0, locationReadinessTotal);
   const mapReady =
     marketTagRate >= 95 &&
     cityOrBetterRate >= 85 &&
-    exactCoordinateRate >= 85;
+    mappableCoordinateRate >= 85;
 
   if (loading) {
     return (
@@ -700,7 +718,7 @@ export default function AdminPage() {
             <StatCard label="Introductions" value={stats.totalIntroductions} />
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
             <HealthCard
               label="Billing"
               value={stats.serviceStatus.billingEnabled ? "Configured" : "Missing"}
@@ -733,6 +751,15 @@ export default function AdminPage() {
               label="Storage"
               value={stats.serviceStatus.storageEnabled ? "Configured" : "Missing"}
               healthy={stats.serviceStatus.storageEnabled}
+            />
+            <HealthCard
+              label="Geocoder"
+              value={
+                stats.serviceStatus.locationGeocodingEnabled
+                  ? formatProviderLabel(stats.serviceStatus.locationGeocodingProvider)
+                  : "Off"
+              }
+              healthy={stats.serviceStatus.locationGeocodingEnabled}
             />
             <HealthCard
               label="Search Docs"
@@ -993,6 +1020,10 @@ export default function AdminPage() {
                 <h2 className="text-lg font-semibold">Location Readiness</h2>
                 <p className="mt-1 text-sm text-foreground/60">
                   Map gate: {mapReady ? "ready for product design" : "keep improving coverage before a live map"}.
+                  Geocoder:{" "}
+                  {stats.serviceStatus.locationGeocodingEnabled
+                    ? formatProviderLabel(stats.serviceStatus.locationGeocodingProvider)
+                    : "configure provider before applying coordinates"}.
                 </p>
               </div>
               <span
@@ -1019,16 +1050,16 @@ export default function AdminPage() {
                 targetPercent={85}
               />
               <ProgressCard
-                label="Exact coordinates"
-                value={locationReadiness?.exactCoordinatesCount || 0}
+                label="Mappable coordinates"
+                value={locationReadiness?.mappableCoordinatesCount || 0}
                 total={locationReadinessTotal}
                 targetPercent={85}
               />
               <ProgressCard
-                label="Known location text"
-                value={locationReadiness?.withLocationTextCount || 0}
+                label="Exact pins"
+                value={locationReadiness?.exactCoordinatesCount || 0}
                 total={locationReadinessTotal}
-                targetPercent={95}
+                targetPercent={50}
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -1038,11 +1069,25 @@ export default function AdminPage() {
                 info="Active public listings after import-quality suppression."
               />
               <StatCard
+                label="Geocode Ready"
+                value={locationReadiness?.geocodeReadyCount || 0}
+                detail="Specific, market-tagged listings without coordinates."
+                highlight={(locationReadiness?.geocodeReadyCount || 0) > 0}
+              />
+              <StatCard
+                label="Needs Review"
+                value={(locationReadiness?.geocodeReviewCount || 0) + (locationReadiness?.geocodeFailedCount || 0)}
+                detail={`${(locationReadiness?.geocodeReviewCount || 0).toLocaleString()} review, ${(locationReadiness?.geocodeFailedCount || 0).toLocaleString()} failed.`}
+                highlight={((locationReadiness?.geocodeReviewCount || 0) + (locationReadiness?.geocodeFailedCount || 0)) > 0}
+              />
+              <StatCard
                 label="Approximate Only"
                 value={locationReadiness?.approximateCount || 0}
                 detail="Useful for regional search, not enough for precise map pins."
                 highlight={(locationReadiness?.approximateCount || 0) > 0}
               />
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 label="Unclassified Text"
                 value={locationReadiness?.unclassifiedLocationCount || 0}
@@ -1055,8 +1100,18 @@ export default function AdminPage() {
                 detail="These listings cannot support regional search or maps."
                 highlight={(locationReadiness?.missingLocationCount || 0) > 0}
               />
+              <StatCard
+                label="Geocoded"
+                value={locationReadiness?.geocodedCount || 0}
+                detail={`${(locationReadiness?.geocodeSkippedCount || 0).toLocaleString()} skipped after review.`}
+              />
+              <StatCard
+                label="Pending Queue"
+                value={locationReadiness?.geocodePendingCount || 0}
+                detail="Listings waiting for the geocoding workflow."
+              />
             </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
               <div className="rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground">Top Tagged Markets</h3>
                 <div className="mt-3 space-y-3">
@@ -1089,6 +1144,29 @@ export default function AdminPage() {
                           <p className="truncate font-medium text-foreground">{row.locationText}</p>
                           <p className="text-xs text-foreground/50">
                             {row.sourceCount} source{row.sourceCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold text-foreground">{row.count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border p-4">
+                <h3 className="text-sm font-semibold text-foreground">Geocode Queue</h3>
+                <div className="mt-3 space-y-3">
+                  {(locationReadiness?.geocodeCandidates || []).length === 0 ? (
+                    <p className="text-sm text-foreground/60">No coordinate-ready locations waiting.</p>
+                  ) : (
+                    locationReadiness!.geocodeCandidates.map((row) => (
+                      <div
+                        key={`${row.locationText}-${row.count}`}
+                        className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm last:border-b-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{row.locationText}</p>
+                          <p className="text-xs text-foreground/50">
+                            {[row.confidence, row.country || row.region].filter(Boolean).join(" · ")}
                           </p>
                         </div>
                         <span className="shrink-0 font-semibold text-foreground">{row.count}</span>

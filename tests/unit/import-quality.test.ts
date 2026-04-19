@@ -179,6 +179,10 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
     "Batam, Indonesia"
   );
   assert.equal(
+    normalizeImportedLocation("Penangmalaysia"),
+    "Penang, Malaysia"
+  );
+  assert.equal(
     normalizeImportedLocation("Denpasarbali Indonesia"),
     "Denpasar, Bali, Indonesia"
   );

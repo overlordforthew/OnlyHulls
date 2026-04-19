@@ -6,6 +6,8 @@ import {
   billingEnabled,
   emailEnabled,
   embeddingProvider,
+  locationGeocodingEnabled,
+  locationGeocodingProvider,
   matchIntelligenceConfigured,
   matchIntelligenceProvider,
   openAIEnabled,
@@ -95,9 +97,16 @@ export async function GET() {
       with_market_slugs_count: string;
       city_or_better_count: string;
       exact_coordinates_count: string;
+      mappable_coordinates_count: string;
       approximate_count: string;
       missing_location_count: string;
       unclassified_location_count: string;
+      geocode_ready_count: string;
+      geocode_pending_count: string;
+      geocode_review_count: string;
+      geocode_failed_count: string;
+      geocode_skipped_count: string;
+      geocoded_count: string;
     };
     type LocationMarketCountRow = {
       slug: string;
@@ -107,6 +116,13 @@ export async function GET() {
       location_text: string;
       count: string;
       source_count: string;
+    };
+    type LocationGeocodeCandidateRow = {
+      location_text: string;
+      count: string;
+      confidence: string | null;
+      country: string | null;
+      region: string | null;
     };
 
     const liveUserWhere = `
@@ -133,6 +149,7 @@ export async function GET() {
       locationReadinessSummary,
       locationMarketCounts,
       unclassifiedLocations,
+      geocodeCandidateLocations,
     ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
@@ -269,7 +286,12 @@ export async function GET() {
            COUNT(*) FILTER (
              WHERE b.location_lat BETWEEN -90 AND 90
                AND b.location_lng BETWEEN -180 AND 180
+               AND COALESCE(b.location_approximate, false) = false
            )::text AS exact_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+           )::text AS mappable_coordinates_count,
            COUNT(*) FILTER (
              WHERE b.location_approximate = true
                AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
@@ -280,7 +302,22 @@ export async function GET() {
            COUNT(*) FILTER (
              WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
                AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
-           )::text AS unclassified_location_count
+           )::text AS unclassified_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+               AND NOT (
+                 b.location_lat BETWEEN -90 AND 90
+                 AND b.location_lng BETWEEN -180 AND 180
+               )
+               AND b.location_confidence IN ('city', 'exact')
+               AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+               AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
+           )::text AS geocode_ready_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'pending')::text AS geocode_pending_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'review')::text AS geocode_review_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'failed')::text AS geocode_failed_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'skipped')::text AS geocode_skipped_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'geocoded')::text AS geocoded_count
          FROM boats b
          LEFT JOIN boat_dna d ON d.boat_id = b.id
          WHERE b.status = 'active'
@@ -308,6 +345,29 @@ export async function GET() {
            AND ${buildVisibleImportQualitySql("b")}
            AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
            AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
+         GROUP BY LOWER(TRIM(b.location_text))
+         ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
+         LIMIT 12`
+      ),
+      query<LocationGeocodeCandidateRow>(
+        `SELECT
+           MIN(b.location_text) AS location_text,
+           COUNT(*)::text AS count,
+           MIN(b.location_confidence) AS confidence,
+           MIN(b.location_country) AS country,
+           MIN(b.location_region) AS region
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           AND NOT (
+             b.location_lat BETWEEN -90 AND 90
+             AND b.location_lng BETWEEN -180 AND 180
+           )
+           AND b.location_confidence IN ('city', 'exact')
+           AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+           AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
          GROUP BY LOWER(TRIM(b.location_text))
          ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
          LIMIT 12`
@@ -389,9 +449,16 @@ export async function GET() {
         withMarketSlugsCount: parseInt(locationReadinessSummary?.with_market_slugs_count || "0", 10),
         cityOrBetterCount: parseInt(locationReadinessSummary?.city_or_better_count || "0", 10),
         exactCoordinatesCount: parseInt(locationReadinessSummary?.exact_coordinates_count || "0", 10),
+        mappableCoordinatesCount: parseInt(locationReadinessSummary?.mappable_coordinates_count || "0", 10),
         approximateCount: parseInt(locationReadinessSummary?.approximate_count || "0", 10),
         missingLocationCount: parseInt(locationReadinessSummary?.missing_location_count || "0", 10),
         unclassifiedLocationCount: parseInt(locationReadinessSummary?.unclassified_location_count || "0", 10),
+        geocodeReadyCount: parseInt(locationReadinessSummary?.geocode_ready_count || "0", 10),
+        geocodePendingCount: parseInt(locationReadinessSummary?.geocode_pending_count || "0", 10),
+        geocodeReviewCount: parseInt(locationReadinessSummary?.geocode_review_count || "0", 10),
+        geocodeFailedCount: parseInt(locationReadinessSummary?.geocode_failed_count || "0", 10),
+        geocodeSkippedCount: parseInt(locationReadinessSummary?.geocode_skipped_count || "0", 10),
+        geocodedCount: parseInt(locationReadinessSummary?.geocoded_count || "0", 10),
         topMarkets: locationMarketCounts.map((row) => ({
           slug: row.slug,
           label: locationMarketBySlug.get(row.slug)?.label || row.slug.replace(/-/g, " "),
@@ -402,11 +469,20 @@ export async function GET() {
           count: parseInt(row.count || "0", 10),
           sourceCount: parseInt(row.source_count || "0", 10),
         })),
+        geocodeCandidates: geocodeCandidateLocations.map((row) => ({
+          locationText: row.location_text,
+          count: parseInt(row.count || "0", 10),
+          confidence: row.confidence,
+          country: row.country,
+          region: row.region,
+        })),
       },
       serviceStatus: {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),
         openAIEnabled: openAIEnabled(),
+        locationGeocodingEnabled: locationGeocodingEnabled(),
+        locationGeocodingProvider: locationGeocodingProvider(),
         matchIntelligenceEnabled: matchIntelligenceConfigured(),
         matchIntelligenceProvider: matchIntelligenceProvider(),
         semanticMatchingEnabled: semanticMatchingEnabled(),

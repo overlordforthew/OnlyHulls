@@ -115,6 +115,16 @@ test("location inference tags exact markets and parent cruising regions", () => 
   assert.deepEqual(florida.marketSlugs, ["united-states", "florida"]);
   assert.equal(florida.confidence, "exact");
   assert.equal(florida.approximate, false);
+
+  const approximateCannes = inferLocationMarketSignals({
+    locationText: "Cannes",
+    latitude: 43.5528,
+    longitude: 7.0174,
+    coordinatesApproximate: true,
+  });
+  assert.deepEqual(approximateCannes.marketSlugs, ["mediterranean", "france"]);
+  assert.equal(approximateCannes.confidence, "city");
+  assert.equal(approximateCannes.approximate, true);
 });
 
 test("location inference covers high-volume European marina text", () => {

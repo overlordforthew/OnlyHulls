@@ -1,0 +1,380 @@
+import { hasConfiguredValue } from "@/lib/capabilities";
+
+export type GeocodingProvider = "disabled" | "nominatim";
+export type GeocodePrecision =
+  | "exact"
+  | "street"
+  | "marina"
+  | "city"
+  | "region"
+  | "country"
+  | "unknown";
+export type GeocodeStatus = "skipped" | "geocoded" | "failed" | "review";
+
+export type GeocodeCandidateInput = {
+  locationText?: string | null;
+  country?: string | null;
+  region?: string | null;
+  marketSlugs?: string[] | null;
+  confidence?: string | null;
+};
+
+export type GeocodeQuery = {
+  queryText: string;
+  queryKey: string;
+  countryHint: string | null;
+};
+
+export type GeocodeResult = {
+  status: GeocodeStatus;
+  latitude: number | null;
+  longitude: number | null;
+  precision: GeocodePrecision;
+  score: number | null;
+  placeName: string | null;
+  provider: GeocodingProvider;
+  payload?: unknown;
+  error?: string | null;
+};
+
+export type GeocodingConfig = {
+  provider: GeocodingProvider;
+  enabled: boolean;
+  baseUrl: string;
+  userAgent: string | null;
+  email: string | null;
+  delayMs: number;
+  timeoutMs: number;
+};
+
+const DEFAULT_NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
+const GENERIC_LOCATION_TEXT = new Set([
+  "at request",
+  "by appointment",
+  "center",
+  "cruising",
+  "east coast",
+  "global",
+  "marina",
+  "south",
+  "south coast",
+  "unknown",
+  "west coast",
+  "worldwide",
+]);
+
+const COUNTRY_CODES: Record<string, string> = {
+  "antigua and barbuda": "ag",
+  aruba: "aw",
+  australia: "au",
+  bahamas: "bs",
+  belize: "bz",
+  bermuda: "bm",
+  canada: "ca",
+  croatia: "hr",
+  cyprus: "cy",
+  denmark: "dk",
+  fiji: "fj",
+  france: "fr",
+  "french polynesia": "pf",
+  germany: "de",
+  gibraltar: "gi",
+  greece: "gr",
+  grenada: "gd",
+  guadeloupe: "gp",
+  guatemala: "gt",
+  guernsey: "gg",
+  honduras: "hn",
+  "hong kong": "hk",
+  hungary: "hu",
+  indonesia: "id",
+  ireland: "ie",
+  italy: "it",
+  jersey: "je",
+  latvia: "lv",
+  malaysia: "my",
+  malta: "mt",
+  martinique: "mq",
+  mexico: "mx",
+  monaco: "mc",
+  montenegro: "me",
+  netherlands: "nl",
+  "new zealand": "nz",
+  norway: "no",
+  panama: "pa",
+  philippines: "ph",
+  poland: "pl",
+  portugal: "pt",
+  "puerto rico": "pr",
+  "saint lucia": "lc",
+  seychelles: "sc",
+  "sint maarten": "sx",
+  slovenia: "si",
+  "south africa": "za",
+  spain: "es",
+  sweden: "se",
+  taiwan: "tw",
+  thailand: "th",
+  tunisia: "tn",
+  turkey: "tr",
+  "united kingdom": "gb",
+  "united states": "us",
+  "united states virgin islands": "vi",
+};
+
+function normalizeLookupValue(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueParts(parts: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const part of parts) {
+    const trimmed = String(part || "").trim();
+    const key = normalizeLookupValue(trimmed);
+    if (!trimmed || seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+
+  return result;
+}
+
+function numberFromEnv(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+export function getGeocodingConfig(): GeocodingConfig {
+  const providerValue = String(
+    process.env.LOCATION_GEOCODING_PROVIDER || process.env.GEOCODING_PROVIDER || ""
+  )
+    .trim()
+    .toLowerCase();
+  const provider: GeocodingProvider = providerValue === "nominatim" ? "nominatim" : "disabled";
+  const userAgent = process.env.LOCATION_GEOCODING_USER_AGENT || process.env.GEOCODING_USER_AGENT || null;
+
+  return {
+    provider,
+    enabled: provider !== "disabled" && hasConfiguredValue(userAgent),
+    baseUrl:
+      process.env.LOCATION_GEOCODING_BASE_URL ||
+      process.env.GEOCODING_BASE_URL ||
+      DEFAULT_NOMINATIM_BASE_URL,
+    userAgent,
+    email: process.env.LOCATION_GEOCODING_EMAIL || process.env.GEOCODING_EMAIL || null,
+    delayMs: numberFromEnv(process.env.LOCATION_GEOCODING_DELAY_MS || process.env.GEOCODING_DELAY_MS, 1100),
+    timeoutMs: numberFromEnv(process.env.LOCATION_GEOCODING_TIMEOUT_MS || process.env.GEOCODING_TIMEOUT_MS, 8000),
+  };
+}
+
+export function getCountryCode(country?: string | null) {
+  return COUNTRY_CODES[normalizeLookupValue(country)] || null;
+}
+
+export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | null {
+  const locationText = String(input.locationText || "").trim();
+  const normalizedLocation = normalizeLookupValue(locationText);
+  if (!locationText || normalizedLocation.length < 3 || GENERIC_LOCATION_TEXT.has(normalizedLocation)) {
+    return null;
+  }
+
+  const confidence = String(input.confidence || "").toLowerCase();
+  const looksSpecific =
+    confidence === "city" ||
+    confidence === "exact" ||
+    locationText.includes(",") ||
+    normalizeLookupValue(input.country) === normalizedLocation;
+  if (!looksSpecific) return null;
+
+  const country = String(input.country || "").trim();
+  const locationIncludesCountry =
+    country && normalizeLookupValue(locationText).includes(normalizeLookupValue(country));
+  const parts = uniqueParts([
+    locationText,
+    locationIncludesCountry ? null : country,
+  ]);
+  const queryText = parts.join(", ");
+  const queryKey = normalizeLookupValue(queryText);
+
+  return {
+    queryText,
+    queryKey,
+    countryHint: getCountryCode(country),
+  };
+}
+
+export function getGeocodeCandidateReason(input: GeocodeCandidateInput) {
+  if (!String(input.locationText || "").trim()) return "missing_location";
+  if (buildGeocodeQuery(input)) return "ready";
+  if (!input.confidence || input.confidence === "unknown") return "unknown_location";
+  return "needs_more_specific_location";
+}
+
+function inferNominatimPrecision(result: Record<string, unknown>): GeocodePrecision {
+  const addresstype = normalizeLookupValue(String(result.addresstype || ""));
+  const type = normalizeLookupValue(String(result.type || ""));
+  const placeRank = Number(result.place_rank);
+  const className = normalizeLookupValue(String(result.class || ""));
+
+  if (["marina", "harbour", "harbor", "dock", "mooring"].includes(type)) return "marina";
+  if (["house", "building", "amenity"].includes(addresstype) || placeRank >= 28) return "street";
+  if (["city", "town", "village", "hamlet", "municipality", "suburb"].includes(addresstype)) return "city";
+  if (["city", "town", "village", "hamlet", "municipality", "suburb"].includes(type)) return "city";
+  if (["boundary", "place"].includes(className) && placeRank >= 12 && placeRank <= 18) return "city";
+  if (["state", "region", "province", "county", "island"].includes(addresstype) || placeRank >= 6) return "region";
+  if (addresstype === "country" || placeRank <= 4) return "country";
+  return "unknown";
+}
+
+function scoreNominatimResult(result: Record<string, unknown>, precision: GeocodePrecision) {
+  const importance = Number(result.importance);
+  const base = Number.isFinite(importance) ? Math.min(Math.max(importance, 0), 1) : 0.4;
+  const precisionBoost: Record<GeocodePrecision, number> = {
+    exact: 0.2,
+    street: 0.18,
+    marina: 0.16,
+    city: 0.12,
+    region: 0.04,
+    country: -0.1,
+    unknown: -0.15,
+  };
+
+  return Math.max(0, Math.min(1, base + precisionBoost[precision]));
+}
+
+function validCoordinate(latitude: number, longitude: number) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+export async function geocodeWithNominatim(
+  query: GeocodeQuery,
+  config: GeocodingConfig = getGeocodingConfig()
+): Promise<GeocodeResult> {
+  if (!config.userAgent) {
+    return {
+      status: "skipped",
+      latitude: null,
+      longitude: null,
+      precision: "unknown",
+      score: null,
+      placeName: null,
+      provider: "nominatim",
+      error: "missing_user_agent",
+    };
+  }
+
+  const url = new URL(config.baseUrl);
+  url.searchParams.set("q", query.queryText);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("dedupe", "1");
+  if (query.countryHint) url.searchParams.set("countrycodes", query.countryHint);
+  if (config.email) url.searchParams.set("email", config.email);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": config.userAgent,
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const providerBackoff = response.status === 429 || response.status === 503;
+      return {
+        status: providerBackoff || response.status === 403 ? "review" : "failed",
+        latitude: null,
+        longitude: null,
+        precision: "unknown",
+        score: null,
+        placeName: null,
+        provider: "nominatim",
+        error: `http_${response.status}`,
+      };
+    }
+
+    const payload = await response.json();
+    const first = Array.isArray(payload) ? payload[0] : null;
+    if (!first || typeof first !== "object") {
+      return {
+        status: "review",
+        latitude: null,
+        longitude: null,
+        precision: "unknown",
+        score: null,
+        placeName: null,
+        provider: "nominatim",
+        payload,
+        error: "no_result",
+      };
+    }
+
+    const result = first as Record<string, unknown>;
+    const latitude = Number(result.lat);
+    const longitude = Number(result.lon);
+    if (!validCoordinate(latitude, longitude)) {
+      return {
+        status: "failed",
+        latitude: null,
+        longitude: null,
+        precision: "unknown",
+        score: null,
+        placeName: String(result.display_name || "") || null,
+        provider: "nominatim",
+        payload: result,
+        error: "invalid_coordinates",
+      };
+    }
+
+    const precision = inferNominatimPrecision(result);
+    const score = scoreNominatimResult(result, precision);
+    const needsReview = precision === "country" || precision === "unknown" || score < 0.35;
+
+    return {
+      status: needsReview ? "review" : "geocoded",
+      latitude,
+      longitude,
+      precision,
+      score,
+      placeName: String(result.display_name || "") || null,
+      provider: "nominatim",
+      payload: result,
+      error: needsReview ? "low_precision" : null,
+    };
+  } catch (err) {
+    return {
+      status: "failed",
+      latitude: null,
+      longitude: null,
+      precision: "unknown",
+      score: null,
+      placeName: null,
+      provider: "nominatim",
+      error: err instanceof Error ? err.message : "request_failed",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}

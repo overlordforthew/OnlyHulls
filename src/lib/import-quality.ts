@@ -153,6 +153,10 @@ const COMMON_LOCATION_SUFFIXES = [
   "New Zealand",
 ];
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const TITLE_CASE_EXACT: Record<string, string> = {
   "o'day": "O'Day",
   oday: "O'Day",
@@ -645,9 +649,21 @@ export function normalizeImportedLocation(value?: string | null) {
 
   if (!normalized.includes(",")) {
     for (const suffix of COMMON_LOCATION_SUFFIXES) {
-      const suffixPattern = new RegExp(`^(.+?)\\s+${suffix.replace(/\s+/g, "\\s+")}$`, "i");
+      const suffixPattern = new RegExp(`^(.+?)\\s+${escapeRegExp(suffix).replace(/\s+/g, "\\s+")}$`, "i");
       const match = normalized.match(suffixPattern);
       if (match) {
+        normalized = `${match[1]}, ${suffix}`;
+        break;
+      }
+    }
+  }
+
+  if (!normalized.includes(",")) {
+    for (const suffix of LOCATION_REGION_FALLBACKS) {
+      const compactSuffix = suffix.replace(/\s+/g, "");
+      const suffixPattern = new RegExp(`^(.+?)${escapeRegExp(compactSuffix)}$`, "i");
+      const match = normalized.match(suffixPattern);
+      if (match && match[1].trim().length >= 2) {
         normalized = `${match[1]}, ${suffix}`;
         break;
       }

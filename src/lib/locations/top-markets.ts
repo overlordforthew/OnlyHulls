@@ -985,9 +985,11 @@ export function inferLocationMarketSignals(input: {
   locationText?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  coordinatesApproximate?: boolean | null;
 }): LocationMarketSignals {
   const normalizedLocation = normalizeLocationLookupValue(input.locationText);
   const hasCoordinates = hasFiniteCoordinates(input.latitude, input.longitude);
+  const coordinatesApproximate = hasCoordinates && input.coordinatesApproximate === true;
   const matchedMarkets = normalizedLocation
     ? TOP_LOCATION_MARKETS.filter((market) =>
         [market.label, market.slug, ...market.aliases, ...market.searchTerms].some((term) =>
@@ -1014,7 +1016,7 @@ export function inferLocationMarketSignals(input: {
       Boolean(market.country) &&
       market.aliases.some((term) => containsNormalizedTerm(normalizedLocation, term))
     );
-  const confidence: LocationConfidence = hasCoordinates
+  const confidence: LocationConfidence = hasCoordinates && !coordinatesApproximate
     ? "exact"
     : marketSlugs.length === 0
       ? "unknown"
@@ -1027,7 +1029,7 @@ export function inferLocationMarketSignals(input: {
     country: primaryMarket?.country ?? null,
     region: primaryMarket?.region ?? primaryMarket?.label ?? null,
     confidence,
-    approximate: !hasCoordinates,
+    approximate: !hasCoordinates || coordinatesApproximate,
   };
 }
 
