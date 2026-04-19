@@ -1153,6 +1153,76 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "theyachtmarket" &&
+    /^aalsmeer$/i.test(make) &&
+    modelStartsWith(/^yacht\s+inc\s+aalsmeer\s+yacht\b[\s-]*/i) &&
+    /(?:^|-)aalsmeer-yacht-inc-aalsmeer-yacht-custom-57(?:-|$)/.test(slug)
+  ) {
+    make = "Aalsmeer Yacht Inc";
+    model = model.replace(/^yacht\s+inc\s+aalsmeer\s+yacht\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^antique$/i.test(make) &&
+    /^yachts\s+34$/i.test(model) &&
+    /(?:^|-)antique-yachts-34(?:-|$)/.test(slug)
+  ) {
+    make = "Antiqua";
+    model = "ANTIQUE 34";
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^ott$/i.test(make) &&
+    modelStartsWith(/^yacht\s+diamant\s+3000\b/i) &&
+    /(?:^|-)ott-yacht-diamant-3000(?:-|$)/.test(slug)
+  ) {
+    make = "Ott Yacht";
+    model = model.replace(/^yacht\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^smacks$/i.test(make) &&
+    modelStartsWith(/^boat\s+12\b/i) &&
+    /(?:^|-)smacks-boat-12(?:-|$)/.test(slug)
+  ) {
+    make = "Smacks Boat";
+    model = model.replace(/^boat\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^brooklin$/i.test(make) &&
+    modelStartsWith(/^boat\s+yard\s+sparkman\s+and\s+stephens\s+sloop\b/i) &&
+    /(?:^|-)brooklin-boat-yard-sparkman-and-stephens-sloop(?:-|$)/.test(slug)
+  ) {
+    make = "Brooklin Boat Yard";
+    model = model.replace(/^boat\s+yard\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^galileo$/i.test(make) &&
+    modelStartsWith(/^boat\s+yard\s+imoca\s+open\s+60\b/i) &&
+    /(?:^|-)galileo-boat-yard-imoca-open-60(?:-|$)/.test(slug)
+  ) {
+    make = "Galileo Boat Yard";
+    model = model.replace(/^boat\s+yard\b[\s-]*/i, "").trim();
+  }
+
+  if (
+    sourceSite === "theyachtmarket" &&
+    /^alpha$/i.test(make) &&
+    modelStartsWith(/^yacht\s+cotre\s+49\b/i) &&
+    /(?:^|-)alpha-yacht-cotre-49(?:-|$)/.test(slug)
+  ) {
+    make = "Alpha Yachts";
+    model = model.replace(/^yacht\b[\s-]*/i, "").trim();
+  }
+
+  if (
     sourceSite === "sailboatlistings" &&
     /^caledonia(?:\s+marine\s+systems)?$/i.test(make) &&
     modelStartsWith(/^marine\s+systems\b[\s-]*halifax\s+37\b/i) &&

@@ -4223,6 +4223,93 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   );
 });
 
+test("normalizeImportedMakeModel repairs live TheYachtMarket builder suffix splits", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Aalsmeer",
+      model: "Yacht Inc Aalsmeer Yacht Custom 57 (Dutch Built)",
+      slug: "1962-aalsmeer-yacht-inc-aalsmeer-yacht-custom-57-dutch-built-port-ludlow",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Aalsmeer Yacht Inc", model: "Custom 57 (Dutch Built)" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Antique",
+      model: "Yachts 34",
+      slug: "1982-antique-yachts-34-denmark",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Antiqua", model: "ANTIQUE 34" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ott",
+      model: "Yacht Diamant 3000",
+      slug: "2001-ott-yacht-diamant-3000-locarno",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Ott Yacht", model: "Diamant 3000" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Smacks",
+      model: "Boat 12",
+      slug: "2020-smacks-boat-12-suffolk-yacht-harbour-ip10-0ln",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Smacks Boat", model: "12" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Brooklin",
+      model: "Boat Yard Sparkman And Stephens Sloop",
+      slug: "2007-brooklin-boat-yard-sparkman-and-stephens-sloop-rockport",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Brooklin Boat Yard", model: "Sparkman And Stephens Sloop" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Galileo",
+      model: "Boat Yard Imoca Open 60",
+      slug: "2004-galileo-boat-yard-imoca-open-60-france",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Galileo Boat Yard", model: "Imoca Open 60" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Alpha",
+      model: "Yacht Cotre 49",
+      slug: "1990-alpha-yacht-cotre-49-greece",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Alpha Yachts", model: "Cotre 49" }
+  );
+});
+
+test("normalizeImportedMakeModel keeps valid Yacht model names", () => {
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jeanneau",
+      model: "Yacht 55",
+      slug: "2026-jeanneau-yacht-55-chichester",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Jeanneau", model: "Yacht 55" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Ice Yachts",
+      model: "Yacht 2000 Vr 65 Uldb",
+      slug: "2003-ice-yachts-yacht-2000-vr-65-uldb-sicily",
+      sourceSite: "theyachtmarket",
+    }),
+    { make: "Ice Yachts", model: "Yacht 2000 Vr 65 Uldb" }
+  );
+});
+
 test("buildImportedSlug uses cleaned location lead token", () => {
   assert.equal(
     buildImportedSlug(2003, "Robertson and Caine", "Leopard 47 Catamaran", "British Virgin Islands"),
