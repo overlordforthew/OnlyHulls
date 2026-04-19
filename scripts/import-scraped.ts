@@ -100,6 +100,10 @@ interface PendingEmbedding {
   text: string;
 }
 
+type ImportOptions = {
+  fullCrawl?: boolean;
+};
+
 type DbLikeError = {
   code?: string;
   constraint?: string;
@@ -361,7 +365,25 @@ async function ensureSystemSeller(): Promise<string> {
   return seller!.id;
 }
 
-async function importBoats(filePath: string, sourceSite: string) {
+async function recordFullCrawl(sourceSite: string, count: number) {
+  await query(
+    `INSERT INTO import_source_crawl_state (
+       source_site,
+       last_full_crawl_at,
+       last_full_crawl_count,
+       updated_at
+     )
+     VALUES ($1, NOW(), $2, NOW())
+     ON CONFLICT (source_site) DO UPDATE SET
+       last_full_crawl_at = EXCLUDED.last_full_crawl_at,
+       last_full_crawl_count = EXCLUDED.last_full_crawl_count,
+       updated_at = EXCLUDED.updated_at`,
+    [sourceSite, count]
+  );
+  console.log(`Freshness: recorded full crawl for ${sourceSite} (${count} scraped listings)`);
+}
+
+async function importBoats(filePath: string, sourceSite: string, options: ImportOptions = {}) {
   const source = SOURCES[sourceSite];
   if (!source) {
     console.error(`Unknown source: ${sourceSite}. Valid: ${Object.keys(SOURCES).join(", ")}`);
@@ -604,13 +626,17 @@ async function importBoats(filePath: string, sourceSite: string) {
     console.log(`Embeddings: generated ${embedded} boat vectors`);
   }
 
+  if (options.fullCrawl) {
+    await recordFullCrawl(sourceSite, boats.length);
+  }
+
   console.log(
     `\nImport complete: ${imported} imported, ${skipped} skipped, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${errors} errors`
   );
   await pool.end();
 }
 
-async function updateBoats(filePath: string, sourceSite: string) {
+async function updateBoats(filePath: string, sourceSite: string, options: ImportOptions = {}) {
   const source = SOURCES[sourceSite];
   if (!source) {
     console.error(`Unknown source: ${sourceSite}`);
@@ -874,22 +900,26 @@ async function updateBoats(filePath: string, sourceSite: string) {
   console.log(
     `\nUpdate complete: ${updated} updated, ${notFound} not found, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${duplicateSkips} duplicate skips, ${errors} errors`
   );
+  if (options.fullCrawl && boats.length > 0) {
+    await recordFullCrawl(sourceSite, boats.length);
+  }
   await pool.end();
 }
 
 // CLI
 const args = process.argv.slice(2);
 const updateMode = args.includes("--update");
-const filteredArgs = args.filter(a => a !== "--update");
+const fullCrawlMode = args.includes("--full");
+const filteredArgs = args.filter((a) => a !== "--update" && a !== "--full");
 
 if (filteredArgs.length < 2) {
-  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source> [--update]");
+  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source> [--update] [--full]");
   console.log(`Sources: ${Object.keys(SOURCES).join(", ")}`);
   process.exit(1);
 }
 
 const fn = updateMode ? updateBoats : importBoats;
-fn(filteredArgs[0], filteredArgs[1]).catch((err) => {
+fn(filteredArgs[0], filteredArgs[1], { fullCrawl: fullCrawlMode }).catch((err) => {
   console.error("Import failed:", err);
   process.exit(1);
 });
