@@ -66,6 +66,14 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
   assert.equal(normalizeImportedLocation("Mare Adriatico,"), "Mare Adriatico");
   assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
+  assert.equal(normalizeImportedLocation("At Request"), "");
+  assert.equal(normalizeImportedLocation("Bij Eigenaar"), "");
+  assert.equal(normalizeImportedLocation("Ex Factory"), "");
+  assert.equal(normalizeImportedLocation("West Coast"), "");
+  assert.equal(normalizeImportedLocation("Center"), "");
+  assert.equal(normalizeImportedLocation("Marina"), "");
+  assert.equal(normalizeImportedLocation("Af Afspraak, Bel Ons; +31 (0)320 711340"), "");
+  assert.equal(normalizeImportedLocation("Bezichtiging Op Afspraak"), "");
   assert.equal(normalizeImportedLocation("Price"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Hindeloopen"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Almeria, Andalusia"), "");

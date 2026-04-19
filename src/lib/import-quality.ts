@@ -4,6 +4,8 @@ export const MIN_VISIBLE_IMPORTED_PRICE_USD = 3000;
 export const MIN_VISIBLE_IMPORTED_IMAGES = 1;
 export const MIN_GOOD_SUMMARY_LENGTH = 40;
 const GENERIC_LOCATION_VALUES = new Set([
+  "at request",
+  "bij eigenaar",
   "outside united states",
   "outside usa",
   "outside the united states",
@@ -17,6 +19,16 @@ const GENERIC_LOCATION_VALUES = new Set([
   "global",
   "worldwide",
   "unknown",
+  "ex factory",
+  "cruising",
+  "starboard",
+  "center",
+  "marina",
+  "7 seas",
+  "east coast",
+  "west coast",
+  "south coast",
+  "south",
   "europe",
   "caribbean",
   "mediterranean",
@@ -30,6 +42,7 @@ function toSqlStringList(values: Iterable<string>) {
 
 const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
 const BROKER_CONTACT_LOCATION_SQL_PATTERN = "^contact[[:space:]]+de[[:space:]]+valk([[:space:]]|$)";
+const APPOINTMENT_LOCATION_SQL_PATTERN = "^(af[[:space:]]+afspraak|bezichtiging[[:space:]]+op[[:space:]]+afspraak|op[[:space:]]+afspraak|op[[:space:]]+aanvraag|by[[:space:]]+appointment|on[[:space:]]+request)([[:space:],;:]|$)";
 const HELD_SOURCE_SITE_SQL_VALUES = toSqlStringList(
   getHeldSourceKeys().map((sourceKey) => sourceKey.toLowerCase())
 );
@@ -596,6 +609,12 @@ function isBrokerContactLocation(value: string) {
   return /^contact\s+de\s+valk(?:\s|$)/i.test(value);
 }
 
+function isAppointmentPlaceholderLocation(value: string) {
+  return /^(?:af\s+afspraak|bezichtiging\s+op\s+afspraak|op\s+afspraak|op\s+aanvraag|by\s+appointment|on\s+request)(?:[\s,;:]|$)/i.test(
+    value
+  );
+}
+
 export function normalizeImportedLocation(value?: string | null) {
   let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
@@ -616,6 +635,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (isQuestionMarkPlaceholderLocation(normalized)) return "";
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
   if (isBrokerContactLocation(normalized)) return "";
+  if (isAppointmentPlaceholderLocation(normalized)) return "";
 
   const exactOverride = lookupLocationOverride(normalized);
   if (exactOverride) return exactOverride;
@@ -646,6 +666,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (isQuestionMarkPlaceholderLocation(collapsed)) return "";
   if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
   if (isBrokerContactLocation(collapsed)) return "";
+  if (isAppointmentPlaceholderLocation(collapsed)) return "";
 
   return collapsed;
 }
@@ -2344,6 +2365,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND ${nonQuestionLocationSql} <> ''
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
     AND ${normalizedLocationSql} !~ '${BROKER_CONTACT_LOCATION_SQL_PATTERN}'
+    AND ${normalizedLocationSql} !~ '${APPOINTMENT_LOCATION_SQL_PATTERN}'
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND ${usableImportedImageExistsSql}

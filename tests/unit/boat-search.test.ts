@@ -112,9 +112,70 @@ test("location inference tags exact markets and parent cruising regions", () => 
     latitude: 26.1224,
     longitude: -80.1373,
   });
-  assert.deepEqual(florida.marketSlugs, ["florida"]);
+  assert.deepEqual(florida.marketSlugs, ["united-states", "florida"]);
   assert.equal(florida.confidence, "exact");
   assert.equal(florida.approximate, false);
+});
+
+test("location inference covers high-volume European marina text", () => {
+  const croatia = inferLocationMarketSignals({ locationText: "Split" });
+  assert.deepEqual(croatia.marketSlugs, ["mediterranean", "croatia"]);
+  assert.equal(croatia.country, "Croatia");
+  assert.equal(croatia.confidence, "city");
+
+  const uk = inferLocationMarketSignals({ locationText: "Plymouth, Devon" });
+  assert.deepEqual(uk.marketSlugs, ["uk"]);
+  assert.equal(uk.country, "United Kingdom");
+  assert.equal(uk.confidence, "city");
+
+  const martinique = inferLocationMarketSignals({ locationText: "Le Marin" });
+  assert.deepEqual(martinique.marketSlugs, ["caribbean", "martinique"]);
+  assert.equal(martinique.country, "Martinique");
+});
+
+test("location inference covers long-tail commercial cruising markets", () => {
+  const grenada = inferLocationMarketSignals({ locationText: "Clarke's Court Boatyard & Marina" });
+  assert.deepEqual(grenada.marketSlugs, ["caribbean", "grenada"]);
+  assert.equal(grenada.country, "Grenada");
+
+  const canada = inferLocationMarketSignals({ locationText: "Central Vancouver Island, British Columbia" });
+  assert.deepEqual(canada.marketSlugs, ["canada", "pacific-northwest"]);
+  assert.equal(canada.country, "Canada");
+
+  const carolina = inferLocationMarketSignals({ locationText: "Charleston" });
+  assert.deepEqual(carolina.marketSlugs, ["united-states", "south-carolina"]);
+  assert.equal(carolina.country, "United States");
+
+  const france = inferLocationMarketSignals({ locationText: "Cannes" });
+  assert.deepEqual(france.marketSlugs, ["mediterranean", "france"]);
+  assert.equal(france.country, "France");
+});
+
+test("location inference covers low-volume marina tail without overpromising coordinates", () => {
+  const texas = inferLocationMarketSignals({ locationText: "Kemah, Texas" });
+  assert.deepEqual(texas.marketSlugs, ["united-states", "texas"]);
+  assert.equal(texas.confidence, "city");
+  assert.equal(texas.approximate, true);
+
+  const malta = inferLocationMarketSignals({ locationText: "Valletta" });
+  assert.deepEqual(malta.marketSlugs, ["mediterranean", "malta"]);
+  assert.equal(malta.country, "Malta");
+
+  const sweden = inferLocationMarketSignals({ locationText: "Gothenburg" });
+  assert.deepEqual(sweden.marketSlugs, ["sweden"]);
+  assert.equal(sweden.country, "Sweden");
+
+  const hungary = inferLocationMarketSignals({ locationText: "Balatonvilágos" });
+  assert.deepEqual(hungary.marketSlugs, ["hungary"]);
+  assert.equal(hungary.country, "Hungary");
+
+  const stMaarten = inferLocationMarketSignals({ locationText: "Sint Maarten" });
+  assert.deepEqual(stMaarten.marketSlugs, ["caribbean", "st-maarten"]);
+  assert.equal(stMaarten.country, "Sint Maarten");
+
+  const greatLakes = inferLocationMarketSignals({ locationText: "Au Gres, Michigan" });
+  assert.deepEqual(greatLakes.marketSlugs, ["united-states", "great-lakes"]);
+  assert.equal(greatLakes.country, "United States");
 });
 
 test("saved search signature keeps location and currency distinct", () => {
