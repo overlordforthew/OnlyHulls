@@ -10,6 +10,7 @@ import {
   canonicalizeLocationParam,
   escapeSqlLikePattern,
   getLocationSearchTerms,
+  getTopLocationMarket,
 } from "@/lib/locations/top-markets";
 
 export type BoatSortField = "price" | "size" | "year" | "newest";
@@ -209,19 +210,26 @@ export function buildWhereClause(filters: BoatSearchFilters) {
         array_to_string(COALESCE(d.character_tags, '{}'), ' '),
         COALESCE(d.specs->>'rig_type', ''),
         COALESCE(d.specs->>'hull_material', '')
-	      )) LIKE $${paramIdx++} ESCAPE '\\'`
+      )) LIKE $${paramIdx++} ESCAPE '\\'`
     );
     params.push(`%${escapeSqlLikePattern(filters.search.toLowerCase())}%`);
   }
 
   if (filters.location) {
     const locationTerms = getLocationSearchTerms(filters.location);
+    const locationMarket = getTopLocationMarket(filters.location);
     if (locationTerms.length > 0) {
+      const marketClause = locationMarket
+        ? `b.location_market_slugs @> ARRAY[$${paramIdx++}]::text[]`
+        : null;
+      const textClauses = locationTerms
+        .map(() => `LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++} ESCAPE '\\'`)
+        .join(" OR ");
+
       conditions.push(
-        `(${locationTerms
-          .map(() => `LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++} ESCAPE '\\'`)
-          .join(" OR ")})`
+        marketClause ? `(${marketClause} OR (${textClauses}))` : `(${textClauses})`
       );
+      if (locationMarket) params.push(locationMarket.slug);
       params.push(...locationTerms.map(buildLocationLikePattern));
     }
   }

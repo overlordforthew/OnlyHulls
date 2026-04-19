@@ -13,6 +13,11 @@ type ClaimableBoatRow = {
   location_text: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  location_country: string | null;
+  location_region: string | null;
+  location_market_slugs: string[];
+  location_confidence: string;
+  location_approximate: boolean;
   hull_id: string | null;
   source_name: string | null;
   source_site: string | null;
@@ -101,7 +106,11 @@ function toBoatTitle(boat: Pick<ClaimableBoatRow, "year" | "make" | "model">) {
 async function getClaimableBoat(boatId: string) {
   const boat = await queryOne<ClaimableBoatRow>(
     `SELECT b.id, b.slug, b.year, b.make, b.model, b.asking_price, b.currency,
-            b.location_text, b.location_lat, b.location_lng, b.hull_id,
+            b.location_text, b.location_lat, b.location_lng,
+            b.location_country, b.location_region,
+            COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
+            b.location_confidence, b.location_approximate,
+            b.hull_id,
             b.source_name, b.source_site, b.source_url, b.status, b.seller_id,
             COALESCE(d.specs, '{}') AS specs,
             COALESCE(d.character_tags, '{}') AS character_tags,
@@ -197,9 +206,12 @@ export async function createClaimDraftForBoat(input: {
     const insertedBoat = await client.query<{ id: string; slug: string | null }>(
       `INSERT INTO boats (
          seller_id, slug, hull_id, make, model, year, asking_price, currency,
-         status, location_text, location_lat, location_lng, listing_source, claimed_from_boat_id
+         status, location_text, location_lat, location_lng,
+         location_country, location_region, location_market_slugs,
+         location_confidence, location_approximate,
+         listing_source, claimed_from_boat_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9, $10, $11, 'platform', $12)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9, $10, $11, $12, $13, $14, $15, $16, 'platform', $17)
        RETURNING id, slug`,
       [
         claimant.id,
@@ -213,6 +225,11 @@ export async function createClaimDraftForBoat(input: {
         sourceBoat.location_text,
         sourceBoat.location_lat,
         sourceBoat.location_lng,
+        sourceBoat.location_country,
+        sourceBoat.location_region,
+        sourceBoat.location_market_slugs || [],
+        sourceBoat.location_confidence,
+        sourceBoat.location_approximate,
         sourceBoat.id,
       ]
     );

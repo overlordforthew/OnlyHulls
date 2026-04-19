@@ -9,6 +9,7 @@ import {
   buildWhereClause,
   filtersFromSearchParams,
 } from "../../src/lib/search/boat-search";
+import { inferLocationMarketSignals } from "../../src/lib/locations/top-markets";
 
 test("buildSavedSearchName uses stable ASCII separators", () => {
   assert.equal(
@@ -67,7 +68,9 @@ test("boat search preserves dedicated location filters separately from text sear
 
   const where = buildWhereClause(filters);
   assert.match(where.where, /location_text/i);
-  assert.equal(where.params[0], "%bahamas%");
+  assert.match(where.where, /location_market_slugs/i);
+  assert.equal(where.params[0], "bahamas");
+  assert.equal(where.params[1], "%bahamas%");
 });
 
 test("boat search canonicalizes known location aliases and expands market terms", () => {
@@ -80,13 +83,38 @@ test("boat search canonicalizes known location aliases and expands market terms"
 
   const where = buildWhereClause(filters);
   assert.match(where.where, /location_text/i);
-  assert.deepEqual(where.params.slice(0, 3), ["%puerto rico%", "%san juan%", "%fajardo%"]);
+  assert.match(where.where, /location_market_slugs/i);
+  assert.deepEqual(where.params.slice(0, 4), [
+    "puerto-rico",
+    "%puerto rico%",
+    "%san juan%",
+    "%fajardo%",
+  ]);
 });
 
 test("boat search keeps exact child markets from collapsing into regional rollups", () => {
   assert.equal(buildBoatSearchParams({ location: "BVI" }).get("location"), "bvi");
   assert.equal(buildBoatSearchParams({ location: "Greece" }).get("location"), "greece");
   assert.equal(buildBoatSearchParams({ location: "Spain" }).get("location"), "spain");
+});
+
+test("location inference tags exact markets and parent cruising regions", () => {
+  const bvi = inferLocationMarketSignals({ locationText: "Tortola, British Virgin Islands" });
+
+  assert.deepEqual(bvi.marketSlugs, ["caribbean", "bvi"]);
+  assert.equal(bvi.country, "British Virgin Islands");
+  assert.equal(bvi.region, "Caribbean");
+  assert.equal(bvi.confidence, "city");
+  assert.equal(bvi.approximate, true);
+
+  const florida = inferLocationMarketSignals({
+    locationText: "Fort Lauderdale, FL",
+    latitude: 26.1224,
+    longitude: -80.1373,
+  });
+  assert.deepEqual(florida.marketSlugs, ["florida"]);
+  assert.equal(florida.confidence, "exact");
+  assert.equal(florida.approximate, false);
 });
 
 test("saved search signature keeps location and currency distinct", () => {

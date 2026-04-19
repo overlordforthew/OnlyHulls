@@ -39,6 +39,7 @@ import {
   resolveImportedDedupLocationText,
   sanitizeImportedDimensions,
 } from "../src/lib/import-quality";
+import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
 import { getSafeExternalUrl, getSafeExternalUrlList } from "../src/lib/url-safety";
 
@@ -452,6 +453,7 @@ async function importBoats(filePath: string, sourceSite: string) {
       }
 
       const currency = detectCurrency(b);
+      const locationSignals = inferLocationMarketSignals({ locationText: location });
 
       // Insert with ON CONFLICT for bulletproof dedup:
       // - source_url unique index catches exact URL duplicates
@@ -460,12 +462,16 @@ async function importBoats(filePath: string, sourceSite: string) {
         `INSERT INTO boats (
           seller_id, slug, make, model, year, asking_price, currency,
           asking_price_usd, status, location_text, listing_source,
-          source_site, source_name, source_url, is_sample, last_seen_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false, NOW())
+          source_site, source_name, source_url, is_sample, last_seen_at,
+          location_country, location_region, location_market_slugs,
+          location_confidence, location_approximate
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false, NOW(), $13, $14, $15, $16, $17)
         ON CONFLICT DO NOTHING
         RETURNING id`,
         [sellerId, finalSlug, make, model, year, price, currency,
-         toUsd(price, currency), location, sourceSite, source.name, sourceUrl]
+         toUsd(price, currency), location, sourceSite, source.name, sourceUrl,
+         locationSignals.country, locationSignals.region, locationSignals.marketSlugs,
+         locationSignals.confidence, locationSignals.approximate]
       );
 
       // ON CONFLICT DO NOTHING returns null if duplicate — skip
@@ -661,6 +667,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const model = normalized.model || existing.model;
       const location = parsedLocation || normalizeImportedLocation(existing.location_text) || "";
       const targetLocationText = resolveImportedDedupLocationText(location, existing.location_text);
+      const locationSignals = inferLocationMarketSignals({
+        locationText: targetLocationText ?? existing.location_text ?? location,
+      });
       const normalizedSlug =
         year && location ? buildImportedSlug(year, make, model, location) : null;
       const currency = detectCurrency(b);
@@ -774,7 +783,12 @@ async function updateBoats(filePath: string, sourceSite: string) {
                slug = CASE
                  WHEN NULLIF($9, '') IS NOT NULL THEN $9
                  ELSE slug
-               END
+               END,
+               location_country = $10,
+               location_region = $11,
+               location_market_slugs = $12,
+               location_confidence = $13,
+               location_approximate = $14
            WHERE id = $1`,
           [
             boatId,
@@ -786,6 +800,11 @@ async function updateBoats(filePath: string, sourceSite: string) {
             priceUsd,
             location,
             targetSlug,
+            locationSignals.country,
+            locationSignals.region,
+            locationSignals.marketSlugs,
+            locationSignals.confidence,
+            locationSignals.approximate,
           ]
         );
       } catch (err) {

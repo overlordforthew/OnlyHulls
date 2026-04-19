@@ -12,6 +12,8 @@ import { NextResponse } from "next/server";
 
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     b.asking_price_usd, b.location_text, b.slug, b.is_sample,
+    b.location_country, b.location_region, b.location_market_slugs,
+    b.location_confidence, b.location_approximate,
     b.source_site, b.source_name, b.source_url,
     COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
     (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,

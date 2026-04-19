@@ -17,6 +17,8 @@ interface BoatCardProps {
     asking_price: number;
     currency: string;
     location_text: string | null;
+    location_confidence?: string | null;
+    location_approximate?: boolean | null;
     slug: string | null;
     is_sample: boolean;
     hero_url: string | null;
@@ -58,6 +60,9 @@ export default function BoatCard({
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const listingBadge = getListingBadge(boat, t);
   const trustSignal = getTrustSignal(boat, t);
+  const showApproximateLocation = Boolean(
+    boat.location_text && boat.location_approximate
+  );
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -128,11 +133,16 @@ export default function BoatCard({
         {boat.location_text ? (
           <div
             data-testid="boat-location"
-            className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground/85"
+            className="mt-2 flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground/85"
             title={boat.location_text}
           >
             <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{boat.location_text}</span>
+            {showApproximateLocation && (
+              <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase text-text-tertiary">
+                {t("locationApproximate")}
+              </span>
+            )}
           </div>
         ) : null}
 

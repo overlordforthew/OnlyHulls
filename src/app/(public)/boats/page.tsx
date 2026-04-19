@@ -58,6 +58,11 @@ interface Boat {
   currency: string;
   asking_price_usd: number | null;
   location_text: string | null;
+  location_country?: string | null;
+  location_region?: string | null;
+  location_market_slugs?: string[];
+  location_confidence?: string | null;
+  location_approximate?: boolean | null;
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
@@ -196,6 +201,7 @@ function BoatsPageInner() {
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
+  const [locationMarketCounts, setLocationMarketCounts] = useState<Record<string, number>>({});
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const { compareCount, isCompared, toggleBoat, maxCompareBoats } = useCompareBoats();
@@ -212,6 +218,25 @@ function BoatsPageInner() {
     if (savedView === "grid" || savedView === "rows") {
       setViewMode(savedView);
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/boats/location-markets")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.counts && typeof data.counts === "object") {
+          setLocationMarketCounts(data.counts);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLocationMarketCounts({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -371,7 +396,14 @@ function BoatsPageInner() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    navigateToBrowse(searchInput, "", filters, locationInput);
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const nextSearch = String(formData.get("q") || "");
+    const nextLocation = String(formData.get("location") || "");
+
+    setSearchInput(nextSearch);
+    setLocationInput(nextLocation);
+    navigateToBrowse(nextSearch, "", filters, nextLocation);
   }
 
   function clearTag() {
@@ -588,6 +620,7 @@ function BoatsPageInner() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
                 <input
                   type="text"
+                  name="q"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder={t("searchPlaceholder")}
@@ -598,6 +631,7 @@ function BoatsPageInner() {
                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
                 <input
                   type="text"
+                  name="location"
                   value={locationInput}
                   onChange={(e) => setLocationInput(e.target.value)}
                   list="boats-location-markets"
@@ -668,6 +702,11 @@ function BoatsPageInner() {
                 >
                   <MapPin className="h-3.5 w-3.5" />
                   {market.label}
+                  {locationMarketCounts[market.slug] ? (
+                    <span className="text-text-tertiary">
+                      {t("marketCount", { count: locationMarketCounts[market.slug] })}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>

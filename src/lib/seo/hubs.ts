@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { getSeoHubBoatCount, getSeoHubBoats, type BoatRow } from "@/lib/db/queries";
-import { buildLocationLikePattern, getLocationSearchTerms } from "@/lib/locations/top-markets";
+import {
+  buildLocationLikePattern,
+  getLocationSearchTerms,
+  getTopLocationMarket,
+} from "@/lib/locations/top-markets";
 import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 
 export interface SeoHubDefinition {
@@ -48,18 +52,23 @@ function buildCatamaranWhereSql(paramOffset = 0) {
 
 function buildLocationMarketQuery(slug: string, paramOffset = 0) {
   const terms = getLocationSearchTerms(slug);
+  const market = getTopLocationMarket(slug);
+  const marketParam = market ? `$${paramOffset + 1}` : null;
+  const textOffset = paramOffset + (market ? 1 : 0);
   const queryWhere = terms.length
-    ? `(${terms
-        .map(
-          (_, index) =>
-            `LOWER(COALESCE(b.location_text, '')) LIKE $${paramOffset + index + 1} ESCAPE '\\'`
-        )
-        .join(" OR ")})`
+    ? `(${
+        marketParam ? `b.location_market_slugs @> ARRAY[${marketParam}]::text[] OR ` : ""
+      }(${terms
+          .map(
+            (_, index) =>
+              `LOWER(COALESCE(b.location_text, '')) LIKE $${textOffset + index + 1} ESCAPE '\\'`
+          )
+          .join(" OR ")}))`
     : "FALSE";
 
   return {
     queryWhere,
-    queryParams: terms.map(buildLocationLikePattern),
+    queryParams: [...(market ? [market.slug] : []), ...terms.map(buildLocationLikePattern)],
   };
 }
 

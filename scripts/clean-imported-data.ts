@@ -23,6 +23,7 @@ import {
   normalizeImportedSummary,
   sanitizeImportedSpecs,
 } from "../src/lib/import-quality";
+import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 import { ensureBoatSearchIndex, getActiveBoatSearchDocuments } from "../src/lib/search/boat-index";
 
 type CleanupRow = {
@@ -284,6 +285,7 @@ async function main() {
       loa: rawLoa,
     });
     const normalizedLocation = normalizeImportedLocation(row.location_text);
+    const locationSignals = inferLocationMarketSignals({ locationText: normalizedLocation });
     const normalizedSlug = buildImportedSlug(
       row.year,
       normalized.make,
@@ -474,6 +476,11 @@ async function main() {
                      WHEN NULLIF($5, '') IS NOT NULL THEN $5
                      ELSE slug
                    END,
+                   location_country = $6,
+                   location_region = $7,
+                   location_market_slugs = $8,
+                   location_confidence = $9,
+                   location_approximate = $10,
                    updated_at = NOW()
                WHERE id = $1`,
               [
@@ -482,6 +489,11 @@ async function main() {
                 normalized.model,
                 normalizedLocation,
                 targetSlug,
+                locationSignals.country,
+                locationSignals.region,
+                locationSignals.marketSlugs,
+                locationSignals.confidence,
+                locationSignals.approximate,
               ]
             );
           } catch (err) {

@@ -12,6 +12,7 @@ import {
   syncListingSearch,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
+import { inferLocationMarketSignals } from "@/lib/locations/top-markets";
 import { mediaBackend, storageEnabled } from "@/lib/capabilities";
 import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
 import { trackFunnelEvent } from "@/lib/funnel";
@@ -219,6 +220,11 @@ export async function PATCH(
       listing.id
     );
     const nextStatus = getNextStatus(listing.status, Boolean(data.submitForReview));
+    const locationSignals = inferLocationMarketSignals({
+      locationText: data.locationText,
+      latitude: data.locationLat,
+      longitude: data.locationLng,
+    });
 
     const client = await pool.connect();
     try {
@@ -237,8 +243,13 @@ export async function PATCH(
              location_text = $9,
              location_lat = $10,
              location_lng = $11,
+             location_country = $12,
+             location_region = $13,
+             location_market_slugs = $14,
+             location_confidence = $15,
+             location_approximate = $16,
              updated_at = NOW()
-         WHERE id = $12`,
+         WHERE id = $17`,
         [
           slug,
           data.hullId || null,
@@ -251,6 +262,11 @@ export async function PATCH(
           data.locationText || null,
           data.locationLat || null,
           data.locationLng || null,
+          locationSignals.country,
+          locationSignals.region,
+          locationSignals.marketSlugs,
+          locationSignals.confidence,
+          locationSignals.approximate,
           listing.id,
         ]
       );

@@ -10,6 +10,11 @@ export type BoatSearchDocument = {
   askingPrice: number;
   currency: string;
   locationText: string | null;
+  locationCountry: string | null;
+  locationRegion: string | null;
+  marketSlugs: string[];
+  locationConfidence: string | null;
+  locationApproximate: boolean | null;
   sourceName: string | null;
   sourceSite: string | null;
   status: string;
@@ -26,6 +31,11 @@ type BoatSearchRow = {
   asking_price: number;
   currency: string;
   location_text: string | null;
+  location_country: string | null;
+  location_region: string | null;
+  location_market_slugs: string[];
+  location_confidence: string | null;
+  location_approximate: boolean | null;
   source_name: string | null;
   source_site: string | null;
   status: string;
@@ -34,7 +44,7 @@ type BoatSearchRow = {
   ai_summary: string | null;
 };
 
-const BOAT_SEARCH_FILTERS = ["status", "askingPrice", "year"];
+const BOAT_SEARCH_FILTERS = ["status", "askingPrice", "year", "marketSlugs", "locationCountry", "locationRegion"];
 
 export async function ensureBoatSearchIndex() {
   const meili = getMeili();
@@ -51,6 +61,9 @@ export async function ensureBoatSearchIndex() {
 export async function getActiveBoatSearchDocuments(): Promise<BoatSearchDocument[]> {
   const boats = await query<BoatSearchRow>(
     `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency, b.location_text,
+            b.location_country, b.location_region,
+            COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
+            b.location_confidence, b.location_approximate,
             b.source_name, b.source_site, b.status,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
@@ -70,6 +83,9 @@ export async function syncBoatSearchDocument(boatId: string) {
 
   const boat = await queryOne<BoatSearchRow>(
     `SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency, b.location_text,
+            b.location_country, b.location_region,
+            COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
+            b.location_confidence, b.location_approximate,
             b.source_name, b.source_site, b.status,
             COALESCE(d.specs, '{}') as specs,
             COALESCE(d.character_tags, '{}') as character_tags,
@@ -100,6 +116,11 @@ function toBoatSearchDocument(boat: BoatSearchRow): BoatSearchDocument {
     askingPrice: Number(boat.asking_price),
     currency: boat.currency,
     locationText: boat.location_text,
+    locationCountry: boat.location_country,
+    locationRegion: boat.location_region,
+    marketSlugs: boat.location_market_slugs || [],
+    locationConfidence: boat.location_confidence,
+    locationApproximate: boat.location_approximate,
     sourceName: boat.source_name,
     sourceSite: boat.source_site,
     status: boat.status,
