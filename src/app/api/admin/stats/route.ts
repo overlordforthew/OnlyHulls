@@ -333,9 +333,11 @@ export async function GET() {
            )::text AS unclassified_location_count,
            COUNT(*) FILTER (
              WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
-               AND NOT (
-                 b.location_lat BETWEEN -90 AND 90
-                 AND b.location_lng BETWEEN -180 AND 180
+               AND (
+                 b.location_lat IS NULL
+                 OR b.location_lng IS NULL
+                 OR b.location_lat NOT BETWEEN -90 AND 90
+                 OR b.location_lng NOT BETWEEN -180 AND 180
                )
                AND b.location_confidence IN ('city', 'exact')
                AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
@@ -389,9 +391,11 @@ export async function GET() {
          WHERE b.status = 'active'
            AND ${buildVisibleImportQualitySql("b")}
            AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
-           AND NOT (
-             b.location_lat BETWEEN -90 AND 90
-             AND b.location_lng BETWEEN -180 AND 180
+           AND (
+             b.location_lat IS NULL
+             OR b.location_lng IS NULL
+             OR b.location_lat NOT BETWEEN -90 AND 90
+             OR b.location_lng NOT BETWEEN -180 AND 180
            )
            AND b.location_confidence IN ('city', 'exact')
            AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0

@@ -193,9 +193,11 @@ async function main() {
      WHERE b.status = 'active'
        AND ${visibleSql}
        AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
-       AND NOT (
-         b.location_lat BETWEEN -90 AND 90
-         AND b.location_lng BETWEEN -180 AND 180
+       AND (
+         b.location_lat IS NULL
+         OR b.location_lng IS NULL
+         OR b.location_lat NOT BETWEEN -90 AND 90
+         OR b.location_lng NOT BETWEEN -180 AND 180
        )
        AND b.location_geocode_status NOT IN ('geocoded', 'skipped')
      ORDER BY CASE b.location_confidence
