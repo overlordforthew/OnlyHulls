@@ -49,6 +49,14 @@ export function buildHeldSourceSuppressionSql(alias = "b") {
   )`;
 }
 
+export function buildSourceFreshnessSuppressionSql(alias = "b") {
+  return `COALESCE((
+      SELECT d.documentation_status #>> '{source_freshness,status}'
+      FROM boat_dna d
+      WHERE d.boat_id = ${alias}.id
+    ), '') !~ '^expired_source_'`;
+}
+
 const LOCATION_LABEL_PREFIXES = [
   /^location\s*:\s*/i,
   /^viewing location\s*:\s*/i,
@@ -2445,6 +2453,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND ${usableImportedImageExistsSql}
+    AND ${buildSourceFreshnessSuppressionSql(alias)}
     AND COALESCE((
       SELECT CASE
         WHEN jsonb_typeof(d.documentation_status -> 'import_quality_visible') = 'boolean'

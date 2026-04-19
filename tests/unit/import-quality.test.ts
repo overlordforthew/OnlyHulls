@@ -34,6 +34,8 @@ test("public visibility suppresses imported listings from held sources", () => {
   assert.match(baseSql, /contact\[\[:space:\]\]\+de\[\[:space:\]\]\+valk/);
   assert.match(baseSql, /www\\\./);
   assert.match(baseSql, /\/assets\/images\/noimage/);
+  assert.match(baseSql, /source_freshness/);
+  assert.match(baseSql, /expired_source_/);
 });
 
 test("normalizeImportedLocation repairs mojibake place names", () => {
