@@ -1,4 +1,5 @@
 import { getHeldSourceKeys, getHeldSourceNames } from "@/lib/source-policy";
+import { sanitizeHullMaterial, vesselTypeFromHullForm } from "@/lib/specs/hull-material";
 
 export const MIN_VISIBLE_IMPORTED_PRICE_USD = 3000;
 export const MIN_VISIBLE_IMPORTED_IMAGES = 1;
@@ -1955,11 +1956,17 @@ export function sanitizeImportedSpecs(
   if (draft === null) delete normalizedSpecs.draft;
   else normalizedSpecs.draft = draft;
 
+  const rawHullMaterial = normalizedSpecs.hull_material;
+  const hullFormType = vesselTypeFromHullForm(rawHullMaterial);
+  const hullMaterial = sanitizeHullMaterial(rawHullMaterial);
+  if (hullMaterial) normalizedSpecs.hull_material = hullMaterial;
+  else delete normalizedSpecs.hull_material;
+
   normalizedSpecs.vessel_type = inferImportedVesselType({
     make: context.make,
     model: context.model,
     rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
-    existingType: normalizedSpecs.vessel_type,
+    existingType: normalizedSpecs.vessel_type ?? hullFormType,
   });
 
   return normalizedSpecs;

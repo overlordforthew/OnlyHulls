@@ -38,6 +38,7 @@ import {
   normalizeImportedSummary,
   resolveImportedDedupLocationText,
   sanitizeImportedDimensions,
+  sanitizeImportedSpecs,
 } from "../src/lib/import-quality";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
@@ -254,31 +255,41 @@ function buildSpecsAndSummary(input: {
   });
   const hullMaterial = input.boat.hull || "";
   const engine = input.boat.engine || "";
-  const vesselType = inferImportedVesselType({
+  const inferredVesselType = inferImportedVesselType({
     make: input.make,
     model: input.model,
     rigType,
     existingType: input.boat.type,
   });
 
-  const specs: Record<string, unknown> = {
+  const rawSpecs: Record<string, unknown> = {
     loa,
     beam,
     draft,
     rig_type: rigType,
     hull_material: hullMaterial,
-    vessel_type: vesselType,
+    vessel_type: inferredVesselType,
     engine,
   };
 
-  if (input.boat.displacement) specs.displacement = parseNumber(input.boat.displacement);
-  if (input.boat.fuel_type) specs.fuel_type = input.boat.fuel_type;
-  if (input.boat.cabins) specs.cabins = parseNumber(input.boat.cabins);
-  if (input.boat.berths) specs.berths = parseNumber(input.boat.berths);
-  if (input.boat.heads) specs.heads = parseNumber(input.boat.heads);
-  if (input.boat.keel_type) specs.keel_type = input.boat.keel_type;
-  if (input.boat.water_capacity) specs.water_capacity = parseNumber(input.boat.water_capacity);
-  if (input.boat.fuel_capacity) specs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
+  if (input.boat.displacement) rawSpecs.displacement = parseNumber(input.boat.displacement);
+  if (input.boat.fuel_type) rawSpecs.fuel_type = input.boat.fuel_type;
+  if (input.boat.cabins) rawSpecs.cabins = parseNumber(input.boat.cabins);
+  if (input.boat.berths) rawSpecs.berths = parseNumber(input.boat.berths);
+  if (input.boat.heads) rawSpecs.heads = parseNumber(input.boat.heads);
+  if (input.boat.keel_type) rawSpecs.keel_type = input.boat.keel_type;
+  if (input.boat.water_capacity) rawSpecs.water_capacity = parseNumber(input.boat.water_capacity);
+  if (input.boat.fuel_capacity) rawSpecs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
+
+  const specs = sanitizeImportedSpecs(rawSpecs, {
+    make: input.make,
+    model: input.model,
+    sourceSite: input.sourceSite,
+  });
+  const cleanedHullMaterial =
+    typeof specs.hull_material === "string" ? specs.hull_material : "";
+  const vesselType =
+    typeof specs.vessel_type === "string" ? specs.vessel_type : inferredVesselType;
 
   const sourceSummary = cleanImportedListingSummary({
     summary: normalizeImportedSummary(input.boat.description),
@@ -304,7 +315,7 @@ function buildSpecsAndSummary(input: {
     locationText: input.location,
     loa,
     rigType,
-    hullMaterial,
+    hullMaterial: cleanedHullMaterial,
     berths: typeof specs.berths === "number" ? specs.berths : null,
     heads: typeof specs.heads === "number" ? specs.heads : null,
   });
@@ -327,7 +338,7 @@ function buildSpecsAndSummary(input: {
     beam,
     draft,
     rigType,
-    hullMaterial,
+    hullMaterial: cleanedHullMaterial,
     engine,
     specs,
     summary,

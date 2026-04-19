@@ -3457,6 +3457,91 @@ test("sanitizeImportedSpecs persists normalized vessel type for matching", () =>
   );
 });
 
+test("sanitizeImportedSpecs keeps hull material separate from boat type", () => {
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "monohull",
+      },
+      {
+        make: "Dufour",
+        model: "390 Grand Large",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "fiberglass",
+      },
+      {
+        make: "Dufour",
+        model: "390 Grand Large",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      hull_material: "fiberglass",
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "catamaran",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "catamaran",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "catamaran",
+        vessel_type: "monohull",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "cedar strip",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      hull_material: "cedar strip",
+      vessel_type: "monohull",
+    }
+  );
+});
+
 test("sanitizeImportedBoatRecord normalizes make model, location, and specs together", () => {
   const normalized = sanitizeImportedBoatRecord({
     make: "Bali",

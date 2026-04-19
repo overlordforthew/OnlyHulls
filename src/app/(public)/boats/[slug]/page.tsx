@@ -24,6 +24,7 @@ import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatPublicSummary } from "@/lib/browse-summary";
 import { buildBoatFitReasons } from "@/lib/boat-fit";
 import { getRelatedBoats } from "@/lib/db/queries";
+import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 
@@ -259,6 +260,7 @@ export default async function BoatDetailPage({
     }),
   ]);
   const specs = boat.specs as Record<string, unknown>;
+  const hullMaterial = sanitizeHullMaterial(specs.hull_material);
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
   const relatedHubLinks = getRelevantSeoHubLinksForBoat({
     make: boat.make,
@@ -483,7 +485,7 @@ export default async function BoatDetailPage({
                 {specs.draft ? <SpecRow label={copy.specLabels.draft} value={`${specs.draft}ft`} /> : null}
                 {specs.vessel_type ? <SpecRow label={copy.specLabels.boatType} value={String(specs.vessel_type)} /> : null}
                 {specs.rig_type ? <SpecRow label={copy.specLabels.rigType} value={String(specs.rig_type)} /> : null}
-                {specs.hull_material ? <SpecRow label={copy.specLabels.hull} value={String(specs.hull_material)} /> : null}
+                {hullMaterial ? <SpecRow label={copy.specLabels.hull} value={hullMaterial} /> : null}
                 {specs.engine ? <SpecRow label={copy.specLabels.engine} value={String(specs.engine)} /> : null}
                 {specs.cabins ? <SpecRow label={copy.specLabels.cabins} value={String(specs.cabins)} /> : null}
                 {specs.berths ? <SpecRow label={copy.specLabels.berths} value={String(specs.berths)} /> : null}
