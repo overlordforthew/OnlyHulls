@@ -356,9 +356,11 @@ test("boats page can switch to row view and persist it", async ({ page }) => {
     });
   });
 
+  const boatsResponse = waitForBoatsApi(page);
   await gotoWithRetry(page, "/boats?q=lagoon");
+  await boatsResponse;
 
-  await expect(page.locator("div.group.card-hover").first()).toBeVisible();
+  await expect(page.locator("div.group.card-hover").first()).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("boats-view-toggle-rows").click();
   await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
   await expect(page.getByTestId("boat-row-location").first()).toBeVisible();
