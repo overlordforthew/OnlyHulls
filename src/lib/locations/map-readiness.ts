@@ -4,6 +4,8 @@ export type MapReadinessThresholds = {
   minPublicPinPct: number;
   minNonApproxPublicPinPct: number;
   maxReviewFailedPct: number;
+  stalePinDays: number;
+  minPinScore: number;
 };
 
 export type MapReadinessSummaryRow = {
@@ -38,6 +40,10 @@ export type MapReadinessSnapshotInput = {
   precisionRows?: MapReadinessSplitRow[];
   statusRows?: MapReadinessSplitRow[];
   providerRows?: MapReadinessSplitRow[];
+  scoreBandRows?: MapReadinessSplitRow[];
+  ageBandRows?: MapReadinessSplitRow[];
+  sourceKindRows?: MapReadinessSplitRow[];
+  confidenceRows?: MapReadinessSplitRow[];
   thresholds?: Partial<MapReadinessThresholds>;
   geocodingEnabled: boolean;
   geocodingProvider: string;
@@ -97,6 +103,14 @@ export type MapReadinessSnapshot = {
     status: MapReadinessSplit[];
     provider: MapReadinessSplit[];
   };
+  diagnostics: {
+    launchWarning: boolean;
+    warnings: string[];
+    scoreBands: MapReadinessSplit[];
+    ageBands: MapReadinessSplit[];
+    sourceKinds: MapReadinessSplit[];
+    confidence: MapReadinessSplit[];
+  };
 };
 
 const DEFAULT_THRESHOLDS: MapReadinessThresholds = {
@@ -105,6 +119,8 @@ const DEFAULT_THRESHOLDS: MapReadinessThresholds = {
   minPublicPinPct: 85,
   minNonApproxPublicPinPct: 50,
   maxReviewFailedPct: 0,
+  stalePinDays: 90,
+  minPinScore: 0.6,
 };
 
 function parseCount(value: string | number | null | undefined) {
@@ -116,6 +132,18 @@ function parsePercent(value: string | undefined, fallback: number) {
   if (value === undefined || !value.trim()) return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : fallback;
+}
+
+function parsePositiveInteger(value: string | undefined, fallback: number) {
+  if (value === undefined || !value.trim()) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function parseScore(value: string | undefined, fallback: number) {
+  if (value === undefined || !value.trim()) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : fallback;
 }
 
 function pct(value: number, total: number) {
@@ -161,6 +189,14 @@ export function getMapReadinessThresholds(
     maxReviewFailedPct: parsePercent(
       env.MAP_READINESS_MAX_REVIEW_FAILED_PCT,
       DEFAULT_THRESHOLDS.maxReviewFailedPct
+    ),
+    stalePinDays: parsePositiveInteger(
+      env.MAP_READINESS_STALE_PIN_DAYS,
+      DEFAULT_THRESHOLDS.stalePinDays
+    ),
+    minPinScore: parseScore(
+      env.MAP_READINESS_MIN_PIN_SCORE,
+      DEFAULT_THRESHOLDS.minPinScore
     ),
   };
 }
@@ -229,6 +265,10 @@ export function buildMapReadinessSnapshot(
   if (publicMissingMetadataCount > 0) {
     blockers.push(`${publicMissingMetadataCount.toLocaleString()} public pins missing metadata`);
   }
+  const warnings =
+    input.publicMapEnabled && blockers.length > 0
+      ? ["Public map is enabled while readiness gates are failing."]
+      : [];
 
   return {
     generatedAt: input.generatedAt || new Date().toISOString(),
@@ -266,6 +306,14 @@ export function buildMapReadinessSnapshot(
       precision: buildSplit(input.precisionRows, activeVisibleCount),
       status: buildSplit(input.statusRows, activeVisibleCount),
       provider: buildSplit(input.providerRows, activeVisibleCount),
+    },
+    diagnostics: {
+      launchWarning: warnings.length > 0,
+      warnings,
+      scoreBands: buildSplit(input.scoreBandRows, activeVisibleCount),
+      ageBands: buildSplit(input.ageBandRows, activeVisibleCount),
+      sourceKinds: buildSplit(input.sourceKindRows, activeVisibleCount),
+      confidence: buildSplit(input.confidenceRows, activeVisibleCount),
     },
   };
 }

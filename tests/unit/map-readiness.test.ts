@@ -18,6 +18,8 @@ test("map readiness snapshot computes exact aggregate counts and launch blockers
       minPublicPinPct: 75,
       minNonApproxPublicPinPct: 50,
       maxReviewFailedPct: 5,
+      stalePinDays: 90,
+      minPinScore: 0.6,
     },
     summary: {
       active_visible_count: "100",
@@ -49,6 +51,22 @@ test("map readiness snapshot computes exact aggregate counts and launch blockers
       { label: "pending", count: "12" },
     ],
     providerRows: [{ label: "opencage", count: "88" }],
+    scoreBandRows: [
+      { label: "meets_score", count: "75" },
+      { label: "below_min_score", count: "3" },
+    ],
+    ageBandRows: [
+      { label: "fresh", count: "74" },
+      { label: "stale", count: "4" },
+    ],
+    sourceKindRows: [
+      { label: "imported", count: "70" },
+      { label: "platform", count: "30" },
+    ],
+    confidenceRows: [
+      { label: "exact", count: "20" },
+      { label: "city", count: "64" },
+    ],
   });
 
   assert.equal(snapshot.launchReady, true);
@@ -66,6 +84,13 @@ test("map readiness snapshot computes exact aggregate counts and launch blockers
     count: 50,
     percentOfVisible: 50,
   });
+  assert.equal(snapshot.diagnostics.launchWarning, false);
+  assert.deepEqual(snapshot.diagnostics.scoreBands[0], {
+    label: "meets_score",
+    count: 75,
+    percentOfVisible: 75,
+  });
+  assert.deepEqual(snapshot.diagnostics.sourceKinds.map((row) => row.label), ["imported", "platform"]);
 });
 
 test("map readiness thresholds handle boundary cases and empty databases", () => {
@@ -79,6 +104,8 @@ test("map readiness thresholds handle boundary cases and empty databases", () =>
       minPublicPinPct: 85,
       minNonApproxPublicPinPct: 50,
       maxReviewFailedPct: 1,
+      stalePinDays: 90,
+      minPinScore: 0.6,
     },
     summary: {
       active_visible_count: 100,
@@ -117,6 +144,17 @@ test("map readiness thresholds handle boundary cases and empty databases", () =>
   assert.equal(empty.launchReady, false);
   assert.equal(empty.rates.publicPinPct, 0);
   assert.match(empty.blockers.join(" "), /no active visible listings/);
+
+  const enabledBeforeReady = buildMapReadinessSnapshot({
+    geocodingEnabled: false,
+    geocodingProvider: "disabled",
+    publicMapEnabled: true,
+    summary: {
+      active_visible_count: 10,
+    },
+  });
+  assert.equal(enabledBeforeReady.diagnostics.launchWarning, true);
+  assert.match(enabledBeforeReady.diagnostics.warnings.join(" "), /Public map is enabled/);
 });
 
 test("map readiness env thresholds reject invalid values safely", () => {
@@ -127,6 +165,8 @@ test("map readiness env thresholds reject invalid values safely", () => {
       MAP_READINESS_MIN_PUBLIC_PIN_PCT: "not-a-number",
       MAP_READINESS_MIN_NON_APPROX_PUBLIC_PIN_PCT: "55.5",
       MAP_READINESS_MAX_REVIEW_FAILED_PCT: "101",
+      MAP_READINESS_STALE_PIN_DAYS: "45",
+      MAP_READINESS_MIN_PIN_SCORE: "0.72",
     }),
     {
       minMarketTaggedPct: 90,
@@ -134,6 +174,8 @@ test("map readiness env thresholds reject invalid values safely", () => {
       minPublicPinPct: 85,
       minNonApproxPublicPinPct: 55.5,
       maxReviewFailedPct: 0,
+      stalePinDays: 45,
+      minPinScore: 0.72,
     }
   );
 });
@@ -182,5 +224,33 @@ test("admin map readiness API gates access and does not leak coordinates or ids"
 
   for (const forbiddenKey of ["latitude", "longitude", "lat", "lng", "slug", "userId", "boatId", "listingId"]) {
     assert.equal(seenKeys.has(forbiddenKey), false, `${forbiddenKey} should not be exposed`);
+  }
+
+  const allowedDiagnosticLabels = new Set([
+    "meets_score",
+    "below_min_score",
+    "missing_score",
+    "fresh",
+    "aging",
+    "stale",
+    "missing_geocoded_at",
+    "imported",
+    "platform",
+    "external",
+    "exact",
+    "city",
+    "region",
+    "unknown",
+    "missing",
+  ]);
+  for (const group of [
+    payload.diagnostics.scoreBands,
+    payload.diagnostics.ageBands,
+    payload.diagnostics.sourceKinds,
+    payload.diagnostics.confidence,
+  ]) {
+    for (const row of group) {
+      assert.equal(allowedDiagnosticLabels.has(row.label), true, `${row.label} is not allowlisted`);
+    }
   }
 });

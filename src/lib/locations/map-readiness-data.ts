@@ -11,10 +11,28 @@ import {
 
 const ACTIVE_VISIBLE_SQL = `b.status = 'active' AND ${buildVisibleImportQualitySql("b")}`;
 
+function getSafeConfiguredProviderLabel(provider: string) {
+  if (provider === "opencage" || provider === "nominatim" || provider === "disabled") {
+    return provider;
+  }
+
+  return "other";
+}
+
 export async function getMapReadinessSnapshot() {
   const publicPrecisions = [...PUBLIC_MAP_PRECISIONS];
+  const thresholds = getMapReadinessThresholds();
 
-  const [summary, precisionRows, statusRows, providerRows] = await Promise.all([
+  const [
+    summary,
+    precisionRows,
+    statusRows,
+    providerRows,
+    scoreBandRows,
+    ageBandRows,
+    sourceKindRows,
+    confidenceRows,
+  ] = await Promise.all([
     queryOne<MapReadinessSummaryRow>(
       `SELECT
          COUNT(*)::text AS active_visible_count,
@@ -86,41 +104,117 @@ export async function getMapReadinessSnapshot() {
            WHERE b.location_lat BETWEEN -90 AND 90
              AND b.location_lng BETWEEN -180 AND 180
              AND b.location_geocode_precision = ANY($1::text[])
-             AND b.location_geocoded_at < NOW() - INTERVAL '90 days'
+             AND b.location_geocoded_at < NOW() - ($2::int * INTERVAL '1 day')
          )::text AS stale_public_coordinate_count,
          COUNT(*) FILTER (
            WHERE b.location_lat BETWEEN -90 AND 90
              AND b.location_lng BETWEEN -180 AND 180
              AND b.location_geocode_precision = ANY($1::text[])
-             AND COALESCE(b.location_geocode_score, 0) < 0.6
+             AND b.location_geocode_score IS NOT NULL
+             AND b.location_geocode_score < $3::float
          )::text AS low_score_public_pin_count
        FROM boats b
        WHERE ${ACTIVE_VISIBLE_SQL}`,
-      [publicPrecisions]
+      [publicPrecisions, thresholds.stalePinDays, thresholds.minPinScore]
     ),
     query<MapReadinessSplitRow>(
-      `SELECT COALESCE(b.location_geocode_precision, 'none') AS label,
+      `SELECT
+              CASE
+                WHEN b.location_geocode_precision IN ('exact', 'street', 'marina', 'city', 'region', 'country', 'unknown')
+                  THEN b.location_geocode_precision
+                ELSE 'none'
+              END AS label,
               COUNT(*)::text AS count
        FROM boats b
        WHERE ${ACTIVE_VISIBLE_SQL}
-       GROUP BY COALESCE(b.location_geocode_precision, 'none')
-       ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_precision, 'none')`
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`
     ),
     query<MapReadinessSplitRow>(
-      `SELECT COALESCE(b.location_geocode_status, 'none') AS label,
+      `SELECT
+              CASE
+                WHEN b.location_geocode_status IN ('pending', 'geocoded', 'review', 'failed', 'skipped')
+                  THEN b.location_geocode_status
+                ELSE 'none'
+              END AS label,
               COUNT(*)::text AS count
        FROM boats b
        WHERE ${ACTIVE_VISIBLE_SQL}
-       GROUP BY COALESCE(b.location_geocode_status, 'none')
-       ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_status, 'none')`
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`
     ),
     query<MapReadinessSplitRow>(
-      `SELECT COALESCE(b.location_geocode_provider, 'none') AS label,
+      `SELECT
+              CASE
+                WHEN b.location_geocode_provider IN ('opencage', 'nominatim') THEN b.location_geocode_provider
+                WHEN b.location_geocode_provider IS NULL THEN 'none'
+                ELSE 'other'
+              END AS label,
               COUNT(*)::text AS count
        FROM boats b
        WHERE ${ACTIVE_VISIBLE_SQL}
-       GROUP BY COALESCE(b.location_geocode_provider, 'none')
-       ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_provider, 'none')`
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`
+    ),
+    query<MapReadinessSplitRow>(
+      `SELECT
+         CASE
+           WHEN b.location_geocode_score IS NULL THEN 'missing_score'
+           WHEN b.location_geocode_score < $2::float THEN 'below_min_score'
+           ELSE 'meets_score'
+         END AS label,
+         COUNT(*)::text AS count
+       FROM boats b
+       WHERE ${ACTIVE_VISIBLE_SQL}
+         AND b.location_lat BETWEEN -90 AND 90
+         AND b.location_lng BETWEEN -180 AND 180
+         AND b.location_geocode_precision = ANY($1::text[])
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`,
+      [publicPrecisions, thresholds.minPinScore]
+    ),
+    query<MapReadinessSplitRow>(
+      `SELECT
+         CASE
+           WHEN b.location_geocoded_at IS NULL THEN 'missing_geocoded_at'
+           WHEN b.location_geocoded_at < NOW() - ($2::int * INTERVAL '1 day') THEN 'stale'
+           WHEN b.location_geocoded_at < NOW() - (($2::float / 2) * INTERVAL '1 day') THEN 'aging'
+           ELSE 'fresh'
+         END AS label,
+         COUNT(*)::text AS count
+       FROM boats b
+       WHERE ${ACTIVE_VISIBLE_SQL}
+         AND b.location_lat BETWEEN -90 AND 90
+         AND b.location_lng BETWEEN -180 AND 180
+         AND b.location_geocode_precision = ANY($1::text[])
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`,
+      [publicPrecisions, thresholds.stalePinDays]
+    ),
+    query<MapReadinessSplitRow>(
+      `SELECT
+         CASE
+           WHEN b.listing_source = 'imported' THEN 'imported'
+           WHEN b.source_url IS NULL THEN 'platform'
+           ELSE 'external'
+         END AS label,
+         COUNT(*)::text AS count
+       FROM boats b
+       WHERE ${ACTIVE_VISIBLE_SQL}
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`
+    ),
+    query<MapReadinessSplitRow>(
+      `SELECT
+         CASE
+           WHEN b.location_confidence IN ('exact', 'city', 'region', 'unknown') THEN b.location_confidence
+           ELSE 'missing'
+         END AS label,
+         COUNT(*)::text AS count
+       FROM boats b
+       WHERE ${ACTIVE_VISIBLE_SQL}
+       GROUP BY 1
+       ORDER BY COUNT(*) DESC, label`
     ),
   ]);
 
@@ -129,9 +223,13 @@ export async function getMapReadinessSnapshot() {
     precisionRows,
     statusRows,
     providerRows,
-    thresholds: getMapReadinessThresholds(),
+    scoreBandRows,
+    ageBandRows,
+    sourceKindRows,
+    confidenceRows,
+    thresholds,
     geocodingEnabled: locationGeocodingEnabled(),
-    geocodingProvider: locationGeocodingProvider(),
+    geocodingProvider: getSafeConfiguredProviderLabel(locationGeocodingProvider()),
     publicMapEnabled: publicMapEnabled(),
   });
 }

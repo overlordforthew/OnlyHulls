@@ -160,6 +160,12 @@ export default async function AdminMapReadinessPage() {
         </div>
       </div>
 
+      {snapshot.diagnostics.launchWarning ? (
+        <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-700">
+          {snapshot.diagnostics.warnings.join(" ")}
+        </div>
+      ) : null}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Visible boats" value={formatNumber(snapshot.summary.activeVisibleCount)} />
         <MetricCard label="Public pins" value={formatNumber(snapshot.summary.publicPinCount)} />
@@ -181,13 +187,13 @@ export default async function AdminMapReadinessPage() {
         <MetricCard
           label="Stale public pins"
           value={formatNumber(snapshot.summary.stalePublicCoordinateCount)}
-          detail={`${formatPct(snapshot.rates.stalePublicPinPct)} of public pins`}
+          detail={`${formatPct(snapshot.rates.stalePublicPinPct)} of public pins past ${snapshot.thresholds.stalePinDays} days`}
           warn={snapshot.summary.stalePublicCoordinateCount > 0}
         />
         <MetricCard
           label="Low score pins"
           value={formatNumber(snapshot.summary.lowScorePublicPinCount)}
-          detail={`${formatPct(snapshot.rates.lowScorePublicPinPct)} of public pins`}
+          detail={`${formatPct(snapshot.rates.lowScorePublicPinPct)} below ${snapshot.thresholds.minPinScore}`}
           warn={snapshot.summary.lowScorePublicPinCount > 0}
         />
         <MetricCard
@@ -242,6 +248,29 @@ export default async function AdminMapReadinessPage() {
           title="Provider Split"
           rows={snapshot.splits.provider}
           empty="No provider history yet."
+        />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+        <SplitPanel
+          title="Score Bands"
+          rows={snapshot.diagnostics.scoreBands}
+          empty="No public pin score history yet."
+        />
+        <SplitPanel
+          title="Age Bands"
+          rows={snapshot.diagnostics.ageBands}
+          empty="No public pin age history yet."
+        />
+        <SplitPanel
+          title="Source Kind"
+          rows={snapshot.diagnostics.sourceKinds}
+          empty="No visible listings yet."
+        />
+        <SplitPanel
+          title="Location Confidence"
+          rows={snapshot.diagnostics.confidence}
+          empty="No visible listings yet."
         />
       </div>
     </main>
