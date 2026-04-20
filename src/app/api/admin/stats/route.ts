@@ -17,12 +17,20 @@ import {
 } from "@/lib/capabilities";
 import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
-import { buildVisibleImportQualitySql } from "@/lib/import-quality";
+import {
+  buildBaseVisibleImportQualitySql,
+  buildBaseVisibleImportQualitySqlWithoutSourceFreshness,
+  buildVisibleImportQualitySql,
+} from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
 import { PUBLIC_MAP_PRECISIONS } from "@/lib/locations/map-coordinates";
 import { buildCountryHintMismatchGroups } from "@/lib/locations/location-readiness";
 import { TOP_LOCATION_MARKETS } from "@/lib/locations/top-markets";
 import { getSourceDecisionByName } from "@/lib/source-policy";
+import {
+  buildSourceHealthPolicySignals,
+  deriveImportVisibilityCounts,
+} from "@/lib/source-health";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -54,6 +62,8 @@ export async function GET() {
     };
     type ImportQualitySummaryRow = {
       active_count: string;
+      quality_visible_before_freshness_count: string;
+      quality_visible_count: string;
       visible_count: string;
       missing_model_count: string;
       missing_location_count: string;
@@ -64,6 +74,8 @@ export async function GET() {
     type SourceHealthRow = {
       source: string;
       active_count: string;
+      quality_visible_before_freshness_count: string;
+      quality_visible_count: string;
       visible_count: string;
       contact_clicks_30d: string;
       missing_model_count: string;
@@ -220,6 +232,8 @@ export async function GET() {
       queryOne<ImportQualitySummaryRow>(
         `SELECT
            COUNT(*)::text AS active_count,
+           COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySqlWithoutSourceFreshness("b")})::text AS quality_visible_before_freshness_count,
+           COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySql("b")})::text AS quality_visible_count,
            COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
            COUNT(*) FILTER (
              WHERE COALESCE(d.documentation_status->'import_quality_flags', '[]'::jsonb) ? 'missing_model'
@@ -245,6 +259,8 @@ export async function GET() {
         `SELECT
            COALESCE(b.source_name, 'Platform') AS source,
            COUNT(*)::text AS active_count,
+           COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySqlWithoutSourceFreshness("b")})::text AS quality_visible_before_freshness_count,
+           COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySql("b")})::text AS quality_visible_count,
            COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count,
            COALESCE(SUM(COALESCE(clicks.click_count_30d, 0)), 0)::text AS contact_clicks_30d,
            COUNT(*) FILTER (
@@ -519,28 +535,80 @@ export async function GET() {
         boatTitle: activity.boat_title,
         payload: activity.payload || {},
       })),
-      importQualitySummary: {
-        activeCount: parseInt(importQualitySummary?.active_count || "0", 10),
-        visibleCount: parseInt(importQualitySummary?.visible_count || "0", 10),
-        missingModelCount: parseInt(importQualitySummary?.missing_model_count || "0", 10),
-        missingLocationCount: parseInt(importQualitySummary?.missing_location_count || "0", 10),
-        missingImageCount: parseInt(importQualitySummary?.missing_image_count || "0", 10),
-        thinSummaryCount: parseInt(importQualitySummary?.thin_summary_count || "0", 10),
-        lowPriceCount: parseInt(importQualitySummary?.low_price_count || "0", 10),
-      },
-      sourceHealth: sourceHealth.map((row) => ({
-        source: row.source,
-        activeCount: parseInt(row.active_count || "0", 10),
-        visibleCount: parseInt(row.visible_count || "0", 10),
-        contactClicks30d: parseInt(row.contact_clicks_30d || "0", 10),
-        missingModelCount: parseInt(row.missing_model_count || "0", 10),
-        missingLocationCount: parseInt(row.missing_location_count || "0", 10),
-        missingImageCount: parseInt(row.missing_image_count || "0", 10),
-        thinSummaryCount: parseInt(row.thin_summary_count || "0", 10),
-        lowPriceCount: parseInt(row.low_price_count || "0", 10),
-        decisionStatus: getSourceDecisionByName(row.source)?.status || "undecided",
-        decisionReason: getSourceDecisionByName(row.source)?.reason || null,
-      })),
+      importQualitySummary: (() => {
+        const activeCount = parseInt(importQualitySummary?.active_count || "0", 10);
+        const qualityVisibleBeforeFreshnessCount = parseInt(
+          importQualitySummary?.quality_visible_before_freshness_count || "0",
+          10
+        );
+        const qualityVisibleBeforePolicyCount = parseInt(
+          importQualitySummary?.quality_visible_count || "0",
+          10
+        );
+        const visibleCount = parseInt(importQualitySummary?.visible_count || "0", 10);
+        const visibilityCounts = deriveImportVisibilityCounts({
+          active: activeCount,
+          qualityVisibleBeforeFreshness: qualityVisibleBeforeFreshnessCount,
+          qualityVisibleBeforePolicy: qualityVisibleBeforePolicyCount,
+          visible: visibleCount,
+        });
+
+        return {
+          activeCount,
+          qualityVisibleBeforeFreshnessCount,
+          qualityVisibleBeforePolicyCount,
+          visibleCount,
+          ...visibilityCounts,
+          missingModelCount: parseInt(importQualitySummary?.missing_model_count || "0", 10),
+          missingLocationCount: parseInt(
+            importQualitySummary?.missing_location_count || "0",
+            10
+          ),
+          missingImageCount: parseInt(importQualitySummary?.missing_image_count || "0", 10),
+          thinSummaryCount: parseInt(importQualitySummary?.thin_summary_count || "0", 10),
+          lowPriceCount: parseInt(importQualitySummary?.low_price_count || "0", 10),
+        };
+      })(),
+      sourceHealth: sourceHealth.map((row) => {
+        const activeCount = parseInt(row.active_count || "0", 10);
+        const qualityVisibleBeforeFreshnessCount = parseInt(
+          row.quality_visible_before_freshness_count || "0",
+          10
+        );
+        const qualityVisibleBeforePolicyCount = parseInt(row.quality_visible_count || "0", 10);
+        const visibleCount = parseInt(row.visible_count || "0", 10);
+        const visibilityCounts = deriveImportVisibilityCounts({
+          active: activeCount,
+          qualityVisibleBeforeFreshness: qualityVisibleBeforeFreshnessCount,
+          qualityVisibleBeforePolicy: qualityVisibleBeforePolicyCount,
+          visible: visibleCount,
+        });
+        const decision = getSourceDecisionByName(row.source);
+
+        return {
+          source: row.source,
+          activeCount,
+          qualityVisibleBeforeFreshnessCount,
+          qualityVisibleBeforePolicyCount,
+          visibleCount,
+          ...visibilityCounts,
+          contactClicks30d: parseInt(row.contact_clicks_30d || "0", 10),
+          missingModelCount: parseInt(row.missing_model_count || "0", 10),
+          missingLocationCount: parseInt(row.missing_location_count || "0", 10),
+          missingImageCount: parseInt(row.missing_image_count || "0", 10),
+          thinSummaryCount: parseInt(row.thin_summary_count || "0", 10),
+          lowPriceCount: parseInt(row.low_price_count || "0", 10),
+          decisionStatus: decision?.status || "undecided",
+          decisionReason: decision?.reason || null,
+          policySignals: buildSourceHealthPolicySignals({
+            source: row.source,
+            active: activeCount,
+            qualityVisibleBeforeFreshness: qualityVisibleBeforeFreshnessCount,
+            qualityVisibleBeforePolicy: qualityVisibleBeforePolicyCount,
+            visible: visibleCount,
+          }),
+        };
+      }),
       ownerPulse: {
         signups24h: parseInt(signupPulse?.signups_24h || "0", 10),
         savedSearches24h: parseInt(ownerPulse?.saved_searches_24h || "0", 10),

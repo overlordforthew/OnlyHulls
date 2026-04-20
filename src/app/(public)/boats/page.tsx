@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -12,6 +13,19 @@ import { useCompareBoats } from "@/hooks/useCompareBoats";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatBrowseSummary } from "@/lib/browse-summary";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
+import { getPublicMapClientConfig } from "@/lib/config/public-map";
+import { MAP_MARKER_DEFAULT_LIMIT } from "@/lib/locations/map-bounds";
+import {
+  parseMapViewportFromParams,
+  setMapUrlParams,
+  stripMapUrlParams,
+  wantsMapView,
+  MAP_CENTER_PARAM,
+  MAP_ZOOM_PARAM,
+  MAP_VIEW_PARAM,
+  MAP_VIEW_VALUE,
+} from "@/lib/locations/map-url-state";
+import { getInitialMapViewport, type MapInitialViewport } from "@/lib/locations/map-viewports";
 import {
   canonicalizeLocationParam,
   getFeaturedLocationMarkets,
@@ -39,6 +53,7 @@ import {
   GitCompareArrows,
   Grid2X2,
   List,
+  Map,
   MapPin,
   Ruler,
   Sailboat,
@@ -46,8 +61,17 @@ import {
 
 type SortField = "price" | "size" | "year" | "newest";
 type SortDir = "asc" | "desc";
-type ViewMode = "grid" | "rows";
+type ViewMode = "grid" | "rows" | "map";
 type SearchParamReader = { get: (key: string) => string | null };
+
+const BoatsMapView = dynamic(() => import("@/components/BoatsMapView"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex min-h-[620px] items-center justify-center rounded-lg border border-border bg-surface text-sm text-text-secondary">
+      Loading map...
+    </div>
+  ),
+});
 
 interface Boat {
   id: string;
@@ -95,6 +119,7 @@ const EMPTY_FILTERS: FilterState = {
   hullType: "",
 };
 const FEATURED_LOCATION_MARKETS = getFeaturedLocationMarkets();
+const PUBLIC_MAP_CLIENT_CONFIG = getPublicMapClientConfig();
 
 function normalizeSortField(value: string | null): SortField {
   return value === "price" || value === "size" || value === "year" || value === "newest"
@@ -185,6 +210,9 @@ function BoatsPageInner() {
   const initialSortField = normalizeSortField(searchParams.get("sort"));
   const initialSortDir = normalizeSortDir(searchParams.get("dir"), initialSortField);
   const initialFilters = filtersFromParams(searchParams);
+  const rawSearchParamString = searchParams.toString();
+  const initialViewMode =
+    PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams) ? "map" : "grid";
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,7 +228,7 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortDir);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
@@ -216,12 +244,49 @@ function BoatsPageInner() {
   const compareReady = compareCount > 0;
   const compareCountLabel = t("compareFilled", { count: compareCount });
 
+  const boatSearchParamString = useMemo(() => {
+    const params = new URLSearchParams(rawSearchParamString);
+    stripMapUrlParams(params);
+    return params.toString();
+  }, [rawSearchParamString]);
+  const urlMapViewport = useMemo(
+    () => parseMapViewportFromParams(searchParams),
+    [searchParams]
+  );
+  const homeMapViewport = useMemo(
+    () => getInitialMapViewport(locationFilter),
+    [locationFilter]
+  );
+  const initialMapViewport = useMemo(
+    () => urlMapViewport || homeMapViewport,
+    [homeMapViewport, urlMapViewport]
+  );
+
   useEffect(() => {
+    if (PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams)) {
+      setViewMode("map");
+      return;
+    }
+
     const savedView = window.localStorage.getItem("boats_view_mode");
     if (savedView === "grid" || savedView === "rows") {
       setViewMode(savedView);
+    } else if (savedView === "map" && PUBLIC_MAP_CLIENT_CONFIG.enabled) {
+      setViewMode(savedView);
+      const params = new URLSearchParams(rawSearchParamString);
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }
-  }, []);
+  }, [pathname, rawSearchParamString, router, searchParams]);
+
+  useEffect(() => {
+    if (PUBLIC_MAP_CLIENT_CONFIG.enabled || !wantsMapView(searchParams)) return;
+    const params = new URLSearchParams(rawSearchParamString);
+    stripMapUrlParams(params);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, rawSearchParamString, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,8 +331,18 @@ function BoatsPageInner() {
   }
 
   function handleViewMode(nextView: ViewMode) {
+    if (nextView === "map" && !PUBLIC_MAP_CLIENT_CONFIG.enabled) return;
     setViewMode(nextView);
     window.localStorage.setItem("boats_view_mode", nextView);
+
+    const params = new URLSearchParams(window.location.search);
+    if (nextView === "map") {
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+    } else {
+      stripMapUrlParams(params);
+    }
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
   function clearSearchCriteria() {
@@ -326,9 +401,17 @@ function BoatsPageInner() {
     nextLocation?: string
   ) => {
     const params = buildParams(q, tag, 1, filterState, nextLocation);
+    if (viewMode === "map" && PUBLIC_MAP_CLIENT_CONFIG.enabled) {
+      const currentParams = new URLSearchParams(window.location.search);
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+      const center = currentParams.get(MAP_CENTER_PARAM);
+      const zoom = currentParams.get(MAP_ZOOM_PARAM);
+      if (center) params.set(MAP_CENTER_PARAM, center);
+      if (zoom) params.set(MAP_ZOOM_PARAM, zoom);
+    }
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
-  }, [buildParams, pathname, router]);
+  }, [buildParams, pathname, router, viewMode]);
 
   async function fetchBoats(
     q?: string,
@@ -382,10 +465,11 @@ function BoatsPageInner() {
   }
 
   useEffect(() => {
-    const q = searchParams.get("q") || "";
-    const location = searchParams.get("location") || "";
-    const tag = searchParams.get("tag") || "";
-    const nextFilters = filtersFromParams(searchParams);
+    const filteredSearchParams = new URLSearchParams(boatSearchParamString);
+    const q = filteredSearchParams.get("q") || "";
+    const location = filteredSearchParams.get("location") || "";
+    const tag = filteredSearchParams.get("tag") || "";
+    const nextFilters = filtersFromParams(filteredSearchParams);
     setSearchInput(q);
     setLocationInput(getLocationDisplayName(location));
     setSearch(q);
@@ -395,7 +479,14 @@ function BoatsPageInner() {
     setAppliedFilters(nextFilters);
     fetchBoats(q, tag, nextFilters, location);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [boatSearchParamString]);
+
+  const handleMapViewportChange = useCallback((viewport: MapInitialViewport) => {
+    const params = new URLSearchParams(window.location.search);
+    setMapUrlParams(params, viewport);
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [pathname]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -419,7 +510,7 @@ function BoatsPageInner() {
   }
 
   const hasMore = boats.length < total;
-  const currentSearchFilters = {
+  const currentSearchFilters = useMemo(() => ({
     search,
     location: locationFilter || null,
     tag: activeTag,
@@ -432,8 +523,26 @@ function BoatsPageInner() {
     currency: displayCurrency,
     sort: sortField,
     dir: sortDir,
-  };
+  }), [
+    activeTag,
+    appliedFilters.hullType,
+    appliedFilters.maxPrice,
+    appliedFilters.maxYear,
+    appliedFilters.minPrice,
+    appliedFilters.minYear,
+    appliedFilters.rigType,
+    displayCurrency,
+    locationFilter,
+    search,
+    sortDir,
+    sortField,
+  ]);
   const currentSearchParams = buildBoatSearchParams(currentSearchFilters);
+  const mapSearchParamString = useMemo(() => {
+    const params = buildBoatSearchParams(currentSearchFilters);
+    params.set("limit", String(MAP_MARKER_DEFAULT_LIMIT));
+    return params.toString();
+  }, [currentSearchFilters]);
   const currentBrowseUrl = `${pathname}${currentSearchParams.toString() ? `?${currentSearchParams}` : ""}`;
   const profileCallbackUrl = `/onboarding/profile?callbackUrl=${encodeURIComponent(currentBrowseUrl)}`;
   const matchedCtaHref = isLoggedIn
@@ -833,6 +942,21 @@ function BoatsPageInner() {
               <List className="h-4 w-4" />
               {t("view.rows")}
             </button>
+            {PUBLIC_MAP_CLIENT_CONFIG.enabled && (
+              <button
+                type="button"
+                onClick={() => handleViewMode("map")}
+                data-testid="boats-view-toggle-map"
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors ${
+                  viewMode === "map"
+                    ? "bg-primary-btn text-white"
+                    : "text-text-secondary hover:text-foreground"
+                }`}
+              >
+                <Map className="h-4 w-4" />
+                {t("view.map")}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -910,7 +1034,18 @@ function BoatsPageInner() {
           </div>
         ) : (
           <>
-            {viewMode === "grid" ? (
+            {viewMode === "map" && PUBLIC_MAP_CLIENT_CONFIG.enabled ? (
+              <BoatsMapView
+                searchParams={mapSearchParamString}
+                locationFilter={locationFilter}
+                locationLabel={locationFilterLabel}
+                initialViewport={initialMapViewport}
+                homeViewport={homeMapViewport}
+                urlViewport={urlMapViewport}
+                displayCurrency={displayCurrency}
+                onViewportChange={handleMapViewportChange}
+              />
+            ) : viewMode === "grid" ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {boats.map((boat) => (
                   <BoatCard

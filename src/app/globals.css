@@ -210,3 +210,95 @@ input, select, textarea {
 .light input, .light select, .light textarea {
   color-scheme: light;
 }
+
+/* Public boat map markers */
+.oh-map-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  touch-action: manipulation;
+  --oh-map-marker-color: var(--primary);
+}
+
+.oh-map-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: var(--oh-map-marker-color);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.oh-map-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  background: var(--oh-map-marker-color);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.oh-map-marker:hover,
+.oh-map-marker:focus-visible,
+.oh-map-marker-selected {
+  outline: none;
+}
+
+.oh-map-marker:hover::before,
+.oh-map-marker:focus-visible::before,
+.oh-map-marker-selected::before {
+  transform: translate(-50%, calc(-50% - 2px)) scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 175, 240, 0.35);
+}
+
+.oh-map-marker:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 175, 240, 0.45);
+}
+
+.oh-map-marker-marina {
+  --oh-map-marker-color: var(--success);
+}
+
+.oh-map-marker-street {
+  --oh-map-marker-color: var(--accent);
+}
+
+.oh-map-cluster {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 9px;
+  appearance: none;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 72%, var(--success));
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.oh-map-cluster:hover,
+.oh-map-cluster:focus-visible {
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 14px 34px rgba(0, 175, 240, 0.38);
+  outline: none;
+}

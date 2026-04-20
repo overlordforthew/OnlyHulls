@@ -5,6 +5,7 @@ import {
   buildImportedSlugFallback,
   buildImportedSlug,
   buildBaseVisibleImportQualitySql,
+  buildBaseVisibleImportQualitySqlWithoutSourceFreshness,
   buildHeldSourceSuppressionSql,
   buildImportQualityFlags,
   buildImportedSummary,
@@ -36,6 +37,16 @@ test("public visibility suppresses imported listings from held sources", () => {
   assert.match(baseSql, /\/assets\/images\/noimage/);
   assert.match(baseSql, /source_freshness/);
   assert.match(baseSql, /expired_source_/);
+});
+
+test("base visibility can be inspected before source freshness suppression", () => {
+  const baseSql = buildBaseVisibleImportQualitySql("b");
+  const preFreshnessSql = buildBaseVisibleImportQualitySqlWithoutSourceFreshness("b");
+
+  assert.match(baseSql, /source_freshness/);
+  assert.doesNotMatch(preFreshnessSql, /source_freshness/);
+  assert.match(preFreshnessSql, /\/assets\/images\/noimage/);
+  assert.match(preFreshnessSql, /import_quality_visible/);
 });
 
 test("normalizeImportedLocation repairs mojibake place names", () => {

@@ -137,20 +137,32 @@ Required before applying geocodes:
 Required before exposing a buyer-facing map:
 
 - `PUBLIC_MAP_ENABLED=true`
+- `NEXT_PUBLIC_MAP_ENABLED=true`
 - `NEXT_PUBLIC_MAP_STYLE_URL`
 - `NEXT_PUBLIC_MAP_ATTRIBUTION`
+- `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS` when the style references tile, glyph, sprite, or image hosts beyond the style URL origin.
+- Optional `MAP_READINESS_*` thresholds if launch gates should differ from the defaults in `.env.example`.
+
+Recommended first tile provider:
+
+- MapTiler Flex, using the setup and rollback process in `documents/public-map-operations.md`.
 
 Operational notes:
 
+- Run `npm run db:map-launch-preflight -- --phase=backfill` before any production geocode `--apply` batch. It is read-only and returns `GO` only when OpenCage env, public-map-off safety, readiness availability, review queue context, and next-batch safety pass together.
+- Run `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` before enabling the public map flags. Launch ping mode performs live connectivity checks: one map style request and one OpenCage `no_record=1` probe request, and launch mode requires a fresh zero-rejection pin audit attestation.
 - First-time production backfills should follow `documents/location-geocoding-rollout.md`.
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
+- Use `/admin/map-readiness` as the aggregate launch gate before enabling the public map flags.
 - The map marker API intentionally returns `404` when `PUBLIC_MAP_ENABLED` is not true.
-- Public map coordinates are gated by geocode precision; city-level results are rounded and marked approximate.
+- Public map coordinates are gated by geocode precision; city, region, and country-level results remain searchable but are not exposed as hard public pins.
+- The `/boats` map toggle is also client-gated by `NEXT_PUBLIC_MAP_ENABLED`, style URL, and attribution so the interface cannot appear without the legal/provider basics.
 - Use `opencage` for the commercial backfill; OpenCage paid plans allow permanent storage of geocoded results.
 - Use public Nominatim only for small validation batches with a monitored User-Agent/contact email and about one request per second.
 - First paid validation command shape:
   `LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npx tsx scripts/geocode-boat-locations.ts --limit=100 --apply`
 - Review `precisionSplit`, `failureReasons`, `geographyMismatches`, and `samplePins` from the command output before increasing the batch size.
+- Use `npm run db:map-pin-audit -- --limit=25 --seed=<batch-name>` after apply batches and before launch. Add `--backup-table=boat_geocode_backup_YYYYMMDDHHMMSS` to audit only rows touched by a specific write batch. The launch preflight expects a zero-rejection attestation from `--attest --emit-report=artifacts/map-pin-audit-launch.json`.
 - Do not use a geocoder whose terms forbid cached/stored results unless the same provider also supplies the rendered map under compatible terms.
 - If you want private objects instead, the app will need a small follow-up change for signed-read URLs or a media proxy.
 

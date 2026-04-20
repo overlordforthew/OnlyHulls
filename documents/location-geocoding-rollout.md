@@ -10,6 +10,11 @@ This runbook is for the first commercial coordinate backfill. It does not launch
 
 ## Preflight
 
+Use the preflight phase that matches the operation:
+
+- `--phase=backfill` is for safe coordinate writes. It requires OpenCage, the intended database, public map flags off, and next-batch apply safety, but it does not require MapTiler launch config yet.
+- `--phase=launch` is for exposing the buyer-facing map. It stays strict: map tile config, provider pings, readiness gates, review queue, stale pins, and low-score pins must all pass before the public flags are enabled.
+
 1. Confirm production env:
 
    ```bash
@@ -29,8 +34,17 @@ This runbook is for the first commercial coordinate backfill. It does not launch
 3. Run the read-only readiness report and fix P0 blockers before any write batch:
 
    ```bash
+   npm run db:map-launch-preflight -- --phase=backfill
    npm run db:geocode-readiness
    npm run db:geocode-review
+   ```
+
+   `db:map-launch-preflight -- --phase=backfill` is the non-destructive GO/NO-GO gate for coordinate batches. It checks geocoder env, public map flags are off, readiness availability, review queue state, and the next batch size before any `--apply` run. Tile-provider env is intentionally deferred to the launch phase.
+
+   Add `--ping` only when you intentionally want live provider connectivity checks. In `backfill` phase, ping mode makes one OpenCage `no_record=1` probe request and defers map style checks to launch, so use it after the real OpenCage key is configured and before the first paid batch:
+
+   ```bash
+   npm run db:map-launch-preflight -- --phase=backfill --ping
    ```
 
 4. Refresh the provider comparison/golden-set artifact:
@@ -63,11 +77,38 @@ After each apply batch, inspect the JSON output:
 - `geographyMismatches`: any country or region mismatch blocks scale-up until source text or country inference is fixed.
 - `samplePins`: open every audit URL in the first batch. For later batches, inspect at least 20 random pins or every emitted sample, whichever is smaller.
 
+Then generate a reusable sample from persisted public-map pins:
+
+```bash
+npm run db:map-pin-audit -- --limit=25 --seed=first-batch
+```
+
+If the geocode apply command printed a `backupTable`, audit only rows touched by that batch:
+
+```bash
+npm run db:map-pin-audit -- --backup-table=boat_geocode_backup_YYYYMMDDHHMMSS --limit=25 --seed=first-batch
+```
+
+The backup-table filter scopes the audit to boats touched by that batch, but the coordinates shown come from the current `boats` row. If a later batch rewrites the same boat, rerun the audit with a fresh seed before treating that sample as accepted.
+
 Record each sample pin as accept/reject. Scale only when at least 95% of sampled pins land in the correct city/marina/harbor area and all exact/street/marina pins look defensible to a buyer.
+
+For the final launch audit, write a reviewed attestation artifact with zero rejected pins:
+
+```bash
+npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json
+```
+
+Launch preflight requires that artifact and recomputes the sample hash against the current database:
+
+```bash
+npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json
+```
 
 Then rerun:
 
 ```bash
+npm run db:map-launch-preflight -- --phase=backfill
 npm run db:geocode-readiness
 npm run db:geocode-review
 ```

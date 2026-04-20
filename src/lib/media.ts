@@ -9,6 +9,7 @@ export interface ExternalVideoMeta {
 
 export const LOCAL_MEDIA_BASE_PATH = "/media";
 export const MAX_EXTERNAL_VIDEOS = 3;
+export type GalleryHeroImageMode = "optimized-fill" | "natural-size";
 
 function parseYoutubeVideoId(url: URL): string | null {
   const host = url.hostname.toLowerCase();
@@ -82,4 +83,8 @@ export function normalizeExternalVideoUrl(url: string): string | null {
 
 export function isLocalMediaUrl(url: string): boolean {
   return url === LOCAL_MEDIA_BASE_PATH || url.startsWith(`${LOCAL_MEDIA_BASE_PATH}/`);
+}
+
+export function getGalleryHeroImageMode(url: string): GalleryHeroImageMode {
+  return isLocalMediaUrl(url) ? "optimized-fill" : "natural-size";
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
-import { ArrowLeft, MapPin, Sparkles, User } from "lucide-react";
+import { ArrowLeft, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -27,7 +27,7 @@ import { getRelatedBoats } from "@/lib/db/queries";
 import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
-import { buildBoatDisplayTitle } from "@/lib/boats/detail-display";
+import { buildBoatDetailFacts, buildBoatDisplayTitle } from "@/lib/boats/detail-display";
 
 interface BoatDetail {
   id: string;
@@ -271,6 +271,16 @@ export default async function BoatDetailPage({
     preferredCurrency,
   });
   const boatTitle = buildBoatDisplayTitle(boat);
+  const headlineFacts = buildBoatDetailFacts({
+    year: boat.year,
+    locationText: boat.location_text,
+    specs,
+    labels: {
+      year: copy.specLabels.year,
+      location: copy.specLabels.location,
+      loa: copy.specLabels.loa,
+    },
+  });
   const displaySummary = buildBoatPublicSummary({
     summary: boat.ai_summary,
     title: boatTitle,
@@ -427,13 +437,27 @@ export default async function BoatDetailPage({
           <div className="space-y-8 lg:col-span-2">
             <div>
               <h1 className="break-words text-3xl font-bold leading-tight">{boatTitle}</h1>
-              {boat.location_text && (
-                <p className="mt-2 flex items-start gap-1.5 text-text-secondary">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span className="min-w-0 break-words">
-                    {boat.location_text}
-                  </span>
-                </p>
+              {headlineFacts.length > 0 && (
+                <dl className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+                  {headlineFacts.map((fact, index) => (
+                    <div
+                      key={fact.key}
+                      className={`flex max-w-full min-w-0 items-baseline gap-1.5 ${
+                        fact.key === "location" ? "basis-full sm:basis-auto" : "shrink-0"
+                      }`}
+                    >
+                      {index > 0 && (
+                        <span aria-hidden="true" className="hidden text-text-tertiary sm:inline">
+                          &middot;
+                        </span>
+                      )}
+                      <dt className="shrink-0 font-medium text-text-tertiary">{fact.label}</dt>
+                      <dd className="min-w-0 break-words font-semibold text-foreground">
+                        {fact.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               )}
               <div className="mt-3">
                 <CurrencySelector

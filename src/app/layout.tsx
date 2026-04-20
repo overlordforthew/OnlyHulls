@@ -10,6 +10,7 @@ import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import WhatsAppContactButton from "@/components/WhatsAppContactButton";
 import { getRootLayoutCopy } from "@/i18n/copy/layouts";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 const geistSans = Geist({

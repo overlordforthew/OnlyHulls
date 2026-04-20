@@ -1,3 +1,5 @@
+import { getPublicMapClientConfig } from "@/lib/config/public-map";
+
 const IMAGE_SOURCES = [
   "'self'",
   "data:",
@@ -22,6 +24,10 @@ const CONNECT_SOURCES = [
   "'self'",
   "https://*.posthog.com",
 ];
+
+function uniqueSources(sources: string[]) {
+  return Array.from(new Set(sources));
+}
 
 function createNonceValue() {
   const bytes = new Uint8Array(16);
@@ -51,11 +57,22 @@ export function buildContentSecurityPolicy(
 ) {
   const isDevelopment = options.isDevelopment ?? process.env.NODE_ENV !== "production";
   const connectSources = [...CONNECT_SOURCES];
+  const imageSources = [...IMAGE_SOURCES];
+  const styleSources = ["'self'", "'unsafe-inline'"];
+  const fontSources = ["'self'"];
+  const mapConfig = getPublicMapClientConfig();
   const scriptSources = ["'self'", `'nonce-${nonce}'`, "https://*.posthog.com"];
 
   if (isDevelopment) {
     scriptSources.push("'unsafe-eval'");
     connectSources.push("http://127.0.0.1:*", "http://localhost:*", "ws://127.0.0.1:*", "ws://localhost:*");
+  }
+
+  if (mapConfig.enabled) {
+    connectSources.push(...mapConfig.resourceOrigins);
+    imageSources.push(...mapConfig.resourceOrigins);
+    styleSources.push(...mapConfig.resourceOrigins);
+    fontSources.push(...mapConfig.resourceOrigins);
   }
 
   const directives = [
@@ -64,10 +81,10 @@ export function buildContentSecurityPolicy(
     "object-src 'none'",
     "form-action 'self'",
     `script-src ${scriptSources.join(" ")}`,
-    "style-src 'self' 'unsafe-inline'",
-    `img-src ${IMAGE_SOURCES.join(" ")}`,
-    `connect-src ${connectSources.join(" ")}`,
-    "font-src 'self'",
+    `style-src ${uniqueSources(styleSources).join(" ")}`,
+    `img-src ${uniqueSources(imageSources).join(" ")}`,
+    `connect-src ${uniqueSources(connectSources).join(" ")}`,
+    `font-src ${uniqueSources(fontSources).join(" ")}`,
     `frame-src ${FRAME_SOURCES.join(" ")}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",

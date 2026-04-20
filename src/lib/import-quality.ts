@@ -2473,7 +2473,11 @@ export function buildImportDocumentationStatus(input: {
   };
 }
 
-export function buildBaseVisibleImportQualitySql(alias = "b") {
+export function buildBaseVisibleImportQualitySql(
+  alias = "b",
+  options: { includeSourceFreshness?: boolean } = {}
+) {
+  const includeSourceFreshness = options.includeSourceFreshness ?? true;
   const normalizedLocationSql = `LOWER(COALESCE(NULLIF(REGEXP_REPLACE(TRIM(${alias}.location_text), '[,\\s]+$', '', 'g'), ''), ''))`;
   const nonQuestionLocationSql = `REPLACE(REPLACE(REPLACE(${normalizedLocationSql}, '?', ''), ' ', ''), ',', '')`;
   const usableImportedImageExistsSql = `EXISTS (
@@ -2498,7 +2502,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND ${usableImportedImageExistsSql}
-    AND ${buildSourceFreshnessSuppressionSql(alias)}
+    ${includeSourceFreshness ? `AND ${buildSourceFreshnessSuppressionSql(alias)}` : ""}
     AND COALESCE((
       SELECT CASE
         WHEN jsonb_typeof(d.documentation_status -> 'import_quality_visible') = 'boolean'
@@ -2510,6 +2514,10 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     ), true)
   )
  )`;
+}
+
+export function buildBaseVisibleImportQualitySqlWithoutSourceFreshness(alias = "b") {
+  return buildBaseVisibleImportQualitySql(alias, { includeSourceFreshness: false });
 }
 
 export function buildVisibleImportQualitySql(alias = "b") {
