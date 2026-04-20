@@ -77,19 +77,19 @@ export function ImageGallery({
           <iframe
             src={currentVideo.embedUrl}
             title={currentItem.caption || `${alt} video`}
-            className="mx-auto aspect-[16/9] w-full max-w-[960px] border-0 bg-black"
+            className="mx-auto aspect-[16/9] w-full max-w-[1152px] border-0 bg-black"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
         ) : (
-          <div className="relative mx-auto aspect-[16/9] w-full max-w-[960px] bg-black">
+          <div className="relative mx-auto aspect-[16/9] w-full max-w-[1152px] bg-black">
             <Image
               src={currentItem.url}
               alt={currentItem.caption || alt}
               fill
               className="object-contain"
-              sizes="(min-width: 1024px) 960px, 100vw"
+              sizes="(min-width: 1152px) 1152px, 100vw"
               loading="eager"
               priority={safeCurrent === 0}
               unoptimized={!currentImageIsLocal}
