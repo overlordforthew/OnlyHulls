@@ -11,6 +11,10 @@ import {
   type GeocodeResult,
   type GeocodeStatus,
 } from "../src/lib/locations/geocoding";
+import {
+  getGeocodeApplySafetyStop,
+  isEnabledEnvValue,
+} from "../src/lib/locations/geocode-rollout-safety";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
 // Public Nominatim is for small validation runs only: single process, <= 1 request/sec,
@@ -76,8 +80,6 @@ type SamplePin = {
 };
 
 const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
-const NOMINATIM_BATCH_UNIQUE_APPLY_THRESHOLD = 200;
-const PAID_PROVIDER_BATCH_UNIQUE_APPLY_THRESHOLD = 2000;
 const SAMPLE_PIN_LIMIT = 20;
 const BROAD_REGION_NAMES = new Set([
   "caribbean",
@@ -379,12 +381,6 @@ async function geocodeWithConfiguredProvider(
   }
 }
 
-function getBatchUniqueApplyThreshold(provider: GeocodingConfig["provider"]) {
-  return provider === "nominatim"
-    ? NOMINATIM_BATCH_UNIQUE_APPLY_THRESHOLD
-    : PAID_PROVIDER_BATCH_UNIQUE_APPLY_THRESHOLD;
-}
-
 async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result: GeocodeResult) {
   const hasMappableCoordinates = shouldApplyResult(result);
   const storedPrecision = hasMappableCoordinates ? result.precision : "unknown";
@@ -449,6 +445,11 @@ async function createBackupSnapshot(candidateIds: string[]) {
        id,
        location_lat,
        location_lng,
+       location_country,
+       location_region,
+       location_market_slugs,
+       location_confidence,
+       location_approximate,
        location_geocoded_at,
        location_geocode_status,
        location_geocode_provider,
@@ -496,8 +497,32 @@ async function main() {
   const limit = getLimit();
   const apply = hasFlag("--apply");
   const allowLargeBatch = hasFlag("--allow-large-batch");
+  const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
   const config = getGeocodingConfig();
+  const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
+  const earlyApplySafetyStop = getGeocodeApplySafetyStop({
+    apply,
+    provider: config.provider,
+    providerEnabled: config.enabled,
+    publicMapEnabled: publicMapIsEnabled,
+    selectedUniqueQueries: 0,
+    allowLargeBatch,
+    allowPublicMapApply,
+  });
+  if (earlyApplySafetyStop) {
+    console.error(earlyApplySafetyStop.message);
+    console.log(JSON.stringify({
+      provider: config.provider,
+      enabled: config.enabled,
+      mode: apply ? "apply" : "dry-run",
+      includeReview,
+      stoppedReason: earlyApplySafetyStop.stoppedReason,
+    }, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+
   const visibleSql = buildVisibleImportQualitySql("b");
   const statusSql = includeReview
     ? "b.location_geocode_status IN ('pending', 'review', 'failed')"
@@ -585,20 +610,18 @@ async function main() {
     );
   }
 
-  if (apply && !config.enabled) {
-    summary.stoppedReason = `${config.provider}_not_configured`;
-    console.error(`Refusing --apply: geocoding provider '${config.provider}' is not configured.`);
-    console.log(JSON.stringify(summary, null, 2));
-    process.exitCode = 1;
-    return;
-  }
-
-  const batchUniqueApplyThreshold = getBatchUniqueApplyThreshold(config.provider);
-  if (apply && selectedQueryKeys.length > batchUniqueApplyThreshold && !allowLargeBatch) {
-    summary.stoppedReason = `selected_unique_queries_${selectedQueryKeys.length}_exceeds_${batchUniqueApplyThreshold}`;
-    console.error(
-      `Refusing --apply: selected batch has ${selectedQueryKeys.length} unique geocode queries, above ${batchUniqueApplyThreshold}. Reduce --limit or pass --allow-large-batch.`
-    );
+  const applySafetyStop = getGeocodeApplySafetyStop({
+    apply,
+    provider: config.provider,
+    providerEnabled: config.enabled,
+    publicMapEnabled: publicMapIsEnabled,
+    selectedUniqueQueries: selectedQueryKeys.length,
+    allowLargeBatch,
+    allowPublicMapApply,
+  });
+  if (applySafetyStop) {
+    summary.stoppedReason = applySafetyStop.stoppedReason;
+    console.error(applySafetyStop.message);
     console.log(JSON.stringify(summary, null, 2));
     process.exitCode = 1;
     return;

@@ -142,6 +142,7 @@ Required before exposing a buyer-facing map:
 
 Operational notes:
 
+- First-time production backfills should follow `documents/location-geocoding-rollout.md`.
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
 - The map marker API intentionally returns `404` when `PUBLIC_MAP_ENABLED` is not true.
 - Public map coordinates are gated by geocode precision; city-level results are rounded and marked approximate.

@@ -2,6 +2,7 @@
 
 Use `npm run db:geocode-review` when the readiness report shows review or failed geocodes.
 The script is read-only: it does not update boats, cache rows, or provider data.
+For first-time production backfills, follow `documents/location-geocoding-rollout.md` before scaling batches.
 
 ## Buckets
 
