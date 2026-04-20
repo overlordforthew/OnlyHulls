@@ -26,6 +26,7 @@
     "db:backfill-embeddings": "npx tsx scripts/backfill-embeddings.ts",
     "db:backfill-location-markets": "npx tsx scripts/backfill-location-markets.ts",
     "db:geocode-locations": "npx tsx scripts/geocode-boat-locations.ts",
+    "db:geocode-compare": "npx tsx scripts/geocode-provider-compare.ts",
     "db:geocode-readiness": "npx tsx scripts/geocode-readiness-report.ts",
     "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",
     "alerts:saved-searches": "npx tsx scripts/send-saved-search-alerts.ts",

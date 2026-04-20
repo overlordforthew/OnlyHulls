@@ -175,9 +175,9 @@ function numberFromEnv(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-export function getGeocodingConfig(): GeocodingConfig {
+export function getGeocodingConfig(providerOverride?: GeocodingProvider): GeocodingConfig {
   const providerValue = String(
-    process.env.LOCATION_GEOCODING_PROVIDER || process.env.GEOCODING_PROVIDER || ""
+    providerOverride || process.env.LOCATION_GEOCODING_PROVIDER || process.env.GEOCODING_PROVIDER || ""
   )
     .trim()
     .toLowerCase();

@@ -1,6 +1,10 @@
+import fs from "fs";
+import path from "path";
+
 import { pool, query, queryOne } from "../src/lib/db/index";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 import { buildGeocodeQuery, getGeocodeCandidateReason, getGeocodingConfig } from "../src/lib/locations/geocoding";
+import { compareGeocodeResults, type ComparableGeocodeResult } from "../src/lib/locations/geocode-compare";
 import { PUBLIC_MAP_PRECISIONS } from "../src/lib/locations/map-coordinates";
 
 type SummaryRow = {
@@ -38,6 +42,29 @@ type CoverageRow = {
   public_pin_count: string;
 };
 
+type CacheRow = {
+  query_key: string;
+  provider: string;
+  status: string;
+  latitude: number | null;
+  longitude: number | null;
+  precision: string | null;
+  score: number | null;
+  place_name: string | null;
+  payload: unknown;
+  error: string | null;
+};
+
+type CompareArtifact = {
+  generatedAt?: string;
+  mode?: string;
+  goldenAccuracy?: {
+    status?: string;
+    medianDistanceKm?: number | null;
+    precisionMatchRate?: number | null;
+  };
+};
+
 type PublicPinSampleRow = {
   slug: string;
   location_text: string | null;
@@ -70,6 +97,11 @@ const PROVIDER_ERROR_MAX = 5;
 const REGIONAL_COVERAGE_TARGET = 60;
 const REGIONAL_COVERAGE_MIN_LISTINGS = 50;
 const PUBLIC_PIN_SCORE_MIN = 0.7;
+const CROSS_PROVIDER_MIN_SAMPLES = 100;
+const CROSS_PROVIDER_AGREEMENT_TARGET = 95;
+const GOLDEN_ARTIFACT_MAX_AGE_DAYS = 30;
+const GOLDEN_MEDIAN_DISTANCE_TARGET_KM = 1;
+const GOLDEN_PRECISION_MATCH_TARGET = 80;
 
 function parseCount(value: string | null | undefined) {
   return Number.parseInt(value || "0", 10);
@@ -107,9 +139,45 @@ function isProviderSideError(error: string) {
   );
 }
 
+function toComparable(row: CacheRow): ComparableGeocodeResult {
+  return {
+    provider: row.provider,
+    status: row.status,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    precision: row.precision,
+    score: row.score,
+    placeName: row.place_name,
+    payload: row.payload,
+    error: row.error,
+  };
+}
+
+function readCompareArtifact(): CompareArtifact | null {
+  const artifactPath =
+    process.env.GEOCODE_COMPARE_ARTIFACT ||
+    path.join(process.cwd(), "tmp", "geocode-compare-latest.json");
+  if (!fs.existsSync(artifactPath)) return null;
+
+  try {
+    return JSON.parse(fs.readFileSync(artifactPath, "utf8")) as CompareArtifact;
+  } catch {
+    return null;
+  }
+}
+
+function getArtifactAgeDays(artifact: CompareArtifact | null) {
+  if (!artifact?.generatedAt) return null;
+  const generatedAt = new Date(artifact.generatedAt).getTime();
+  if (!Number.isFinite(generatedAt)) return null;
+
+  return (Date.now() - generatedAt) / 86_400_000;
+}
+
 async function main() {
   const config = getGeocodingConfig();
   const publicPrecisions = [...PUBLIC_MAP_PRECISIONS];
+  const compareArtifact = readCompareArtifact();
 
   const summary = await queryOne<SummaryRow>(
     `SELECT
@@ -277,6 +345,22 @@ async function main() {
     [publicPrecisions, REGIONAL_COVERAGE_MIN_LISTINGS]
   );
 
+  const crossProviderCacheRows = await query<CacheRow>(
+    `SELECT query_key,
+            provider,
+            status,
+            latitude,
+            longitude,
+            precision,
+            score,
+            place_name,
+            payload,
+            error
+     FROM location_geocode_cache
+     WHERE provider IN ('nominatim', 'opencage')
+     ORDER BY query_key, provider`
+  );
+
   let geocodableAddressCount = 0;
   const geocodableReasons: Record<string, number> = {};
   for (const row of activeLocationRows) {
@@ -358,6 +442,44 @@ async function main() {
   const topProviderErrorRate = topProviderError
     ? percent(parseCount(topProviderError.count), attemptedCount)
     : 0;
+  const cacheByQuery = new Map<string, Map<string, ComparableGeocodeResult>>();
+  for (const row of crossProviderCacheRows) {
+    const queryCache = cacheByQuery.get(row.query_key) || new Map<string, ComparableGeocodeResult>();
+    queryCache.set(row.provider, toComparable(row));
+    cacheByQuery.set(row.query_key, queryCache);
+  }
+
+  let crossProviderComparableCount = 0;
+  let crossProviderWithin10kmCount = 0;
+  let crossProviderCountryMismatchCount = 0;
+  let crossProviderPrecisionMismatchCount = 0;
+  for (const queryCache of cacheByQuery.values()) {
+    const comparison = compareGeocodeResults(
+      queryCache.get("nominatim") || null,
+      queryCache.get("opencage") || null
+    );
+    if (!comparison.comparable) continue;
+    crossProviderComparableCount += 1;
+    if (comparison.distanceBucket === "under_1km" || comparison.distanceBucket === "under_10km") {
+      crossProviderWithin10kmCount += 1;
+    }
+    if (comparison.countryAgreement === false) crossProviderCountryMismatchCount += 1;
+    if (comparison.precisionAgreement === false) crossProviderPrecisionMismatchCount += 1;
+  }
+  const crossProviderAgreementRate = percent(crossProviderWithin10kmCount, crossProviderComparableCount);
+  const compareArtifactAgeDays = getArtifactAgeDays(compareArtifact);
+  const goldenAccuracy = compareArtifact?.goldenAccuracy || null;
+  const goldenArtifactFresh =
+    typeof compareArtifactAgeDays === "number" &&
+    compareArtifactAgeDays >= 0 &&
+    compareArtifactAgeDays <= GOLDEN_ARTIFACT_MAX_AGE_DAYS;
+  const goldenGatePassed =
+    goldenArtifactFresh &&
+    goldenAccuracy?.status === "passing" &&
+    typeof goldenAccuracy.medianDistanceKm === "number" &&
+    goldenAccuracy.medianDistanceKm <= GOLDEN_MEDIAN_DISTANCE_TARGET_KM &&
+    typeof goldenAccuracy.precisionMatchRate === "number" &&
+    goldenAccuracy.precisionMatchRate >= GOLDEN_PRECISION_MATCH_TARGET;
   const failingRegionalBuckets = regionalCoverageRows
     .map((row) => ({
       label: row.label,
@@ -373,6 +495,14 @@ async function main() {
       target: "LOCATION_GEOCODING_PROVIDER=opencage with a configured API key",
       actual: `${config.provider}:${config.enabled ? "configured" : "not_configured"}`,
       passed: config.provider === "opencage" && config.enabled,
+    },
+    {
+      key: "golden_set_accuracy",
+      target: `fresh <=${GOLDEN_ARTIFACT_MAX_AGE_DAYS}d golden comparison artifact, median <=${GOLDEN_MEDIAN_DISTANCE_TARGET_KM}km, precision match >=${GOLDEN_PRECISION_MATCH_TARGET}%`,
+      actual: compareArtifact
+        ? `${goldenAccuracy?.status || "not_golden"}, age=${compareArtifactAgeDays === null ? "unknown" : Number(compareArtifactAgeDays.toFixed(1))}d`
+        : "missing_artifact",
+      passed: goldenGatePassed,
     },
     {
       key: "public_pin_coverage",
@@ -491,6 +621,32 @@ async function main() {
         providerSide: isProviderSideError(row.label),
         rateOfAttempts: percent(parseCount(row.count), attemptedCount),
       })),
+    },
+    crossProvider: {
+      status:
+        crossProviderComparableCount >= CROSS_PROVIDER_MIN_SAMPLES &&
+        crossProviderAgreementRate >= CROSS_PROVIDER_AGREEMENT_TARGET
+          ? "passing_advisory"
+          : crossProviderComparableCount > 0
+            ? "failing_advisory"
+            : "absent_advisory",
+      comparableCount: crossProviderComparableCount,
+      agreementWithin10kmCount: crossProviderWithin10kmCount,
+      agreementWithin10kmRate: crossProviderAgreementRate,
+      countryMismatchCount: crossProviderCountryMismatchCount,
+      precisionMismatchCount: crossProviderPrecisionMismatchCount,
+      minimumSamples: CROSS_PROVIDER_MIN_SAMPLES,
+      agreementTarget: CROSS_PROVIDER_AGREEMENT_TARGET,
+    },
+    goldenAccuracy: {
+      status: goldenGatePassed ? "passing" : compareArtifact ? "failing" : "missing_artifact",
+      artifactGeneratedAt: compareArtifact?.generatedAt || null,
+      artifactAgeDays:
+        compareArtifactAgeDays === null ? null : Number(compareArtifactAgeDays.toFixed(2)),
+      medianDistanceKm: goldenAccuracy?.medianDistanceKm ?? null,
+      precisionMatchRate: goldenAccuracy?.precisionMatchRate ?? null,
+      targetMedianDistanceKm: GOLDEN_MEDIAN_DISTANCE_TARGET_KM,
+      targetPrecisionMatchRate: GOLDEN_PRECISION_MATCH_TARGET,
     },
     invariants: {
       publicAdminBoundaryCount: parseCount(summary?.public_admin_boundary_count),
