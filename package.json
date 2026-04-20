@@ -30,6 +30,7 @@
     "db:geocode-readiness": "npx tsx scripts/geocode-readiness-report.ts",
     "db:geocode-review": "npx tsx scripts/geocode-review-queue.ts",
     "db:map-launch-preflight": "npx tsx scripts/map-launch-preflight.ts",
+    "db:map-pin-audit": "npx tsx scripts/map-pin-audit.ts",
     "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",
     "alerts:saved-searches": "npx tsx scripts/send-saved-search-alerts.ts",
     "alerts:owner-digest": "npx tsx scripts/send-owner-digest.ts",

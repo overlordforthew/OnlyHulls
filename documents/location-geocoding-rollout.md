@@ -77,6 +77,20 @@ After each apply batch, inspect the JSON output:
 - `geographyMismatches`: any country or region mismatch blocks scale-up until source text or country inference is fixed.
 - `samplePins`: open every audit URL in the first batch. For later batches, inspect at least 20 random pins or every emitted sample, whichever is smaller.
 
+Then generate a reusable sample from persisted public-map pins:
+
+```bash
+npm run db:map-pin-audit -- --limit=25 --seed=first-batch
+```
+
+If the geocode apply command printed a `backupTable`, audit only rows touched by that batch:
+
+```bash
+npm run db:map-pin-audit -- --backup-table=boat_geocode_backup_YYYYMMDDHHMMSS --limit=25 --seed=first-batch
+```
+
+The backup-table filter scopes the audit to boats touched by that batch, but the coordinates shown come from the current `boats` row. If a later batch rewrites the same boat, rerun the audit with a fresh seed before treating that sample as accepted.
+
 Record each sample pin as accept/reject. Scale only when at least 95% of sampled pins land in the correct city/marina/harbor area and all exact/street/marina pins look defensible to a buyer.
 
 Then rerun:

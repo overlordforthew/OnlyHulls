@@ -60,7 +60,7 @@ Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` 
 
 1. `npm run db:map-launch-preflight -- --phase=launch --ping` returns `GO` against the intended staging/production database and configured providers.
 2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
-3. At least one sample-pin audit has been reviewed for obvious bad coordinates.
+3. At least one `npm run db:map-pin-audit -- --limit=25 --seed=launch-review` sample has been reviewed for obvious bad coordinates.
 4. MapTiler key is referrer-restricted to staging and production domains.
 5. MapTiler budget/session cap is configured.
 6. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
