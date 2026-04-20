@@ -128,10 +128,12 @@ const PLACEHOLDER_MARKERS = [
 
 const DEFAULT_PIN_AUDIT_MAX_AGE_DAYS = 7;
 const DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE = 20;
+const MIN_LAUNCH_VISIBLE_INVENTORY_RATE = 0.2;
 const PIN_AUDIT_ATTEST_COMMAND =
   "npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json";
 const PIN_AUDIT_PREFLIGHT_COMMAND =
   "npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json";
+const SOURCE_HEALTH_COMMAND = "npm run db:source-health -- --format=json";
 
 function hasConfiguredValue(value?: string | null) {
   const trimmed = String(value || "").trim();
@@ -583,6 +585,8 @@ export function buildMapLaunchPreflight(
 
   if (input.inventory) {
     const inventory = input.inventory;
+    const visibleInventoryRate =
+      inventory.activeCount > 0 ? inventory.visibleCount / inventory.activeCount : 0;
     steps.push(step({
       section: "inventory",
       key: "inventory_waterfall_available",
@@ -592,6 +596,33 @@ export function buildMapLaunchPreflight(
       actual: inventory.visibleCount,
       target: "inventory drop explained before map launch",
     }));
+
+    if (isLaunchPhase && inventory.visibleCount <= 0) {
+      steps.push(step({
+        section: "inventory",
+        key: "inventory_visible_empty",
+        status: "fail",
+        message: "No buyer-visible imported rows remain for the public map.",
+        actual: inventory.visibleCount,
+        target: ">0 buyer-visible imported rows",
+        action: "Fix the import visibility waterfall before enabling the public map.",
+      }));
+    } else if (
+      isLaunchPhase &&
+      inventory.activeCount > 0 &&
+      visibleInventoryRate < MIN_LAUNCH_VISIBLE_INVENTORY_RATE
+    ) {
+      steps.push(step({
+        section: "inventory",
+        key: "inventory_visible_rate_collapsed",
+        status: "fail",
+        message:
+          `Only ${(visibleInventoryRate * 100).toFixed(1)}% of active imported rows are buyer-visible.`,
+        actual: `${inventory.visibleCount.toLocaleString()} / ${inventory.activeCount.toLocaleString()}`,
+        target: `>=${Math.round(MIN_LAUNCH_VISIBLE_INVENTORY_RATE * 100)}% buyer-visible imported rows`,
+        action: "Resolve the import visibility waterfall before enabling the public map.",
+      }));
+    }
 
     if (inventory.qualitySuppressedCount > 0) {
       steps.push(step({
@@ -635,13 +666,14 @@ export function buildMapLaunchPreflight(
     steps.push(step({
       section: "inventory",
       key: "inventory_waterfall_missing",
-      status: isLaunchPhase ? "warn" : "info",
+      status: isLaunchPhase ? "fail" : "info",
       message: "Imported-inventory waterfall was not available for this preflight run.",
       target: "active, quality pass, fresh pass, and buyer-visible imported counts",
       action: isLaunchPhase
         ? "Run launch preflight with DATABASE_URL configured or run npm run db:source-health -- --format=json before launch."
         : "Run npm run db:source-health -- --format=json before launch.",
     }));
+    addUnique(nextCommands, SOURCE_HEALTH_COMMAND);
   }
 
   const reviewFailedCount = getReviewFailedCount(input.readiness);

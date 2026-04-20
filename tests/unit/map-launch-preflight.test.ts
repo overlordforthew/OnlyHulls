@@ -233,7 +233,7 @@ test("map launch preflight returns GO only when env, readiness, review queue, an
   assert(JSON.stringify(result).includes("key=redacted"));
 });
 
-test("map launch preflight warns when inventory waterfall is missing", () => {
+test("map launch preflight blocks launch when inventory waterfall is missing", () => {
   const result = buildMapLaunchPreflight({
     env: launchEnv,
     pinAudit: launchPinAudit,
@@ -242,8 +242,44 @@ test("map launch preflight warns when inventory waterfall is missing", () => {
     generatedAt: "2026-04-20T00:00:00.000Z",
   });
 
-  assert.equal(result.verdict, "GO");
-  assert(result.warnings.some((step) => step.key === "inventory_waterfall_missing"));
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "inventory_waterfall_missing"));
+  assert(result.nextCommands.some((command) => command.includes("db:source-health")));
+});
+
+test("map launch preflight blocks empty or collapsed visible inventory", () => {
+  const empty = buildMapLaunchPreflight({
+    env: launchEnv,
+    inventory: {
+      ...inventorySnapshot,
+      visibleCount: 0,
+      freshnessSuppressedCount: 11000,
+      policySuppressedCount: 0,
+    },
+    pinAudit: launchPinAudit,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(empty.verdict, "NO_GO");
+  assert(empty.blockers.some((step) => step.key === "inventory_visible_empty"));
+
+  const collapsed = buildMapLaunchPreflight({
+    env: launchEnv,
+    inventory: {
+      ...inventorySnapshot,
+      visibleCount: 1900,
+      freshnessSuppressedCount: 8800,
+    },
+    pinAudit: launchPinAudit,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(collapsed.verdict, "NO_GO");
+  assert(collapsed.blockers.some((step) => step.key === "inventory_visible_rate_collapsed"));
 });
 
 test("map launch preflight remains the default strict phase", () => {
