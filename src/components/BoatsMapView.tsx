@@ -156,6 +156,10 @@ export default function BoatsMapView({
   const programmaticMoveIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const searchParamsRef = useRef(searchParams);
+  const listingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const markerElementsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const selectedSlugRef = useRef<string | null>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
   const [markers, setMarkers] = useState<PublicMapMarker[]>([]);
   const [clusterViewport, setClusterViewport] = useState<{
     bounds: BoatMapBounds;
@@ -184,6 +188,32 @@ export default function BoatsMapView({
         : [],
     [clusterIndex, clusterViewport]
   );
+
+  const scrollListingIntoView = useCallback((slug: string) => {
+    const container = sidebarScrollRef.current;
+    const row = listingRefs.current.get(slug);
+    if (!container || !row) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const rowTop = rowRect.top - containerRect.top + container.scrollTop;
+    const rowBottom = rowRect.bottom - containerRect.top + container.scrollTop;
+    const visibleTop = container.scrollTop;
+    const visibleBottom = visibleTop + container.clientHeight;
+    const padding = 12;
+
+    if (rowTop < visibleTop + padding) {
+      container.scrollTo({ top: Math.max(rowTop - padding, 0), behavior: "smooth" });
+      return;
+    }
+
+    if (rowBottom > visibleBottom - padding) {
+      container.scrollTo({
+        top: rowBottom - container.clientHeight + padding,
+        behavior: "smooth",
+      });
+    }
+  }, []);
 
   const openMarkerPopup = useCallback((marker: PublicMapMarker) => {
     const map = mapRef.current;
@@ -251,22 +281,38 @@ export default function BoatsMapView({
     link.textContent = t("viewListing");
     wrapper.appendChild(link);
 
-    popupRef.current = new maplibregl.Popup({ closeButton: true, offset: 22 })
+    const popup = new maplibregl.Popup({ closeButton: true, offset: 22 })
       .setLngLat([marker.lng, marker.lat])
       .setDOMContent(wrapper)
       .addTo(map);
+    popup.on("close", () => {
+      if (popupRef.current === popup) {
+        popupRef.current = null;
+        setSelectedSlug(null);
+      }
+    });
+    popupRef.current = popup;
   }, [displayCurrency, t]);
 
-  const focusMarker = useCallback((marker: PublicMapMarker) => {
+  const focusMarker = useCallback((marker: PublicMapMarker, options?: {
+    recenter?: boolean;
+    scrollListing?: boolean;
+  }) => {
     const map = mapRef.current;
-    setSelectedSlug(marker.slug);
     openMarkerPopup(marker);
+    setSelectedSlug(marker.slug);
+    if (options?.scrollListing) {
+      scrollListingIntoView(marker.slug);
+    }
+
+    if (options?.recenter === false) return;
+
     map?.easeTo({
       center: [marker.lng, marker.lat],
       zoom: Math.max(map.getZoom(), marker.precision === "marina" ? 11 : 10),
       duration: 420,
     });
-  }, [openMarkerPopup]);
+  }, [openMarkerPopup, scrollListingIntoView]);
 
   const syncClusterViewport = useCallback((map: MapLibreMap) => {
     const bounds = getCurrentBounds(map);
@@ -519,6 +565,16 @@ export default function BoatsMapView({
   }, [homeViewport]);
 
   useEffect(() => {
+    selectedSlugRef.current = selectedSlug;
+    markerElementsRef.current.forEach((button, slug) => {
+      const selected = slug === selectedSlug;
+      button.classList.toggle("oh-map-marker-selected", selected);
+      button.setAttribute("data-selected", selected ? "true" : "false");
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+  }, [selectedSlug]);
+
+  useEffect(() => {
     if (!config.enabled || !containerRef.current || mapRef.current) return;
 
     const mountViewport = initialViewportRef.current;
@@ -571,7 +627,9 @@ export default function BoatsMapView({
       if (viewportDebounceRef.current) clearTimeout(viewportDebounceRef.current);
       if (copyStatusTimeoutRef.current) clearTimeout(copyStatusTimeoutRef.current);
       markersRef.current.forEach((marker) => marker.remove());
-      popupRef.current?.remove();
+      const popup = popupRef.current;
+      popupRef.current = null;
+      popup?.remove();
       map.remove();
       mapRef.current = null;
       mapReadyRef.current = false;
@@ -606,8 +664,10 @@ export default function BoatsMapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const markerElements = markerElementsRef.current;
 
     markersRef.current.forEach((marker) => marker.remove());
+    markerElements.clear();
     markersRef.current = clusterItems.map((item) => {
       if (item.kind === "cluster") {
         const button = document.createElement("button");
@@ -625,12 +685,57 @@ export default function BoatsMapView({
 
       const marker = item.marker;
       const button = document.createElement("button");
+      const selected = marker.slug === selectedSlugRef.current;
       button.type = "button";
-      button.className = getMarkerClassName(marker, marker.slug === selectedSlug);
+      button.className = getMarkerClassName(marker, selected);
       button.setAttribute("data-testid", "boats-map-marker");
+      button.setAttribute("data-selected", selected ? "true" : "false");
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
       button.setAttribute("aria-label", `${marker.title}, ${marker.locationText || t("unknownLocation")}`);
-      button.addEventListener("click", () => focusMarker(marker));
+      let pointerStart: { x: number; y: number } | null = null;
+      let pointerHandled = false;
+      let keyboardHandled = false;
+      const selectFromMarker = (event: Event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        focusMarker(marker, { recenter: false, scrollListing: true });
+      };
+      button.addEventListener("pointerdown", (event) => {
+        pointerStart = { x: event.clientX, y: event.clientY };
+        pointerHandled = false;
+      });
+      button.addEventListener("pointerup", (event) => {
+        if (!pointerStart) return;
+        const moved =
+          Math.abs(event.clientX - pointerStart.x) > 8 ||
+          Math.abs(event.clientY - pointerStart.y) > 8;
+        pointerStart = null;
+        if (moved) return;
 
+        pointerHandled = true;
+        selectFromMarker(event);
+        window.setTimeout(() => {
+          pointerHandled = false;
+        }, 0);
+      });
+      button.addEventListener("click", (event) => {
+        if (pointerHandled || keyboardHandled) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        selectFromMarker(event);
+      });
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        keyboardHandled = true;
+        selectFromMarker(event);
+        window.setTimeout(() => {
+          keyboardHandled = false;
+        }, 250);
+      });
+
+      markerElements.set(marker.slug, button);
       const markerInstance = new maplibregl.Marker({ element: button, anchor: "bottom" })
         .setLngLat([marker.lng, marker.lat])
         .addTo(map);
@@ -641,8 +746,9 @@ export default function BoatsMapView({
     return () => {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
+      markerElements.clear();
     };
-  }, [clusterItems, expandCluster, focusMarker, selectedSlug, t]);
+  }, [clusterItems, expandCluster, focusMarker, t]);
 
   if (!config.enabled) {
     return (
@@ -661,7 +767,7 @@ export default function BoatsMapView({
   return (
     <section
       data-testid="boats-map-shell"
-      className="grid min-h-[620px] overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-[minmax(0,1fr)_360px]"
+      className="grid min-h-[620px] overflow-hidden rounded-lg border border-border bg-surface lg:h-[calc(100vh-8rem)] lg:max-h-[760px] lg:grid-cols-[minmax(0,1fr)_360px]"
     >
       <div className="relative min-h-[420px] bg-muted lg:min-h-[620px]">
         <div className="absolute inset-0">
@@ -737,7 +843,11 @@ export default function BoatsMapView({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div
+          ref={sidebarScrollRef}
+          data-testid="boats-map-list-scroll"
+          className="flex-1 overflow-y-auto p-3"
+        >
           {markers.length === 0 && !loading ? (
             <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-6 text-center">
               <MapPin className="h-8 w-8 text-primary" />
@@ -753,7 +863,15 @@ export default function BoatsMapView({
                 return (
                   <div
                     key={marker.slug}
+                    ref={(node) => {
+                      if (node) {
+                        listingRefs.current.set(marker.slug, node);
+                      } else {
+                        listingRefs.current.delete(marker.slug);
+                      }
+                    }}
                     data-testid="boats-map-listing"
+                    data-selected={selected ? "true" : "false"}
                     className={`rounded-lg border p-3 transition-colors ${
                       selected
                         ? "border-primary/60 bg-primary/10"
@@ -762,6 +880,7 @@ export default function BoatsMapView({
                   >
                     <button
                       type="button"
+                      aria-pressed={selected}
                       onClick={() => focusMarker(marker)}
                       className="grid w-full grid-cols-[92px_minmax(0,1fr)] gap-3 text-left"
                     >

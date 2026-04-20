@@ -214,15 +214,30 @@ input, select, textarea {
 /* Public boat map markers */
 .oh-map-marker {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   appearance: none;
   cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  touch-action: manipulation;
+  --oh-map-marker-color: var(--primary);
+}
+
+.oh-map-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 24px;
+  height: 24px;
   border: 2px solid #ffffff;
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--oh-map-marker-color);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
@@ -230,29 +245,38 @@ input, select, textarea {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -7px;
+  bottom: 8px;
   width: 8px;
   height: 8px;
   border-right: 2px solid #ffffff;
   border-bottom: 2px solid #ffffff;
-  background: inherit;
+  background: var(--oh-map-marker-color);
   transform: translateX(-50%) rotate(45deg);
 }
 
 .oh-map-marker:hover,
 .oh-map-marker:focus-visible,
 .oh-map-marker-selected {
-  transform: translateY(-2px) scale(1.08);
-  box-shadow: 0 10px 28px rgba(0, 175, 240, 0.35);
   outline: none;
 }
 
+.oh-map-marker:hover::before,
+.oh-map-marker:focus-visible::before,
+.oh-map-marker-selected::before {
+  transform: translate(-50%, calc(-50% - 2px)) scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 175, 240, 0.35);
+}
+
+.oh-map-marker:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 175, 240, 0.45);
+}
+
 .oh-map-marker-marina {
-  background: var(--success);
+  --oh-map-marker-color: var(--success);
 }
 
 .oh-map-marker-street {
-  background: var(--accent);
+  --oh-map-marker-color: var(--accent);
 }
 
 .oh-map-cluster {

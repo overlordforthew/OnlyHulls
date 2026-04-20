@@ -105,6 +105,39 @@ const mockDenseMapMarkerBoats: MockMapMarkerBoat[] = [
   },
 ];
 
+const mockTwoMapMarkerBoats: MockMapMarkerBoat[] = [
+  ...mockMapMarkerBoats,
+  {
+    slug: "2019-leopard-45",
+    title: "2019 Leopard 45",
+    locationText: "Ceiba, Puerto Rico",
+    lat: 18.3058,
+    lng: -65.5919,
+    precision: "marina",
+    approximate: false,
+    askingPrice: 610000,
+    currency: "USD",
+    askingPriceUsd: 610000,
+    heroUrl: null,
+    loa: 45,
+  },
+];
+
+const mockOverflowMapMarkerBoats: MockMapMarkerBoat[] = Array.from({ length: 8 }, (_, index) => ({
+  slug: `map-overflow-${index}`,
+  title: `Map Overflow ${index}`,
+  locationText: "Fajardo, Puerto Rico",
+  lat: 18.31 + (index % 4) * 0.012,
+  lng: -65.67 + Math.floor(index / 4) * 0.05,
+  precision: "marina",
+  approximate: false,
+  askingPrice: 400000 + index * 10000,
+  currency: "USD",
+  askingPriceUsd: 400000 + index * 10000,
+  heroUrl: null,
+  loa: 40 + index,
+}));
+
 async function mockBoatsResponse(page: Page) {
   await page.route(/\/api\/boats\/location-markets(?:\?.*)?$/, async (route) => {
     await route.fulfill({
@@ -379,7 +412,7 @@ test("boats map view fetches precise markers and links back to listings", async 
   await expect(page.getByTestId("boats-map-listing").first()).toContainText("Fajardo, Puerto Rico", {
     timeout: MAP_SHELL_TIMEOUT_MS,
   });
-  await page.getByTestId("boats-map-listing").first().getByRole("button").click();
+  await page.getByTestId("boats-map-marker").first().click();
   await expect(page.getByTestId("boats-map-popup-price")).toHaveText("$495,000", {
     timeout: MAP_SHELL_TIMEOUT_MS,
   });
@@ -387,6 +420,30 @@ test("boats map view fetches precise markers and links back to listings", async 
     "src",
     "https://images.example.test/lagoon-450.jpg"
   );
+  await expect(page.getByTestId("boats-map-marker").first()).toHaveAttribute(
+    "data-selected",
+    "true"
+  );
+  await expect(page.getByTestId("boats-map-listing").first()).toHaveAttribute(
+    "data-selected",
+    "true"
+  );
+  const urlBeforePopupClose = page.url();
+  await page.locator(".maplibregl-popup-close-button").click();
+  await expect(page.getByTestId("boats-map-popup")).toHaveCount(0);
+  expect(page.url()).toBe(urlBeforePopupClose);
+  await expect(page.getByTestId("boats-map-marker").first()).toHaveAttribute(
+    "data-selected",
+    "false"
+  );
+  await expect(page.getByTestId("boats-map-listing").first()).toHaveAttribute(
+    "data-selected",
+    "false"
+  );
+  await page.getByTestId("boats-map-listing").first().getByRole("button").click();
+  await expect(page.getByTestId("boats-map-popup-price")).toHaveText("$495,000", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
   await expect(page.getByRole("link", { name: "View listing", exact: true }).first()).toHaveAttribute(
     "href",
     "/boats/2018-lagoon-450-f"
@@ -412,6 +469,92 @@ test("boats map clusters dense marker markets and expands clusters", async ({ pa
     timeout: MAP_SHELL_TIMEOUT_MS,
   });
   await expect.poll(() => page.getByTestId("boats-map-marker").count()).toBeGreaterThan(0);
+});
+
+test("boats map markers support keyboard popup activation", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockMapMarkersResponse(page);
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.70000&mapZoom=10.00");
+  const marker = page.getByTestId("boats-map-marker").first();
+  await expect(marker).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
+
+  await marker.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("boats-map-popup")).toContainText("2018 Lagoon 450 F", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await page.locator(".maplibregl-popup-close-button").click();
+  await expect(page.getByTestId("boats-map-popup")).toHaveCount(0);
+
+  await marker.focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("boats-map-popup")).toContainText("2018 Lagoon 450 F", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+});
+
+test("boats map marker selection replaces popups cleanly", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockMapMarkersResponse(page, undefined, mockTwoMapMarkerBoats);
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.65000&mapZoom=12.00");
+  await expect(page.getByTestId("boats-map-marker")).toHaveCount(2, {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+
+  await page.getByTestId("boats-map-marker").first().click();
+  await expect(page.getByTestId("boats-map-popup")).toContainText("2018 Lagoon 450 F", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await expect(page.getByTestId("boats-map-popup")).toHaveCount(1);
+
+  await page.getByTestId("boats-map-marker").nth(1).click();
+  await expect(page.getByTestId("boats-map-popup")).toContainText("2019 Leopard 45", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await expect(page.getByTestId("boats-map-popup")).toHaveCount(1);
+  await expect(page.getByTestId("boats-map-listing").nth(1)).toHaveAttribute(
+    "data-selected",
+    "true"
+  );
+});
+
+test("boats map marker selection scrolls the sidebar row into view", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockMapMarkersResponse(page, undefined, mockOverflowMapMarkerBoats);
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.33500,-65.64500&mapZoom=13.00");
+  await expect(page.getByTestId("boats-map-marker")).toHaveCount(8, {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+
+  await page.getByTestId("boats-map-shell").scrollIntoViewIfNeeded();
+  const scrollContainer = page.getByTestId("boats-map-list-scroll");
+  await scrollContainer.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  const pageScrollBefore = await page.evaluate(() => window.scrollY);
+
+  const marker = page.getByTestId("boats-map-marker").last();
+  await marker.dispatchEvent("pointerdown", { clientX: 10, clientY: 10 });
+  await marker.dispatchEvent("pointerup", { clientX: 10, clientY: 10 });
+
+  await expect
+    .poll(() => scrollContainer.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollBefore);
+  await expect(page.getByTestId("boats-map-listing").last()).toHaveAttribute(
+    "data-selected",
+    "true",
+    { timeout: MAP_SHELL_TIMEOUT_MS }
+  );
 });
 
 test("boats map URL state opens shared map links and updates after zoom", async ({ page }) => {
