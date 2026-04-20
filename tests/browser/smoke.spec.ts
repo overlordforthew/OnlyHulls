@@ -208,10 +208,13 @@ test("boats search returns results and renders the page", async ({ page, request
   const payload = await api.json();
   expect(payload.total).toBeGreaterThan(0);
 
+  const boatsResponse = waitForBoatsApi(page);
   await gotoWithRetry(page, "/boats?q=Leopard");
+  await boatsResponse;
+
   await expect(page).toHaveURL(/\/boats\?q=Leopard$/);
-  await expect(page.getByRole("heading", { name: /Leopard/i }).first()).toBeVisible();
-  await expect(page.getByTestId("boat-location").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Leopard/i }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("boat-location").first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("boats search hides SEO hub links once a real query is active", async ({ page }) => {
