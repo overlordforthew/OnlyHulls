@@ -6,6 +6,8 @@ export const MAP_ZOOM_PARAM = "mapZoom";
 export const MAP_VIEW_VALUE = "map";
 export const MAP_MIN_ZOOM = 2;
 export const MAP_MAX_ZOOM = 14;
+export const MAP_STALE_CENTER_THRESHOLD_DEGREES = 0.01;
+export const MAP_STALE_ZOOM_THRESHOLD = 0.2;
 
 type SearchParamReader = {
   get(key: string): string | null;
@@ -68,6 +70,19 @@ export function stripMapViewportParams(params: URLSearchParams) {
 
 export function hasMapViewportParams(params: SearchParamReader) {
   return params.get(MAP_CENTER_PARAM) !== null || params.get(MAP_ZOOM_PARAM) !== null;
+}
+
+export function hasMapViewportDrifted(
+  lastFetched: MapInitialViewport | null,
+  current: MapInitialViewport
+) {
+  if (!lastFetched) return false;
+
+  return (
+    Math.abs(lastFetched.latitude - current.latitude) > MAP_STALE_CENTER_THRESHOLD_DEGREES ||
+    Math.abs(lastFetched.longitude - current.longitude) > MAP_STALE_CENTER_THRESHOLD_DEGREES ||
+    Math.abs(lastFetched.zoom - current.zoom) > MAP_STALE_ZOOM_THRESHOLD
+  );
 }
 
 export function setMapUrlParams(params: URLSearchParams, viewport: MapInitialViewport) {

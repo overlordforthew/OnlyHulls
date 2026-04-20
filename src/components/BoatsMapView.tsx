@@ -13,6 +13,7 @@ import {
   LocateFixed,
   MapPin,
   Navigation,
+  RefreshCw,
   Ruler,
   RotateCcw,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import {
 import { MAX_BOUNDS_AREA_DEGREES } from "@/lib/locations/map-bounds";
 import {
   hasMapViewportParams,
+  hasMapViewportDrifted,
   MAP_VIEW_PARAM,
   MAP_VIEW_VALUE,
   stripMapViewportParams,
@@ -155,6 +157,7 @@ export default function BoatsMapView({
   const programmaticMoveRef = useRef(false);
   const programmaticMoveIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const lastFetchedViewportRef = useRef<MapInitialViewport | null>(null);
   const searchParamsRef = useRef(searchParams);
   const listingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const markerElementsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -171,6 +174,7 @@ export default function BoatsMapView({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [hasStaleViewport, setHasStaleViewport] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [currentViewport, setCurrentViewport] = useState<MapInitialViewport | null>(null);
   const [hasViewportParams, setHasViewportParams] = useState(() =>
@@ -380,6 +384,7 @@ export default function BoatsMapView({
       return;
     }
 
+    const requestViewport = getCurrentViewport(map);
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     abortRef.current?.abort();
@@ -399,6 +404,8 @@ export default function BoatsMapView({
       if (response.status === 404) {
         setMarkers([]);
         setHasMore(false);
+        lastFetchedViewportRef.current = requestViewport;
+        setHasStaleViewport(hasMapViewportDrifted(requestViewport, getCurrentViewport(map)));
         setError(t("unavailable"));
         return;
       }
@@ -414,6 +421,8 @@ export default function BoatsMapView({
       const payload = await response.json();
       setMarkers(Array.isArray(payload.boats) ? payload.boats : []);
       setHasMore(Boolean(payload.hasMore));
+      lastFetchedViewportRef.current = requestViewport;
+      setHasStaleViewport(hasMapViewportDrifted(requestViewport, getCurrentViewport(map)));
       if (payload.hasMore) {
         setNotice(t("zoomForMore"));
       }
@@ -527,12 +536,13 @@ export default function BoatsMapView({
     stripViewportFromCurrentUrl();
     setCurrentViewport(viewport);
     beginProgrammaticMove(map);
+    map.once("moveend", () => scheduleFetch(0));
     map.easeTo({
       center: [viewport.longitude, viewport.latitude],
       zoom: viewport.zoom,
       duration: 420,
     });
-  }, [beginProgrammaticMove, mapReady, stripViewportFromCurrentUrl]);
+  }, [beginProgrammaticMove, mapReady, scheduleFetch, stripViewportFromCurrentUrl]);
 
   const handleResetView = useCallback(() => {
     const map = mapRef.current;
@@ -549,6 +559,13 @@ export default function BoatsMapView({
     });
     scheduleFetch(0);
   }, [beginProgrammaticMove, mapReady, scheduleFetch, stripViewportFromCurrentUrl]);
+
+  const handleSearchArea = useCallback(() => {
+    if (!mapReady || loading) return;
+
+    flushPendingViewportWrite();
+    scheduleFetch(0);
+  }, [flushPendingViewportWrite, loading, mapReady, scheduleFetch]);
 
   useEffect(() => {
     searchParamsRef.current = searchParams;
@@ -615,10 +632,13 @@ export default function BoatsMapView({
       }
     });
     map.on("moveend", () => {
-      setCurrentViewport(getCurrentViewport(map));
+      const viewport = getCurrentViewport(map);
+      setCurrentViewport(viewport);
       syncClusterViewport(map);
-      scheduleFetch();
-      scheduleViewportWrite();
+      if (!programmaticMoveRef.current) {
+        setHasStaleViewport(hasMapViewportDrifted(lastFetchedViewportRef.current, viewport));
+        scheduleViewportWrite();
+      }
     });
 
     return () => {
@@ -808,6 +828,18 @@ export default function BoatsMapView({
               <RotateCcw className="h-3.5 w-3.5" />
               {t("resetView")}
             </button>
+            {hasStaleViewport ? (
+              <button
+                type="button"
+                data-testid="boats-map-search-area"
+                onClick={handleSearchArea}
+                disabled={!mapReady || loading}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary-btn px-2.5 py-1.5 font-semibold text-white transition-colors hover:bg-primary-light focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                {t("searchArea")}
+              </button>
+            ) : null}
           </div>
           <div role="status" aria-live="polite" aria-atomic="true">
             {copyStatus !== "idle" ? (
@@ -816,11 +848,11 @@ export default function BoatsMapView({
               </div>
             ) : null}
           </div>
-          {(loading || error || notice) && (
+          {(loading || error || notice || hasStaleViewport) && (
             <div className="pointer-events-auto inline-flex w-fit max-w-full items-center gap-2 rounded-lg border border-border bg-background/90 px-3 py-2 text-xs text-text-secondary shadow-lg backdrop-blur">
               {loading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : null}
               {error ? <AlertTriangle className="h-4 w-4 text-accent" /> : null}
-              <span>{loading ? t("loading") : error || notice}</span>
+              <span>{loading ? t("loading") : error || notice || t("staleArea")}</span>
             </div>
           )}
         </div>

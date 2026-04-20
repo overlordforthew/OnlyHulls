@@ -540,6 +540,8 @@
     "rateLimited": "Las solicitudes del mapa se ralentizaron. Espera un momento y mueve el mapa de nuevo.",
     "zoomToLoad": "Acerca el mapa o elige un mercado para cargar pins precisos.",
     "zoomForMore": "Acerca el mapa para ver más barcos.",
+    "searchArea": "Buscar en esta zona",
+    "staleArea": "El mapa se movió. Busca en esta zona para actualizar los barcos.",
     "emptyTitle": "Aún no hay pins precisos aquí",
     "emptyBody": "Muévete a otro mercado de marinas, acerca el mapa o usa la búsqueda de ubicación arriba.",
     "unknownLocation": "Ubicación desconocida",

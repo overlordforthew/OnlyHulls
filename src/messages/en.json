@@ -540,6 +540,8 @@
     "rateLimited": "Map requests slowed down. Wait a moment, then pan again.",
     "zoomToLoad": "Zoom in or choose a market to load precise pins.",
     "zoomForMore": "Zoom in to see more boats.",
+    "searchArea": "Search this area",
+    "staleArea": "Map moved. Search this area to refresh boats.",
     "emptyTitle": "No precise pins here yet",
     "emptyBody": "Pan to another marina market, zoom in, or use the location search above.",
     "unknownLocation": "Unknown location",

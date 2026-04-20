@@ -591,12 +591,22 @@ test("boats map URL state opens shared map links and updates after zoom", async 
   expect(north).toBeGreaterThan(18.35);
 
   const historyLengthBeforeZoom = await page.evaluate(() => window.history.length);
+  const markerRequestsBeforeZoom = markerRequests.length;
   await page.locator(".maplibregl-ctrl-zoom-in").click();
   await expect
     .poll(() => new URL(page.url()).searchParams.get("mapZoom"))
     .not.toBe("10.00");
   expect(new URL(page.url()).searchParams.get("view")).toBe("map");
   expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBeforeZoom);
+  await expect(page.getByTestId("boats-map-search-area")).toBeVisible({
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  expect(markerRequests.length).toBe(markerRequestsBeforeZoom);
+  await page.getByTestId("boats-map-search-area").click();
+  await expect
+    .poll(() => markerRequests.length)
+    .toBeGreaterThan(markerRequestsBeforeZoom);
+  await expect(page.getByTestId("boats-map-search-area")).toHaveCount(0);
 
   await page.getByTestId("boats-map-copy-link").click();
   await expect(page.getByText("Map link copied", { exact: true })).toBeVisible();
@@ -646,6 +656,67 @@ test("boats map URL state opens shared map links and updates after zoom", async 
   await expect
     .poll(() => markerRequests.length)
     .toBeGreaterThan(markerRequestsBeforeRecenter);
+});
+
+test("boats map keeps moved view stale when an older marker response returns", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+
+  const markerRequests: URL[] = [];
+  let resolveFirstRequest = () => {};
+  let releaseFirstResponse = () => {};
+  const firstRequestSeen = new Promise<void>((resolve) => {
+    resolveFirstRequest = resolve;
+  });
+  const firstResponseReleased = new Promise<void>((resolve) => {
+    releaseFirstResponse = resolve;
+  });
+
+  await page.route(/\/api\/boats\/map(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const isFirstRequest = markerRequests.length === 0;
+    markerRequests.push(url);
+    expect(url.searchParams.get("bbox")).toBeTruthy();
+    expect(url.searchParams.get("location")).toBe("puerto-rico");
+
+    if (isFirstRequest) {
+      resolveFirstRequest();
+      await firstResponseReleased;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: mockMapMarkerBoats,
+        returned: mockMapMarkerBoats.length,
+        hasMore: false,
+        limit: 150,
+      }),
+    });
+  });
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.70000&mapZoom=10.00");
+  await firstRequestSeen;
+  await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible({
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+
+  await page.locator(".maplibregl-ctrl-zoom-in").click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("mapZoom"))
+    .not.toBe("10.00");
+
+  releaseFirstResponse();
+  await expect(page.getByTestId("boats-map-search-area")).toBeVisible({
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  expect(markerRequests.length).toBe(1);
+
+  await page.getByTestId("boats-map-search-area").click();
+  await expect.poll(() => markerRequests.length).toBeGreaterThan(1);
+  await expect(page.getByTestId("boats-map-search-area")).toHaveCount(0);
 });
 
 test("boats map view handles rate-limited marker responses without crashing", async ({ page }) => {

@@ -7,6 +7,7 @@ import {
 } from "../../src/lib/config/public-map";
 import {
   parseMapViewportFromParams,
+  hasMapViewportDrifted,
   setMapUrlParams,
   stripMapViewportParams,
   stripMapUrlParams,
@@ -144,4 +145,22 @@ test("map viewport URL helpers preserve map mode and filters when resetting the 
 
   const partial = new URLSearchParams("view=map&mapZoom=10");
   assert.equal(hasMapViewportParams(partial), true);
+});
+
+test("map viewport drift only marks meaningful user movement stale", () => {
+  const fetched = { latitude: 18.25, longitude: -66.45, zoom: 8 };
+
+  assert.equal(hasMapViewportDrifted(null, fetched), false);
+  assert.equal(
+    hasMapViewportDrifted(fetched, { latitude: 18.255, longitude: -66.455, zoom: 8.1 }),
+    false
+  );
+  assert.equal(
+    hasMapViewportDrifted(fetched, { latitude: 18.265, longitude: -66.45, zoom: 8 }),
+    true
+  );
+  assert.equal(
+    hasMapViewportDrifted(fetched, { latitude: 18.25, longitude: -66.45, zoom: 8.25 }),
+    true
+  );
 });
