@@ -150,7 +150,7 @@ Recommended first tile provider:
 Operational notes:
 
 - Run `npm run db:map-launch-preflight -- --phase=backfill` before any production geocode `--apply` batch. It is read-only and returns `GO` only when OpenCage env, public-map-off safety, readiness availability, review queue context, and next-batch safety pass together.
-- Run `npm run db:map-launch-preflight -- --phase=launch --ping` before enabling the public map flags. Launch ping mode performs live connectivity checks: one map style request and one OpenCage `no_record=1` probe request.
+- Run `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` before enabling the public map flags. Launch ping mode performs live connectivity checks: one map style request and one OpenCage `no_record=1` probe request, and launch mode requires a fresh zero-rejection pin audit attestation.
 - First-time production backfills should follow `documents/location-geocoding-rollout.md`.
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
 - Use `/admin/map-readiness` as the aggregate launch gate before enabling the public map flags.

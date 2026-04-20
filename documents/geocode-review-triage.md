@@ -25,4 +25,4 @@ npm run db:geocode-review -- --error=no_result --json
 npm run db:geocode-review -- --provider=opencage --status=review
 ```
 
-Keep `PUBLIC_MAP_ENABLED=false` until readiness gates pass and a golden-set comparison artifact is fresh.
+Keep `PUBLIC_MAP_ENABLED=false` until readiness gates pass and the launch pin-audit attestation in `documents/public-map-operations.md` is fresh and zero-rejection.
