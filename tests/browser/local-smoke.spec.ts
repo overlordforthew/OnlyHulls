@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const MAP_SHELL_TIMEOUT_MS = 15_000;
+
 const mockBrowseBoats = [
   {
     id: "mock-lagoon-1",
@@ -274,6 +276,9 @@ test("boats map toggle stays hidden when public map capability is off", async ({
   await expect(page.getByTestId("boats-view-toggle-grid")).toBeVisible();
   await expect(page.getByTestId("boats-view-toggle-rows")).toBeVisible();
   await expect(page.getByTestId("boats-view-toggle-map")).toHaveCount(0);
+  await expect(page.getByTestId("boats-map-copy-link")).toHaveCount(0);
+  await expect(page.getByTestId("boats-map-recenter")).toHaveCount(0);
+  await expect(page.getByTestId("boats-map-reset-view")).toHaveCount(0);
   await expect
     .poll(() => new URL(page.url()).searchParams.get("view"))
     .toBeNull();
@@ -291,9 +296,13 @@ test("boats map view fetches precise markers and links back to listings", async 
   await page.goto("/boats?location=puerto-rico");
   await page.getByTestId("boats-view-toggle-map").click();
 
-  await expect(page.getByTestId("boats-map-canvas")).toBeVisible();
-  await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F");
-  await expect(page.getByTestId("boats-map-listing").first()).toContainText("Fajardo, Puerto Rico");
+  await expect(page.getByTestId("boats-map-canvas")).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("Fajardo, Puerto Rico", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
   await expect(page.getByRole("link", { name: "View listing", exact: true })).toHaveAttribute(
     "href",
     "/boats/2018-lagoon-450-f"
@@ -302,13 +311,23 @@ test("boats map view fetches precise markers and links back to listings", async 
 
 test("boats map URL state opens shared map links and updates after zoom", async ({ page }) => {
   test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          (window as unknown as { __copiedMapLink?: string }).__copiedMapLink = value;
+        },
+      },
+    });
+  });
   await mockBoatsResponse(page);
   await mockMapStyle(page);
   const markerRequests: URL[] = [];
   await mockMapMarkersResponse(page, (url) => markerRequests.push(url));
 
   await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.70000&mapZoom=10.00");
-  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
   await expect(page.getByTestId("boats-view-toggle-map")).toHaveClass(/bg-primary-btn/);
   await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F");
 
@@ -330,6 +349,55 @@ test("boats map URL state opens shared map links and updates after zoom", async 
     .not.toBe("10.00");
   expect(new URL(page.url()).searchParams.get("view")).toBe("map");
   expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBeforeZoom);
+
+  await page.getByTestId("boats-map-copy-link").click();
+  await expect(page.getByText("Map link copied", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __copiedMapLink?: string }).__copiedMapLink)).toBe(
+    page.url()
+  );
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    document.execCommand = (command: string) => {
+      (window as unknown as { __fallbackCopyCommand?: string }).__fallbackCopyCommand = command;
+      return true;
+    };
+  });
+  await page.getByTestId("boats-map-copy-link").click();
+  expect(
+    await page.evaluate(() => (window as unknown as { __fallbackCopyCommand?: string }).__fallbackCopyCommand)
+  ).toBe("copy");
+
+  await page.locator(".maplibregl-ctrl-zoom-in").click();
+  await page.getByTestId("boats-map-reset-view").click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("mapCenter"))
+    .toBeNull();
+  await page.waitForTimeout(800);
+  const resetUrl = new URL(page.url());
+  expect(resetUrl.searchParams.get("mapCenter")).toBeNull();
+  expect(resetUrl.searchParams.get("mapZoom")).toBeNull();
+  expect(resetUrl.searchParams.get("view")).toBe("map");
+  expect(resetUrl.searchParams.get("location")).toBe("puerto-rico");
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
+
+  const markerRequestsBeforeRecenter = markerRequests.length;
+  await page.locator(".maplibregl-ctrl-zoom-in").click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("mapZoom"))
+    .not.toBeNull();
+  await page.getByTestId("boats-map-recenter").click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("mapCenter"))
+    .toBeNull();
+  await page.waitForTimeout(800);
+  const recenteredUrl = new URL(page.url());
+  expect(recenteredUrl.searchParams.get("mapCenter")).toBeNull();
+  expect(recenteredUrl.searchParams.get("mapZoom")).toBeNull();
+  expect(recenteredUrl.searchParams.get("view")).toBe("map");
+  expect(recenteredUrl.searchParams.get("location")).toBe("puerto-rico");
+  await expect
+    .poll(() => markerRequests.length)
+    .toBeGreaterThan(markerRequestsBeforeRecenter);
 });
 
 test("boats map view handles rate-limited marker responses without crashing", async ({ page }) => {
@@ -342,7 +410,7 @@ test("boats map view handles rate-limited marker responses without crashing", as
   await page.getByTestId("boats-view-toggle-map").click();
 
   await expect(page.getByText("Map requests slowed down", { exact: false }).first()).toBeVisible();
-  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
 });
 
 test("boats map view surfaces style-provider failures", async ({ page }) => {
@@ -354,7 +422,7 @@ test("boats map view surfaces style-provider failures", async ({ page }) => {
   await page.getByTestId("boats-view-toggle-map").click();
 
   await expect(page.getByText("Map style could not load", { exact: false }).first()).toBeVisible();
-  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible({ timeout: MAP_SHELL_TIMEOUT_MS });
 });
 
 test("boats currency selection persists after reload locally", async ({ page }) => {

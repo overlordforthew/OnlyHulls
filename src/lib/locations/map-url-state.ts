@@ -56,9 +56,18 @@ export function wantsMapView(params: SearchParamReader) {
 
 export function stripMapUrlParams(params: URLSearchParams) {
   params.delete(MAP_VIEW_PARAM);
+  stripMapViewportParams(params);
+  return params;
+}
+
+export function stripMapViewportParams(params: URLSearchParams) {
   params.delete(MAP_CENTER_PARAM);
   params.delete(MAP_ZOOM_PARAM);
   return params;
+}
+
+export function hasMapViewportParams(params: SearchParamReader) {
+  return params.get(MAP_CENTER_PARAM) !== null || params.get(MAP_ZOOM_PARAM) !== null;
 }
 
 export function setMapUrlParams(params: URLSearchParams, viewport: MapInitialViewport) {

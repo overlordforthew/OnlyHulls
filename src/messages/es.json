@@ -544,7 +544,13 @@
     "emptyBody": "Muévete a otro mercado de marinas, acerca el mapa o usa la búsqueda de ubicación arriba.",
     "unknownLocation": "Ubicación desconocida",
     "approximate": "aprox.",
-    "viewListing": "Ver anuncio"
+    "viewListing": "Ver anuncio",
+    "copyLink": "Copiar enlace",
+    "copySuccess": "Enlace del mapa copiado",
+    "copyFailed": "No se pudo copiar: usa la barra de direcciones",
+    "recenter": "Recentrar",
+    "recenterOn": "Recentrar en {location}",
+    "resetView": "Restablecer vista"
   },
   "searchHubsTitle": "Explora hubs de búsqueda",
     "searchHubsSubtitle": "Usa páginas estables de exploración para marcas, regiones y tipos de barco populares.",

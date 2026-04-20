@@ -544,7 +544,13 @@
     "emptyBody": "Pan to another marina market, zoom in, or use the location search above.",
     "unknownLocation": "Unknown location",
     "approximate": "approx.",
-    "viewListing": "View listing"
+    "viewListing": "View listing",
+    "copyLink": "Copy link",
+    "copySuccess": "Map link copied",
+    "copyFailed": "Copy failed: use your browser address bar",
+    "recenter": "Recenter",
+    "recenterOn": "Recenter on {location}",
+    "resetView": "Reset view"
   },
   "searchHubsTitle": "Explore Search Hubs",
     "searchHubsSubtitle": "Use stable browse pages for popular makes, regions, and boat types.",

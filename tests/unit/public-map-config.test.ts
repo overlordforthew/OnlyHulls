@@ -8,7 +8,9 @@ import {
 import {
   parseMapViewportFromParams,
   setMapUrlParams,
+  stripMapViewportParams,
   stripMapUrlParams,
+  hasMapViewportParams,
   wantsMapView,
 } from "../../src/lib/locations/map-url-state";
 import { getInitialMapViewport } from "../../src/lib/locations/map-viewports";
@@ -127,4 +129,19 @@ test("map URL state serializes stable shareable params and strips them cleanly",
 
   stripMapUrlParams(params);
   assert.equal(params.toString(), "q=lagoon&location=puerto-rico");
+});
+
+test("map viewport URL helpers preserve map mode and filters when resetting the view", () => {
+  const params = new URLSearchParams(
+    "q=lagoon&location=puerto-rico&view=map&mapCenter=18.25,-66.45&mapZoom=8&sort=year"
+  );
+  assert.equal(hasMapViewportParams(params), true);
+
+  stripMapViewportParams(params);
+  assert.equal(hasMapViewportParams(params), false);
+  assert.equal(params.toString(), "q=lagoon&location=puerto-rico&view=map&sort=year");
+  assert.equal(wantsMapView(params), true);
+
+  const partial = new URLSearchParams("view=map&mapZoom=10");
+  assert.equal(hasMapViewportParams(partial), true);
 });

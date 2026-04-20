@@ -253,9 +253,13 @@ function BoatsPageInner() {
     () => parseMapViewportFromParams(searchParams),
     [searchParams]
   );
+  const homeMapViewport = useMemo(
+    () => getInitialMapViewport(locationFilter),
+    [locationFilter]
+  );
   const initialMapViewport = useMemo(
-    () => urlMapViewport || getInitialMapViewport(locationFilter),
-    [locationFilter, urlMapViewport]
+    () => urlMapViewport || homeMapViewport,
+    [homeMapViewport, urlMapViewport]
   );
 
   useEffect(() => {
@@ -1036,6 +1040,7 @@ function BoatsPageInner() {
                 locationFilter={locationFilter}
                 locationLabel={locationFilterLabel}
                 initialViewport={initialMapViewport}
+                homeViewport={homeMapViewport}
                 urlViewport={urlMapViewport}
                 onViewportChange={handleMapViewportChange}
               />
