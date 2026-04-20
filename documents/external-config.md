@@ -142,6 +142,10 @@ Required before exposing a buyer-facing map:
 - `NEXT_PUBLIC_MAP_ATTRIBUTION`
 - `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS` when the style references tile, glyph, sprite, or image hosts beyond the style URL origin.
 
+Recommended first tile provider:
+
+- MapTiler Flex, using the setup and rollback process in `documents/public-map-operations.md`.
+
 Operational notes:
 
 - First-time production backfills should follow `documents/location-geocoding-rollout.md`.
