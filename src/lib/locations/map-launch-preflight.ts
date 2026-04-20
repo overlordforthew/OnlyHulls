@@ -952,6 +952,48 @@ export function buildMapLaunchPreflight(
     }));
   }
 
+  const invalidPublicCoordinateCount = getInvariantCount(
+    input.readiness,
+    "invalidPublicCoordinateCount",
+    "invalidPublicCoordinateCount"
+  );
+  if (invalidPublicCoordinateCount !== null && invalidPublicCoordinateCount > 0) {
+    steps.push(step({
+      section: "readiness",
+      key: "invalid_public_coordinates",
+      status: isLaunchPhase ? "fail" : "warn",
+      message: isLaunchPhase
+        ? `${invalidPublicCoordinateCount.toLocaleString()} public pins have invalid or missing coordinates.`
+        : `${invalidPublicCoordinateCount.toLocaleString()} public pins have invalid or missing coordinates; this does not block pending-only backfill.`,
+      actual: invalidPublicCoordinateCount,
+      target: 0,
+      action: isLaunchPhase
+        ? "Resolve invalid public coordinate rows before enabling the public map."
+        : "Resolve invalid public coordinate rows before launch preflight.",
+    }));
+  }
+
+  const publicMissingMetadataCount = getInvariantCount(
+    input.readiness,
+    "publicMissingMetadataCount",
+    "publicMissingMetadataCount"
+  );
+  if (publicMissingMetadataCount !== null && publicMissingMetadataCount > 0) {
+    steps.push(step({
+      section: "readiness",
+      key: "public_pin_metadata_missing",
+      status: isLaunchPhase ? "fail" : "warn",
+      message: isLaunchPhase
+        ? `${publicMissingMetadataCount.toLocaleString()} public pins are missing provider, score, or geocoded-at metadata.`
+        : `${publicMissingMetadataCount.toLocaleString()} public pins are missing metadata; this does not block pending-only backfill.`,
+      actual: publicMissingMetadataCount,
+      target: 0,
+      action: isLaunchPhase
+        ? "Backfill or hold back public pin metadata before enabling the public map."
+        : "Backfill or hold back public pin metadata before launch preflight.",
+    }));
+  }
+
   if (input.batchSimulation) {
     const batch = input.batchSimulation;
     steps.push(step({

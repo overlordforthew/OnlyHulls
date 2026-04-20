@@ -60,14 +60,15 @@ Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` 
 
 1. `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` returns `GO` against the intended staging/production database and configured providers.
 2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
-3. Admin Source Health and `db:map-launch-preflight` explain the imported-inventory waterfall: active imported, quality pass, fresh pass, buyer visible, stale-source held, and policy held. This is a hard launch gate. Do not launch the map over a missing waterfall, an empty buyer-visible inventory, or a collapsed visible-inventory rate.
-4. A fresh zero-rejection `npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json` sample has been reviewed.
-5. MapTiler key is referrer-restricted to staging and production domains.
-6. MapTiler budget/session cap is configured.
-7. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
-8. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
-9. Browser tests pass with map off, map happy path, 429 response, and broken style response.
-10. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
+3. Admin Source Health and `db:map-launch-preflight` explain the imported-inventory waterfall: active imported, quality pass, fresh pass, buyer visible, stale-source held, and policy held. This is a hard launch gate. Do not launch the map over a missing waterfall, an empty buyer-visible inventory, or a collapsed visible-inventory rate below 20%.
+4. Public-pin invariants are clean: zero invalid public coordinates, zero public pins missing provider/score/geocoded-at metadata, zero stale public coordinates, and zero low-score public pins.
+5. A fresh zero-rejection `npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json` sample has been reviewed.
+6. MapTiler key is referrer-restricted to staging and production domains.
+7. MapTiler budget/session cap is configured.
+8. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
+9. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
+10. Browser tests pass with map off, map happy path, 429 response, and broken style response.
+11. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
 
 ## Launch Sequence
 

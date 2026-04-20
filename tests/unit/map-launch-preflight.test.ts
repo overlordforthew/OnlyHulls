@@ -432,6 +432,8 @@ test("map launch preflight blocks stale or low-score public pins even if aggrega
 
   const result = buildMapLaunchPreflight({
     env: launchEnv,
+    inventory: inventorySnapshot,
+    pinAudit: launchPinAudit,
     readiness: staleSnapshot,
     batchSimulation: safeBatch,
   });
@@ -439,6 +441,30 @@ test("map launch preflight blocks stale or low-score public pins even if aggrega
   assert.equal(result.verdict, "NO_GO");
   assert(result.blockers.some((step) => step.key === "stale_public_coordinates"));
   assert(result.blockers.some((step) => step.key === "low_score_public_pins"));
+});
+
+test("map launch preflight blocks invalid public coordinates and missing pin metadata", () => {
+  const invalidSnapshot: MapReadinessSnapshot = {
+    ...readySnapshot,
+    summary: {
+      ...readySnapshot.summary,
+      invalidPublicCoordinateCount: 3,
+      publicMissingMetadataCount: 2,
+    },
+  };
+
+  const result = buildMapLaunchPreflight({
+    env: launchEnv,
+    inventory: inventorySnapshot,
+    pinAudit: launchPinAudit,
+    readiness: invalidSnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "invalid_public_coordinates"));
+  assert(result.blockers.some((step) => step.key === "public_pin_metadata_missing"));
 });
 
 test("map launch preflight blocks oversized paid-provider batch simulations", () => {
