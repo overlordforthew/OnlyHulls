@@ -3,8 +3,22 @@ import path from "path";
 
 import { pool, query } from "../src/lib/db";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
-import { buildMapLaunchPreflight, type MapLaunchBatchSimulation, type MapLaunchPreflightPhase, type MapLaunchPreflightResult, type MapLaunchPreflightStep } from "../src/lib/locations/map-launch-preflight";
+import {
+  buildMapLaunchPreflight,
+  type MapLaunchBatchSimulation,
+  type MapLaunchPinAuditInput,
+  type MapLaunchPreflightPhase,
+  type MapLaunchPreflightResult,
+  type MapLaunchPreflightStep,
+} from "../src/lib/locations/map-launch-preflight";
 import { buildGeocodeQuery, getGeocodingConfig } from "../src/lib/locations/geocoding";
+import { getMapPinAuditReport } from "../src/lib/locations/map-pin-audit-data";
+import {
+  buildMapPinAuditSampleHash,
+  parseMapPinAuditLimit,
+  parseMapPinAuditPrecision,
+  type MapPinAuditAttestation,
+} from "../src/lib/locations/map-pin-audit";
 import { getMapReadinessSnapshot } from "../src/lib/locations/map-readiness-data";
 
 type CandidateRow = {
@@ -17,6 +31,8 @@ type CandidateRow = {
 
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_PING_TIMEOUT_MS = 5000;
+const DEFAULT_PIN_AUDIT_MAX_AGE_DAYS = 7;
+const DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE = 20;
 
 function hasFlag(name: string) {
   return process.argv.includes(name);
@@ -38,6 +54,16 @@ function getPingTimeoutMs() {
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 30_000) : DEFAULT_PING_TIMEOUT_MS;
 }
 
+function getPinAuditMaxAgeDays() {
+  const parsed = Number(getArgValue("--pin-audit-max-age-days") || DEFAULT_PIN_AUDIT_MAX_AGE_DAYS);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 90) : DEFAULT_PIN_AUDIT_MAX_AGE_DAYS;
+}
+
+function getPinAuditMinSampleSize() {
+  const parsed = Number(getArgValue("--pin-audit-min-sample-size") || DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 200) : DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE;
+}
+
 function getPhase(): MapLaunchPreflightPhase {
   const value = String(getArgValue("--phase") || "launch").trim().toLowerCase();
   if (value === "backfill" || value === "launch") return value;
@@ -48,6 +74,11 @@ function getPhase(): MapLaunchPreflightPhase {
 function readReadinessReport(filePath: string) {
   const resolved = path.resolve(process.cwd(), filePath);
   return JSON.parse(fs.readFileSync(resolved, "utf8"));
+}
+
+function readPinAuditReport(filePath: string) {
+  const resolved = path.resolve(process.cwd(), filePath);
+  return JSON.parse(fs.readFileSync(resolved, "utf8")) as Partial<MapPinAuditAttestation>;
 }
 
 function redactUrl(value: string) {
@@ -250,6 +281,36 @@ async function getBatchSimulation(limit: number): Promise<MapLaunchBatchSimulati
   };
 }
 
+async function getPinAuditInput(
+  reportPath: string | null,
+  skipDb: boolean,
+  maxAgeDays: number,
+  minSampleSize: number
+): Promise<MapLaunchPinAuditInput | null> {
+  if (!reportPath) return null;
+
+  const report = readPinAuditReport(reportPath);
+  let currentSampleHash: string | null = null;
+  if (!skipDb && process.env.DATABASE_URL && report.sampleSeed && report.sampleSize) {
+    const precision = report.precision === "all" ? null : parseMapPinAuditPrecision(String(report.precision || ""));
+    const currentReport = await getMapPinAuditReport({
+      backupTable: typeof report.backupTable === "string" ? report.backupTable : null,
+      limit: parseMapPinAuditLimit(String(report.sampleLimit || report.sampleSize)),
+      precision,
+      seed: report.sampleSeed,
+    });
+    currentSampleHash = buildMapPinAuditSampleHash(currentReport);
+  }
+
+  return {
+    currentSampleHash,
+    maxAgeDays,
+    minSampleSize,
+    report,
+    reportPath,
+  };
+}
+
 function renderText(result: MapLaunchPreflightResult) {
   const lines = [
     `Map launch preflight (phase=${result.phase}): ${result.verdict}`,
@@ -261,6 +322,7 @@ function renderText(result: MapLaunchPreflightResult) {
     "network",
     "readiness",
     "review_queue",
+    "pin_audit",
     "batch_simulation",
     "verdict",
   ];
@@ -293,11 +355,15 @@ async function main() {
   const ping = hasFlag("--ping");
   const phase = getPhase();
   const readinessReportPath = getArgValue("--readiness-report");
+  const pinAuditReportPath = getArgValue("--pin-audit-report");
   const batchLimit = getBatchLimit();
   const pingTimeoutMs = getPingTimeoutMs();
+  const pinAuditMaxAgeDays = getPinAuditMaxAgeDays();
+  const pinAuditMinSampleSize = getPinAuditMinSampleSize();
   const externalSteps: MapLaunchPreflightStep[] = [];
   let readiness = null;
   let batchSimulation: MapLaunchBatchSimulation | null = null;
+  let pinAudit: MapLaunchPinAuditInput | null = null;
 
   if (readinessReportPath) {
     readiness = readReadinessReport(readinessReportPath);
@@ -326,6 +392,13 @@ async function main() {
     });
   }
 
+  pinAudit = await getPinAuditInput(
+    pinAuditReportPath,
+    skipDb,
+    pinAuditMaxAgeDays,
+    pinAuditMinSampleSize
+  );
+
   if (ping) {
     externalSteps.push(...(await runPingChecks(phase, pingTimeoutMs)));
   }
@@ -333,6 +406,7 @@ async function main() {
   const result = buildMapLaunchPreflight({
     env: process.env,
     phase,
+    pinAudit,
     readiness,
     batchSimulation,
     externalSteps,

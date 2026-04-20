@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  buildMapPinAuditAttestation,
+  buildMapPinAuditSampleHash,
   buildMapPinAuditWhereSql,
   buildMapPinAuditUrl,
   buildMapPinListingUrl,
@@ -9,7 +11,48 @@ import {
   normalizePublicBaseUrl,
   parseMapPinAuditLimit,
   parseMapPinAuditPrecision,
+  type MapPinAuditReport,
 } from "../../src/lib/locations/map-pin-audit";
+
+const auditReport: MapPinAuditReport = {
+  generatedAt: "2026-04-20T00:00:00.000Z",
+  seed: "launch-review",
+  limit: 25,
+  eligibleCount: 100,
+  returnedCount: 2,
+  precision: "all",
+  backupTable: null,
+  pins: [
+    {
+      slug: "2015-lagoon-450-penangmalaysia",
+      title: "2015 Lagoon 450",
+      locationText: "Penang, Malaysia",
+      latitude: 5.4141,
+      longitude: 100.3288,
+      precision: "marina",
+      provider: "opencage",
+      score: 0.92,
+      geocodedAt: "2026-04-20T00:00:00.000Z",
+      placeName: "Penang, Malaysia",
+      auditUrl: "https://www.openstreetmap.org/?mlat=5.4141&mlon=100.3288#map=14/5.4141/100.3288",
+      listingUrl: "https://onlyhulls.com/boats/2015-lagoon-450-penangmalaysia",
+    },
+    {
+      slug: "2006-sunreef-catamaran-flybridge-bali",
+      title: "2006 Sunreef Catamaran Flybridge",
+      locationText: "Bali, Indonesia",
+      latitude: -8.3405,
+      longitude: 115.092,
+      precision: "street",
+      provider: "opencage",
+      score: 0.88,
+      geocodedAt: "2026-04-20T00:00:00.000Z",
+      placeName: "Bali, Indonesia",
+      auditUrl: "https://www.openstreetmap.org/?mlat=-8.3405&mlon=115.092#map=14/-8.3405/115.092",
+      listingUrl: "https://onlyhulls.com/boats/2006-sunreef-catamaran-flybridge-bali",
+    },
+  ],
+};
 
 test("map pin audit validates backup table names strictly", () => {
   assert.equal(isSafeGeocodeBackupTableName("boat_geocode_backup_20260420123456"), true);
@@ -64,5 +107,45 @@ test("map pin audit builds scoped public-coordinate SQL", () => {
   assert.throws(
     () => buildMapPinAuditWhereSql({ precision: null, backupTable: "boat_geocode_backup_latest" }),
     /Invalid --backup-table/
+  );
+});
+
+test("map pin audit attestation is stable and redacted", () => {
+  const sampleHash = buildMapPinAuditSampleHash(auditReport);
+  const attestation = buildMapPinAuditAttestation(auditReport, {
+    acceptedCount: 2,
+    rejectedCount: 0,
+    reviewedAt: "2026-04-20T01:00:00.000Z",
+    reviewedBy: "ops",
+  });
+  const serialized = JSON.stringify(attestation);
+
+  assert.equal(attestation.schemaVersion, 1);
+  assert.equal(attestation.sampleHash, sampleHash);
+  assert.equal(buildMapPinAuditSampleHash(auditReport), sampleHash);
+  assert.equal(attestation.sampleLimit, 25);
+  assert.equal(attestation.sampleSize, 2);
+  assert.equal(attestation.reviewedBy, "ops");
+  assert.equal(serialized.includes("latitude"), false);
+  assert.equal(serialized.includes("longitude"), false);
+  assert.equal(serialized.includes("2015-lagoon-450"), false);
+  assert.throws(
+    () =>
+      buildMapPinAuditAttestation(auditReport, {
+        acceptedCount: 1,
+        rejectedCount: 0,
+        reviewedBy: "ops",
+      }),
+    /Accepted plus rejected/
+  );
+  assert.throws(
+    () =>
+      buildMapPinAuditAttestation(auditReport, {
+        acceptedCount: 2,
+        rejectedCount: 0,
+        reviewedBy: "ops",
+        notes: "x".repeat(501),
+      }),
+    /--notes/
   );
 });

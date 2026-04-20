@@ -58,9 +58,9 @@ Notes:
 
 Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` is only for coordinate-write readiness while the public map stays off.
 
-1. `npm run db:map-launch-preflight -- --phase=launch --ping` returns `GO` against the intended staging/production database and configured providers.
+1. `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` returns `GO` against the intended staging/production database and configured providers.
 2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
-3. At least one `npm run db:map-pin-audit -- --limit=25 --seed=launch-review` sample has been reviewed for obvious bad coordinates.
+3. A fresh zero-rejection `npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json` sample has been reviewed.
 4. MapTiler key is referrer-restricted to staging and production domains.
 5. MapTiler budget/session cap is configured.
 6. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
@@ -71,7 +71,7 @@ Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` 
 ## Launch Sequence
 
 1. Confirm deploy health is on the intended build.
-2. Run `npm run db:map-launch-preflight -- --phase=launch --ping` in production and confirm it returns `GO`.
+2. Run `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` in production and confirm it returns `GO`.
 3. Set `PUBLIC_MAP_ENABLED=true`.
 4. Set `NEXT_PUBLIC_MAP_ENABLED=true`.
 5. Redeploy.
@@ -103,3 +103,4 @@ The list, grid, row view, location search, saved searches, and listing pages con
 - The public API must remain slug-only. Do not expose internal boat ids, seller ids, or owner data for clustering or analytics.
 - City, region, and country geocodes stay search-only. Do not turn broad geocodes into public pins.
 - OpenCage remains the persisted coordinate source of record. Do not mix provider geocoding results without lineage fields and a migration plan.
+- The launch audit proves the reviewed deterministic sample still matches current data. Keep its freshness window short because newly added public pins outside that sample still rely on readiness thresholds and follow-up audits.

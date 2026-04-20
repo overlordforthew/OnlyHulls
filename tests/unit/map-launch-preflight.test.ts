@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildMapLaunchPreflight, type MapLaunchBatchSimulation } from "../../src/lib/locations/map-launch-preflight";
+import {
+  buildMapLaunchPreflight,
+  type MapLaunchBatchSimulation,
+  type MapLaunchPinAuditInput,
+} from "../../src/lib/locations/map-launch-preflight";
 import type { MapReadinessSnapshot } from "../../src/lib/locations/map-readiness";
 
 const readySnapshot: MapReadinessSnapshot = {
@@ -74,6 +78,26 @@ const safeBatch: MapLaunchBatchSimulation = {
   geocodableCandidates: 20,
   selectedRows: 20,
   selectedUniqueQueries: 18,
+};
+
+const launchPinAuditReport = {
+  schemaVersion: 1 as const,
+  generatedAt: "2026-04-20T00:00:00.000Z",
+  reviewedAt: "2026-04-19T00:00:00.000Z",
+  reviewedBy: "ops",
+  sampleSeed: "launch-review",
+  sampleHash: "abc123",
+  sampleLimit: 25,
+  sampleSize: 25,
+  acceptedCount: 25,
+  rejectedCount: 0,
+  precision: "all" as const,
+  backupTable: null,
+};
+
+const launchPinAudit: MapLaunchPinAuditInput = {
+  currentSampleHash: "abc123",
+  report: launchPinAuditReport,
 };
 
 const launchEnv = {
@@ -179,6 +203,7 @@ test("map backfill preflight blocks oversized paid-provider batch simulations", 
 test("map launch preflight returns GO only when env, readiness, review queue, and batch safety pass", () => {
   const result = buildMapLaunchPreflight({
     env: launchEnv,
+    pinAudit: launchPinAudit,
     readiness: readySnapshot,
     batchSimulation: safeBatch,
     generatedAt: "2026-04-20T00:00:00.000Z",
@@ -186,6 +211,7 @@ test("map launch preflight returns GO only when env, readiness, review queue, an
 
   assert.equal(result.verdict, "GO");
   assert.equal(result.blockers.length, 0);
+  assert(result.steps.some((step) => step.key === "pin_audit_review_passed" && step.status === "pass"));
   assert(result.steps.some((step) => step.key === "batch_apply_safety" && step.status === "pass"));
   assert(result.nextCommands.some((command) => command.includes("staging")));
   assert.equal(JSON.stringify(result).includes("maptiler_live_key"), false);
@@ -202,6 +228,98 @@ test("map launch preflight remains the default strict phase", () => {
   assert.equal(result.phase, "launch");
   assert.equal(result.verdict, "NO_GO");
   assert(result.blockers.some((step) => step.key === "map_style_url_missing"));
+});
+
+test("map launch preflight requires reviewed pin audit evidence", () => {
+  const result = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "pin_audit_report_missing"));
+  assert(result.nextCommands.some((command) => command.includes("--attest")));
+  assert(result.nextCommands.some((command) => command.includes("--pin-audit-report")));
+});
+
+test("map launch preflight blocks stale rejected or mismatched pin audit reports", () => {
+  const stale = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+    pinAudit: {
+      ...launchPinAudit,
+      report: {
+        ...launchPinAuditReport,
+        reviewedAt: "2026-04-01T00:00:00.000Z",
+      },
+    },
+  });
+  assert(stale.blockers.some((step) => step.key === "pin_audit_stale"));
+
+  const rejected = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+    pinAudit: {
+      ...launchPinAudit,
+      report: {
+        ...launchPinAuditReport,
+        acceptedCount: 24,
+        rejectedCount: 1,
+      },
+    },
+  });
+  assert(rejected.blockers.some((step) => step.key === "pin_audit_rejections_present"));
+
+  const mismatched = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+    pinAudit: {
+      ...launchPinAudit,
+      currentSampleHash: "current",
+    },
+  });
+  assert(mismatched.blockers.some((step) => step.key === "pin_audit_hash_mismatch"));
+});
+
+test("map launch preflight blocks incomplete pin audit reports", () => {
+  const small = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+    pinAudit: {
+      currentSampleHash: "abc123",
+      report: {
+        ...launchPinAuditReport,
+        acceptedCount: 10,
+        sampleSize: 10,
+      },
+    },
+  });
+  assert(small.blockers.some((step) => step.key === "pin_audit_sample_too_small"));
+
+  const emptyReviewer = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+    pinAudit: {
+      ...launchPinAudit,
+      report: {
+        ...launchPinAuditReport,
+        reviewedBy: "",
+      },
+    },
+  });
+  assert(emptyReviewer.blockers.some((step) => step.key === "pin_audit_reviewer_missing"));
 });
 
 test("map backfill preflight fails closed if public map flags are already enabled", () => {

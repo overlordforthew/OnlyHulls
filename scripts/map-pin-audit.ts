@@ -1,43 +1,18 @@
+import fs from "fs";
+import path from "path";
+
 import { pool } from "../src/lib/db";
-import { PUBLIC_MAP_PRECISIONS, type PublicMapPrecision } from "../src/lib/locations/map-coordinates";
+import { PUBLIC_MAP_PRECISIONS } from "../src/lib/locations/map-coordinates";
+import { getMapPinAuditReport } from "../src/lib/locations/map-pin-audit-data";
 import {
-  buildMapPinAuditWhereSql,
-  buildMapPinAuditUrl,
-  buildMapPinListingUrl,
+  buildMapPinAuditAttestation,
   isSafeGeocodeBackupTableName,
   normalizePublicBaseUrl,
   parseMapPinAuditLimit,
   parseMapPinAuditPrecision,
+  parseMapPinAuditReviewCount,
   type MapPinAuditReport,
-  type MapPinAuditRow,
 } from "../src/lib/locations/map-pin-audit";
-
-type CountRow = {
-  count: string;
-};
-
-type PinRow = {
-  slug: string | null;
-  title: string | null;
-  location_text: string | null;
-  latitude: string | number | null;
-  longitude: string | number | null;
-  precision: string | null;
-  provider: string | null;
-  score: string | number | null;
-  geocoded_at: string | null;
-  place_name: string | null;
-};
-
-async function runQuery<T extends Record<string, unknown>>(text: string, params?: unknown[]) {
-  const result = await pool.query(text, params);
-  return result.rows as T[];
-}
-
-async function runQueryOne<T extends Record<string, unknown>>(text: string, params?: unknown[]) {
-  const rows = await runQuery<T>(text, params);
-  return rows[0] ?? null;
-}
 
 function hasFlag(name: string) {
   return process.argv.includes(name);
@@ -62,6 +37,10 @@ function getBaseUrl() {
   );
 }
 
+function getEmitReportPath() {
+  return getArgValue("--emit-report");
+}
+
 function assertPrecision(value: string | null) {
   if (!value) return null;
   const precision = parseMapPinAuditPrecision(value);
@@ -81,82 +60,13 @@ function assertBackupTable(value: string | null) {
   return value;
 }
 
-function toNumber(value: string | number | null) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function toPrecision(value: string | null): PublicMapPrecision | null {
-  return parseMapPinAuditPrecision(value);
-}
-
 async function getAuditReport(): Promise<MapPinAuditReport> {
   const limit = parseMapPinAuditLimit(getArgValue("--limit"));
   const seed = getSeed();
   const baseUrl = getBaseUrl();
   const precision = assertPrecision(getArgValue("--precision"));
   const backupTable = assertBackupTable(getArgValue("--backup-table"));
-  const { whereSql, params } = buildMapPinAuditWhereSql({ precision, backupTable });
-  const count = await runQueryOne<CountRow>(
-    `SELECT COUNT(*)::text AS count
-     FROM boats b
-     WHERE ${whereSql}`,
-    params
-  );
-  const rows = await runQuery<PinRow>(
-    `SELECT b.slug,
-            CONCAT_WS(' ', b.year::text, NULLIF(TRIM(b.make), ''), NULLIF(TRIM(b.model), '')) AS title,
-            b.location_text,
-            b.location_lat AS latitude,
-            b.location_lng AS longitude,
-            b.location_geocode_precision AS precision,
-            b.location_geocode_provider AS provider,
-            b.location_geocode_score AS score,
-            b.location_geocoded_at::text AS geocoded_at,
-            b.location_geocode_place_name AS place_name
-     FROM boats b
-     WHERE ${whereSql}
-     ORDER BY md5(COALESCE(b.slug, b.id::text) || $${params.length + 1}), b.slug
-     LIMIT $${params.length + 2}`,
-    [...params, seed, limit]
-  );
-  const pins = rows
-    .map((row): MapPinAuditRow | null => {
-      const slug = String(row.slug || "").trim();
-      const latitude = toNumber(row.latitude);
-      const longitude = toNumber(row.longitude);
-      const rowPrecision = toPrecision(row.precision);
-      if (!slug || latitude === null || longitude === null || !rowPrecision) return null;
-      const auditUrl = buildMapPinAuditUrl(latitude, longitude);
-      if (!auditUrl) return null;
-
-      return {
-        slug,
-        title: row.title || slug,
-        locationText: row.location_text,
-        latitude,
-        longitude,
-        precision: rowPrecision,
-        provider: row.provider,
-        score: toNumber(row.score),
-        geocodedAt: row.geocoded_at,
-        placeName: row.place_name,
-        auditUrl,
-        listingUrl: buildMapPinListingUrl(baseUrl, slug),
-      };
-    })
-    .filter((row): row is MapPinAuditRow => row !== null);
-
-  return {
-    generatedAt: new Date().toISOString(),
-    seed,
-    limit,
-    eligibleCount: Number(count?.count || 0),
-    returnedCount: pins.length,
-    precision: precision || "all",
-    backupTable,
-    pins,
-  };
+  return getMapPinAuditReport({ backupTable, baseUrl, limit, precision, seed });
 }
 
 function renderText(report: MapPinAuditReport) {
@@ -189,6 +99,26 @@ function renderText(report: MapPinAuditReport) {
   });
 
   return lines.join("\n");
+}
+
+function writeJsonFile(filePath: string, value: unknown) {
+  const resolved = path.resolve(process.cwd(), filePath);
+  fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  fs.writeFileSync(resolved, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  return resolved;
+}
+
+function buildAttestation(report: MapPinAuditReport) {
+  const reviewedBy = getArgValue("--reviewed-by") || "";
+  const acceptedCount = parseMapPinAuditReviewCount(getArgValue("--accepted"), "--accepted");
+  const rejectedCount = parseMapPinAuditReviewCount(getArgValue("--rejected"), "--rejected");
+  return buildMapPinAuditAttestation(report, {
+    acceptedCount,
+    rejectedCount,
+    notes: getArgValue("--notes"),
+    reviewedAt: getArgValue("--reviewed-at") || undefined,
+    reviewedBy,
+  });
 }
 
 function getReadableErrorMessage(err: unknown): string {
@@ -228,6 +158,22 @@ function isLikelyDatabaseFailure(err: unknown) {
 
 async function main() {
   const report = await getAuditReport();
+  if (hasFlag("--attest")) {
+    const emitReportPath = getEmitReportPath();
+    if (!emitReportPath) {
+      throw new Error("Missing --emit-report=path.json for --attest.");
+    }
+    const attestation = buildAttestation(report);
+    const resolvedPath = writeJsonFile(emitReportPath, attestation);
+    if (hasFlag("--json")) {
+      console.log(JSON.stringify(attestation, null, 2));
+    } else {
+      console.log(`Map pin audit attestation written: ${resolvedPath}`);
+      console.log(`Sample: ${attestation.sampleSize} pins, rejected: ${attestation.rejectedCount}`);
+    }
+    return;
+  }
+
   console.log(hasFlag("--json") ? JSON.stringify(report, null, 2) : renderText(report));
 }
 

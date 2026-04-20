@@ -5,6 +5,7 @@ import {
   getGeocodeApplySafetyStop,
   isEnabledEnvValue,
 } from "@/lib/locations/geocode-rollout-safety";
+import type { MapPinAuditAttestation } from "@/lib/locations/map-pin-audit";
 import type { MapReadinessSnapshot } from "@/lib/locations/map-readiness";
 
 type PreflightEnv = Record<string, string | undefined>;
@@ -13,7 +14,7 @@ export type MapLaunchPreflightStatus = "pass" | "fail" | "warn" | "info";
 export type MapLaunchPreflightPhase = "backfill" | "launch";
 
 export type MapLaunchPreflightStep = {
-  section: "env" | "network" | "readiness" | "review_queue" | "batch_simulation" | "verdict";
+  section: "env" | "network" | "readiness" | "review_queue" | "pin_audit" | "batch_simulation" | "verdict";
   key: string;
   status: MapLaunchPreflightStatus;
   message: string;
@@ -67,11 +68,20 @@ export type MapLaunchBatchSimulation = {
   selectedUniqueQueries: number;
 };
 
+export type MapLaunchPinAuditInput = {
+  report: Partial<MapPinAuditAttestation> | null;
+  reportPath?: string | null;
+  currentSampleHash?: string | null;
+  maxAgeDays?: number;
+  minSampleSize?: number;
+};
+
 export type MapLaunchPreflightInput = {
   env?: PreflightEnv;
   phase?: MapLaunchPreflightPhase;
   readiness?: MapReadinessSnapshot | MapLaunchReadinessReport | null;
   batchSimulation?: MapLaunchBatchSimulation | null;
+  pinAudit?: MapLaunchPinAuditInput | null;
   externalSteps?: MapLaunchPreflightStep[];
   generatedAt?: string;
 };
@@ -95,6 +105,13 @@ const PLACEHOLDER_MARKERS = [
   "replace_me",
   "...",
 ];
+
+const DEFAULT_PIN_AUDIT_MAX_AGE_DAYS = 7;
+const DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE = 20;
+const PIN_AUDIT_ATTEST_COMMAND =
+  "npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json";
+const PIN_AUDIT_PREFLIGHT_COMMAND =
+  "npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json";
 
 function hasConfiguredValue(value?: string | null) {
   const trimmed = String(value || "").trim();
@@ -241,12 +258,26 @@ function addUnique(commands: string[], command: string) {
   if (!commands.includes(command)) commands.push(command);
 }
 
+function parseTimestampMs(value?: string | null) {
+  const time = Date.parse(String(value || ""));
+  return Number.isFinite(time) ? time : null;
+}
+
+function getPinAuditAgeDays(reviewedAt: string | undefined, nowIso: string) {
+  const reviewedAtMs = parseTimestampMs(reviewedAt);
+  const nowMs = parseTimestampMs(nowIso);
+  if (reviewedAtMs === null || nowMs === null) return null;
+
+  return Math.max(0, (nowMs - reviewedAtMs) / 86_400_000);
+}
+
 export function buildMapLaunchPreflight(
   input: MapLaunchPreflightInput = {}
 ): MapLaunchPreflightResult {
   const env = input.env || process.env;
   const phase = input.phase || "launch";
   const isLaunchPhase = phase === "launch";
+  const generatedAt = input.generatedAt || new Date().toISOString();
   const steps: MapLaunchPreflightStep[] = [...(input.externalSteps || [])];
   const nextCommands: string[] = [];
   const provider = getProvider(env);
@@ -613,6 +644,199 @@ export function buildMapLaunchPreflight(
     }));
   }
 
+  if (isLaunchPhase) {
+    const pinAudit = input.pinAudit;
+    const report = pinAudit?.report;
+    const maxAgeDays = pinAudit?.maxAgeDays ?? DEFAULT_PIN_AUDIT_MAX_AGE_DAYS;
+    const minSampleSize = pinAudit?.minSampleSize ?? DEFAULT_PIN_AUDIT_MIN_SAMPLE_SIZE;
+    if (!report) {
+      steps.push(step({
+        section: "pin_audit",
+        key: "pin_audit_report_missing",
+        status: "fail",
+        message: "No reviewed map pin audit report was provided for launch preflight.",
+        target: "fresh zero-rejection pin audit attestation",
+        action: `Run ${PIN_AUDIT_ATTEST_COMMAND}, then rerun ${PIN_AUDIT_PREFLIGHT_COMMAND}.`,
+      }));
+      addUnique(nextCommands, PIN_AUDIT_ATTEST_COMMAND);
+      addUnique(nextCommands, PIN_AUDIT_PREFLIGHT_COMMAND);
+    } else {
+      if (report.schemaVersion !== 1) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_schema_invalid",
+          status: "fail",
+          message: "Map pin audit report schema version is missing or unsupported.",
+          actual: report.schemaVersion ?? null,
+          target: 1,
+          action: "Regenerate the report with the current db:map-pin-audit command.",
+        }));
+      }
+
+      if (report.precision !== "all" || report.backupTable) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_scope_not_launch",
+          status: "fail",
+          message: "Launch preflight requires an all-public-pins audit, not a precision or batch-scoped audit.",
+          actual: `precision=${report.precision || ""}, backupTable=${report.backupTable || ""}`,
+          target: "precision=all and backupTable empty",
+          action: "Rerun the pin audit without --precision or --backup-table for launch.",
+        }));
+      }
+
+      if (!String(report.reviewedBy || "").trim()) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_reviewer_missing",
+          status: "fail",
+          message: "Map pin audit report is missing reviewedBy.",
+          target: "--reviewed-by=<operator>",
+        }));
+      }
+
+      const ageDays = getPinAuditAgeDays(report.reviewedAt, generatedAt);
+      if (ageDays === null) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_reviewed_at_invalid",
+          status: "fail",
+          message: "Map pin audit report reviewedAt is missing or invalid.",
+          actual: report.reviewedAt || null,
+          target: "ISO 8601 reviewedAt timestamp",
+        }));
+      } else if (ageDays > maxAgeDays) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_stale",
+          status: "fail",
+          message: "Map pin audit report is too old for launch.",
+          actual: `${ageDays.toFixed(2)} days`,
+          target: `<=${maxAgeDays} days`,
+          action: "Rerun and re-attest the map pin audit before launch.",
+        }));
+      } else {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_fresh",
+          status: "pass",
+          message: "Map pin audit report is fresh.",
+          actual: `${ageDays.toFixed(2)} days`,
+          target: `<=${maxAgeDays} days`,
+        }));
+      }
+
+      const sampleSize = Number(report.sampleSize);
+      const acceptedCount = Number(report.acceptedCount);
+      const rejectedCount = Number(report.rejectedCount);
+      if (!Number.isInteger(sampleSize) || sampleSize < minSampleSize) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_sample_too_small",
+          status: "fail",
+          message: "Map pin audit sample is too small for launch.",
+          actual: Number.isFinite(sampleSize) ? sampleSize : null,
+          target: `>=${minSampleSize}`,
+          action: `Rerun ${PIN_AUDIT_ATTEST_COMMAND}.`,
+        }));
+      }
+
+      if (
+        !Number.isInteger(acceptedCount) ||
+        !Number.isInteger(rejectedCount) ||
+        acceptedCount + rejectedCount !== sampleSize
+      ) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_counts_invalid",
+          status: "fail",
+          message: "Map pin audit accepted/rejected counts do not match the sample size.",
+          actual: `accepted=${report.acceptedCount ?? ""}, rejected=${report.rejectedCount ?? ""}, sample=${report.sampleSize ?? ""}`,
+          target: "accepted + rejected equals sampleSize",
+        }));
+      } else if (rejectedCount > 0) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_rejections_present",
+          status: "fail",
+          message: "Map pin audit contains rejected pins.",
+          actual: rejectedCount,
+          target: 0,
+          action: "Fix or hold back rejected pins, then rerun and re-attest the audit.",
+        }));
+      }
+
+      if (!String(report.sampleHash || "").trim()) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_hash_missing",
+          status: "fail",
+          message: "Map pin audit report is missing sampleHash.",
+          target: "sampleHash from db:map-pin-audit --attest",
+        }));
+      } else if (!pinAudit?.currentSampleHash) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_hash_unverified",
+          status: "fail",
+          message: "Map pin audit sample hash could not be recomputed against the current database.",
+          target: "live DATABASE_URL and --pin-audit-report during launch preflight",
+          action: "Run launch preflight with DATABASE_URL configured so the reviewed sample can be re-derived.",
+        }));
+      } else if (pinAudit.currentSampleHash !== report.sampleHash) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_hash_mismatch",
+          status: "fail",
+          message: "Map pin audit sample no longer matches the current launch dataset.",
+          actual: pinAudit.currentSampleHash,
+          target: report.sampleHash,
+          action: "Coordinates changed after review. Rerun and re-attest the pin audit before launch.",
+        }));
+      } else {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_hash_verified",
+          status: "pass",
+          message: "Map pin audit sample hash matches the current launch dataset.",
+          actual: report.sampleHash,
+        }));
+      }
+
+      if (
+        report.schemaVersion === 1 &&
+        report.precision === "all" &&
+        !report.backupTable &&
+        String(report.reviewedBy || "").trim() &&
+        ageDays !== null &&
+        ageDays <= maxAgeDays &&
+        Number.isInteger(sampleSize) &&
+        sampleSize >= minSampleSize &&
+        Number.isInteger(acceptedCount) &&
+        Number.isInteger(rejectedCount) &&
+        acceptedCount + rejectedCount === sampleSize &&
+        rejectedCount === 0 &&
+        pinAudit?.currentSampleHash === report.sampleHash
+      ) {
+        steps.push(step({
+          section: "pin_audit",
+          key: "pin_audit_review_passed",
+          status: "pass",
+          message: "Reviewed map pin audit report is launch-ready.",
+          actual: `${sampleSize} accepted, 0 rejected`,
+        }));
+      }
+    }
+  } else {
+    steps.push(step({
+      section: "pin_audit",
+      key: "pin_audit_deferred",
+      status: "info",
+      message: "Reviewed pin audit attestation is not required for backfill preflight.",
+      target: "required only for --phase=launch",
+    }));
+  }
+
   if (input.batchSimulation) {
     const batch = input.batchSimulation;
     steps.push(step({
@@ -673,6 +897,7 @@ export function buildMapLaunchPreflight(
     } else {
       addUnique(nextCommands, "npm run db:geocode-locations -- --limit=100 --apply");
       addUnique(nextCommands, "Review samplePins, geographyMismatches, precisionSplit, and failureReasons before scaling.");
+      addUnique(nextCommands, PIN_AUDIT_ATTEST_COMMAND);
       addUnique(nextCommands, "Rerun npm run db:map-launch-preflight -- --phase=backfill after each batch.");
       addUnique(nextCommands, "After readiness passes, run npm run db:map-launch-preflight -- --phase=launch --ping before enabling public map flags.");
     }
@@ -681,7 +906,7 @@ export function buildMapLaunchPreflight(
   return {
     verdict: blockers.length === 0 ? "GO" : "NO_GO",
     phase,
-    generatedAt: input.generatedAt || new Date().toISOString(),
+    generatedAt,
     blockers,
     warnings,
     steps,

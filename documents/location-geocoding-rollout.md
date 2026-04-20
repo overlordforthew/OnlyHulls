@@ -93,6 +93,18 @@ The backup-table filter scopes the audit to boats touched by that batch, but the
 
 Record each sample pin as accept/reject. Scale only when at least 95% of sampled pins land in the correct city/marina/harbor area and all exact/street/marina pins look defensible to a buyer.
 
+For the final launch audit, write a reviewed attestation artifact with zero rejected pins:
+
+```bash
+npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json
+```
+
+Launch preflight requires that artifact and recomputes the sample hash against the current database:
+
+```bash
+npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json
+```
+
 Then rerun:
 
 ```bash

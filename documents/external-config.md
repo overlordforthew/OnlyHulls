@@ -162,7 +162,7 @@ Operational notes:
 - First paid validation command shape:
   `LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npx tsx scripts/geocode-boat-locations.ts --limit=100 --apply`
 - Review `precisionSplit`, `failureReasons`, `geographyMismatches`, and `samplePins` from the command output before increasing the batch size.
-- Use `npm run db:map-pin-audit -- --limit=25 --seed=<batch-name>` after apply batches and before launch. Add `--backup-table=boat_geocode_backup_YYYYMMDDHHMMSS` to audit only rows touched by a specific write batch.
+- Use `npm run db:map-pin-audit -- --limit=25 --seed=<batch-name>` after apply batches and before launch. Add `--backup-table=boat_geocode_backup_YYYYMMDDHHMMSS` to audit only rows touched by a specific write batch. The launch preflight expects a zero-rejection attestation from `--attest --emit-report=artifacts/map-pin-audit-launch.json`.
 - Do not use a geocoder whose terms forbid cached/stored results unless the same provider also supplies the rendered map under compatible terms.
 - If you want private objects instead, the app will need a small follow-up change for signed-read URLs or a media proxy.
 
