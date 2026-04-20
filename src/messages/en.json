@@ -543,6 +543,8 @@
     "emptyTitle": "No precise pins here yet",
     "emptyBody": "Pan to another marina market, zoom in, or use the location search above.",
     "unknownLocation": "Unknown location",
+    "priceUnavailable": "Price on request",
+    "photoFallback": "Photo pending",
     "approximate": "approx.",
     "viewListing": "View listing",
     "copyLink": "Copy link",

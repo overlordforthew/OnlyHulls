@@ -17,6 +17,11 @@ function marker(slug: string, lat: number, lng: number): PublicMapMarker {
     lng,
     precision: "marina",
     approximate: false,
+    askingPrice: 495000,
+    currency: "USD",
+    askingPriceUsd: 495000,
+    heroUrl: null,
+    loa: 45,
   };
 }
 
@@ -34,6 +39,15 @@ test("boat map clustering groups dense markets without exposing child markers", 
   if (clustered[0].kind !== "cluster") throw new Error("expected a cluster");
 
   assert.equal(clustered[0].count, 3);
+  assert.deepEqual(Object.keys(clustered[0]).sort(), [
+    "count",
+    "expansionZoom",
+    "id",
+    "kind",
+    "label",
+    "lat",
+    "lng",
+  ].sort());
   assert.deepEqual(
     getBoatMapClusterBounds(index, clustered[0].id, clustered[0].lng, clustered[0].lat),
     [-65.6519, 18.3358, -65.6319, 18.3658]

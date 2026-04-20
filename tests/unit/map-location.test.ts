@@ -122,6 +122,11 @@ test("public map markers expose only public boat identifiers and safe coordinate
     location_lng: "100.3288123",
     location_geocode_precision: "marina",
     location_approximate: false,
+    asking_price: "495000",
+    currency: "usd",
+    asking_price_usd: "495000",
+    hero_url: " https://cdn.example.test/boats/lagoon.jpg ",
+    loa: "45.5",
   });
 
   assert.deepEqual(marker, {
@@ -132,8 +137,86 @@ test("public map markers expose only public boat identifiers and safe coordinate
     lng: 100.3288,
     precision: "marina",
     approximate: false,
+    askingPrice: 495000,
+    currency: "USD",
+    askingPriceUsd: 495000,
+    heroUrl: "https://cdn.example.test/boats/lagoon.jpg",
+    loa: 45.5,
   });
   assert.equal(Object.hasOwn(marker || {}, "id"), false);
+  assert.deepEqual(Object.keys(marker || {}).sort(), [
+    "approximate",
+    "askingPrice",
+    "askingPriceUsd",
+    "currency",
+    "heroUrl",
+    "lat",
+    "lng",
+    "loa",
+    "locationText",
+    "precision",
+    "slug",
+    "title",
+  ].sort());
+});
+
+test("public map marker commerce fields degrade safely", () => {
+  const marker = buildPublicMapMarker({
+    id: "internal-boat-id",
+    slug: "2015-lagoon-450-penangmalaysia",
+    make: "Lagoon",
+    model: "450",
+    year: 2015,
+    location_text: "Penang, Malaysia",
+    location_lat: "5.4141123",
+    location_lng: "100.3288123",
+    location_geocode_precision: "marina",
+    location_approximate: false,
+    asking_price: -1,
+    currency: "cad",
+    asking_price_usd: 0,
+    hero_url: "javascript:alert(1)",
+    loa: -45,
+  });
+
+  assert.equal(marker?.askingPrice, null);
+  assert.equal(marker?.currency, "USD");
+  assert.equal(marker?.askingPriceUsd, null);
+  assert.equal(marker?.heroUrl, null);
+  assert.equal(marker?.loa, null);
+});
+
+test("public map markers allow local media URLs and reject known placeholders", () => {
+  const base = {
+    id: "internal-boat-id",
+    slug: "2015-lagoon-450-penangmalaysia",
+    make: "Lagoon",
+    model: "450",
+    year: 2015,
+    location_text: "Penang, Malaysia",
+    location_lat: "5.4141123",
+    location_lng: "100.3288123",
+    location_geocode_precision: "marina",
+    location_approximate: false,
+  };
+
+  assert.equal(
+    buildPublicMapMarker({ ...base, hero_url: "/media/boats/lagoon.jpg" })?.heroUrl,
+    "/media/boats/lagoon.jpg"
+  );
+  assert.equal(
+    buildPublicMapMarker({ ...base, hero_url: "https://example.test/assets/images/noimage.jpg" })
+      ?.heroUrl,
+    null
+  );
+  assert.equal(
+    buildPublicMapMarker({ ...base, hero_url: "/media/../private.jpg" })?.heroUrl,
+    null
+  );
+  assert.equal(
+    buildPublicMapMarker({ ...base, hero_url: "/media/%2e%2e/private.jpg" })?.heroUrl,
+    null
+  );
 });
 
 test("public map markers reject rows without a public slug", () => {

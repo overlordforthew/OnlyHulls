@@ -1042,6 +1042,7 @@ function BoatsPageInner() {
                 initialViewport={initialMapViewport}
                 homeViewport={homeMapViewport}
                 urlViewport={urlMapViewport}
+                displayCurrency={displayCurrency}
                 onViewportChange={handleMapViewportChange}
               />
             ) : viewMode === "grid" ? (

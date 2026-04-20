@@ -80,9 +80,12 @@ export async function GET(req: Request) {
     const whereSql = conditions.join(" AND ");
     queryParams.push(limit + 1);
     const rows = await query<PublicMapBoatRow>(
-      `SELECT b.id, b.slug, b.make, b.model, b.year, b.location_text,
+      `SELECT b.id, b.slug, b.make, b.model, b.year, b.asking_price, b.currency,
+              b.asking_price_usd, b.location_text,
               b.location_lat, b.location_lng, b.location_geocode_precision,
-              b.location_approximate
+              b.location_approximate,
+              (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
+              d.specs->>'loa' AS loa
        FROM boats b
        LEFT JOIN users u ON u.id = b.seller_id
        LEFT JOIN boat_dna d ON d.boat_id = b.id

@@ -2,6 +2,21 @@ import { expect, test, type Page } from "@playwright/test";
 
 const MAP_SHELL_TIMEOUT_MS = 15_000;
 
+type MockMapMarkerBoat = {
+  slug: string;
+  title: string;
+  locationText: string;
+  lat: number;
+  lng: number;
+  precision: "exact" | "marina" | "street";
+  approximate: boolean;
+  askingPrice: number | null;
+  currency: string;
+  askingPriceUsd: number | null;
+  heroUrl: string | null;
+  loa: number | null;
+};
+
 const mockBrowseBoats = [
   {
     id: "mock-lagoon-1",
@@ -41,7 +56,7 @@ const mockBrowseBoats = [
   },
 ];
 
-const mockMapMarkerBoats = [
+const mockMapMarkerBoats: MockMapMarkerBoat[] = [
   {
     slug: "2018-lagoon-450-f",
     title: "2018 Lagoon 450 F",
@@ -50,10 +65,15 @@ const mockMapMarkerBoats = [
     lng: -65.6319,
     precision: "marina",
     approximate: false,
+    askingPrice: 495000,
+    currency: "USD",
+    askingPriceUsd: 495000,
+    heroUrl: "https://images.example.test/lagoon-450.jpg",
+    loa: 45,
   },
 ];
 
-const mockDenseMapMarkerBoats = [
+const mockDenseMapMarkerBoats: MockMapMarkerBoat[] = [
   ...mockMapMarkerBoats,
   {
     slug: "2019-leopard-45",
@@ -63,6 +83,11 @@ const mockDenseMapMarkerBoats = [
     lng: -65.6419,
     precision: "marina",
     approximate: false,
+    askingPrice: 610000,
+    currency: "USD",
+    askingPriceUsd: 610000,
+    heroUrl: null,
+    loa: 45,
   },
   {
     slug: "2020-bali-4-6",
@@ -72,6 +97,11 @@ const mockDenseMapMarkerBoats = [
     lng: -65.6519,
     precision: "marina",
     approximate: false,
+    askingPrice: 720000,
+    currency: "USD",
+    askingPriceUsd: 720000,
+    heroUrl: null,
+    loa: 46,
   },
 ];
 
@@ -117,6 +147,14 @@ async function mockBoatsResponse(page: Page) {
 }
 
 async function mockMapStyle(page: Page) {
+  await page.route("https://images.example.test/lagoon-450.jpg", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/gif",
+      body: Buffer.from("R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==", "base64"),
+    });
+  });
+
   await page.route("https://tiles.example.test/style.json", async (route) => {
     await route.fulfill({
       status: 200,
@@ -328,10 +366,28 @@ test("boats map view fetches precise markers and links back to listings", async 
   await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F", {
     timeout: MAP_SHELL_TIMEOUT_MS,
   });
+  await expect(page.getByTestId("boats-map-listing-price").first()).toHaveText("$495,000");
+  await expect(page.getByTestId("boats-map-listing-image").first()).toHaveAttribute(
+    "loading",
+    "lazy"
+  );
+  await expect(page.getByTestId("boats-map-listing-image").first()).toHaveAttribute(
+    "src",
+    "https://images.example.test/lagoon-450.jpg"
+  );
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("45 ft");
   await expect(page.getByTestId("boats-map-listing").first()).toContainText("Fajardo, Puerto Rico", {
     timeout: MAP_SHELL_TIMEOUT_MS,
   });
-  await expect(page.getByRole("link", { name: "View listing", exact: true })).toHaveAttribute(
+  await page.getByTestId("boats-map-listing").first().getByRole("button").click();
+  await expect(page.getByTestId("boats-map-popup-price")).toHaveText("$495,000", {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await expect(page.getByTestId("boats-map-popup-image")).toHaveAttribute(
+    "src",
+    "https://images.example.test/lagoon-450.jpg"
+  );
+  await expect(page.getByRole("link", { name: "View listing", exact: true }).first()).toHaveAttribute(
     "href",
     "/boats/2018-lagoon-450-f"
   );

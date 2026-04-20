@@ -543,6 +543,8 @@
     "emptyTitle": "Aún no hay pins precisos aquí",
     "emptyBody": "Muévete a otro mercado de marinas, acerca el mapa o usa la búsqueda de ubicación arriba.",
     "unknownLocation": "Ubicación desconocida",
+    "priceUnavailable": "Precio a consultar",
+    "photoFallback": "Foto pendiente",
     "approximate": "aprox.",
     "viewListing": "Ver anuncio",
     "copyLink": "Copiar enlace",
