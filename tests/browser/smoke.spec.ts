@@ -478,8 +478,11 @@ test("boats card opens detail page", async ({ page }) => {
   const title = (await firstCardTitle.textContent())?.trim();
   expect(title).toBeTruthy();
 
-  await firstCardTitle.click();
-  await expect(page).toHaveURL(/\/boats\//);
+  const firstCardLink = page.locator("div.group.card-hover a").first();
+  await Promise.all([
+    page.waitForURL(/\/boats\/[^/?#]+/, { timeout: 15_000 }),
+    firstCardLink.click(),
+  ]);
   await expect(page.getByRole("heading", { name: title!, exact: false })).toBeVisible();
 });
 
