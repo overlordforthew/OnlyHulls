@@ -1123,15 +1123,23 @@ export default function AdminPage() {
                   Public map: {stats.serviceStatus.publicMapEnabled ? "enabled" : "gated"}.
                 </p>
               </div>
-              <span
-                className={`inline-flex self-start rounded-full border px-3 py-1 text-xs font-semibold ${
-                  mapReady
-                    ? "border-green-500/40 bg-green-500/10 text-green-600"
-                    : "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                }`}
-              >
-                {mapReady ? "Map data ready" : "Map data not ready"}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/admin/map-readiness"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground/70 hover:border-primary hover:text-primary"
+                >
+                  Open map readiness
+                </Link>
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                    mapReady
+                      ? "border-green-500/40 bg-green-500/10 text-green-600"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                  }`}
+                >
+                  {mapReady ? "Map data ready" : "Map data not ready"}
+                </span>
+              </div>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <ProgressCard

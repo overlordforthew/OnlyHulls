@@ -141,6 +141,7 @@ Required before exposing a buyer-facing map:
 - `NEXT_PUBLIC_MAP_STYLE_URL`
 - `NEXT_PUBLIC_MAP_ATTRIBUTION`
 - `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS` when the style references tile, glyph, sprite, or image hosts beyond the style URL origin.
+- Optional `MAP_READINESS_*` thresholds if launch gates should differ from the defaults in `.env.example`.
 
 Recommended first tile provider:
 
@@ -150,6 +151,7 @@ Operational notes:
 
 - First-time production backfills should follow `documents/location-geocoding-rollout.md`.
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
+- Use `/admin/map-readiness` as the aggregate launch gate before enabling the public map flags.
 - The map marker API intentionally returns `404` when `PUBLIC_MAP_ENABLED` is not true.
 - Public map coordinates are gated by geocode precision; city, region, and country-level results remain searchable but are not exposed as hard public pins.
 - The `/boats` map toggle is also client-gated by `NEXT_PUBLIC_MAP_ENABLED`, style URL, and attribution so the interface cannot appear without the legal/provider basics.

@@ -35,6 +35,11 @@ MAPTILER_KEY=...
 NEXT_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/streets-v2/style.json?key=$MAPTILER_KEY
 NEXT_PUBLIC_MAP_ATTRIBUTION=© MapTiler © OpenStreetMap contributors
 NEXT_PUBLIC_MAP_RESOURCE_ORIGINS=https://api.maptiler.com,https://tiles.maptiler.com
+MAP_READINESS_MIN_MARKET_TAG_PCT=95
+MAP_READINESS_MIN_CITY_OR_BETTER_PCT=85
+MAP_READINESS_MIN_PUBLIC_PIN_PCT=85
+MAP_READINESS_MIN_NON_APPROX_PUBLIC_PIN_PCT=50
+MAP_READINESS_MAX_REVIEW_FAILED_PCT=0
 ```
 
 Notes:
@@ -45,10 +50,11 @@ Notes:
 - The MapTiler key is URL-embedded and public by design. Restrict it in the MapTiler dashboard to `https://onlyhulls.com/*` and `https://www.onlyhulls.com/*`.
 - Keep a budget/session cap on the MapTiler account at launch. Prefer graceful map unavailability over surprise overage until real map usage is known.
 - Do not add wildcard CSP origins. Add explicit hosts to `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS`.
+- Use `/admin/map-readiness` as the aggregate launch gate before enabling the public flags. It intentionally reports counts, percentages, precision/status/provider splits, and blockers without exposing coordinates, listing IDs, user IDs, or slugs.
 
 ## Staging Checklist
 
-1. OpenCage backfill coverage and admin readiness gates are green.
+1. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
 2. At least one sample-pin audit has been reviewed for obvious bad coordinates.
 3. MapTiler key is referrer-restricted to staging and production domains.
 4. MapTiler budget/session cap is configured.
