@@ -1,33 +1,19 @@
 import { NextResponse } from "next/server";
-import { query, queryOne } from "@/lib/db";
+import { query } from "@/lib/db";
 import { buildWhereClause, filtersFromSearchParams } from "@/lib/search/boat-search";
-import { buildVisibleImportQualitySql, sanitizeImportedBoatRecord } from "@/lib/import-quality";
+import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import {
-  getPublicMapCoordinate,
   PUBLIC_MAP_PRECISIONS,
 } from "@/lib/locations/map-coordinates";
 import {
-  hasMapScope,
   parseMapBounds,
   parseMapMarkerLimit,
   type MapBounds,
 } from "@/lib/locations/map-bounds";
+import { buildPublicMapMarker, type PublicMapBoatRow } from "@/lib/locations/public-map-markers";
 import { publicMapEnabled } from "@/lib/capabilities";
 import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
-
-type BoatMapRow = {
-  id: string;
-  slug: string | null;
-  make: string;
-  model: string;
-  year: number;
-  location_text: string | null;
-  location_lat: number | string | null;
-  location_lng: number | string | null;
-  location_geocode_precision: string | null;
-  location_approximate: boolean | null;
-};
 
 function appendBoundsFilter(
   conditions: string[],
@@ -47,34 +33,6 @@ function appendBoundsFilter(
   );
 }
 
-function buildMapMarker(row: BoatMapRow) {
-  const publicCoordinate = getPublicMapCoordinate({
-    latitude: row.location_lat,
-    longitude: row.location_lng,
-    precision: row.location_geocode_precision,
-    approximate: row.location_approximate,
-  });
-
-  if (!publicCoordinate) return null;
-
-  const normalized = sanitizeImportedBoatRecord({
-    ...row,
-    source_site: null,
-    specs: {},
-  });
-
-  return {
-    id: row.id,
-    slug: row.slug,
-    title: `${row.year} ${normalized.make} ${normalized.model}`.trim(),
-    locationText: normalized.location_text,
-    lat: publicCoordinate.latitude,
-    lng: publicCoordinate.longitude,
-    precision: publicCoordinate.precision,
-    approximate: publicCoordinate.approximate,
-  };
-}
-
 export async function GET(req: Request) {
   const startedAt = Date.now();
 
@@ -84,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const rl = await rateLimit(`boats-map:${ip}`, 120, 60, { failClosed: false });
+    const rl = await rateLimit(`boats-map:${ip}`, 60, 60, { failClosed: false });
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many map requests. Please try again shortly." },
@@ -99,9 +57,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: boundsResult.error }, { status: 400 });
     }
 
-    if (!hasMapScope(filters, boundsResult.bounds)) {
+    if (!boundsResult.bounds) {
       return NextResponse.json(
-        { error: "Provide map bounds or at least one search filter." },
+        { error: "Map bounds are required." },
         { status: 400 }
       );
     }
@@ -120,17 +78,8 @@ export async function GET(req: Request) {
     appendBoundsFilter(conditions, queryParams, boundsResult.bounds);
 
     const whereSql = conditions.join(" AND ");
-    const total = await queryOne<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-       FROM boats b
-       LEFT JOIN users u ON u.id = b.seller_id
-       LEFT JOIN boat_dna d ON d.boat_id = b.id
-       WHERE ${whereSql}`,
-      queryParams
-    );
-
-    queryParams.push(limit);
-    const rows = await query<BoatMapRow>(
+    queryParams.push(limit + 1);
+    const rows = await query<PublicMapBoatRow>(
       `SELECT b.id, b.slug, b.make, b.model, b.year, b.location_text,
               b.location_lat, b.location_lng, b.location_geocode_precision,
               b.location_approximate
@@ -143,14 +92,16 @@ export async function GET(req: Request) {
        LIMIT $${queryParams.length}`,
       queryParams
     );
+    const limitedRows = rows.slice(0, limit);
+    const hasMore = rows.length > limit;
 
-    const markers = rows.map(buildMapMarker).filter((marker) => marker !== null);
+    const markers = limitedRows.map(buildPublicMapMarker).filter((marker) => marker !== null);
 
     logger.info(
       {
         durationMs: Date.now() - startedAt,
         resultCount: markers.length,
-        total: parseInt(total?.count || "0", 10),
+        hasMore,
         hasBounds: Boolean(boundsResult.bounds),
         hasLocationFilter: Boolean(filters.location),
       },
@@ -160,7 +111,8 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         boats: markers,
-        total: parseInt(total?.count || "0", 10),
+        returned: markers.length,
+        hasMore,
         limit,
         bounds: boundsResult.bounds,
       },

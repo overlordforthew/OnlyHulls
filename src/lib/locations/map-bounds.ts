@@ -1,5 +1,3 @@
-import type { BoatSearchFilters } from "@/lib/search/boat-search";
-
 export type MapBounds = {
   west: number;
   south: number;
@@ -7,9 +5,9 @@ export type MapBounds = {
   north: number;
 };
 
-export const MAP_MARKER_DEFAULT_LIMIT = 250;
-export const MAP_MARKER_MAX_LIMIT = 500;
-export const MAX_BOUNDS_AREA_DEGREES = 2500;
+export const MAP_MARKER_DEFAULT_LIMIT = 150;
+export const MAP_MARKER_MAX_LIMIT = 250;
+export const MAX_BOUNDS_AREA_DEGREES = 900;
 
 type MapBoundsParseResult =
   | { bounds: MapBounds | null; error: null }
@@ -91,19 +89,4 @@ export function parseMapMarkerLimit(searchParams: URLSearchParams): number {
   if (!Number.isFinite(requested) || requested < 1) return MAP_MARKER_DEFAULT_LIMIT;
 
   return Math.min(Math.floor(requested), MAP_MARKER_MAX_LIMIT);
-}
-
-export function hasMapScope(filters: BoatSearchFilters, bounds: MapBounds | null): boolean {
-  return Boolean(
-    bounds ||
-      filters.location ||
-      filters.search ||
-      filters.tag ||
-      filters.rigType ||
-      filters.hullType ||
-      filters.minPrice ||
-      filters.maxPrice ||
-      filters.minYear ||
-      filters.maxYear
-  );
 }
