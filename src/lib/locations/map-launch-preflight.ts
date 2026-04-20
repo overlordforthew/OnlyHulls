@@ -10,6 +10,7 @@ import type { MapReadinessSnapshot } from "@/lib/locations/map-readiness";
 type PreflightEnv = Record<string, string | undefined>;
 
 export type MapLaunchPreflightStatus = "pass" | "fail" | "warn" | "info";
+export type MapLaunchPreflightPhase = "backfill" | "launch";
 
 export type MapLaunchPreflightStep = {
   section: "env" | "network" | "readiness" | "review_queue" | "batch_simulation" | "verdict";
@@ -68,6 +69,7 @@ export type MapLaunchBatchSimulation = {
 
 export type MapLaunchPreflightInput = {
   env?: PreflightEnv;
+  phase?: MapLaunchPreflightPhase;
   readiness?: MapReadinessSnapshot | MapLaunchReadinessReport | null;
   batchSimulation?: MapLaunchBatchSimulation | null;
   externalSteps?: MapLaunchPreflightStep[];
@@ -76,6 +78,7 @@ export type MapLaunchPreflightInput = {
 
 export type MapLaunchPreflightResult = {
   verdict: "GO" | "NO_GO";
+  phase: MapLaunchPreflightPhase;
   generatedAt: string;
   blockers: MapLaunchPreflightStep[];
   warnings: MapLaunchPreflightStep[];
@@ -242,6 +245,8 @@ export function buildMapLaunchPreflight(
   input: MapLaunchPreflightInput = {}
 ): MapLaunchPreflightResult {
   const env = input.env || process.env;
+  const phase = input.phase || "launch";
+  const isLaunchPhase = phase === "launch";
   const steps: MapLaunchPreflightStep[] = [...(input.externalSteps || [])];
   const nextCommands: string[] = [];
   const provider = getProvider(env);
@@ -286,7 +291,7 @@ export function buildMapLaunchPreflight(
       target: "opencage",
       action: "Set LOCATION_GEOCODING_PROVIDER=opencage and LOCATION_GEOCODING_API_KEY.",
     }));
-    addUnique(nextCommands, "LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npm run db:map-launch-preflight");
+    addUnique(nextCommands, `LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npm run db:map-launch-preflight -- --phase=${phase}`);
   } else {
     steps.push(step({
       section: "env",
@@ -299,7 +304,7 @@ export function buildMapLaunchPreflight(
       target: "opencage",
       action: "Set LOCATION_GEOCODING_PROVIDER=opencage and LOCATION_GEOCODING_API_KEY.",
     }));
-    addUnique(nextCommands, "LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npm run db:map-launch-preflight");
+    addUnique(nextCommands, `LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npm run db:map-launch-preflight -- --phase=${phase}`);
   }
 
   if (hasConfiguredValue(contactEmail) || String(userAgent || "").includes("@")) {
@@ -342,7 +347,17 @@ export function buildMapLaunchPreflight(
     }));
   }
 
-  if (publicMapEnabled || publicClientFlagEnabled) {
+  if (!isLaunchPhase && (publicMapEnabled || publicClientFlagEnabled)) {
+    steps.push(step({
+      section: "env",
+      key: "public_map_flags_enabled_during_backfill",
+      status: "fail",
+      message: "Public map flags must stay off during initial geocode backfill.",
+      actual: `PUBLIC_MAP_ENABLED=${serverFlag || ""}, NEXT_PUBLIC_MAP_ENABLED=${clientFlag || ""}`,
+      target: "PUBLIC_MAP_ENABLED=false and NEXT_PUBLIC_MAP_ENABLED=false",
+      action: "Disable both public map flags before production backfill batches.",
+    }));
+  } else if (publicMapEnabled || publicClientFlagEnabled) {
     steps.push(step({
       section: "env",
       key: "public_map_flags_enabled",
@@ -356,93 +371,103 @@ export function buildMapLaunchPreflight(
     }));
   }
 
-  if (clientConfig.styleUrl && !containsUnexpandedPlaceholder(env.NEXT_PUBLIC_MAP_STYLE_URL)) {
-    steps.push(step({
-      section: "env",
-      key: "map_style_url_configured",
-      status: "pass",
-      message: "Map style URL is configured and parseable.",
-      actual: redactSensitiveUrl(clientConfig.styleUrl),
-    }));
-  } else {
-    steps.push(step({
-      section: "env",
-      key: "map_style_url_missing",
-      status: "fail",
-      message: "Map style URL is missing, unsafe, or still contains an unexpanded env placeholder.",
-      actual: env.NEXT_PUBLIC_MAP_STYLE_URL || null,
-      target: "expanded https MapTiler style URL",
-      action: "Set NEXT_PUBLIC_MAP_STYLE_URL with an expanded MapTiler key.",
-    }));
-    addUnique(nextCommands, "Configure MAPTILER_KEY, NEXT_PUBLIC_MAP_STYLE_URL, NEXT_PUBLIC_MAP_ATTRIBUTION, and NEXT_PUBLIC_MAP_RESOURCE_ORIGINS.");
-  }
+  if (isLaunchPhase) {
+    if (clientConfig.styleUrl && !containsUnexpandedPlaceholder(env.NEXT_PUBLIC_MAP_STYLE_URL)) {
+      steps.push(step({
+        section: "env",
+        key: "map_style_url_configured",
+        status: "pass",
+        message: "Map style URL is configured and parseable.",
+        actual: redactSensitiveUrl(clientConfig.styleUrl),
+      }));
+    } else {
+      steps.push(step({
+        section: "env",
+        key: "map_style_url_missing",
+        status: "fail",
+        message: "Map style URL is missing, unsafe, or still contains an unexpanded env placeholder.",
+        actual: env.NEXT_PUBLIC_MAP_STYLE_URL || null,
+        target: "expanded https MapTiler style URL",
+        action: "Set NEXT_PUBLIC_MAP_STYLE_URL with an expanded MapTiler key.",
+      }));
+      addUnique(nextCommands, "Configure MAPTILER_KEY, NEXT_PUBLIC_MAP_STYLE_URL, NEXT_PUBLIC_MAP_ATTRIBUTION, and NEXT_PUBLIC_MAP_RESOURCE_ORIGINS.");
+    }
 
-  const styleKey = getMapTilerKeyFromStyle(clientConfig.styleUrl);
-  if (!isMapTilerStyle(clientConfig.styleUrl) || hasConfiguredValue(env.MAPTILER_KEY) || hasConfiguredValue(styleKey)) {
-    steps.push(step({
-      section: "env",
-      key: "maptiler_key_configured",
-      status: clientConfig.styleUrl ? "pass" : "info",
-      message: clientConfig.styleUrl
-        ? "Tile-provider key appears configured for the style URL."
-        : "Tile-provider key cannot be checked until the style URL is configured.",
-      target: "restricted commercial tile key",
-    }));
-  } else {
-    steps.push(step({
-      section: "env",
-      key: "maptiler_key_missing",
-      status: "fail",
-      message: "MapTiler style URL is present but no usable key was found.",
-      actual: styleKey || env.MAPTILER_KEY || null,
-      target: "MAPTILER_KEY or expanded key= parameter",
-      action: "Set a referrer-restricted MapTiler key before staging launch.",
-    }));
-  }
+    const styleKey = getMapTilerKeyFromStyle(clientConfig.styleUrl);
+    if (!isMapTilerStyle(clientConfig.styleUrl) || hasConfiguredValue(env.MAPTILER_KEY) || hasConfiguredValue(styleKey)) {
+      steps.push(step({
+        section: "env",
+        key: "maptiler_key_configured",
+        status: clientConfig.styleUrl ? "pass" : "info",
+        message: clientConfig.styleUrl
+          ? "Tile-provider key appears configured for the style URL."
+          : "Tile-provider key cannot be checked until the style URL is configured.",
+        target: "restricted commercial tile key",
+      }));
+    } else {
+      steps.push(step({
+        section: "env",
+        key: "maptiler_key_missing",
+        status: "fail",
+        message: "MapTiler style URL is present but no usable key was found.",
+        actual: styleKey || env.MAPTILER_KEY || null,
+        target: "MAPTILER_KEY or expanded key= parameter",
+        action: "Set a referrer-restricted MapTiler key before staging launch.",
+      }));
+    }
 
-  if (clientConfig.attribution) {
-    steps.push(step({
-      section: "env",
-      key: "map_attribution_configured",
-      status: "pass",
-      message: "Map attribution text is configured.",
-    }));
-  } else {
-    steps.push(step({
-      section: "env",
-      key: "map_attribution_missing",
-      status: "fail",
-      message: "Map attribution is required before exposing the map.",
-      target: "NEXT_PUBLIC_MAP_ATTRIBUTION",
-      action: "Set provider and OpenStreetMap attribution text.",
-    }));
-  }
+    if (clientConfig.attribution) {
+      steps.push(step({
+        section: "env",
+        key: "map_attribution_configured",
+        status: "pass",
+        message: "Map attribution text is configured.",
+      }));
+    } else {
+      steps.push(step({
+        section: "env",
+        key: "map_attribution_missing",
+        status: "fail",
+        message: "Map attribution is required before exposing the map.",
+        target: "NEXT_PUBLIC_MAP_ATTRIBUTION",
+        action: "Set provider and OpenStreetMap attribution text.",
+      }));
+    }
 
-  if (String(env.NEXT_PUBLIC_MAP_RESOURCE_ORIGINS || "").includes("*")) {
-    steps.push(step({
-      section: "env",
-      key: "map_resource_origins_wildcard",
-      status: "fail",
-      message: "Map resource origins contain a wildcard.",
-      target: "explicit map style/tile/glyph/sprite origins only",
-      action: "Replace wildcard map origins with explicit HTTPS origins.",
-    }));
-  } else if (clientConfig.resourceOrigins.length > 0) {
-    steps.push(step({
-      section: "env",
-      key: "map_resource_origins_configured",
-      status: "pass",
-      message: "Map resource origins are explicit.",
-      actual: clientConfig.resourceOrigins.join(","),
-    }));
+    if (String(env.NEXT_PUBLIC_MAP_RESOURCE_ORIGINS || "").includes("*")) {
+      steps.push(step({
+        section: "env",
+        key: "map_resource_origins_wildcard",
+        status: "fail",
+        message: "Map resource origins contain a wildcard.",
+        target: "explicit map style/tile/glyph/sprite origins only",
+        action: "Replace wildcard map origins with explicit HTTPS origins.",
+      }));
+    } else if (clientConfig.resourceOrigins.length > 0) {
+      steps.push(step({
+        section: "env",
+        key: "map_resource_origins_configured",
+        status: "pass",
+        message: "Map resource origins are explicit.",
+        actual: clientConfig.resourceOrigins.join(","),
+      }));
+    } else {
+      steps.push(step({
+        section: "env",
+        key: "map_resource_origins_missing",
+        status: "fail",
+        message: "No map resource origins are configured.",
+        target: "explicit CSP/resource origins for map provider",
+        action: "Set NEXT_PUBLIC_MAP_RESOURCE_ORIGINS to the provider hosts.",
+      }));
+    }
   } else {
     steps.push(step({
       section: "env",
-      key: "map_resource_origins_missing",
-      status: "fail",
-      message: "No map resource origins are configured.",
-      target: "explicit CSP/resource origins for map provider",
-      action: "Set NEXT_PUBLIC_MAP_RESOURCE_ORIGINS to the provider hosts.",
+      key: "map_tile_env_deferred",
+      status: "info",
+      message: "Tile-provider env is not required for geocode backfill; it remains required for launch preflight.",
+      target: "run --phase=launch before enabling the public map",
     }));
   }
 
@@ -456,14 +481,14 @@ export function buildMapLaunchPreflight(
       action: "Run npm run db:geocode-readiness, then rerun this preflight.",
     }));
     addUnique(nextCommands, "npm run db:geocode-readiness");
-  } else if (getReadinessReady(input.readiness)) {
+  } else if (isLaunchPhase && getReadinessReady(input.readiness)) {
     steps.push(step({
       section: "readiness",
       key: "readiness_gates_passed",
       status: "pass",
       message: "Readiness gates report the map data as launch-ready.",
     }));
-  } else {
+  } else if (isLaunchPhase) {
     const blockers = getReadinessBlockers(input.readiness);
     steps.push(step({
       section: "readiness",
@@ -476,14 +501,30 @@ export function buildMapLaunchPreflight(
     addUnique(nextCommands, "npm run db:geocode-locations -- --limit=100 --apply");
     addUnique(nextCommands, "npm run db:geocode-review");
     addUnique(nextCommands, "npm run db:geocode-readiness");
+  } else {
+    const blockers = getReadinessBlockers(input.readiness);
+    steps.push(step({
+      section: "readiness",
+      key: blockers.length > 0 ? "readiness_available_with_backfill_blockers" : "readiness_available",
+      status: blockers.length > 0 ? "warn" : "pass",
+      message: blockers.length > 0
+        ? `Readiness snapshot is available; launch blockers remain as expected during backfill: ${blockers.slice(0, 5).join(", ")}.`
+        : "Readiness snapshot is available for backfill planning.",
+      target: "read-only readiness snapshot",
+      action: blockers.length > 0 ? "Continue backfill and review queue cleanup before launch." : undefined,
+    }));
   }
 
   for (const gate of getReadinessGates(input.readiness)) {
     steps.push(step({
       section: "readiness",
       key: gate.key || "readiness_gate",
-      status: gate.passed ? "pass" : "fail",
-      message: gate.passed ? "Readiness gate passed." : "Readiness gate failed.",
+      status: gate.passed ? "pass" : isLaunchPhase ? "fail" : "warn",
+      message: gate.passed
+        ? "Readiness gate passed."
+        : isLaunchPhase
+          ? "Readiness gate failed."
+          : "Readiness launch gate is still failing during backfill.",
       actual: gate.actual,
       target: gate.target,
     }));
@@ -507,7 +548,7 @@ export function buildMapLaunchPreflight(
       message: "No review/failed geocodes remain.",
       actual: 0,
     }));
-  } else {
+  } else if (isLaunchPhase) {
     steps.push(step({
       section: "review_queue",
       key: "review_queue_not_clear",
@@ -518,6 +559,16 @@ export function buildMapLaunchPreflight(
       action: "Run npm run db:geocode-review and resolve or hold back those locations.",
     }));
     addUnique(nextCommands, "npm run db:geocode-review");
+  } else {
+    steps.push(step({
+      section: "review_queue",
+      key: "review_queue_not_clear",
+      status: "warn",
+      message: `${reviewFailedCount.toLocaleString()} review/failed geocode rows remain; they do not block pending-only backfill.`,
+      actual: reviewFailedCount,
+      target: "0 before launch",
+      action: "Do not use --include-review until the review queue has been triaged.",
+    }));
   }
 
   const staleCount = getInvariantCount(
@@ -529,11 +580,15 @@ export function buildMapLaunchPreflight(
     steps.push(step({
       section: "readiness",
       key: "stale_public_coordinates",
-      status: "fail",
-      message: `${staleCount.toLocaleString()} public pins are stale and need re-verification.`,
+      status: isLaunchPhase ? "fail" : "warn",
+      message: isLaunchPhase
+        ? `${staleCount.toLocaleString()} public pins are stale and need re-verification.`
+        : `${staleCount.toLocaleString()} public pins are stale; this does not block pending-only backfill.`,
       actual: staleCount,
       target: 0,
-      action: "Re-verify stale pins before public launch.",
+      action: isLaunchPhase
+        ? "Re-verify stale pins before public launch."
+        : "Re-verify stale pins before launch preflight.",
     }));
   }
 
@@ -546,11 +601,15 @@ export function buildMapLaunchPreflight(
     steps.push(step({
       section: "readiness",
       key: "low_score_public_pins",
-      status: "fail",
-      message: `${lowScoreCount.toLocaleString()} public pins are below the configured score floor.`,
+      status: isLaunchPhase ? "fail" : "warn",
+      message: isLaunchPhase
+        ? `${lowScoreCount.toLocaleString()} public pins are below the configured score floor.`
+        : `${lowScoreCount.toLocaleString()} public pins are below the configured score floor; this does not block pending-only backfill.`,
       actual: lowScoreCount,
       target: 0,
-      action: "Review or hold back low-score public pins.",
+      action: isLaunchPhase
+        ? "Review or hold back low-score public pins."
+        : "Review or hold back low-score public pins before launch preflight.",
     }));
   }
 
@@ -607,13 +666,21 @@ export function buildMapLaunchPreflight(
   const blockers = steps.filter((item) => item.status === "fail");
   const warnings = steps.filter((item) => item.status === "warn");
   if (blockers.length === 0) {
-    addUnique(nextCommands, "npm run db:geocode-readiness");
-    addUnique(nextCommands, "Enable PUBLIC_MAP_ENABLED=true and NEXT_PUBLIC_MAP_ENABLED=true in staging first.");
-    addUnique(nextCommands, "Run map-enabled browser smoke and production build before flipping production flags.");
+    if (isLaunchPhase) {
+      addUnique(nextCommands, "npm run db:geocode-readiness");
+      addUnique(nextCommands, "Enable PUBLIC_MAP_ENABLED=true and NEXT_PUBLIC_MAP_ENABLED=true in staging first.");
+      addUnique(nextCommands, "Run map-enabled browser smoke and production build before flipping production flags.");
+    } else {
+      addUnique(nextCommands, "npm run db:geocode-locations -- --limit=100 --apply");
+      addUnique(nextCommands, "Review samplePins, geographyMismatches, precisionSplit, and failureReasons before scaling.");
+      addUnique(nextCommands, "Rerun npm run db:map-launch-preflight -- --phase=backfill after each batch.");
+      addUnique(nextCommands, "After readiness passes, run npm run db:map-launch-preflight -- --phase=launch --ping before enabling public map flags.");
+    }
   }
 
   return {
     verdict: blockers.length === 0 ? "GO" : "NO_GO",
+    phase,
     generatedAt: input.generatedAt || new Date().toISOString(),
     blockers,
     warnings,

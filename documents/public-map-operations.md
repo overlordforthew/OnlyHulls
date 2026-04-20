@@ -56,7 +56,9 @@ Notes:
 
 ## Staging Checklist
 
-1. `npm run db:map-launch-preflight -- --ping` returns `GO` against the intended staging/production database and configured providers.
+Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` is only for coordinate-write readiness while the public map stays off.
+
+1. `npm run db:map-launch-preflight -- --phase=launch --ping` returns `GO` against the intended staging/production database and configured providers.
 2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
 3. At least one sample-pin audit has been reviewed for obvious bad coordinates.
 4. MapTiler key is referrer-restricted to staging and production domains.
@@ -69,7 +71,7 @@ Notes:
 ## Launch Sequence
 
 1. Confirm deploy health is on the intended build.
-2. Run `npm run db:map-launch-preflight -- --ping` in production and confirm it returns `GO`.
+2. Run `npm run db:map-launch-preflight -- --phase=launch --ping` in production and confirm it returns `GO`.
 3. Set `PUBLIC_MAP_ENABLED=true`.
 4. Set `NEXT_PUBLIC_MAP_ENABLED=true`.
 5. Redeploy.

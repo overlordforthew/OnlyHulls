@@ -88,6 +88,14 @@ const launchEnv = {
   NEXT_PUBLIC_MAP_RESOURCE_ORIGINS: "https://api.maptiler.com,https://tiles.maptiler.com",
 };
 
+const backfillEnv = {
+  LOCATION_GEOCODING_PROVIDER: "opencage",
+  LOCATION_GEOCODING_API_KEY: "opencage_live_key",
+  LOCATION_GEOCODING_EMAIL: "ops@onlyhulls.com",
+  PUBLIC_MAP_ENABLED: "false",
+  NEXT_PUBLIC_MAP_ENABLED: "false",
+};
+
 test("map launch preflight blocks the default unconfigured environment", () => {
   const result = buildMapLaunchPreflight({
     env: {
@@ -107,6 +115,67 @@ test("map launch preflight blocks the default unconfigured environment", () => {
   assert(result.blockers.some((step) => step.key === "batch_simulation_missing"));
 });
 
+test("map backfill preflight allows safe OpenCage batches before tile-provider launch config", () => {
+  const notLaunchReadySnapshot: MapReadinessSnapshot = {
+    ...readySnapshot,
+    launchReady: false,
+    blockers: ["public pins below 85%", "review/failed geocodes above 0%"],
+    summary: {
+      ...readySnapshot.summary,
+      publicPinCount: 40,
+      reviewCount: 3,
+      failedCount: 1,
+    },
+  };
+  const result = buildMapLaunchPreflight({
+    env: backfillEnv,
+    phase: "backfill",
+    readiness: notLaunchReadySnapshot,
+    batchSimulation: safeBatch,
+  });
+
+  assert.equal(result.verdict, "GO");
+  assert.equal(result.phase, "backfill");
+  assert.equal(result.blockers.length, 0);
+  assert(result.warnings.some((step) => step.key === "readiness_available_with_backfill_blockers"));
+  assert(result.warnings.some((step) => step.key === "review_queue_not_clear"));
+  assert(result.steps.some((step) => step.key === "map_tile_env_deferred" && step.status === "info"));
+  assert(result.nextCommands.some((command) => command.includes("db:geocode-locations")));
+  assert(result.nextCommands.some((command) => command.includes("--phase=launch --ping")));
+});
+
+test("map backfill preflight still requires OpenCage before paid coordinate work", () => {
+  const result = buildMapLaunchPreflight({
+    env: {
+      ...backfillEnv,
+      LOCATION_GEOCODING_PROVIDER: "disabled",
+      LOCATION_GEOCODING_API_KEY: "",
+    },
+    phase: "backfill",
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "commercial_geocoder_not_configured"));
+});
+
+test("map backfill preflight blocks oversized paid-provider batch simulations", () => {
+  const result = buildMapLaunchPreflight({
+    env: backfillEnv,
+    phase: "backfill",
+    readiness: readySnapshot,
+    batchSimulation: {
+      ...safeBatch,
+      selectedRows: 2500,
+      selectedUniqueQueries: 2001,
+    },
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert.equal(result.blockers.find((step) => step.key === "batch_apply_safety")?.actual, "selected_unique_queries_2001_exceeds_2000");
+});
+
 test("map launch preflight returns GO only when env, readiness, review queue, and batch safety pass", () => {
   const result = buildMapLaunchPreflight({
     env: launchEnv,
@@ -121,6 +190,34 @@ test("map launch preflight returns GO only when env, readiness, review queue, an
   assert(result.nextCommands.some((command) => command.includes("staging")));
   assert.equal(JSON.stringify(result).includes("maptiler_live_key"), false);
   assert(JSON.stringify(result).includes("key=redacted"));
+});
+
+test("map launch preflight remains the default strict phase", () => {
+  const result = buildMapLaunchPreflight({
+    env: backfillEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+  });
+
+  assert.equal(result.phase, "launch");
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "map_style_url_missing"));
+});
+
+test("map backfill preflight fails closed if public map flags are already enabled", () => {
+  const result = buildMapLaunchPreflight({
+    env: {
+      ...backfillEnv,
+      PUBLIC_MAP_ENABLED: "true",
+      NEXT_PUBLIC_MAP_ENABLED: "true",
+    },
+    phase: "backfill",
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.key === "public_map_flags_enabled_during_backfill"));
 });
 
 test("map launch preflight rejects validation-only Nominatim for commercial launch", () => {

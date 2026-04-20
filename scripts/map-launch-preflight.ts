@@ -3,7 +3,7 @@ import path from "path";
 
 import { pool, query } from "../src/lib/db";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
-import { buildMapLaunchPreflight, type MapLaunchBatchSimulation, type MapLaunchPreflightResult, type MapLaunchPreflightStep } from "../src/lib/locations/map-launch-preflight";
+import { buildMapLaunchPreflight, type MapLaunchBatchSimulation, type MapLaunchPreflightPhase, type MapLaunchPreflightResult, type MapLaunchPreflightStep } from "../src/lib/locations/map-launch-preflight";
 import { buildGeocodeQuery, getGeocodingConfig } from "../src/lib/locations/geocoding";
 import { getMapReadinessSnapshot } from "../src/lib/locations/map-readiness-data";
 
@@ -36,6 +36,13 @@ function getBatchLimit() {
 function getPingTimeoutMs() {
   const parsed = Number(getArgValue("--ping-timeout-ms") || DEFAULT_PING_TIMEOUT_MS);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 30_000) : DEFAULT_PING_TIMEOUT_MS;
+}
+
+function getPhase(): MapLaunchPreflightPhase {
+  const value = String(getArgValue("--phase") || "launch").trim().toLowerCase();
+  if (value === "backfill" || value === "launch") return value;
+
+  throw new Error(`Invalid --phase=${value}. Expected --phase=backfill or --phase=launch.`);
 }
 
 function readReadinessReport(filePath: string) {
@@ -98,43 +105,56 @@ function getOpenCagePingUrl() {
   return url.toString();
 }
 
-async function runPingChecks(timeoutMs: number): Promise<MapLaunchPreflightStep[]> {
+async function runPingChecks(
+  phase: MapLaunchPreflightPhase,
+  timeoutMs: number
+): Promise<MapLaunchPreflightStep[]> {
   const steps: MapLaunchPreflightStep[] = [];
   const styleUrl = getExpandedMapStyleUrl();
-  if (!styleUrl) {
+  if (phase === "launch") {
+    if (!styleUrl) {
+      steps.push({
+        section: "network",
+        key: "map_style_ping_skipped",
+        status: "fail",
+        message: "Map style ping could not run because the style URL is missing or still contains an env placeholder.",
+        target: "expanded NEXT_PUBLIC_MAP_STYLE_URL",
+        action: "Configure the tile style URL before using --ping.",
+      });
+    } else {
+      try {
+        const response = await fetchWithTimeout(styleUrl, timeoutMs);
+        steps.push({
+          section: "network",
+          key: "map_style_ping",
+          status: response.ok ? "pass" : "fail",
+          message: response.ok
+            ? "Map style URL responded successfully."
+            : `Map style URL responded with HTTP ${response.status}.`,
+          actual: `${response.status} ${redactUrl(styleUrl)}`,
+          target: "HTTP 2xx",
+          action: response.ok ? undefined : "Fix the tile provider key, style URL, or resource restrictions.",
+        });
+      } catch (err) {
+        steps.push({
+          section: "network",
+          key: "map_style_ping",
+          status: "fail",
+          message: err instanceof Error ? err.message : "Map style ping failed.",
+          actual: redactUrl(styleUrl),
+          target: "reachable map style URL",
+          action: "Fix the tile provider key, style URL, or network egress before launch.",
+        });
+      }
+    }
+  } else {
     steps.push({
       section: "network",
-      key: "map_style_ping_skipped",
-      status: "fail",
-      message: "Map style ping could not run because the style URL is missing or still contains an env placeholder.",
-      target: "expanded NEXT_PUBLIC_MAP_STYLE_URL",
-      action: "Configure the tile style URL before using --ping.",
+      key: "map_style_ping_deferred",
+      status: "info",
+      message: "Map style ping is deferred during geocode backfill and remains required for launch preflight.",
+      target: "run --phase=launch --ping before enabling public map flags",
     });
-  } else {
-    try {
-      const response = await fetchWithTimeout(styleUrl, timeoutMs);
-      steps.push({
-        section: "network",
-        key: "map_style_ping",
-        status: response.ok ? "pass" : "fail",
-        message: response.ok
-          ? "Map style URL responded successfully."
-          : `Map style URL responded with HTTP ${response.status}.`,
-        actual: `${response.status} ${redactUrl(styleUrl)}`,
-        target: "HTTP 2xx",
-        action: response.ok ? undefined : "Fix the tile provider key, style URL, or resource restrictions.",
-      });
-    } catch (err) {
-      steps.push({
-        section: "network",
-        key: "map_style_ping",
-        status: "fail",
-        message: err instanceof Error ? err.message : "Map style ping failed.",
-        actual: redactUrl(styleUrl),
-        target: "reachable map style URL",
-        action: "Fix the tile provider key, style URL, or network egress before launch.",
-      });
-    }
   }
 
   const config = getGeocodingConfig();
@@ -232,7 +252,7 @@ async function getBatchSimulation(limit: number): Promise<MapLaunchBatchSimulati
 
 function renderText(result: MapLaunchPreflightResult) {
   const lines = [
-    `Map launch preflight: ${result.verdict}`,
+    `Map launch preflight (phase=${result.phase}): ${result.verdict}`,
     `Generated: ${result.generatedAt}`,
     "",
   ];
@@ -271,6 +291,7 @@ async function main() {
   const json = hasFlag("--json");
   const skipDb = hasFlag("--skip-db");
   const ping = hasFlag("--ping");
+  const phase = getPhase();
   const readinessReportPath = getArgValue("--readiness-report");
   const batchLimit = getBatchLimit();
   const pingTimeoutMs = getPingTimeoutMs();
@@ -306,11 +327,12 @@ async function main() {
   }
 
   if (ping) {
-    externalSteps.push(...(await runPingChecks(pingTimeoutMs)));
+    externalSteps.push(...(await runPingChecks(phase, pingTimeoutMs)));
   }
 
   const result = buildMapLaunchPreflight({
     env: process.env,
+    phase,
     readiness,
     batchSimulation,
     externalSteps,
