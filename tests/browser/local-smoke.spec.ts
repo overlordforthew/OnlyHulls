@@ -41,6 +41,40 @@ const mockBrowseBoats = [
   },
 ];
 
+const mockMapMarkerBoats = [
+  {
+    slug: "2018-lagoon-450-f",
+    title: "2018 Lagoon 450 F",
+    locationText: "Fajardo, Puerto Rico",
+    lat: 18.3358,
+    lng: -65.6319,
+    precision: "marina",
+    approximate: false,
+  },
+];
+
+const mockDenseMapMarkerBoats = [
+  ...mockMapMarkerBoats,
+  {
+    slug: "2019-leopard-45",
+    title: "2019 Leopard 45",
+    locationText: "Fajardo, Puerto Rico",
+    lat: 18.3458,
+    lng: -65.6419,
+    precision: "marina",
+    approximate: false,
+  },
+  {
+    slug: "2020-bali-4-6",
+    title: "2020 Bali 4.6",
+    locationText: "Fajardo, Puerto Rico",
+    lat: 18.3658,
+    lng: -65.6519,
+    precision: "marina",
+    approximate: false,
+  },
+];
+
 async function mockBoatsResponse(page: Page) {
   await page.route(/\/api\/boats\/location-markets(?:\?.*)?$/, async (route) => {
     await route.fulfill({
@@ -112,7 +146,11 @@ async function mockBrokenMapStyle(page: Page) {
   });
 }
 
-async function mockMapMarkersResponse(page: Page, onRequest?: (url: URL) => void) {
+async function mockMapMarkersResponse(
+  page: Page,
+  onRequest?: (url: URL) => void,
+  boats = mockMapMarkerBoats
+) {
   await page.route(/\/api\/boats\/map(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     onRequest?.(url);
@@ -123,18 +161,8 @@ async function mockMapMarkersResponse(page: Page, onRequest?: (url: URL) => void
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        boats: [
-          {
-            slug: "2018-lagoon-450-f",
-            title: "2018 Lagoon 450 F",
-            locationText: "Fajardo, Puerto Rico",
-            lat: 18.3358,
-            lng: -65.6319,
-            precision: "marina",
-            approximate: false,
-          },
-        ],
-        returned: 1,
+        boats,
+        returned: boats.length,
         hasMore: false,
         limit: 150,
       }),
@@ -307,6 +335,27 @@ test("boats map view fetches precise markers and links back to listings", async 
     "href",
     "/boats/2018-lagoon-450-f"
   );
+});
+
+test("boats map clusters dense marker markets and expands clusters", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockMapMarkersResponse(page, undefined, mockDenseMapMarkerBoats);
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.70000&mapZoom=7.00");
+
+  const cluster = page.getByTestId("boats-map-cluster").first();
+  await expect(cluster).toHaveText("3", { timeout: MAP_SHELL_TIMEOUT_MS });
+  await expect(cluster).toHaveAttribute("aria-label", "3 boats in this area. Zoom in to expand.");
+  await expect(cluster).not.toContainText("Lagoon");
+  await expect(page.getByTestId("boats-map-marker")).toHaveCount(0);
+
+  await cluster.click();
+  await expect(page.getByTestId("boats-map-cluster").filter({ hasText: "3" })).toHaveCount(0, {
+    timeout: MAP_SHELL_TIMEOUT_MS,
+  });
+  await expect.poll(() => page.getByTestId("boats-map-marker").count()).toBeGreaterThan(0);
 });
 
 test("boats map URL state opens shared map links and updates after zoom", async ({ page }) => {

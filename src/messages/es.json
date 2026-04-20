@@ -550,7 +550,8 @@
     "copyFailed": "No se pudo copiar: usa la barra de direcciones",
     "recenter": "Recentrar",
     "recenterOn": "Recentrar en {location}",
-    "resetView": "Restablecer vista"
+    "resetView": "Restablecer vista",
+    "clusterLabel": "{count, plural, one {# barco en esta zona. Acerca el mapa para expandir.} other {# barcos en esta zona. Acerca el mapa para expandir.}}"
   },
   "searchHubsTitle": "Explora hubs de búsqueda",
     "searchHubsSubtitle": "Usa páginas estables de exploración para marcas, regiones y tipos de barco populares.",

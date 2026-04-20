@@ -550,7 +550,8 @@
     "copyFailed": "Copy failed: use your browser address bar",
     "recenter": "Recenter",
     "recenterOn": "Recenter on {location}",
-    "resetView": "Reset view"
+    "resetView": "Reset view",
+    "clusterLabel": "{count, plural, one {# boat in this area. Zoom in to expand.} other {# boats in this area. Zoom in to expand.}}"
   },
   "searchHubsTitle": "Explore Search Hubs",
     "searchHubsSubtitle": "Use stable browse pages for popular makes, regions, and boat types.",

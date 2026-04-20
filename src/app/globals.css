@@ -254,3 +254,27 @@ input, select, textarea {
 .oh-map-marker-street {
   background: var(--accent);
 }
+
+.oh-map-cluster {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 9px;
+  appearance: none;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 72%, var(--success));
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.oh-map-cluster:hover,
+.oh-map-cluster:focus-visible {
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 14px 34px rgba(0, 175, 240, 0.38);
+  outline: none;
+}

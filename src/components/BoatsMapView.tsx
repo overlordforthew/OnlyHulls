@@ -16,6 +16,13 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getPublicMapClientConfig } from "@/lib/config/public-map";
+import {
+  createBoatMapClusterIndex,
+  getBoatMapClusterBounds,
+  getBoatMapClusterItems,
+  type BoatMapBounds,
+  type BoatMapClusterItem,
+} from "@/lib/locations/map-clusters";
 import { MAX_BOUNDS_AREA_DEGREES } from "@/lib/locations/map-bounds";
 import {
   hasMapViewportParams,
@@ -69,6 +76,16 @@ function getCurrentViewport(map: MapLibreMap): MapInitialViewport {
   };
 }
 
+function getCurrentBounds(map: MapLibreMap): BoatMapBounds {
+  const bounds = map.getBounds();
+  return [
+    clamp(bounds.getWest(), -180, 180),
+    clamp(bounds.getSouth(), -90, 90),
+    clamp(bounds.getEast(), -180, 180),
+    clamp(bounds.getNorth(), -90, 90),
+  ];
+}
+
 function isSameViewport(left: MapInitialViewport, right: MapInitialViewport) {
   return (
     Math.abs(left.latitude - right.latitude) < 0.00001 &&
@@ -118,6 +135,11 @@ export default function BoatsMapView({
   const abortRef = useRef<AbortController | null>(null);
   const searchParamsRef = useRef(searchParams);
   const [markers, setMarkers] = useState<PublicMapMarker[]>([]);
+  const [clusterViewport, setClusterViewport] = useState<{
+    bounds: BoatMapBounds;
+    key: string;
+    zoom: number;
+  } | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +154,14 @@ export default function BoatsMapView({
   );
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const copyStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clusterIndex = useMemo(() => createBoatMapClusterIndex(markers), [markers]);
+  const clusterItems = useMemo(
+    () =>
+      clusterViewport
+        ? getBoatMapClusterItems(clusterIndex, clusterViewport.bounds, clusterViewport.zoom)
+        : [],
+    [clusterIndex, clusterViewport]
+  );
 
   const openMarkerPopup = useCallback((marker: PublicMapMarker) => {
     const map = mapRef.current;
@@ -175,6 +205,53 @@ export default function BoatsMapView({
       duration: 420,
     });
   }, [openMarkerPopup]);
+
+  const syncClusterViewport = useCallback((map: MapLibreMap) => {
+    const bounds = getCurrentBounds(map);
+    const zoom = map.getZoom();
+    const key = `${Math.floor(zoom)}:${bounds.map((value) => value.toFixed(4)).join(",")}`;
+
+    setClusterViewport((current) => {
+      if (current?.key === key) return current;
+      return { bounds, key, zoom };
+    });
+  }, []);
+
+  const expandCluster = useCallback((cluster: Extract<BoatMapClusterItem, { kind: "cluster" }>) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    popupRef.current?.remove();
+    setSelectedSlug(null);
+    const [west, south, east, north] = getBoatMapClusterBounds(
+      clusterIndex,
+      cluster.id,
+      cluster.lng,
+      cluster.lat
+    );
+    const nextZoom = Math.min(cluster.expansionZoom, map.getMaxZoom());
+
+    if (west === east && south === north) {
+      map.easeTo({
+        center: [cluster.lng, cluster.lat],
+        zoom: Math.min(map.getMaxZoom(), Math.max(map.getZoom() + 1, nextZoom)),
+        duration: 420,
+      });
+      return;
+    }
+
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 72,
+        maxZoom: nextZoom,
+        duration: 420,
+      }
+    );
+  }, [clusterIndex]);
 
   const fetchMarkers = useCallback(async () => {
     const map = mapRef.current;
@@ -406,6 +483,7 @@ export default function BoatsMapView({
       mapReadyRef.current = true;
       setMapReady(true);
       setCurrentViewport(getCurrentViewport(map));
+      syncClusterViewport(map);
       scheduleFetch(0);
       const activeUrlViewport = urlViewportRef.current;
       if (!activeUrlViewport || !isSameViewport(getCurrentViewport(map), activeUrlViewport)) {
@@ -420,6 +498,7 @@ export default function BoatsMapView({
     });
     map.on("moveend", () => {
       setCurrentViewport(getCurrentViewport(map));
+      syncClusterViewport(map);
       scheduleFetch();
       scheduleViewportWrite();
     });
@@ -442,6 +521,7 @@ export default function BoatsMapView({
     config.styleUrl,
     scheduleFetch,
     scheduleViewportWrite,
+    syncClusterViewport,
     t,
   ]);
 
@@ -466,10 +546,26 @@ export default function BoatsMapView({
     if (!map) return;
 
     markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = markers.map((marker) => {
+    markersRef.current = clusterItems.map((item) => {
+      if (item.kind === "cluster") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "oh-map-cluster";
+        button.textContent = item.label;
+        button.setAttribute("data-testid", "boats-map-cluster");
+        button.setAttribute("aria-label", t("clusterLabel", { count: item.count }));
+        button.addEventListener("click", () => expandCluster(item));
+
+        return new maplibregl.Marker({ element: button, anchor: "center" })
+          .setLngLat([item.lng, item.lat])
+          .addTo(map);
+      }
+
+      const marker = item.marker;
       const button = document.createElement("button");
       button.type = "button";
       button.className = getMarkerClassName(marker, marker.slug === selectedSlug);
+      button.setAttribute("data-testid", "boats-map-marker");
       button.setAttribute("aria-label", `${marker.title}, ${marker.locationText || t("unknownLocation")}`);
       button.addEventListener("click", () => focusMarker(marker));
 
@@ -484,7 +580,7 @@ export default function BoatsMapView({
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
     };
-  }, [focusMarker, markers, selectedSlug, t]);
+  }, [clusterItems, expandCluster, focusMarker, selectedSlug, t]);
 
   if (!config.enabled) {
     return (
