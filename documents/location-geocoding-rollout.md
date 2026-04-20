@@ -29,9 +29,12 @@ This runbook is for the first commercial coordinate backfill. It does not launch
 3. Run the read-only readiness report and fix P0 blockers before any write batch:
 
    ```bash
+   npm run db:map-launch-preflight
    npm run db:geocode-readiness
    npm run db:geocode-review
    ```
+
+   `db:map-launch-preflight` is the non-destructive GO/NO-GO gate. It checks geocoder env, tile env, public map flags, readiness, review queue state, stale/low-score public pins, and the next batch size before any `--apply` run.
 
 4. Refresh the provider comparison/golden-set artifact:
 
@@ -68,6 +71,7 @@ Record each sample pin as accept/reject. Scale only when at least 95% of sampled
 Then rerun:
 
 ```bash
+npm run db:map-launch-preflight
 npm run db:geocode-readiness
 npm run db:geocode-review
 ```

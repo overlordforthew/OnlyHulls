@@ -149,6 +149,7 @@ Recommended first tile provider:
 
 Operational notes:
 
+- Run `npm run db:map-launch-preflight` before any production `--apply` batch and again before enabling the public map flags. It is read-only and returns `GO` only when env, readiness gates, review queue, stale/low-score pin checks, and next-batch safety pass together.
 - First-time production backfills should follow `documents/location-geocoding-rollout.md`.
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
 - Use `/admin/map-readiness` as the aggregate launch gate before enabling the public map flags.

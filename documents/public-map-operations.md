@@ -56,24 +56,26 @@ Notes:
 
 ## Staging Checklist
 
-1. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
-2. At least one sample-pin audit has been reviewed for obvious bad coordinates.
-3. MapTiler key is referrer-restricted to staging and production domains.
-4. MapTiler budget/session cap is configured.
-5. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
-6. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
-7. Browser tests pass with map off, map happy path, 429 response, and broken style response.
-8. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
+1. `npm run db:map-launch-preflight` returns `GO` against the intended staging/production database.
+2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
+3. At least one sample-pin audit has been reviewed for obvious bad coordinates.
+4. MapTiler key is referrer-restricted to staging and production domains.
+5. MapTiler budget/session cap is configured.
+6. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
+7. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
+8. Browser tests pass with map off, map happy path, 429 response, and broken style response.
+9. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
 
 ## Launch Sequence
 
 1. Confirm deploy health is on the intended build.
-2. Set `PUBLIC_MAP_ENABLED=true`.
-3. Set `NEXT_PUBLIC_MAP_ENABLED=true`.
-4. Redeploy.
-5. Run production smoke tests.
-6. Manually verify `/boats?location=puerto-rico`, `/boats?location=florida`, and one non-US market.
-7. Watch map request volume, tile-provider usage, API 429s, and CSP reports.
+2. Run `npm run db:map-launch-preflight` in production and confirm it returns `GO`.
+3. Set `PUBLIC_MAP_ENABLED=true`.
+4. Set `NEXT_PUBLIC_MAP_ENABLED=true`.
+5. Redeploy.
+6. Run production smoke tests.
+7. Manually verify `/boats?location=puerto-rico`, `/boats?location=florida`, and one non-US market.
+8. Watch map request volume, tile-provider usage, API 429s, and CSP reports.
 
 ## Rollback
 
