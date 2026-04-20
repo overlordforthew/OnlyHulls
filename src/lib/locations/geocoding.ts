@@ -137,6 +137,11 @@ const CITY_PLACE_TYPES = new Set([
   "neighborhood",
 ]);
 const OPENCAGE_REGION_TYPES = new Set([...ADMIN_REGION_ADDRESS_TYPES, "body_of_water"]);
+const OPENCAGE_MIN_CONFIDENCE_BY_PRECISION: Partial<Record<GeocodePrecision, number>> = {
+  exact: 8,
+  street: 7,
+  marina: 7,
+};
 
 function normalizeLookupValue(value?: string | null) {
   return String(value || "")
@@ -220,15 +225,19 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
     return null;
   }
 
+  const country = String(input.country || "").trim();
+  const normalizedCountry = normalizeLookupValue(country);
+  if (COUNTRY_CODES[normalizedLocation] || (normalizedCountry && normalizedCountry === normalizedLocation)) {
+    return null;
+  }
+
   const confidence = String(input.confidence || "").toLowerCase();
   const looksSpecific =
     confidence === "city" ||
     confidence === "exact" ||
-    locationText.includes(",") ||
-    normalizeLookupValue(input.country) === normalizedLocation;
+    locationText.includes(",");
   if (!looksSpecific) return null;
 
-  const country = String(input.country || "").trim();
   const locationIncludesCountry =
     country && normalizeLookupValue(locationText).includes(normalizeLookupValue(country));
   const parts = uniqueParts([
@@ -527,7 +536,10 @@ export async function geocodeWithOpenCage(
     const normalizedConfidence = Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 10) : 0;
     const precision = inferOpenCagePrecision(components, normalizedConfidence);
     const score = scorePrecision(normalizedConfidence / 10, precision);
-    const lowConfidence = normalizedConfidence <= 3;
+    const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
+    const lowConfidence =
+      normalizedConfidence <= 3 ||
+      (typeof precisionConfidenceFloor === "number" && normalizedConfidence < precisionConfidenceFloor);
     const lowPrecision = precision === "country" || precision === "unknown";
 
     return {

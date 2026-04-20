@@ -14,6 +14,8 @@ type SummaryRow = {
   failed_count: string;
   invalid_public_coordinate_count: string;
   public_admin_boundary_count: string;
+  public_missing_metadata_count: string;
+  low_score_public_pin_count: string;
   stale_public_coordinate_count: string;
 };
 
@@ -28,6 +30,12 @@ type CandidateRow = {
 type CountRow = {
   label: string;
   count: string;
+};
+
+type CoverageRow = {
+  label: string;
+  active_visible_count: string;
+  public_pin_count: string;
 };
 
 type PublicPinSampleRow = {
@@ -58,7 +66,10 @@ const PUBLIC_ADMIN_BOUNDARY_TYPES = [
 const COVERAGE_TARGET = 85;
 const PENDING_READY_MAX = 10;
 const REVIEW_FAILED_MAX = 5;
-const SINGLE_ERROR_MAX = 20;
+const PROVIDER_ERROR_MAX = 5;
+const REGIONAL_COVERAGE_TARGET = 60;
+const REGIONAL_COVERAGE_MIN_LISTINGS = 50;
+const PUBLIC_PIN_SCORE_MIN = 0.7;
 
 function parseCount(value: string | null | undefined) {
   return Number.parseInt(value || "0", 10);
@@ -81,6 +92,19 @@ function sortEntries(record: Record<string, number>) {
 
 function addCount(record: Record<string, number>, key: string) {
   record[key] = (record[key] || 0) + 1;
+}
+
+function isProviderSideError(error: string) {
+  const normalized = error.trim().toLowerCase();
+  return (
+    /^http_(402|403|429|5\d\d)$/.test(normalized) ||
+    normalized.includes("rate") ||
+    normalized.includes("quota") ||
+    normalized.includes("timeout") ||
+    normalized.includes("abort") ||
+    normalized.includes("network") ||
+    normalized.includes("provider")
+  );
 }
 
 async function main() {
@@ -134,12 +158,28 @@ async function main() {
          WHERE b.location_lat BETWEEN -90 AND 90
            AND b.location_lng BETWEEN -180 AND 180
            AND b.location_geocode_precision = ANY($1::text[])
+           AND (
+             b.location_geocode_provider IS NULL
+             OR b.location_geocode_score IS NULL
+             OR b.location_geocoded_at IS NULL
+           )
+       )::text AS public_missing_metadata_count,
+       COUNT(*) FILTER (
+         WHERE b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+           AND b.location_geocode_precision = ANY($1::text[])
+           AND COALESCE(b.location_geocode_score, 0) < $3
+       )::text AS low_score_public_pin_count,
+       COUNT(*) FILTER (
+         WHERE b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+           AND b.location_geocode_precision = ANY($1::text[])
            AND b.location_geocoded_at < NOW() - INTERVAL '90 days'
        )::text AS stale_public_coordinate_count
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE ${ACTIVE_VISIBLE_SQL}`,
-    [publicPrecisions, PUBLIC_ADMIN_BOUNDARY_TYPES]
+    [publicPrecisions, PUBLIC_ADMIN_BOUNDARY_TYPES, PUBLIC_PIN_SCORE_MIN]
   );
 
   const precisionRows = await query<CountRow>(
@@ -197,6 +237,59 @@ async function main() {
        AND b.location_geocode_status = 'pending'
      ORDER BY b.updated_at DESC, b.id`
   );
+
+  const activeLocationRows = await query<CandidateRow>(
+    `SELECT b.location_text,
+            b.location_country,
+            b.location_region,
+            COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
+            b.location_confidence
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE ${ACTIVE_VISIBLE_SQL}
+       AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+     ORDER BY b.id`
+  );
+
+  const regionalCoverageRows = await query<CoverageRow>(
+    `SELECT COALESCE(NULLIF(TRIM(b.location_country), ''), 'Unknown') AS label,
+            COUNT(*)::text AS active_visible_count,
+            COUNT(*) FILTER (
+              WHERE b.location_lat BETWEEN -90 AND 90
+                AND b.location_lng BETWEEN -180 AND 180
+                AND b.location_geocode_precision = ANY($1::text[])
+            )::text AS public_pin_count
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE ${ACTIVE_VISIBLE_SQL}
+     GROUP BY COALESCE(NULLIF(TRIM(b.location_country), ''), 'Unknown')
+     HAVING COUNT(*) >= $2
+     ORDER BY (
+       COUNT(*) FILTER (
+         WHERE b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+           AND b.location_geocode_precision = ANY($1::text[])
+       )::float / NULLIF(COUNT(*), 0)
+     ) ASC,
+     COUNT(*) DESC,
+     COALESCE(NULLIF(TRIM(b.location_country), ''), 'Unknown')
+     LIMIT 20`,
+    [publicPrecisions, REGIONAL_COVERAGE_MIN_LISTINGS]
+  );
+
+  let geocodableAddressCount = 0;
+  const geocodableReasons: Record<string, number> = {};
+  for (const row of activeLocationRows) {
+    const reason = getGeocodeCandidateReason({
+      locationText: row.location_text,
+      country: row.location_country,
+      region: row.location_region,
+      marketSlugs: row.location_market_slugs,
+      confidence: row.location_confidence,
+    });
+    addCount(geocodableReasons, reason);
+    if (reason === "ready") geocodableAddressCount += 1;
+  }
 
   const pendingReasons: Record<string, number> = {};
   const pendingQueries: Record<string, { count: number; queryText: string }> = {};
@@ -257,10 +350,22 @@ async function main() {
   const attemptedCount = geocodedCount + reviewCount + failedCount;
   const reviewFailedCount = reviewCount + failedCount;
   const reviewFailedRate = percent(reviewFailedCount, attemptedCount);
-  const publicCoverageRate = percent(publicPinCount, activeVisibleCount);
+  const publicCoverageRate = percent(publicPinCount, geocodableAddressCount);
+  const activeVisiblePublicCoverageRate = percent(publicPinCount, activeVisibleCount);
   const pendingReadyRate = percent(pendingReadyCount, activeVisibleCount);
-  const topError = errorRows[0] || null;
-  const topErrorRate = topError ? percent(parseCount(topError.count), reviewFailedCount) : 0;
+  const providerErrorRows = errorRows.filter((row) => isProviderSideError(row.label));
+  const topProviderError = providerErrorRows[0] || null;
+  const topProviderErrorRate = topProviderError
+    ? percent(parseCount(topProviderError.count), attemptedCount)
+    : 0;
+  const failingRegionalBuckets = regionalCoverageRows
+    .map((row) => ({
+      label: row.label,
+      activeVisibleCount: parseCount(row.active_visible_count),
+      publicPinCount: parseCount(row.public_pin_count),
+      publicCoverageRate: percent(parseCount(row.public_pin_count), parseCount(row.active_visible_count)),
+    }))
+    .filter((row) => row.publicCoverageRate < REGIONAL_COVERAGE_TARGET);
 
   const gates = [
     {
@@ -271,7 +376,7 @@ async function main() {
     },
     {
       key: "public_pin_coverage",
-      target: `>=${COVERAGE_TARGET}% active visible listings have exact/street/marina pins`,
+      target: `>=${COVERAGE_TARGET}% geocodable-address listings have exact/street/marina pins`,
       actual: `${publicCoverageRate}%`,
       passed: publicCoverageRate >= COVERAGE_TARGET,
     },
@@ -288,10 +393,16 @@ async function main() {
       passed: attemptedCount > 0 && reviewFailedRate < REVIEW_FAILED_MAX,
     },
     {
-      key: "single_error_concentration",
-      target: `No review/failed error bucket over ${SINGLE_ERROR_MAX}%`,
-      actual: topError ? `${topError.label}:${topErrorRate}%` : "none",
-      passed: !topError || topErrorRate <= SINGLE_ERROR_MAX,
+      key: "provider_error_rate",
+      target: `No provider-side error bucket over ${PROVIDER_ERROR_MAX}% of attempted geocodes`,
+      actual: topProviderError ? `${topProviderError.label}:${topProviderErrorRate}%` : "none",
+      passed: !topProviderError || topProviderErrorRate <= PROVIDER_ERROR_MAX,
+    },
+    {
+      key: "regional_coverage_floor",
+      target: `No country with >=${REGIONAL_COVERAGE_MIN_LISTINGS} visible listings below ${REGIONAL_COVERAGE_TARGET}% public-pin coverage`,
+      actual: `${failingRegionalBuckets.length} failing countries`,
+      passed: failingRegionalBuckets.length === 0,
     },
     {
       key: "public_admin_boundary_zero",
@@ -304,6 +415,18 @@ async function main() {
       target: "0 public precision rows with invalid/missing coordinates",
       actual: parseCount(summary?.invalid_public_coordinate_count),
       passed: parseCount(summary?.invalid_public_coordinate_count) === 0,
+    },
+    {
+      key: "public_pin_metadata_complete",
+      target: "0 public pins missing provider, score, or geocoded_at",
+      actual: parseCount(summary?.public_missing_metadata_count),
+      passed: parseCount(summary?.public_missing_metadata_count) === 0,
+    },
+    {
+      key: "public_pin_score_floor",
+      target: `0 public pins below score ${PUBLIC_PIN_SCORE_MIN}`,
+      actual: parseCount(summary?.low_score_public_pin_count),
+      passed: parseCount(summary?.low_score_public_pin_count) === 0,
     },
     {
       key: "stale_public_coordinates_zero",
@@ -325,8 +448,10 @@ async function main() {
     },
     coverage: {
       activeVisibleCount,
+      geocodableAddressCount,
       publicPinCount,
       publicCoverageRate,
+      activeVisiblePublicCoverageRate,
       rawCoordinateCount: parseCount(summary?.raw_coordinate_count),
       heldBackCoordinateCount:
         parseCount(summary?.raw_coordinate_count) - publicPinCount,
@@ -334,6 +459,14 @@ async function main() {
       regionalCoordinateCount: parseCount(summary?.regional_coordinate_count),
       precisionSplit: toCountMap(precisionRows),
       providerSplit: toCountMap(providerRows),
+      geocodableReasons: sortEntries(geocodableReasons),
+      regionalCoverage: regionalCoverageRows.map((row) => ({
+        country: row.label,
+        activeVisibleCount: parseCount(row.active_visible_count),
+        publicPinCount: parseCount(row.public_pin_count),
+        publicCoverageRate: percent(parseCount(row.public_pin_count), parseCount(row.active_visible_count)),
+      })),
+      failingRegionalCoverage: failingRegionalBuckets,
     },
     queue: {
       pendingRows: candidateRows.length,
@@ -355,11 +488,15 @@ async function main() {
         error: row.label,
         count: parseCount(row.count),
         rateOfReviewFailed: percent(parseCount(row.count), reviewFailedCount),
+        providerSide: isProviderSideError(row.label),
+        rateOfAttempts: percent(parseCount(row.count), attemptedCount),
       })),
     },
     invariants: {
       publicAdminBoundaryCount: parseCount(summary?.public_admin_boundary_count),
       invalidPublicCoordinateCount: parseCount(summary?.invalid_public_coordinate_count),
+      publicMissingMetadataCount: parseCount(summary?.public_missing_metadata_count),
+      lowScorePublicPinCount: parseCount(summary?.low_score_public_pin_count),
       stalePublicCoordinateCount: parseCount(summary?.stale_public_coordinate_count),
     },
     gates,

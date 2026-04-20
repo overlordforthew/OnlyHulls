@@ -84,6 +84,22 @@ test("buildGeocodeQuery rejects generic or region-only locations", () => {
     }),
     "needs_more_specific_location"
   );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "France",
+      country: "France",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    getGeocodeCandidateReason({
+      locationText: "France",
+      country: "France",
+      confidence: "city",
+    }),
+    "needs_more_specific_location"
+  );
 });
 
 test("geocodeWithNominatim requires an identifying user agent", async () => {
@@ -322,6 +338,44 @@ test("geocodeWithOpenCage routes county boundaries to reviewable region precisio
 
     assert.equal(result.status, "review");
     assert.equal(result.precision, "region");
+    assert.equal(result.error, "low_confidence");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage rejects low-confidence street pins", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Cannes Marina Road, France",
+            geometry: { lat: 43.5528, lng: 7.0174 },
+            confidence: 5,
+            components: {
+              _type: "road",
+              road: "Marina Road",
+              city: "Cannes",
+              country: "France",
+              country_code: "fr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      { queryText: "Cannes Marina, France", queryKey: "cannes marina france", countryHint: "fr" },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.precision, "street");
     assert.equal(result.error, "low_confidence");
   } finally {
     globalThis.fetch = originalFetch;

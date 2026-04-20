@@ -371,6 +371,10 @@ export async function GET() {
                )
                AND b.location_confidence IN ('city', 'exact')
                AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+               AND (
+                 b.location_country IS NULL
+                 OR LOWER(TRIM(b.location_text)) <> LOWER(TRIM(b.location_country))
+               )
                AND b.location_geocode_status = 'pending'
            )::text AS geocode_ready_count,
            COUNT(*) FILTER (WHERE b.location_geocode_status = 'pending')::text AS geocode_pending_count,
@@ -430,6 +434,10 @@ export async function GET() {
            )
            AND b.location_confidence IN ('city', 'exact')
            AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+           AND (
+             b.location_country IS NULL
+             OR LOWER(TRIM(b.location_text)) <> LOWER(TRIM(b.location_country))
+           )
            AND b.location_geocode_status = 'pending'
          GROUP BY LOWER(TRIM(b.location_text))
          ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
