@@ -9,6 +9,7 @@ import {
   getGeocodingConfig,
   type GeocodingConfig,
 } from "../../src/lib/locations/geocoding";
+import { classifyGeocodeReviewIssue } from "../../src/lib/locations/geocode-triage";
 
 const baseConfig: GeocodingConfig = {
   provider: "nominatim",
@@ -110,6 +111,27 @@ test("geocodeWithNominatim requires an identifying user agent", async () => {
 
   assert.equal(result.status, "skipped");
   assert.equal(result.error, "missing_user_agent");
+});
+
+test("geocode review triage separates enrichment work from provider retries", () => {
+  assert.deepEqual(classifyGeocodeReviewIssue({ status: "review", error: "no_result" }), {
+    category: "cleanup_source_text",
+    action: "Improve the source location with a city, marina, or country before retrying.",
+    retryable: false,
+    blocksMap: true,
+  });
+  assert.deepEqual(classifyGeocodeReviewIssue({ status: "failed", error: "This operation was aborted" }), {
+    category: "provider_health",
+    action: "Retry after provider health, quota, or network issue is resolved.",
+    retryable: true,
+    blocksMap: true,
+  });
+  assert.deepEqual(classifyGeocodeReviewIssue({ status: "review", error: "low_precision", precision: "region" }), {
+    category: "manual_enrichment",
+    action: "Add more specific location detail; broad regional results must stay off the public map.",
+    retryable: false,
+    blocksMap: true,
+  });
 });
 
 test("getGeocodingConfig enables OpenCage only when an api key is present", () => {

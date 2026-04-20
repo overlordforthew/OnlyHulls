@@ -6,6 +6,7 @@ import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 import { buildGeocodeQuery, getGeocodeCandidateReason, getGeocodingConfig } from "../src/lib/locations/geocoding";
 import { compareGeocodeResults, type ComparableGeocodeResult } from "../src/lib/locations/geocode-compare";
 import { PUBLIC_MAP_PRECISIONS } from "../src/lib/locations/map-coordinates";
+import { classifyGeocodeReviewIssue, isProviderSideGeocodeError } from "../src/lib/locations/geocode-triage";
 
 type SummaryRow = {
   active_visible_count: string;
@@ -53,6 +54,24 @@ type CacheRow = {
   place_name: string | null;
   payload: unknown;
   error: string | null;
+};
+
+type ReviewTriageRow = {
+  status: string;
+  error: string | null;
+  precision: string | null;
+  score: number | null;
+  place_name: string | null;
+};
+
+type ReviewQueryCountRow = {
+  status: string;
+  query_text: string;
+  error: string;
+  provider: string;
+  count: string;
+  last_attempted_at: string | null;
+  sample_slugs: string[];
 };
 
 type CompareArtifact = {
@@ -124,19 +143,6 @@ function sortEntries(record: Record<string, number>) {
 
 function addCount(record: Record<string, number>, key: string) {
   record[key] = (record[key] || 0) + 1;
-}
-
-function isProviderSideError(error: string) {
-  const normalized = error.trim().toLowerCase();
-  return (
-    /^http_(402|403|429|5\d\d)$/.test(normalized) ||
-    normalized.includes("rate") ||
-    normalized.includes("quota") ||
-    normalized.includes("timeout") ||
-    normalized.includes("abort") ||
-    normalized.includes("network") ||
-    normalized.includes("provider")
-  );
 }
 
 function toComparable(row: CacheRow): ComparableGeocodeResult {
@@ -284,6 +290,40 @@ async function main() {
      GROUP BY COALESCE(NULLIF(b.location_geocode_error, ''), 'unknown')
      ORDER BY COUNT(*) DESC, COALESCE(NULLIF(b.location_geocode_error, ''), 'unknown')
      LIMIT 12`
+  );
+
+  const reviewTriageRows = await query<ReviewTriageRow>(
+    `SELECT b.location_geocode_status AS status,
+            b.location_geocode_error AS error,
+            b.location_geocode_precision AS precision,
+            b.location_geocode_score AS score,
+            b.location_geocode_place_name AS place_name
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE ${ACTIVE_VISIBLE_SQL}
+       AND b.location_geocode_status IN ('review', 'failed')
+     ORDER BY b.location_geocode_attempted_at DESC NULLS LAST
+     LIMIT 5000`
+  );
+
+  const reviewQueryRows = await query<ReviewQueryCountRow>(
+    `SELECT b.location_geocode_status AS status,
+            COALESCE(NULLIF(b.location_geocode_query, ''), NULLIF(b.location_text, ''), 'missing_query') AS query_text,
+            COALESCE(NULLIF(b.location_geocode_error, ''), 'unknown') AS error,
+            COALESCE(NULLIF(b.location_geocode_provider, ''), 'unknown') AS provider,
+            COUNT(*)::text AS count,
+            MAX(b.location_geocode_attempted_at) AS last_attempted_at,
+            (ARRAY_AGG(b.slug ORDER BY b.location_geocode_attempted_at DESC NULLS LAST, b.slug))[1:3] AS sample_slugs
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE ${ACTIVE_VISIBLE_SQL}
+       AND b.location_geocode_status IN ('review', 'failed')
+     GROUP BY b.location_geocode_status,
+              COALESCE(NULLIF(b.location_geocode_query, ''), NULLIF(b.location_text, ''), 'missing_query'),
+              COALESCE(NULLIF(b.location_geocode_error, ''), 'unknown'),
+              COALESCE(NULLIF(b.location_geocode_provider, ''), 'unknown')
+     ORDER BY COUNT(*) DESC, MAX(b.location_geocode_attempted_at) DESC NULLS LAST
+     LIMIT 20`
   );
 
   const candidateRows = await query<CandidateRow>(
@@ -437,7 +477,7 @@ async function main() {
   const publicCoverageRate = percent(publicPinCount, geocodableAddressCount);
   const activeVisiblePublicCoverageRate = percent(publicPinCount, activeVisibleCount);
   const pendingReadyRate = percent(pendingReadyCount, activeVisibleCount);
-  const providerErrorRows = errorRows.filter((row) => isProviderSideError(row.label));
+  const providerErrorRows = errorRows.filter((row) => isProviderSideGeocodeError(row.label));
   const topProviderError = providerErrorRows[0] || null;
   const topProviderErrorRate = topProviderError
     ? percent(parseCount(topProviderError.count), attemptedCount)
@@ -488,6 +528,34 @@ async function main() {
       publicCoverageRate: percent(parseCount(row.public_pin_count), parseCount(row.active_visible_count)),
     }))
     .filter((row) => row.publicCoverageRate < REGIONAL_COVERAGE_TARGET);
+  const triageByCategory: Record<string, number> = {};
+  const triageByAction: Record<string, number> = {};
+  let triageRetryableCount = 0;
+  for (const row of reviewTriageRows) {
+    const triage = classifyGeocodeReviewIssue({
+      status: row.status,
+      error: row.error,
+      precision: row.precision,
+      score: row.score,
+      placeName: row.place_name,
+    });
+    triageByCategory[triage.category] = (triageByCategory[triage.category] || 0) + 1;
+    triageByAction[triage.action] = (triageByAction[triage.action] || 0) + 1;
+    if (triage.retryable) triageRetryableCount += 1;
+  }
+  const formatReviewQuery = (row: ReviewQueryCountRow) => ({
+    queryText: row.query_text,
+    count: parseCount(row.count),
+    error: row.error,
+    provider: row.provider,
+    providerSide: isProviderSideGeocodeError(row.error),
+    lastAttemptedAt: row.last_attempted_at,
+    sampleSlugs: row.sample_slugs || [],
+    triage: classifyGeocodeReviewIssue({
+      status: row.status,
+      error: row.error,
+    }),
+  });
 
   const gates = [
     {
@@ -618,9 +686,23 @@ async function main() {
         error: row.label,
         count: parseCount(row.count),
         rateOfReviewFailed: percent(parseCount(row.count), reviewFailedCount),
-        providerSide: isProviderSideError(row.label),
+        providerSide: isProviderSideGeocodeError(row.label),
         rateOfAttempts: percent(parseCount(row.count), attemptedCount),
       })),
+      triage: {
+        reviewFailedRowsSampled: reviewTriageRows.length,
+        retryableCount: triageRetryableCount,
+        byCategory: triageByCategory,
+        byAction: triageByAction,
+      },
+      topReviewQueries: reviewQueryRows
+        .filter((row) => row.status === "review")
+        .map(formatReviewQuery)
+        .slice(0, 10),
+      topFailedQueries: reviewQueryRows
+        .filter((row) => row.status === "failed")
+        .map(formatReviewQuery)
+        .slice(0, 10),
     },
     crossProvider: {
       status:
