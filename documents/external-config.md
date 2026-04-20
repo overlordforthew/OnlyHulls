@@ -131,7 +131,8 @@ Code paths:
 Required before applying geocodes:
 
 - `LOCATION_GEOCODING_PROVIDER`
-- `LOCATION_GEOCODING_USER_AGENT`
+- `LOCATION_GEOCODING_USER_AGENT` for `nominatim`
+- `LOCATION_GEOCODING_API_KEY` for `opencage`
 
 Required before exposing a buyer-facing map:
 
@@ -144,6 +145,11 @@ Operational notes:
 - Keep `PUBLIC_MAP_ENABLED=false` while coordinate coverage is sparse or under review.
 - The map marker API intentionally returns `404` when `PUBLIC_MAP_ENABLED` is not true.
 - Public map coordinates are gated by geocode precision; city-level results are rounded and marked approximate.
+- Use `opencage` for the commercial backfill; OpenCage paid plans allow permanent storage of geocoded results.
+- Use public Nominatim only for small validation batches with a monitored User-Agent/contact email and about one request per second.
+- First paid validation command shape:
+  `LOCATION_GEOCODING_PROVIDER=opencage LOCATION_GEOCODING_API_KEY=... PUBLIC_MAP_ENABLED=false npx tsx scripts/geocode-boat-locations.ts --limit=100 --apply`
+- Review `precisionSplit`, `failureReasons`, `geographyMismatches`, and `samplePins` from the command output before increasing the batch size.
 - Do not use a geocoder whose terms forbid cached/stored results unless the same provider also supplies the rendered map under compatible terms.
 - If you want private objects instead, the app will need a small follow-up change for signed-read URLs or a media proxy.
 

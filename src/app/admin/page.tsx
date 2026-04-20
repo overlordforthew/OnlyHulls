@@ -387,6 +387,8 @@ function formatProviderLabel(provider: string) {
       return "Ollama";
     case "nominatim":
       return "Nominatim";
+    case "opencage":
+      return "OpenCage";
     default:
       return provider === "disabled" ? "None" : provider;
   }

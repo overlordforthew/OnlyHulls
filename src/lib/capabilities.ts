@@ -90,8 +90,15 @@ export function locationGeocodingProvider(): string {
 export function locationGeocodingEnabled(): boolean {
   const provider = locationGeocodingProvider();
   const userAgent = process.env.LOCATION_GEOCODING_USER_AGENT || process.env.GEOCODING_USER_AGENT;
+  const apiKey =
+    process.env.LOCATION_GEOCODING_API_KEY ||
+    process.env.GEOCODING_API_KEY ||
+    process.env.OPENCAGE_API_KEY;
 
-  return provider !== "disabled" && hasConfiguredValue(userAgent);
+  if (provider === "nominatim") return hasConfiguredValue(userAgent);
+  if (provider === "opencage") return hasConfiguredValue(apiKey);
+
+  return false;
 }
 
 export function publicMapEnabled(): boolean {

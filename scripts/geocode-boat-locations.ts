@@ -2,9 +2,11 @@ import { pool, query } from "../src/lib/db/index";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 import {
   buildGeocodeQuery,
+  geocodeWithOpenCage,
   geocodeWithNominatim,
   getGeocodeCandidateReason,
   getGeocodingConfig,
+  type GeocodingConfig,
   type GeocodePrecision,
   type GeocodeResult,
   type GeocodeStatus,
@@ -12,7 +14,8 @@ import {
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
 // Public Nominatim is for small validation runs only: single process, <= 1 request/sec,
-// real User-Agent/contact email, cached results, and immediate backoff on 429/503.
+// real User-Agent/contact email, cached results, and immediate backoff on provider quota/rate errors.
+// Use OpenCage or another paid provider for the full commercial backfill.
 // Keep PUBLIC_MAP_ENABLED=false until precision and random pin audits pass.
 // Drop boat_geocode_backup_* tables only after the corresponding batch is verified.
 
@@ -73,7 +76,8 @@ type SamplePin = {
 };
 
 const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
-const BATCH_UNIQUE_APPLY_THRESHOLD = 200;
+const NOMINATIM_BATCH_UNIQUE_APPLY_THRESHOLD = 200;
+const PAID_PROVIDER_BATCH_UNIQUE_APPLY_THRESHOLD = 2000;
 const SAMPLE_PIN_LIMIT = 20;
 const BROAD_REGION_NAMES = new Set([
   "caribbean",
@@ -101,7 +105,7 @@ function sleep(ms: number) {
 }
 
 function isProviderBackoffResult(result: GeocodeResult) {
-  return result.error === "http_429" || result.error === "http_503";
+  return ["http_402", "http_403", "http_429", "http_503"].includes(result.error || "");
 }
 
 function hasFlag(name: string) {
@@ -169,7 +173,7 @@ function formatBackupTableName() {
 function getPayloadCountryCode(payload: unknown) {
   if (!payload || typeof payload !== "object") return null;
   const record = payload as Record<string, unknown>;
-  const address = record.address;
+  const address = record.address || record.components;
   if (!address || typeof address !== "object") return null;
   const countryCode = (address as Record<string, unknown>).country_code;
 
@@ -179,7 +183,7 @@ function getPayloadCountryCode(payload: unknown) {
 function getPayloadAddressStrings(payload: unknown, fields: string[]) {
   if (!payload || typeof payload !== "object") return [];
   const record = payload as Record<string, unknown>;
-  const address = record.address;
+  const address = record.address || record.components;
   if (!address || typeof address !== "object") return [];
   const addressRecord = address as Record<string, unknown>;
 
@@ -283,19 +287,20 @@ function fromCache(row: GeocodeCacheRow): GeocodeResult {
     precision: row.precision || "unknown",
     score: row.score,
     placeName: row.place_name,
-    provider: row.provider === "nominatim" ? "nominatim" : "disabled",
+    provider: row.provider === "nominatim" || row.provider === "opencage" ? row.provider : "disabled",
     payload: row.payload,
     error: row.error,
   };
 }
 
-async function getCachedResults(queryKeys: string[]) {
+async function getCachedResults(queryKeys: string[], provider: GeocodingConfig["provider"]) {
   if (queryKeys.length === 0) return new Map<string, GeocodeResult>();
   const rows = await query<GeocodeCacheRow>(
     `SELECT query_key, status, latitude, longitude, precision, score, place_name, provider, payload, error
      FROM location_geocode_cache
-     WHERE query_key = ANY($1::text[])`,
-    [queryKeys]
+     WHERE query_key = ANY($1::text[])
+       AND provider = $2`,
+    [queryKeys, provider]
   );
 
   return new Map(
@@ -305,12 +310,13 @@ async function getCachedResults(queryKeys: string[]) {
   );
 }
 
-async function getCachedResult(queryKey: string) {
+async function getCachedResult(queryKey: string, provider: GeocodingConfig["provider"]) {
   const rows = await query<GeocodeCacheRow>(
     `SELECT status, latitude, longitude, precision, score, place_name, provider, payload, error
      FROM location_geocode_cache
-     WHERE query_key = $1`,
-    [queryKey]
+     WHERE query_key = $1
+       AND provider = $2`,
+    [queryKey, provider]
   );
 
   return rows[0] ? fromCache(rows[0]) : null;
@@ -323,9 +329,8 @@ async function cacheResult(queryKey: string, queryText: string, result: GeocodeR
        score, place_name, payload, error, updated_at
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-     ON CONFLICT (query_key)
+     ON CONFLICT (query_key, provider)
      DO UPDATE SET query_text = EXCLUDED.query_text,
-                   provider = EXCLUDED.provider,
                    status = EXCLUDED.status,
                    latitude = EXCLUDED.latitude,
                    longitude = EXCLUDED.longitude,
@@ -349,6 +354,35 @@ async function cacheResult(queryKey: string, queryText: string, result: GeocodeR
       result.error || null,
     ]
   );
+}
+
+async function geocodeWithConfiguredProvider(
+  geocodeQuery: ReadyCandidate["geocodeQuery"],
+  config: GeocodingConfig
+) {
+  switch (config.provider) {
+    case "nominatim":
+      return geocodeWithNominatim(geocodeQuery, config);
+    case "opencage":
+      return geocodeWithOpenCage(geocodeQuery, config);
+    default:
+      return {
+        status: "skipped",
+        latitude: null,
+        longitude: null,
+        precision: "unknown",
+        score: null,
+        placeName: null,
+        provider: "disabled",
+        error: "provider_disabled",
+      } satisfies GeocodeResult;
+  }
+}
+
+function getBatchUniqueApplyThreshold(provider: GeocodingConfig["provider"]) {
+  return provider === "nominatim"
+    ? NOMINATIM_BATCH_UNIQUE_APPLY_THRESHOLD
+    : PAID_PROVIDER_BATCH_UNIQUE_APPLY_THRESHOLD;
 }
 
 async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result: GeocodeResult) {
@@ -504,7 +538,7 @@ async function main() {
   const selectedQueryKeys = Array.from(
     new Set(selectedCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
   );
-  const cacheByKey = await getCachedResults(uniqueReadyQueryKeys);
+  const cacheByKey = await getCachedResults(uniqueReadyQueryKeys, config.provider);
   let backupTable: string | null = null;
   const summary = {
     provider: config.provider,
@@ -550,10 +584,19 @@ async function main() {
     );
   }
 
-  if (apply && selectedQueryKeys.length > BATCH_UNIQUE_APPLY_THRESHOLD && !allowLargeBatch) {
-    summary.stoppedReason = `selected_unique_queries_${selectedQueryKeys.length}_exceeds_${BATCH_UNIQUE_APPLY_THRESHOLD}`;
+  if (apply && !config.enabled) {
+    summary.stoppedReason = `${config.provider}_not_configured`;
+    console.error(`Refusing --apply: geocoding provider '${config.provider}' is not configured.`);
+    console.log(JSON.stringify(summary, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+
+  const batchUniqueApplyThreshold = getBatchUniqueApplyThreshold(config.provider);
+  if (apply && selectedQueryKeys.length > batchUniqueApplyThreshold && !allowLargeBatch) {
+    summary.stoppedReason = `selected_unique_queries_${selectedQueryKeys.length}_exceeds_${batchUniqueApplyThreshold}`;
     console.error(
-      `Refusing --apply: selected batch has ${selectedQueryKeys.length} unique geocode queries, above ${BATCH_UNIQUE_APPLY_THRESHOLD}. Reduce --limit or pass --allow-large-batch.`
+      `Refusing --apply: selected batch has ${selectedQueryKeys.length} unique geocode queries, above ${batchUniqueApplyThreshold}. Reduce --limit or pass --allow-large-batch.`
     );
     console.log(JSON.stringify(summary, null, 2));
     process.exitCode = 1;
@@ -568,7 +611,7 @@ async function main() {
   for (const boat of selectedCandidates) {
     const geocodeQuery = boat.geocodeQuery;
 
-    const cached = cacheByKey.get(geocodeQuery.queryKey) || (await getCachedResult(geocodeQuery.queryKey));
+    const cached = cacheByKey.get(geocodeQuery.queryKey) || (await getCachedResult(geocodeQuery.queryKey, config.provider));
     if (cached) {
       summary.cached += 1;
       summary.statusSplit[cached.status] += 1;
@@ -582,9 +625,9 @@ async function main() {
       continue;
     }
 
-    if (!apply || !config.enabled || config.provider !== "nominatim") continue;
+    if (!apply || !config.enabled || config.provider === "disabled") continue;
 
-    const result = await geocodeWithNominatim(geocodeQuery, config);
+    const result = await geocodeWithConfiguredProvider(geocodeQuery, config);
     summary.statusSplit[result.status] += 1;
     summary.precisionSplit[result.precision] += 1;
     if (result.status === "geocoded") summary.geocoded += 1;
