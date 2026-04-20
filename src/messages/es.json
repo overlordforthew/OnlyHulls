@@ -520,11 +520,33 @@
       "year": "Año",
       "newest": "Más reciente"
     },
-    "view": {
-      "grid": "Cuadrícula",
-      "rows": "Filas"
-    },
-    "searchHubsTitle": "Explora hubs de búsqueda",
+  "view": {
+    "grid": "Cuadrícula",
+    "rows": "Filas",
+    "map": "Mapa"
+  },
+  "map": {
+    "disabled": "La vista de mapa aún no está configurada.",
+    "viewportDefault": "Mapa de mercados de navegación",
+    "viewportFor": "Mapa de {location}",
+    "viewportInventory": "Inventario del mapa",
+    "visibleCount": "visibles en esta vista",
+    "limitedCount": "visibles antes del límite",
+    "precisePins": "Pins precisos",
+    "loading": "Cargando barcos en el mapa...",
+    "loadError": "No se pudieron cargar los barcos del mapa. Mueve o acerca el mapa para intentarlo de nuevo.",
+    "styleError": "No se pudo cargar el estilo del mapa. Revisa el proveedor de mapas configurado.",
+    "unavailable": "Los datos del mapa aún no están disponibles.",
+    "rateLimited": "Las solicitudes del mapa se ralentizaron. Espera un momento y mueve el mapa de nuevo.",
+    "zoomToLoad": "Acerca el mapa o elige un mercado para cargar pins precisos.",
+    "zoomForMore": "Acerca el mapa para ver más barcos.",
+    "emptyTitle": "Aún no hay pins precisos aquí",
+    "emptyBody": "Muévete a otro mercado de marinas, acerca el mapa o usa la búsqueda de ubicación arriba.",
+    "unknownLocation": "Ubicación desconocida",
+    "approximate": "aprox.",
+    "viewListing": "Ver anuncio"
+  },
+  "searchHubsTitle": "Explora hubs de búsqueda",
     "searchHubsSubtitle": "Usa páginas estables de exploración para marcas, regiones y tipos de barco populares.",
     "retry": "Reintentar",
     "noResultsTitle": "No se encontraron hulls",

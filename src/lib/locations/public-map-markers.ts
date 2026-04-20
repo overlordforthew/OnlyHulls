@@ -47,3 +47,5 @@ export function buildPublicMapMarker(row: PublicMapBoatRow) {
     approximate: publicCoordinate.approximate,
   };
 }
+
+export type PublicMapMarker = NonNullable<ReturnType<typeof buildPublicMapMarker>>;

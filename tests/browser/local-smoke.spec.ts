@@ -40,7 +40,15 @@ const mockBrowseBoats = [
 ];
 
 async function mockBoatsResponse(page: Page) {
-  await page.route("**/api/boats**", async (route) => {
+  await page.route(/\/api\/boats\/location-markets(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ counts: { "puerto-rico": 1, florida: 1 } }),
+    });
+  });
+
+  await page.route(/\/api\/boats(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     const query = (url.searchParams.get("q") || "").toLowerCase();
     const location = (url.searchParams.get("location") || "").toLowerCase().replace(/-/g, " ");
@@ -68,6 +76,76 @@ async function mockBoatsResponse(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ boats, total: boats.length }),
+    });
+  });
+}
+
+async function mockMapStyle(page: Page) {
+  await page.route("https://tiles.example.test/style.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: 8,
+        sources: {},
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: { "background-color": "#10202b" },
+          },
+        ],
+      }),
+    });
+  });
+}
+
+async function mockBrokenMapStyle(page: Page) {
+  await page.route("https://tiles.example.test/style.json", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "style unavailable" }),
+    });
+  });
+}
+
+async function mockMapMarkersResponse(page: Page) {
+  await page.route(/\/api\/boats\/map(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("bbox")).toBeTruthy();
+    expect(url.searchParams.get("location")).toBe("puerto-rico");
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        boats: [
+          {
+            slug: "2018-lagoon-450-f",
+            title: "2018 Lagoon 450 F",
+            locationText: "Fajardo, Puerto Rico",
+            lat: 18.3358,
+            lng: -65.6319,
+            precision: "marina",
+            approximate: false,
+          },
+        ],
+        returned: 1,
+        hasMore: false,
+        limit: 150,
+      }),
+    });
+  });
+}
+
+async function mockRateLimitedMapMarkersResponse(page: Page) {
+  await page.route(/\/api\/boats\/map(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 429,
+      headers: { "Retry-After": "60" },
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Too many map requests. Please try again shortly." }),
     });
   });
 }
@@ -185,6 +263,59 @@ test("boats page location search creates a shareable chip and URL", async ({ pag
   await page.getByRole("button", { name: "Clear location", exact: true }).click();
   await expect(page).not.toHaveURL(/location=/);
   await expect(page.getByText("2016 Lagoon 42", { exact: false })).toBeVisible();
+});
+
+test("boats map toggle stays hidden when public map capability is off", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED === "true", "map-on run verifies the enabled state");
+  await mockBoatsResponse(page);
+
+  await page.goto("/boats");
+  await expect(page.getByTestId("boats-view-toggle-grid")).toBeVisible();
+  await expect(page.getByTestId("boats-view-toggle-rows")).toBeVisible();
+  await expect(page.getByTestId("boats-view-toggle-map")).toHaveCount(0);
+});
+
+test("boats map view fetches precise markers and links back to listings", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockMapMarkersResponse(page);
+
+  await page.goto("/boats?location=puerto-rico");
+  await page.getByTestId("boats-view-toggle-map").click();
+
+  await expect(page.getByTestId("boats-map-canvas")).toBeVisible();
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F");
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("Fajardo, Puerto Rico");
+  await expect(page.getByRole("link", { name: "View listing", exact: true })).toHaveAttribute(
+    "href",
+    "/boats/2018-lagoon-450-f"
+  );
+});
+
+test("boats map view handles rate-limited marker responses without crashing", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  await mockRateLimitedMapMarkersResponse(page);
+
+  await page.goto("/boats?location=puerto-rico");
+  await page.getByTestId("boats-view-toggle-map").click();
+
+  await expect(page.getByText("Map requests slowed down", { exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
+});
+
+test("boats map view surfaces style-provider failures", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockBrokenMapStyle(page);
+
+  await page.goto("/boats?location=puerto-rico");
+  await page.getByTestId("boats-view-toggle-map").click();
+
+  await expect(page.getByText("Map style could not load", { exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
 });
 
 test("boats currency selection persists after reload locally", async ({ page }) => {
