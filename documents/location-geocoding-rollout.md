@@ -36,6 +36,12 @@ This runbook is for the first commercial coordinate backfill. It does not launch
 
    `db:map-launch-preflight` is the non-destructive GO/NO-GO gate. It checks geocoder env, tile env, public map flags, readiness, review queue state, stale/low-score public pins, and the next batch size before any `--apply` run.
 
+   Add `-- --ping` only when you intentionally want live provider connectivity checks. Ping mode fetches the configured map style URL and makes one OpenCage `no_record=1` probe request, so use it after the real keys are configured and before the first paid batch:
+
+   ```bash
+   npm run db:map-launch-preflight -- --ping
+   ```
+
 4. Refresh the provider comparison/golden-set artifact:
 
    ```bash

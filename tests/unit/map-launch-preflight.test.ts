@@ -119,6 +119,8 @@ test("map launch preflight returns GO only when env, readiness, review queue, an
   assert.equal(result.blockers.length, 0);
   assert(result.steps.some((step) => step.key === "batch_apply_safety" && step.status === "pass"));
   assert(result.nextCommands.some((command) => command.includes("staging")));
+  assert.equal(JSON.stringify(result).includes("maptiler_live_key"), false);
+  assert(JSON.stringify(result).includes("key=redacted"));
 });
 
 test("map launch preflight rejects validation-only Nominatim for commercial launch", () => {
@@ -173,4 +175,24 @@ test("map launch preflight blocks oversized paid-provider batch simulations", ()
 
   assert.equal(result.verdict, "NO_GO");
   assert.equal(result.blockers.find((step) => step.key === "batch_apply_safety")?.actual, "selected_unique_queries_2001_exceeds_2000");
+});
+
+test("map launch preflight treats failed optional network pings as launch blockers", () => {
+  const result = buildMapLaunchPreflight({
+    env: launchEnv,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    externalSteps: [
+      {
+        section: "network",
+        key: "map_style_ping",
+        status: "fail",
+        message: "Map style URL responded with HTTP 403.",
+        target: "HTTP 2xx",
+      },
+    ],
+  });
+
+  assert.equal(result.verdict, "NO_GO");
+  assert(result.blockers.some((step) => step.section === "network" && step.key === "map_style_ping"));
 });

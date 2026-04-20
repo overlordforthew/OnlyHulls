@@ -12,7 +12,7 @@ type PreflightEnv = Record<string, string | undefined>;
 export type MapLaunchPreflightStatus = "pass" | "fail" | "warn" | "info";
 
 export type MapLaunchPreflightStep = {
-  section: "env" | "readiness" | "review_queue" | "batch_simulation" | "verdict";
+  section: "env" | "network" | "readiness" | "review_queue" | "batch_simulation" | "verdict";
   key: string;
   status: MapLaunchPreflightStatus;
   message: string;
@@ -172,6 +172,18 @@ function isMapTilerStyle(styleUrl: string) {
     return new URL(styleUrl).hostname.includes("maptiler.com");
   } catch {
     return false;
+  }
+}
+
+function redactSensitiveUrl(value: string) {
+  try {
+    const url = new URL(value);
+    for (const key of ["key", "api_key", "access_token", "token"]) {
+      if (url.searchParams.has(key)) url.searchParams.set(key, "redacted");
+    }
+    return url.toString();
+  } catch {
+    return value.replace(/([?&](?:key|api_key|access_token|token)=)[^&]+/gi, "$1redacted");
   }
 }
 
@@ -350,7 +362,7 @@ export function buildMapLaunchPreflight(
       key: "map_style_url_configured",
       status: "pass",
       message: "Map style URL is configured and parseable.",
-      actual: clientConfig.styleUrl,
+      actual: redactSensitiveUrl(clientConfig.styleUrl),
     }));
   } else {
     steps.push(step({
