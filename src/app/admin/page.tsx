@@ -71,7 +71,13 @@ interface Stats {
   };
   importQualitySummary: {
     activeCount: number;
+    qualityVisibleBeforeFreshnessCount: number;
+    qualityVisibleBeforePolicyCount: number;
     visibleCount: number;
+    qualitySuppressedCount: number;
+    freshnessSuppressedCount: number;
+    policySuppressedCount: number;
+    hiddenCount: number;
     missingModelCount: number;
     missingLocationCount: number;
     missingImageCount: number;
@@ -81,7 +87,13 @@ interface Stats {
   sourceHealth: Array<{
     source: string;
     activeCount: number;
+    qualityVisibleBeforeFreshnessCount: number;
+    qualityVisibleBeforePolicyCount: number;
     visibleCount: number;
+    qualitySuppressedCount: number;
+    freshnessSuppressedCount: number;
+    policySuppressedCount: number;
+    hiddenCount: number;
     contactClicks30d: number;
     missingModelCount: number;
     missingLocationCount: number;
@@ -90,6 +102,12 @@ interface Stats {
     lowPriceCount: number;
     decisionStatus: string;
     decisionReason: string | null;
+    policySignals: Array<
+      | "source_policy_undecided"
+      | "source_freshness_suppresses_visible_inventory"
+      | "hold_has_public_visible_inventory"
+      | "hold_suppresses_pre_policy_visible_inventory"
+    >;
   }>;
   locationReadiness: {
     activeVisibleCount: number;
@@ -668,9 +686,9 @@ export default function AdminPage() {
   const sourceOptions = Array.from(new Set((stats?.sourceHealth || []).map((row) => row.source))).sort(
     (a, b) => a.localeCompare(b)
   );
-  const cleanupNeededCount = stats
-    ? Math.max(0, stats.importQualitySummary.activeCount - stats.importQualitySummary.visibleCount)
-    : 0;
+  const qualitySuppressedCount = stats?.importQualitySummary.qualitySuppressedCount || 0;
+  const freshnessSuppressedCount = stats?.importQualitySummary.freshnessSuppressedCount || 0;
+  const policySuppressedCount = stats?.importQualitySummary.policySuppressedCount || 0;
   const recentActivity = (stats?.recentActivity || []).filter((activity) =>
     activityFilter === "all" ? true : activity.eventType === activityFilter
   );
@@ -992,19 +1010,38 @@ export default function AdminPage() {
             <p className="mt-1 text-sm text-foreground/60">
               Track which imported sources are buyer-ready, where engagement is actually showing up, and where cleanup work is still blocking visibility.
             </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard label="Imported Boats" value={stats.importQualitySummary.activeCount} />
               <StatCard label="Buyer Visible" value={stats.importQualitySummary.visibleCount} highlight />
               <StatCard
-                label="Needs Cleanup"
-                value={cleanupNeededCount}
+                label="Quality Pass"
+                value={stats.importQualitySummary.qualityVisibleBeforeFreshnessCount}
+                detail="Rows passing content gates before stale-source suppression."
+              />
+              <StatCard
+                label="Fresh Pass"
+                value={stats.importQualitySummary.qualityVisibleBeforePolicyCount}
+                detail="Rows still eligible after stale-source suppression."
+              />
+              <StatCard
+                label="Quality Gated"
+                value={qualitySuppressedCount}
                 actionHref="#cleanup-queue"
                 actionLabel="Open cleanup queue"
+              />
+              <StatCard
+                label="Stale Source Held"
+                value={freshnessSuppressedCount}
+                detail="Rows suppressed by source freshness guardrails."
+              />
+              <StatCard
+                label="Policy Held"
+                value={policySuppressedCount}
+                detail="Rows that pass quality but are held by source policy."
               />
               <StatCard label="Missing Location" value={stats.importQualitySummary.missingLocationCount} />
               <StatCard label="Missing Images" value={stats.importQualitySummary.missingImageCount} />
               <StatCard label="Thin Summary" value={stats.importQualitySummary.thinSummaryCount} />
-              <StatCard label="Low Price Flags" value={stats.importQualitySummary.lowPriceCount} />
             </div>
             <div className="mt-5 overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -1012,7 +1049,10 @@ export default function AdminPage() {
                   <tr className="border-b border-border">
                     <th className="py-2 pr-4 font-medium">Source</th>
                     <th className="py-2 pr-4 font-medium">Active</th>
+                    <th className="py-2 pr-4 font-medium">Quality pass</th>
+                    <th className="py-2 pr-4 font-medium">Fresh pass</th>
                     <th className="py-2 pr-4 font-medium">Visible</th>
+                    <th className="py-2 pr-4 font-medium">Suppressed</th>
                     <th className="py-2 pr-4 font-medium">Clicks (30d)</th>
                     <th className="py-2 pr-4 font-medium">Policy</th>
                     <th className="py-2 pr-4 font-medium">Missing location</th>
@@ -1033,9 +1073,20 @@ export default function AdminPage() {
                         <td className="py-3 pr-4 text-foreground/75">
                           {source.activeCount}
                         </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.qualityVisibleBeforeFreshnessCount}
+                        </td>
+                        <td className="py-3 pr-4 text-foreground/75">
+                          {source.qualityVisibleBeforePolicyCount}
+                        </td>
                         <td className="py-3 pr-4">
                           <div className="font-medium text-foreground">{source.visibleCount}</div>
                           <div className="text-xs text-foreground/50">{visibleRate} visible</div>
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-foreground/65">
+                          <div>Quality: {source.qualitySuppressedCount}</div>
+                          <div>Stale: {source.freshnessSuppressedCount}</div>
+                          <div>Policy: {source.policySuppressedCount}</div>
                         </td>
                         <td className="py-3 pr-4 text-foreground/75">
                           {source.contactClicks30d}
@@ -1047,6 +1098,18 @@ export default function AdminPage() {
                           {source.decisionReason && (
                             <div className="max-w-xs text-xs text-foreground/50">
                               {source.decisionReason}
+                            </div>
+                          )}
+                          {source.policySignals.length > 0 && (
+                            <div className="mt-2 flex max-w-xs flex-wrap gap-1">
+                              {source.policySignals.map((signal) => (
+                                <span
+                                  key={signal}
+                                  className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700"
+                                >
+                                  {formatSourceHealthSignal(signal)}
+                                </span>
+                              ))}
                             </div>
                           )}
                         </td>
@@ -1978,6 +2041,23 @@ function StatCard({
 
 function formatQualityFlag(flag: string) {
   return flag.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatSourceHealthSignal(
+  signal: Stats["sourceHealth"][number]["policySignals"][number]
+) {
+  switch (signal) {
+    case "source_policy_undecided":
+      return "Policy undecided";
+    case "source_freshness_suppresses_visible_inventory":
+      return "Stale source held";
+    case "hold_has_public_visible_inventory":
+      return "Hold leaking public rows";
+    case "hold_suppresses_pre_policy_visible_inventory":
+      return "Policy held";
+    default:
+      return formatQualityFlag(signal);
+  }
 }
 
 function ProgressCard({
