@@ -10,6 +10,11 @@ export interface BoatRow {
   asking_price: number;
   currency: string;
   location_text: string | null;
+  location_country: string | null;
+  location_region: string | null;
+  location_market_slugs: string[];
+  location_confidence: string | null;
+  location_approximate: boolean | null;
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
@@ -42,7 +47,10 @@ const IMAGE_COUNT_SQL =
 const BOAT_SELECT = `
   SELECT b.id, b.make, b.model, b.year, b.asking_price, b.currency,
          b.asking_price_usd,
-         b.location_text, b.slug, b.is_sample,
+         b.location_text, b.location_country, b.location_region,
+         COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
+         b.location_confidence, b.location_approximate,
+         b.slug, b.is_sample,
          b.source_site, b.source_name, b.source_url,
          COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
          (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,

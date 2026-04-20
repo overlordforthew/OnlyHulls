@@ -24,8 +24,10 @@ import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatPublicSummary } from "@/lib/browse-summary";
 import { buildBoatFitReasons } from "@/lib/boat-fit";
 import { getRelatedBoats } from "@/lib/db/queries";
+import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
+import { buildBoatDisplayTitle } from "@/lib/boats/detail-display";
 
 interface BoatDetail {
   id: string;
@@ -52,10 +54,6 @@ interface BoatDetail {
   public_visible?: boolean;
 }
 
-function buildBoatTitle(boat: Pick<BoatDetail, "year" | "make" | "model">) {
-  return [boat.year, boat.make, boat.model].filter(Boolean).join(" ");
-}
-
 function trimMetaDescription(text: string, maxLength = 160) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (normalized.length <= maxLength) return normalized;
@@ -70,7 +68,7 @@ function toAbsoluteUrl(url: string | null | undefined, appUrl: string) {
 }
 
 function buildBoatMetaDescription(boat: BoatDetail, priceStr: string, copy: BoatDetailCopy) {
-  const title = buildBoatTitle(boat);
+  const title = buildBoatDisplayTitle(boat);
   const location = boat.location_text ?? null;
   const summary = buildBoatPublicSummary({
     summary: boat.ai_summary,
@@ -152,10 +150,10 @@ async function getBoatMedia(boatId: string) {
     id: string;
     type: "image" | "video";
     url: string;
-    thumbnail_url: string | null;
+    thumbnailUrl: string | null;
     caption: string | null;
   }>(
-    `SELECT id, type, url, thumbnail_url, caption
+    `SELECT id, type, url, thumbnail_url AS "thumbnailUrl", caption
      FROM boat_media
      WHERE boat_id = $1
      ORDER BY sort_order`,
@@ -176,7 +174,7 @@ export async function generateMetadata({
 
   const appUrl = getPublicAppUrl();
   const canonicalUrl = `${appUrl}/boats/${slug}`;
-  const boatTitle = buildBoatTitle(boat);
+  const boatTitle = buildBoatDisplayTitle(boat);
   const heroImage = toAbsoluteUrl(boat.hero_url, appUrl);
   const priceStr = boat.asking_price_usd
     ? `$${Math.round(boat.asking_price_usd).toLocaleString(locale)}`
@@ -259,6 +257,7 @@ export default async function BoatDetailPage({
     }),
   ]);
   const specs = boat.specs as Record<string, unknown>;
+  const hullMaterial = sanitizeHullMaterial(specs.hull_material);
   const sellerInitial = boat.seller_name?.[0]?.toUpperCase() || "S";
   const relatedHubLinks = getRelevantSeoHubLinksForBoat({
     make: boat.make,
@@ -271,7 +270,7 @@ export default async function BoatDetailPage({
     amountUsd: boat.asking_price_usd,
     preferredCurrency,
   });
-  const boatTitle = buildBoatTitle(boat);
+  const boatTitle = buildBoatDisplayTitle(boat);
   const displaySummary = buildBoatPublicSummary({
     summary: boat.ai_summary,
     title: boatTitle,
@@ -321,7 +320,7 @@ export default async function BoatDetailPage({
     name: boatTitle,
     category: copy.metadata.schemaCategory,
     model: boat.model,
-    sku: boat.id,
+    sku: boat.slug || boat.id,
     description: buildBoatMetaDescription(
       boat,
       boat.asking_price_usd
@@ -351,6 +350,13 @@ export default async function BoatDetailPage({
         name: boat.location_text,
       },
     }),
+    additionalProperty: [
+      {
+        "@type": "PropertyValue",
+        name: copy.specLabels.year,
+        value: boat.year,
+      },
+    ],
   };
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -395,7 +401,7 @@ export default async function BoatDetailPage({
       </div>
 
       <div className="mx-auto max-w-6xl px-5 pt-6">
-        <ImageGallery media={media} alt={`${boat.make} ${boat.model}`} />
+        <ImageGallery media={media} alt={boatTitle} />
 
         {boat.status !== "active" && (
           <div
@@ -420,11 +426,13 @@ export default async function BoatDetailPage({
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           <div className="space-y-8 lg:col-span-2">
             <div>
-              <h1 className="text-3xl font-bold">{`${boat.year} ${boat.make} ${boat.model}`}</h1>
+              <h1 className="break-words text-3xl font-bold leading-tight">{boatTitle}</h1>
               {boat.location_text && (
-                <p className="mt-2 flex items-center gap-1.5 text-text-secondary">
-                  <MapPin className="h-4 w-4" />
-                  {boat.location_text}
+                <p className="mt-2 flex items-start gap-1.5 text-text-secondary">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="min-w-0 break-words">
+                    {boat.location_text}
+                  </span>
                 </p>
               )}
               <div className="mt-3">
@@ -469,13 +477,14 @@ export default async function BoatDetailPage({
 
             <div>
               <h2 className="text-xl font-bold">{copy.specifications}</h2>
-              <div className="mt-4 grid grid-cols-2 gap-1">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <SpecRow label={copy.specLabels.year} value={String(boat.year)} />
                 {specs.loa ? <SpecRow label={copy.specLabels.loa} value={`${specs.loa}ft`} /> : null}
                 {specs.beam ? <SpecRow label={copy.specLabels.beam} value={`${specs.beam}ft`} /> : null}
                 {specs.draft ? <SpecRow label={copy.specLabels.draft} value={`${specs.draft}ft`} /> : null}
                 {specs.vessel_type ? <SpecRow label={copy.specLabels.boatType} value={String(specs.vessel_type)} /> : null}
                 {specs.rig_type ? <SpecRow label={copy.specLabels.rigType} value={String(specs.rig_type)} /> : null}
-                {specs.hull_material ? <SpecRow label={copy.specLabels.hull} value={String(specs.hull_material)} /> : null}
+                {hullMaterial ? <SpecRow label={copy.specLabels.hull} value={hullMaterial} /> : null}
                 {specs.engine ? <SpecRow label={copy.specLabels.engine} value={String(specs.engine)} /> : null}
                 {specs.cabins ? <SpecRow label={copy.specLabels.cabins} value={String(specs.cabins)} /> : null}
                 {specs.berths ? <SpecRow label={copy.specLabels.berths} value={String(specs.berths)} /> : null}
@@ -548,7 +557,7 @@ export default async function BoatDetailPage({
               <ContactOwnerCTA
                 sourceUrl={boat.source_url}
                 boatId={boat.id}
-                boatTitle={`${boat.year} ${boat.make} ${boat.model}`}
+                boatTitle={boatTitle}
                 sourceName={
                   boat.source_url
                     ? formatSourceSite(boat.source_site, copy.trust.externalListingFallback)
@@ -702,9 +711,9 @@ function getSellerSubtitle(
 
 function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between rounded-lg bg-surface px-3 py-2.5">
-      <span className="text-sm text-text-secondary">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
+    <div className="flex items-start justify-between gap-4 rounded-lg bg-surface px-3 py-2.5">
+      <span className="shrink-0 whitespace-nowrap text-sm text-text-secondary">{label}</span>
+      <span className="min-w-0 break-words text-right text-sm font-medium">{value}</span>
     </div>
   );
 }

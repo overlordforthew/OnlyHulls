@@ -76,3 +76,31 @@ export function matchIntelligenceConfigured(): boolean {
 export function matchIntelligenceProvider(): string {
   return getMatchIntelligenceProvider();
 }
+
+export function locationGeocodingProvider(): string {
+  const provider = String(
+    process.env.LOCATION_GEOCODING_PROVIDER || process.env.GEOCODING_PROVIDER || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return provider || "disabled";
+}
+
+export function locationGeocodingEnabled(): boolean {
+  const provider = locationGeocodingProvider();
+  const userAgent = process.env.LOCATION_GEOCODING_USER_AGENT || process.env.GEOCODING_USER_AGENT;
+  const apiKey =
+    process.env.LOCATION_GEOCODING_API_KEY ||
+    process.env.GEOCODING_API_KEY ||
+    process.env.OPENCAGE_API_KEY;
+
+  if (provider === "nominatim") return hasConfiguredValue(userAgent);
+  if (provider === "opencage") return hasConfiguredValue(apiKey);
+
+  return false;
+}
+
+export function publicMapEnabled(): boolean {
+  return String(process.env.PUBLIC_MAP_ENABLED || "").trim().toLowerCase() === "true";
+}

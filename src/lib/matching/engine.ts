@@ -11,6 +11,11 @@ import { rerankMatchesForBuyer } from "@/lib/ai/match-intelligence";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { logger } from "@/lib/logger";
 import { getBudgetRangeUsd } from "@/lib/currency";
+import {
+  buildLocationLikePattern,
+  getLocationSearchTerms,
+  getTopLocationMarket,
+} from "@/lib/locations/top-markets";
 
 const BATCH_SIZE = 10;
 
@@ -320,8 +325,21 @@ function buildFallbackCandidateQuery(buyer: BuyerProfileForMatching): {
   if (regions.length) {
     const regionClauses: string[] = [];
     for (const region of regions.slice(0, 3)) {
-      regionClauses.push(`LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++}`);
-      params.push(`%${String(region).toLowerCase()}%`);
+      const market = getTopLocationMarket(region);
+      const terms = getLocationSearchTerms(region);
+      const marketSlug = market?.slug ?? null;
+      const marketClause = marketSlug
+        ? `b.location_market_slugs @> ARRAY[$${paramIdx++}]::text[]`
+        : null;
+      const textClauses = terms.map(
+        () => `LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++} ESCAPE '\\'`
+      );
+
+      if (marketSlug) params.push(marketSlug);
+      params.push(...terms.map(buildLocationLikePattern));
+      regionClauses.push(
+        marketClause ? `(${marketClause} OR ${textClauses.join(" OR ")})` : `(${textClauses.join(" OR ")})`
+      );
     }
     conditions.push(`(${regionClauses.join(" OR ")})`);
   }

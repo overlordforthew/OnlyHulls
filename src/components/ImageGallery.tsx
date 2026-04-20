@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ChevronLeft, ChevronRight, PlayCircle } from "lucide-react";
 import { getExternalVideoMeta, isLocalMediaUrl, type ListingMediaType } from "@/lib/media";
 
@@ -21,19 +21,33 @@ export function ImageGallery({
   alt: string;
 }) {
   const [current, setCurrent] = useState(0);
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
   const thumbsRef = useRef<HTMLDivElement>(null);
+  const displayMedia = useMemo(
+    () => media.filter((item) => item.type === "video" || !failedUrls.has(item.url)),
+    [media, failedUrls]
+  );
+  const safeCurrent = Math.min(current, Math.max(0, displayMedia.length - 1));
+  const markImageFailed = useCallback((url: string) => {
+    setFailedUrls((existing) => {
+      if (existing.has(url)) return existing;
+      const next = new Set(existing);
+      next.add(url);
+      return next;
+    });
+  }, []);
 
   // Auto-scroll thumbnail strip to keep active thumb visible
   useEffect(() => {
     const container = thumbsRef.current;
     if (!container) return;
-    const thumb = container.children[current] as HTMLElement | undefined;
+    const thumb = container.children[safeCurrent] as HTMLElement | undefined;
     if (thumb) {
       thumb.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
-  }, [current]);
+  }, [safeCurrent, displayMedia]);
 
-  if (media.length === 0) {
+  if (displayMedia.length === 0) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-elevated">
         <span className="text-6xl opacity-20">&#9973;</span>
@@ -41,9 +55,17 @@ export function ImageGallery({
     );
   }
 
-  const prev = () => setCurrent((i) => (i > 0 ? i - 1 : media.length - 1));
-  const next = () => setCurrent((i) => (i < media.length - 1 ? i + 1 : 0));
-  const currentItem = media[current];
+  const prev = () =>
+    setCurrent((i) => {
+      const base = Math.min(i, displayMedia.length - 1);
+      return base > 0 ? base - 1 : displayMedia.length - 1;
+    });
+  const next = () =>
+    setCurrent((i) => {
+      const base = Math.min(i, displayMedia.length - 1);
+      return base < displayMedia.length - 1 ? base + 1 : 0;
+    });
+  const currentItem = displayMedia[safeCurrent];
   const currentVideo = currentItem.type === "video" ? getExternalVideoMeta(currentItem.url) : null;
   const currentImageIsLocal = isLocalMediaUrl(currentItem.url);
 
@@ -55,27 +77,30 @@ export function ImageGallery({
           <iframe
             src={currentVideo.embedUrl}
             title={currentItem.caption || `${alt} video`}
-            className="aspect-[16/9] w-full border-0 bg-black"
+            className="mx-auto aspect-[16/9] w-full max-w-[1152px] border-0 bg-black"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
         ) : (
-          <div className="relative aspect-[16/9] w-full">
+          <div className="relative mx-auto aspect-[16/9] w-full max-w-[1152px] bg-black">
             <Image
               src={currentItem.url}
               alt={currentItem.caption || alt}
               fill
-              className="object-cover"
-              sizes="100vw"
+              className="object-contain"
+              sizes="(min-width: 1152px) 1152px, 100vw"
+              loading="eager"
+              priority={safeCurrent === 0}
               unoptimized={!currentImageIsLocal}
               quality={currentImageIsLocal ? 90 : undefined}
+              onError={() => markImageFailed(currentItem.url)}
             />
           </div>
         )}
 
         {/* Nav arrows */}
-        {media.length > 1 && (
+        {displayMedia.length > 1 && (
           <>
             <button
               onClick={prev}
@@ -97,43 +122,50 @@ export function ImageGallery({
         {/* Photo count */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
           <Camera className="h-3.5 w-3.5" />
-          {current + 1} / {media.length}
+          {safeCurrent + 1} / {displayMedia.length}
         </div>
       </div>
 
       {/* Thumbnail strip */}
-        {media.length > 1 && (
+        {displayMedia.length > 1 && (
           <div ref={thumbsRef} className="flex gap-2 overflow-x-auto">
-            {media.map((m, i) => (
-              <button
-                key={m.id}
-                onClick={() => setCurrent(i)}
-                className={`relative h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
-                  i === current
-                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-              >
-                {m.type === "video" ? (
-                  <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
-                    <div className="flex flex-col items-center gap-1">
-                      <PlayCircle className="h-8 w-8" />
-                      <span className="text-xs font-medium">Video</span>
+            {displayMedia.map((m, i) => {
+              const thumbnailUrl = m.thumbnailUrl || m.url;
+
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setCurrent(i)}
+                  className={`relative h-24 w-36 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-44 ${
+                    i === safeCurrent
+                      ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                      : "opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  {m.type === "video" ? (
+                    <div className="flex h-full w-full items-center justify-center bg-surface-elevated text-text-secondary">
+                      <div className="flex flex-col items-center gap-1">
+                        <PlayCircle className="h-8 w-8" />
+                        <span className="text-xs font-medium">Video</span>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <Image
-                    src={m.url}
-                    alt={m.caption || alt}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 9rem, 11rem"
-                    unoptimized={!isLocalMediaUrl(m.url)}
-                    quality={isLocalMediaUrl(m.url) ? 80 : undefined}
-                  />
-                )}
-              </button>
-            ))}
+                  ) : (
+                    <Image
+                      src={thumbnailUrl}
+                      alt={m.caption || alt}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 9rem, 11rem"
+                      unoptimized={!isLocalMediaUrl(thumbnailUrl)}
+                      quality={isLocalMediaUrl(thumbnailUrl) ? 80 : undefined}
+                      onError={() => {
+                        if (thumbnailUrl === m.url) markImageFailed(m.url);
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
     </div>

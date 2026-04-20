@@ -9,6 +9,10 @@ import {
   buildWhereClause,
   filtersFromSearchParams,
 } from "../../src/lib/search/boat-search";
+import {
+  inferLocationMarketSignals,
+  resolveLocationCountryHint,
+} from "../../src/lib/locations/top-markets";
 
 test("buildSavedSearchName uses stable ASCII separators", () => {
   assert.equal(
@@ -67,7 +71,189 @@ test("boat search preserves dedicated location filters separately from text sear
 
   const where = buildWhereClause(filters);
   assert.match(where.where, /location_text/i);
-  assert.equal(where.params[0], "%bahamas%");
+  assert.match(where.where, /location_market_slugs/i);
+  assert.equal(where.params[0], "bahamas");
+  assert.equal(where.params[1], "%bahamas%");
+});
+
+test("boat search canonicalizes known location aliases and expands market terms", () => {
+  const filters = filtersFromSearchParams(new URLSearchParams("location=PR"));
+
+  assert.equal(filters.location, "puerto-rico");
+
+  const params = buildBoatSearchParams({ location: "Fajardo" });
+  assert.equal(params.get("location"), "puerto-rico");
+
+  const where = buildWhereClause(filters);
+  assert.match(where.where, /location_text/i);
+  assert.match(where.where, /location_market_slugs/i);
+  assert.deepEqual(where.params.slice(0, 4), [
+    "puerto-rico",
+    "%puerto rico%",
+    "%san juan%",
+    "%fajardo%",
+  ]);
+});
+
+test("boat search keeps exact child markets from collapsing into regional rollups", () => {
+  assert.equal(buildBoatSearchParams({ location: "BVI" }).get("location"), "bvi");
+  assert.equal(buildBoatSearchParams({ location: "Greece" }).get("location"), "greece");
+  assert.equal(buildBoatSearchParams({ location: "Spain" }).get("location"), "spain");
+});
+
+test("location inference tags exact markets and parent cruising regions", () => {
+  const bvi = inferLocationMarketSignals({ locationText: "Tortola, British Virgin Islands" });
+
+  assert.deepEqual(bvi.marketSlugs, ["caribbean", "bvi"]);
+  assert.equal(bvi.country, "British Virgin Islands");
+  assert.equal(bvi.region, "Caribbean");
+  assert.equal(bvi.confidence, "city");
+  assert.equal(bvi.approximate, true);
+
+  const florida = inferLocationMarketSignals({
+    locationText: "Fort Lauderdale, FL",
+    latitude: 26.1224,
+    longitude: -80.1373,
+  });
+  assert.deepEqual(florida.marketSlugs, ["united-states", "florida"]);
+  assert.equal(florida.confidence, "exact");
+  assert.equal(florida.approximate, false);
+
+  const approximateCannes = inferLocationMarketSignals({
+    locationText: "Cannes",
+    latitude: 43.5528,
+    longitude: 7.0174,
+    coordinatesApproximate: true,
+  });
+  assert.deepEqual(approximateCannes.marketSlugs, ["mediterranean", "france"]);
+  assert.equal(approximateCannes.confidence, "city");
+  assert.equal(approximateCannes.approximate, true);
+});
+
+test("location inference covers high-volume European marina text", () => {
+  const croatia = inferLocationMarketSignals({ locationText: "Split" });
+  assert.deepEqual(croatia.marketSlugs, ["mediterranean", "croatia"]);
+  assert.equal(croatia.country, "Croatia");
+  assert.equal(croatia.confidence, "city");
+
+  const uk = inferLocationMarketSignals({ locationText: "Plymouth, Devon" });
+  assert.deepEqual(uk.marketSlugs, ["uk"]);
+  assert.equal(uk.country, "United Kingdom");
+  assert.equal(uk.confidence, "city");
+
+  const martinique = inferLocationMarketSignals({ locationText: "Le Marin" });
+  assert.deepEqual(martinique.marketSlugs, ["caribbean", "martinique"]);
+  assert.equal(martinique.country, "Martinique");
+});
+
+test("location inference covers long-tail commercial cruising markets", () => {
+  const grenada = inferLocationMarketSignals({ locationText: "Clarke's Court Boatyard & Marina" });
+  assert.deepEqual(grenada.marketSlugs, ["caribbean", "grenada"]);
+  assert.equal(grenada.country, "Grenada");
+
+  const canada = inferLocationMarketSignals({ locationText: "Central Vancouver Island, British Columbia" });
+  assert.deepEqual(canada.marketSlugs, ["canada", "pacific-northwest"]);
+  assert.equal(canada.country, "Canada");
+
+  const carolina = inferLocationMarketSignals({ locationText: "Charleston" });
+  assert.deepEqual(carolina.marketSlugs, ["united-states", "south-carolina"]);
+  assert.equal(carolina.country, "United States");
+
+  const france = inferLocationMarketSignals({ locationText: "Cannes" });
+  assert.deepEqual(france.marketSlugs, ["mediterranean", "france"]);
+  assert.equal(france.country, "France");
+});
+
+test("location inference covers low-volume marina tail without overpromising coordinates", () => {
+  const texas = inferLocationMarketSignals({ locationText: "Kemah, Texas" });
+  assert.deepEqual(texas.marketSlugs, ["united-states", "texas"]);
+  assert.equal(texas.confidence, "city");
+  assert.equal(texas.approximate, true);
+
+  const malta = inferLocationMarketSignals({ locationText: "Valletta" });
+  assert.deepEqual(malta.marketSlugs, ["mediterranean", "malta"]);
+  assert.equal(malta.country, "Malta");
+
+  const sweden = inferLocationMarketSignals({ locationText: "Gothenburg" });
+  assert.deepEqual(sweden.marketSlugs, ["sweden"]);
+  assert.equal(sweden.country, "Sweden");
+
+  const hungary = inferLocationMarketSignals({ locationText: "Balatonvilágos" });
+  assert.deepEqual(hungary.marketSlugs, ["hungary"]);
+  assert.equal(hungary.country, "Hungary");
+
+  const stMaarten = inferLocationMarketSignals({ locationText: "Sint Maarten" });
+  assert.deepEqual(stMaarten.marketSlugs, ["caribbean", "st-maarten"]);
+  assert.equal(stMaarten.country, "Sint Maarten");
+
+  const greatLakes = inferLocationMarketSignals({ locationText: "Au Gres, Michigan" });
+  assert.deepEqual(greatLakes.marketSlugs, ["united-states", "great-lakes"]);
+  assert.equal(greatLakes.country, "United States");
+  assert.equal(greatLakes.confidence, "city");
+});
+
+test("location inference keeps broad state-only aliases at regional confidence", () => {
+  const maryland = inferLocationMarketSignals({ locationText: "Maryland" });
+  assert.deepEqual(maryland.marketSlugs, ["united-states", "chesapeake-bay"]);
+  assert.equal(maryland.confidence, "region");
+
+  const michigan = inferLocationMarketSignals({ locationText: "Michigan" });
+  assert.deepEqual(michigan.marketSlugs, ["united-states", "great-lakes"]);
+  assert.equal(michigan.confidence, "region");
+
+  const rhodeIsland = inferLocationMarketSignals({ locationText: "Rhode Island" });
+  assert.deepEqual(rhodeIsland.marketSlugs, ["united-states", "new-england"]);
+  assert.equal(rhodeIsland.confidence, "region");
+
+  const annapolis = inferLocationMarketSignals({ locationText: "Annapolis" });
+  assert.deepEqual(annapolis.marketSlugs, ["united-states", "chesapeake-bay"]);
+  assert.equal(annapolis.confidence, "city");
+});
+
+test("location inference favors explicit countries and longer admin phrases over ambiguous aliases", () => {
+  const newJersey = inferLocationMarketSignals({ locationText: "Parlin, New Jersey" });
+  assert.deepEqual(newJersey.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(newJersey.country, "United States");
+  assert.equal(newJersey.region, "New Jersey");
+
+  const forkedRiver = inferLocationMarketSignals({ locationText: "Forked River, New Jersey" });
+  assert.deepEqual(forkedRiver.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(forkedRiver.country, "United States");
+
+  const cartagena = inferLocationMarketSignals({ locationText: "Cartagena De Indias Colombia" });
+  assert.deepEqual(cartagena.marketSlugs, ["colombia"]);
+  assert.equal(cartagena.country, "Colombia");
+
+  const ensenada = inferLocationMarketSignals({ locationText: "Ensenada Mexico Baja, California" });
+  assert.deepEqual(ensenada.marketSlugs, ["mexico"]);
+  assert.equal(ensenada.country, "Mexico");
+
+  const turkey = inferLocationMarketSignals({ locationText: "Aegean, Turkey" });
+  assert.deepEqual(turkey.marketSlugs, ["mediterranean", "turkey"]);
+  assert.equal(turkey.country, "Turkey");
+
+  const jerseyCity = inferLocationMarketSignals({ locationText: "Jersey City, NJ" });
+  assert.deepEqual(jerseyCity.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(jerseyCity.country, "United States");
+  assert.equal(jerseyCity.region, "New Jersey");
+});
+
+test("location country hint resolver catches stale paid-geocoding country hints", () => {
+  assert.deepEqual(resolveLocationCountryHint("Parlin, New Jersey"), {
+    country: "United States",
+    region: "New Jersey",
+    matchedTerm: "new jersey",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Cartagena De Indias Colombia"), {
+    country: "Colombia",
+    region: "Colombia",
+    matchedTerm: "Colombia",
+  });
+  assert.deepEqual(resolveLocationCountryHint("St Helier, Jersey"), {
+    country: "Jersey",
+    region: "Channel Islands",
+    matchedTerm: "Jersey",
+  });
 });
 
 test("saved search signature keeps location and currency distinct", () => {

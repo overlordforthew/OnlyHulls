@@ -1,4 +1,5 @@
 import { computeMatchScore, type ScoreBreakdown } from "./rules";
+import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 
 type JsonObject = Record<string, unknown>;
 
@@ -47,7 +48,7 @@ function normalizedHaystack(boat: BoatForMatching): string {
     boat.location_text || "",
     boat.specs.vessel_type,
     boat.specs.rig_type,
-    boat.specs.hull_material,
+    sanitizeHullMaterial(boat.specs.hull_material),
     ...boat.character_tags,
   ]
     .filter(Boolean)
@@ -156,9 +157,10 @@ export function computeHeuristicVectorSimilarity(
     score += rigPrefs.includes(String(boat.specs.rig_type).toLowerCase()) ? 0.15 : -0.05;
   }
 
-  if (hullPrefs.length && boat.specs.hull_material) {
+  const hullMaterial = sanitizeHullMaterial(boat.specs.hull_material);
+  if (hullPrefs.length && hullMaterial) {
     signals++;
-    score += hullPrefs.includes(String(boat.specs.hull_material).toLowerCase()) ? 0.1 : -0.03;
+    score += hullPrefs.includes(hullMaterial.toLowerCase()) ? 0.1 : -0.03;
   }
 
   if (useCases.length) {

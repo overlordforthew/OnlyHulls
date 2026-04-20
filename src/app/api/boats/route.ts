@@ -8,10 +8,14 @@ import {
   type BoatSearchFilters,
 } from "@/lib/search/boat-search";
 import { buildVisibleImportQualitySql, sanitizeImportedBoatRecord } from "@/lib/import-quality";
+import { getPublicMapCoordinate } from "@/lib/locations/map-coordinates";
 import { NextResponse } from "next/server";
 
 const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     b.asking_price_usd, b.location_text, b.slug, b.is_sample,
+    b.location_country, b.location_region, b.location_market_slugs,
+    b.location_confidence, b.location_approximate, b.location_lat, b.location_lng,
+    b.location_geocode_precision,
     b.source_site, b.source_name, b.source_url,
     COALESCE(u.subscription_tier::text, 'free') as seller_subscription_tier,
     (SELECT url FROM boat_media bm WHERE bm.boat_id = b.id AND bm.type = 'image' ORDER BY sort_order LIMIT 1) as hero_url,
@@ -21,20 +25,35 @@ const BOAT_FIELDS = `b.id, b.make, b.model, b.year, b.asking_price, b.currency,
     d.ai_summary`;
 
 function sanitizeBoatResults(rows: Record<string, unknown>[]) {
-  return rows.map((row) =>
-    sanitizeImportedBoatRecord({
+  return rows.map((row) => {
+    const publicCoordinate = getPublicMapCoordinate({
+      latitude: row.location_lat,
+      longitude: row.location_lng,
+      precision: row.location_geocode_precision,
+      approximate: row.location_approximate,
+    });
+
+    return sanitizeImportedBoatRecord({
       ...row,
       make: String(row.make || ""),
       model: String(row.model || ""),
       slug: typeof row.slug === "string" ? row.slug : null,
       source_site: typeof row.source_site === "string" ? row.source_site : null,
       location_text: typeof row.location_text === "string" ? row.location_text : null,
+      location_lat: publicCoordinate?.latitude ?? null,
+      location_lng: publicCoordinate?.longitude ?? null,
+      location_geocode_precision:
+        typeof row.location_geocode_precision === "string"
+          ? row.location_geocode_precision
+          : null,
+      location_approximate:
+        publicCoordinate?.approximate ?? (row.location_approximate === true),
       specs:
         row.specs && typeof row.specs === "object"
           ? (row.specs as Record<string, unknown>)
           : {},
-    })
-  );
+    });
+  });
 }
 
 function getSanitizedLoa(row: Record<string, unknown>) {

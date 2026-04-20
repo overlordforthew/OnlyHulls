@@ -5,6 +5,7 @@ import {
   type SupportedCurrency,
 } from "@/lib/currency";
 import { getComparePageCopy, type CompareAnalysisCopy } from "@/i18n/copy/compare";
+import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 
 const DEFAULT_COMPARE_ANALYSIS_COPY = getComparePageCopy("en").analysis;
 
@@ -595,7 +596,7 @@ function countFilledSpecs(boat: CompareBoat) {
     boat.specs.beam,
     boat.specs.draft,
     boat.specs.rig_type,
-    boat.specs.hull_material,
+    sanitizeHullMaterial(boat.specs.hull_material),
     boat.specs.engine,
     boat.specs.cabins,
     boat.specs.berths,

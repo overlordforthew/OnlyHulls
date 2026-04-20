@@ -12,6 +12,7 @@ import {
   Handshake,
   Zap,
   Globe,
+  MapPin,
   Shield,
   Search,
   ArrowRight,
@@ -22,6 +23,7 @@ import BoatCard from "@/components/BoatCard";
 import { ListBoatCTA } from "@/components/MatchCTA";
 import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { getBoatCount, getFeaturedBoats } from "@/lib/db/queries";
+import { getFeaturedLocationMarkets } from "@/lib/locations/top-markets";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +99,7 @@ export default async function Home() {
     t("heroProof.two"),
     t("heroProof.three"),
   ];
+  const featuredLocations = getFeaturedLocationMarkets().slice(0, 4);
   const paths = [
     {
       eyebrow: t("paths.buyers.eyebrow"),
@@ -143,24 +146,63 @@ export default async function Home() {
             {/* Search bar */}
             <form
               action="/boats"
-              className="mx-auto mt-8 flex max-w-lg overflow-hidden rounded-full border border-border-bright bg-surface shadow-lg shadow-black/20"
+              className="mx-auto mt-8 grid max-w-3xl gap-2 rounded-2xl border border-border-bright bg-surface p-2 text-left shadow-lg shadow-black/20 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.86fr)_auto] sm:rounded-full"
             >
-              <div className="flex flex-1 items-center gap-3 px-5">
+              <label className="flex min-w-0 items-center gap-3 rounded-xl px-4 py-2.5 transition-colors focus-within:bg-surface-elevated sm:rounded-full">
                 <Search className="h-5 w-5 shrink-0 text-text-tertiary" />
-                <input
-                  type="text"
-                  name="q"
-                  placeholder={t("searchPlaceholder")}
-                  className="w-full bg-transparent py-3.5 text-sm text-foreground placeholder:text-text-tertiary focus:outline-none"
-                />
-              </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-semibold uppercase text-text-tertiary">
+                    {t("whatLabel")}
+                  </span>
+                  <input
+                    type="text"
+                    name="q"
+                    placeholder={t("searchPlaceholder")}
+                    className="mt-0.5 w-full bg-transparent text-sm text-foreground placeholder:text-text-tertiary focus:outline-none"
+                  />
+                </span>
+              </label>
+              <label className="flex min-w-0 items-center gap-3 rounded-xl border-t border-border px-4 py-2.5 transition-colors focus-within:bg-surface-elevated sm:rounded-full sm:border-l sm:border-t-0">
+                <MapPin className="h-5 w-5 shrink-0 text-text-tertiary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-semibold uppercase text-text-tertiary">
+                    {t("whereLabel")}
+                  </span>
+                  <input
+                    type="text"
+                    name="location"
+                    list="home-location-markets"
+                    placeholder={t("locationPlaceholder")}
+                    className="mt-0.5 w-full bg-transparent text-sm text-foreground placeholder:text-text-tertiary focus:outline-none"
+                  />
+                </span>
+              </label>
+              <datalist id="home-location-markets">
+                {featuredLocations.map((market) => (
+                  <option key={market.slug} value={market.label} />
+                ))}
+              </datalist>
               <button
                 type="submit"
-                className="m-1.5 rounded-full bg-accent-btn px-6 text-sm font-semibold text-white transition-all hover:bg-accent-light"
+                className="rounded-xl bg-accent-btn px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-accent-light sm:rounded-full"
               >
                 {t("searchButton")}
               </button>
             </form>
+
+            <div className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-center gap-2 text-sm">
+              <span className="text-xs font-medium text-text-tertiary">{t("popularMarkets")}</span>
+              {featuredLocations.map((market) => (
+                <Link
+                  key={market.slug}
+                  href={market.hubHref || `/boats?location=${market.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/70 px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  {market.label}
+                </Link>
+              ))}
+            </div>
 
             {/* CTA buttons */}
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">

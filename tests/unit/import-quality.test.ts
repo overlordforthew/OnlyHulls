@@ -69,6 +69,14 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
   assert.equal(normalizeImportedLocation("Mare Adriatico,"), "Mare Adriatico");
   assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
+  assert.equal(normalizeImportedLocation("At Request"), "");
+  assert.equal(normalizeImportedLocation("Bij Eigenaar"), "");
+  assert.equal(normalizeImportedLocation("Ex Factory"), "");
+  assert.equal(normalizeImportedLocation("West Coast"), "");
+  assert.equal(normalizeImportedLocation("Center"), "");
+  assert.equal(normalizeImportedLocation("Marina"), "");
+  assert.equal(normalizeImportedLocation("Af Afspraak, Bel Ons; +31 (0)320 711340"), "");
+  assert.equal(normalizeImportedLocation("Bezichtiging Op Afspraak"), "");
   assert.equal(normalizeImportedLocation("Price"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Hindeloopen"), "");
   assert.equal(normalizeImportedLocation("Contact De Valk Almeria, Andalusia"), "");
@@ -189,6 +197,10 @@ test("normalizeImportedLocation preserves useful region formatting", () => {
   assert.equal(
     normalizeImportedLocation("Batamindonesia"),
     "Batam, Indonesia"
+  );
+  assert.equal(
+    normalizeImportedLocation("Penangmalaysia"),
+    "Penang, Malaysia"
   );
   assert.equal(
     normalizeImportedLocation("Denpasarbali Indonesia"),
@@ -3468,6 +3480,91 @@ test("sanitizeImportedSpecs persists normalized vessel type for matching", () =>
       }
     ).vessel_type,
     "catamaran"
+  );
+});
+
+test("sanitizeImportedSpecs keeps hull material separate from boat type", () => {
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "monohull",
+      },
+      {
+        make: "Dufour",
+        model: "390 Grand Large",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "fiberglass",
+      },
+      {
+        make: "Dufour",
+        model: "390 Grand Large",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      hull_material: "fiberglass",
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "catamaran",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "catamaran",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "catamaran",
+        vessel_type: "monohull",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      vessel_type: "monohull",
+    }
+  );
+
+  assert.deepEqual(
+    sanitizeImportedSpecs(
+      {
+        hull_material: "cedar strip",
+      },
+      {
+        make: "Custom",
+        model: "Cruiser",
+        sourceSite: "sailboatlistings",
+      }
+    ),
+    {
+      hull_material: "cedar strip",
+      vessel_type: "monohull",
+    }
   );
 });
 

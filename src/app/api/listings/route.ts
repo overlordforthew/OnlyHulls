@@ -11,6 +11,7 @@ import {
   listingSchema,
   updateListingEmbedding,
 } from "@/lib/listings/shared";
+import { inferLocationMarketSignals } from "@/lib/locations/top-markets";
 import { MAX_EXTERNAL_VIDEOS } from "@/lib/media";
 import { trackFunnelEvent } from "@/lib/funnel";
 import { NextResponse } from "next/server";
@@ -116,11 +117,17 @@ export async function POST(req: Request) {
       generateListingSlug(data.year, data.make, data.model, data.locationText)
     );
     const initialStatus = data.submitForReview ? "pending_review" : "draft";
+    const locationSignals = inferLocationMarketSignals({
+      locationText: data.locationText,
+      latitude: data.locationLat,
+      longitude: data.locationLng,
+    });
 
     const boat = await queryOne<{ id: string }>(
       `INSERT INTO boats (seller_id, slug, hull_id, make, model, year, asking_price, currency,
-         status, location_text, location_lat, location_lng)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         status, location_text, location_lat, location_lng, location_country, location_region,
+         location_market_slugs, location_confidence, location_approximate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING id`,
       [
         user.id,
@@ -135,6 +142,11 @@ export async function POST(req: Request) {
         data.locationText || null,
         data.locationLat || null,
         data.locationLng || null,
+        locationSignals.country,
+        locationSignals.region,
+        locationSignals.marketSlugs,
+        locationSignals.confidence,
+        locationSignals.approximate,
       ]
     );
 

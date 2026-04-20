@@ -17,6 +17,8 @@ interface BoatCardProps {
     asking_price: number;
     currency: string;
     location_text: string | null;
+    location_confidence?: string | null;
+    location_approximate?: boolean | null;
     slug: string | null;
     is_sample: boolean;
     hero_url: string | null;
@@ -58,6 +60,9 @@ export default function BoatCard({
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
   const listingBadge = getListingBadge(boat, t);
   const trustSignal = getTrustSignal(boat, t);
+  const showApproximateLocation = Boolean(
+    boat.location_text && boat.location_approximate
+  );
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
     nativeCurrency: boat.currency,
@@ -128,21 +133,18 @@ export default function BoatCard({
         {boat.location_text ? (
           <div
             data-testid="boat-location"
-            className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground/85"
+            className="mt-2 flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground/85"
             title={boat.location_text}
           >
             <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{boat.location_text}</span>
+            {showApproximateLocation && (
+              <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase text-text-tertiary">
+                {t("locationApproximate")}
+              </span>
+            )}
           </div>
-        ) : (
-          <div
-            data-testid="boat-location-missing"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200"
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            {t("locationRefining")}
-          </div>
-        )}
+        ) : null}
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
           {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
@@ -194,11 +196,7 @@ export default function BoatCard({
 
         {trustSignal && (
           <div
-            className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
-              trustSignal.tone === "warning"
-                ? "border-amber-500/20 bg-amber-500/10 text-amber-100"
-                : "border-border bg-background/40 text-text-secondary"
-            }`}
+            className="mt-2 rounded-lg border border-border bg-background/40 px-3 py-2 text-xs text-text-secondary"
           >
             {trustSignal.label}
           </div>
@@ -304,12 +302,7 @@ function getTrustSignal(
   t: BoatCardTranslator
 ) {
   if (!boat.location_text) {
-    return {
-      label: boat.source_name
-        ? t("trustLocationSource", { source: boat.source_name })
-        : t("trustLocationSeller"),
-      tone: "warning" as const,
-    };
+    return null;
   }
 
   if (boat.source_name && !boat.source_url) {

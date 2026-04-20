@@ -13,6 +13,12 @@ import SeoHubLinks from "@/components/seo/SeoHubLinks";
 import { buildBoatBrowseSummary } from "@/lib/browse-summary";
 import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import {
+  canonicalizeLocationParam,
+  getFeaturedLocationMarkets,
+  getLocationDisplayName,
+  TOP_LOCATION_MARKETS,
+} from "@/lib/locations/top-markets";
+import {
   getDisplayedPrice,
   normalizeSupportedCurrency,
   readPreferredCurrencyFromBrowser,
@@ -52,6 +58,14 @@ interface Boat {
   currency: string;
   asking_price_usd: number | null;
   location_text: string | null;
+  location_country?: string | null;
+  location_region?: string | null;
+  location_market_slugs?: string[];
+  location_confidence?: string | null;
+  location_approximate?: boolean | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  location_geocode_precision?: string | null;
   slug: string | null;
   is_sample: boolean;
   hero_url: string | null;
@@ -80,6 +94,7 @@ const EMPTY_FILTERS: FilterState = {
   rigType: "",
   hullType: "",
 };
+const FEATURED_LOCATION_MARKETS = getFeaturedLocationMarkets();
 
 function normalizeSortField(value: string | null): SortField {
   return value === "price" || value === "size" || value === "year" || value === "newest"
@@ -119,7 +134,7 @@ function buildSearchFocusLabel(input: {
   filters: FilterState;
 }) {
   if (input.location.trim()) {
-    return input.location.trim();
+    return getLocationDisplayName(input.location);
   }
   if (input.search.trim()) {
     return input.search.trim();
@@ -176,6 +191,7 @@ function BoatsPageInner() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(initialQ);
+  const [locationInput, setLocationInput] = useState(getLocationDisplayName(initialLocation));
   const [search, setSearch] = useState(initialQ);
   const [locationFilter, setLocationFilter] = useState(initialLocation);
   const [activeTag, setActiveTag] = useState(initialTag);
@@ -188,6 +204,7 @@ function BoatsPageInner() {
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
+  const [locationMarketCounts, setLocationMarketCounts] = useState<Record<string, number>>({});
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const { compareCount, isCompared, toggleBoat, maxCompareBoats } = useCompareBoats();
@@ -204,6 +221,25 @@ function BoatsPageInner() {
     if (savedView === "grid" || savedView === "rows") {
       setViewMode(savedView);
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/boats/location-markets")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.counts && typeof data.counts === "object") {
+          setLocationMarketCounts(data.counts);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLocationMarketCounts({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -236,6 +272,7 @@ function BoatsPageInner() {
 
   function clearSearchCriteria() {
     setSearchInput("");
+    setLocationInput("");
     setSearch("");
     setLocationFilter("");
     setActiveTag("");
@@ -261,10 +298,12 @@ function BoatsPageInner() {
     const params = new URLSearchParams();
     const searchQ = q !== undefined ? q : search;
     const searchTag = tag !== undefined ? tag : activeTag;
-    const currentLocation = nextLocation !== undefined ? nextLocation : locationFilter;
+    const currentLocation = (nextLocation !== undefined ? nextLocation : locationFilter).trim();
     const currentFilters = filterState ?? appliedFilters;
     if (searchQ) params.set("q", searchQ);
-    if (currentLocation) params.set("location", currentLocation);
+    if (currentLocation) {
+      params.set("location", canonicalizeLocationParam(currentLocation) || currentLocation);
+    }
     if (searchTag) params.set("tag", searchTag);
     params.set("page", String(pageNum || page));
     params.set("limit", String(BATCH_SIZE));
@@ -280,6 +319,17 @@ function BoatsPageInner() {
     return params;
   }, [search, activeTag, locationFilter, page, appliedFilters, displayCurrency, sortField, sortDir]);
 
+  const navigateToBrowse = useCallback((
+    q?: string,
+    tag?: string,
+    filterState?: FilterState,
+    nextLocation?: string
+  ) => {
+    const params = buildParams(q, tag, 1, filterState, nextLocation);
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }, [buildParams, pathname, router]);
+
   async function fetchBoats(
     q?: string,
     tag?: string,
@@ -291,7 +341,7 @@ function BoatsPageInner() {
     setPage(1);
     const nextSearch = q !== undefined ? q : search;
     const nextTag = tag !== undefined ? tag : activeTag;
-    const resolvedLocation = nextLocation !== undefined ? nextLocation : locationFilter;
+    const resolvedLocation = (nextLocation !== undefined ? nextLocation : locationFilter).trim();
     const nextFilters = filterState ?? appliedFilters;
     try {
       const params = buildParams(nextSearch, nextTag, 1, nextFilters, resolvedLocation);
@@ -337,6 +387,7 @@ function BoatsPageInner() {
     const tag = searchParams.get("tag") || "";
     const nextFilters = filtersFromParams(searchParams);
     setSearchInput(q);
+    setLocationInput(getLocationDisplayName(location));
     setSearch(q);
     setLocationFilter(location);
     setActiveTag(tag);
@@ -348,11 +399,23 @@ function BoatsPageInner() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    fetchBoats(searchInput, "", filters);
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const nextSearch = String(formData.get("q") || "");
+    const nextLocation = String(formData.get("location") || "");
+
+    setSearchInput(nextSearch);
+    setLocationInput(nextLocation);
+    navigateToBrowse(nextSearch, "", filters, nextLocation);
   }
 
   function clearTag() {
-    fetchBoats(search, "", appliedFilters);
+    navigateToBrowse(search, "", appliedFilters, locationFilter);
+  }
+
+  function clearLocation() {
+    setLocationInput("");
+    navigateToBrowse(search, activeTag, appliedFilters, "");
   }
 
   const hasMore = boats.length < total;
@@ -394,6 +457,7 @@ function BoatsPageInner() {
     tag: activeTag,
     filters: appliedFilters,
   });
+  const locationFilterLabel = getLocationDisplayName(locationFilter);
 
   const inputClass =
     "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30";
@@ -551,16 +615,38 @@ function BoatsPageInner() {
               </div>
             </div>
 
-            <form onSubmit={handleSearch} className="flex max-w-md flex-1 gap-2 sm:justify-end">
-              <div className="relative flex-1 sm:max-w-xs">
+            <form
+              onSubmit={handleSearch}
+              className="grid w-full max-w-2xl flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_auto_auto] sm:justify-end"
+            >
+              <div className="relative min-w-0">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
                 <input
                   type="text"
+                  name="q"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder={t("searchPlaceholder")}
                   className={`${inputClass} w-full pl-9`}
                 />
+              </div>
+              <div className="relative min-w-0">
+                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+                <input
+                  type="text"
+                  name="location"
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  list="boats-location-markets"
+                  placeholder={t("locationPlaceholder")}
+                  data-testid="boats-location-input"
+                  className={`${inputClass} w-full pl-9`}
+                />
+                <datalist id="boats-location-markets">
+                  {TOP_LOCATION_MARKETS.map((market) => (
+                    <option key={market.slug} value={market.label} />
+                  ))}
+                </datalist>
               </div>
               <button
                 type="submit"
@@ -583,15 +669,49 @@ function BoatsPageInner() {
             </form>
           </div>
 
-          {/* Active tag */}
-          {activeTag && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                {activeTag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                <button onClick={clearTag} className="text-primary/60 hover:text-primary" aria-label={t("clearFilter")}>
-                  <X className="h-3.5 w-3.5" />
-                </button>
+          {(activeTag || locationFilter) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {locationFilter && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {t("locationChip", { location: locationFilterLabel })}
+                  <button onClick={clearLocation} className="text-primary/60 hover:text-primary" aria-label={t("clearLocation")}>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+              {activeTag && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                  {activeTag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  <button onClick={clearTag} className="text-primary/60 hover:text-primary" aria-label={t("clearFilter")}>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+
+          {!locationFilter && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-text-tertiary">
+                {t("popularMarkets")}
               </span>
+              {FEATURED_LOCATION_MARKETS.map((market) => (
+                <button
+                  key={market.slug}
+                  type="button"
+                  onClick={() => navigateToBrowse(searchInput, activeTag, filters, market.slug)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  {market.label}
+                  {locationMarketCounts[market.slug] ? (
+                    <span className="text-text-tertiary">
+                      {t("marketCount", { count: locationMarketCounts[market.slug] })}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
             </div>
           )}
 
@@ -648,7 +768,7 @@ function BoatsPageInner() {
                 ))}
               </select>
               <button
-                onClick={() => fetchBoats(searchInput, activeTag, filters)}
+                onClick={() => navigateToBrowse(searchInput, activeTag, filters, locationInput)}
                 className="rounded-lg bg-primary-btn px-4 py-2 text-sm font-medium text-white hover:bg-primary-light"
               >
                 {t("applyFilters")}

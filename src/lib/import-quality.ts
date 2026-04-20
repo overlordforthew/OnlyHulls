@@ -1,9 +1,12 @@
 import { getHeldSourceKeys, getHeldSourceNames } from "@/lib/source-policy";
+import { sanitizeHullMaterial, vesselTypeFromHullForm } from "@/lib/specs/hull-material";
 
 export const MIN_VISIBLE_IMPORTED_PRICE_USD = 3000;
 export const MIN_VISIBLE_IMPORTED_IMAGES = 1;
 export const MIN_GOOD_SUMMARY_LENGTH = 40;
 const GENERIC_LOCATION_VALUES = new Set([
+  "at request",
+  "bij eigenaar",
   "outside united states",
   "outside usa",
   "outside the united states",
@@ -17,6 +20,16 @@ const GENERIC_LOCATION_VALUES = new Set([
   "global",
   "worldwide",
   "unknown",
+  "ex factory",
+  "cruising",
+  "starboard",
+  "center",
+  "marina",
+  "7 seas",
+  "east coast",
+  "west coast",
+  "south coast",
+  "south",
   "europe",
   "caribbean",
   "mediterranean",
@@ -32,6 +45,7 @@ const GENERIC_LOCATION_SQL_VALUES = toSqlStringList(GENERIC_LOCATION_VALUES);
 const BROKER_CONTACT_LOCATION_SQL_PATTERN = "^contact[[:space:]]+de[[:space:]]+valk([[:space:]]|$)";
 const URLISH_LOCATION_SQL_PATTERN =
   "(https?://|www\\.|(^|[[:space:],])[-_[:alnum:]]+\\.(com|net|org|co|fr|de|es|it|nl|io)([[:space:],/.-]|$))";
+const APPOINTMENT_LOCATION_SQL_PATTERN = "^(af[[:space:]]+afspraak|bezichtiging[[:space:]]+op[[:space:]]+afspraak|op[[:space:]]+afspraak|op[[:space:]]+aanvraag|by[[:space:]]+appointment|on[[:space:]]+request)([[:space:],;:]|$)";
 const HELD_SOURCE_SITE_SQL_VALUES = toSqlStringList(
   getHeldSourceKeys().map((sourceKey) => sourceKey.toLowerCase())
 );
@@ -149,6 +163,10 @@ const COMMON_LOCATION_SUFFIXES = [
   "Australia",
   "New Zealand",
 ];
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 const TITLE_CASE_EXACT: Record<string, string> = {
   "o'day": "O'Day",
@@ -626,6 +644,12 @@ function isUrlishLocation(value: string) {
   );
 }
 
+function isAppointmentPlaceholderLocation(value: string) {
+  return /^(?:af\s+afspraak|bezichtiging\s+op\s+afspraak|op\s+afspraak|op\s+aanvraag|by\s+appointment|on\s+request)(?:[\s,;:]|$)/i.test(
+    value
+  );
+}
+
 export function normalizeImportedLocation(value?: string | null) {
   let normalized = normalizeSpacing(repairUtf8Mojibake(String(value || "")));
   if (!normalized) return "";
@@ -647,6 +671,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (GENERIC_LOCATION_VALUES.has(normalized.toLowerCase())) return "";
   if (isBrokerContactLocation(normalized)) return "";
   if (isUrlishLocation(normalized)) return "";
+  if (isAppointmentPlaceholderLocation(normalized)) return "";
 
   normalized = normalized.replace(/^enroute\s+(?=\S)/i, "");
 
@@ -658,9 +683,21 @@ export function normalizeImportedLocation(value?: string | null) {
 
   if (!normalized.includes(",")) {
     for (const suffix of COMMON_LOCATION_SUFFIXES) {
-      const suffixPattern = new RegExp(`^(.+?)\\s+${suffix.replace(/\s+/g, "\\s+")}$`, "i");
+      const suffixPattern = new RegExp(`^(.+?)\\s+${escapeRegExp(suffix).replace(/\s+/g, "\\s+")}$`, "i");
       const match = normalized.match(suffixPattern);
       if (match) {
+        normalized = `${match[1]}, ${suffix}`;
+        break;
+      }
+    }
+  }
+
+  if (!normalized.includes(",")) {
+    for (const suffix of LOCATION_REGION_FALLBACKS) {
+      const compactSuffix = suffix.replace(/\s+/g, "");
+      const suffixPattern = new RegExp(`^(.+?)${escapeRegExp(compactSuffix)}$`, "i");
+      const match = normalized.match(suffixPattern);
+      if (match && match[1].trim().length >= 2) {
         normalized = `${match[1]}, ${suffix}`;
         break;
       }
@@ -680,6 +717,7 @@ export function normalizeImportedLocation(value?: string | null) {
   if (GENERIC_LOCATION_VALUES.has(collapsed.toLowerCase())) return "";
   if (isBrokerContactLocation(collapsed)) return "";
   if (isUrlishLocation(collapsed)) return "";
+  if (isAppointmentPlaceholderLocation(collapsed)) return "";
 
   return collapsed;
 }
@@ -2023,11 +2061,17 @@ export function sanitizeImportedSpecs(
   if (draft === null) delete normalizedSpecs.draft;
   else normalizedSpecs.draft = draft;
 
+  const rawHullMaterial = normalizedSpecs.hull_material;
+  const hullFormType = vesselTypeFromHullForm(rawHullMaterial);
+  const hullMaterial = sanitizeHullMaterial(rawHullMaterial);
+  if (hullMaterial) normalizedSpecs.hull_material = hullMaterial;
+  else delete normalizedSpecs.hull_material;
+
   normalizedSpecs.vessel_type = inferImportedVesselType({
     make: context.make,
     model: context.model,
     rigType: typeof normalizedSpecs.rig_type === "string" ? normalizedSpecs.rig_type : null,
-    existingType: normalizedSpecs.vessel_type,
+    existingType: normalizedSpecs.vessel_type ?? hullFormType,
   });
 
   return normalizedSpecs;
@@ -2450,6 +2494,7 @@ export function buildBaseVisibleImportQualitySql(alias = "b") {
     AND ${normalizedLocationSql} NOT IN (${GENERIC_LOCATION_SQL_VALUES})
     AND ${normalizedLocationSql} !~ '${BROKER_CONTACT_LOCATION_SQL_PATTERN}'
     AND ${normalizedLocationSql} !~ '${URLISH_LOCATION_SQL_PATTERN}'
+    AND ${normalizedLocationSql} !~ '${APPOINTMENT_LOCATION_SQL_PATTERN}'
     AND NOT (${buildImportedSaleStatusSql(alias)})
     AND COALESCE(${alias}.asking_price_usd, ${alias}.asking_price) >= ${MIN_VISIBLE_IMPORTED_PRICE_USD}
     AND ${usableImportedImageExistsSql}

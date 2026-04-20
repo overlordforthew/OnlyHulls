@@ -38,7 +38,9 @@ import {
   normalizeImportedSummary,
   resolveImportedDedupLocationText,
   sanitizeImportedDimensions,
+  sanitizeImportedSpecs,
 } from "../src/lib/import-quality";
+import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 import { assertSourceImportAllowed } from "../src/lib/source-policy";
 import { getSafeExternalUrl, getSafeExternalUrlList } from "../src/lib/url-safety";
 
@@ -97,6 +99,10 @@ interface PendingEmbedding {
   id: string;
   text: string;
 }
+
+type ImportOptions = {
+  fullCrawl?: boolean;
+};
 
 type DbLikeError = {
   code?: string;
@@ -253,31 +259,41 @@ function buildSpecsAndSummary(input: {
   });
   const hullMaterial = input.boat.hull || "";
   const engine = input.boat.engine || "";
-  const vesselType = inferImportedVesselType({
+  const inferredVesselType = inferImportedVesselType({
     make: input.make,
     model: input.model,
     rigType,
     existingType: input.boat.type,
   });
 
-  const specs: Record<string, unknown> = {
+  const rawSpecs: Record<string, unknown> = {
     loa,
     beam,
     draft,
     rig_type: rigType,
     hull_material: hullMaterial,
-    vessel_type: vesselType,
+    vessel_type: inferredVesselType,
     engine,
   };
 
-  if (input.boat.displacement) specs.displacement = parseNumber(input.boat.displacement);
-  if (input.boat.fuel_type) specs.fuel_type = input.boat.fuel_type;
-  if (input.boat.cabins) specs.cabins = parseNumber(input.boat.cabins);
-  if (input.boat.berths) specs.berths = parseNumber(input.boat.berths);
-  if (input.boat.heads) specs.heads = parseNumber(input.boat.heads);
-  if (input.boat.keel_type) specs.keel_type = input.boat.keel_type;
-  if (input.boat.water_capacity) specs.water_capacity = parseNumber(input.boat.water_capacity);
-  if (input.boat.fuel_capacity) specs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
+  if (input.boat.displacement) rawSpecs.displacement = parseNumber(input.boat.displacement);
+  if (input.boat.fuel_type) rawSpecs.fuel_type = input.boat.fuel_type;
+  if (input.boat.cabins) rawSpecs.cabins = parseNumber(input.boat.cabins);
+  if (input.boat.berths) rawSpecs.berths = parseNumber(input.boat.berths);
+  if (input.boat.heads) rawSpecs.heads = parseNumber(input.boat.heads);
+  if (input.boat.keel_type) rawSpecs.keel_type = input.boat.keel_type;
+  if (input.boat.water_capacity) rawSpecs.water_capacity = parseNumber(input.boat.water_capacity);
+  if (input.boat.fuel_capacity) rawSpecs.fuel_capacity = parseNumber(input.boat.fuel_capacity);
+
+  const specs = sanitizeImportedSpecs(rawSpecs, {
+    make: input.make,
+    model: input.model,
+    sourceSite: input.sourceSite,
+  });
+  const cleanedHullMaterial =
+    typeof specs.hull_material === "string" ? specs.hull_material : "";
+  const vesselType =
+    typeof specs.vessel_type === "string" ? specs.vessel_type : inferredVesselType;
 
   const sourceSummary = cleanImportedListingSummary({
     summary: normalizeImportedSummary(input.boat.description),
@@ -303,7 +319,7 @@ function buildSpecsAndSummary(input: {
     locationText: input.location,
     loa,
     rigType,
-    hullMaterial,
+    hullMaterial: cleanedHullMaterial,
     berths: typeof specs.berths === "number" ? specs.berths : null,
     heads: typeof specs.heads === "number" ? specs.heads : null,
   });
@@ -326,7 +342,7 @@ function buildSpecsAndSummary(input: {
     beam,
     draft,
     rigType,
-    hullMaterial,
+    hullMaterial: cleanedHullMaterial,
     engine,
     specs,
     summary,
@@ -349,7 +365,25 @@ async function ensureSystemSeller(): Promise<string> {
   return seller!.id;
 }
 
-async function importBoats(filePath: string, sourceSite: string) {
+async function recordFullCrawl(sourceSite: string, count: number) {
+  await query(
+    `INSERT INTO import_source_crawl_state (
+       source_site,
+       last_full_crawl_at,
+       last_full_crawl_count,
+       updated_at
+     )
+     VALUES ($1, NOW(), $2, NOW())
+     ON CONFLICT (source_site) DO UPDATE SET
+       last_full_crawl_at = EXCLUDED.last_full_crawl_at,
+       last_full_crawl_count = EXCLUDED.last_full_crawl_count,
+       updated_at = EXCLUDED.updated_at`,
+    [sourceSite, count]
+  );
+  console.log(`Freshness: recorded full crawl for ${sourceSite} (${count} scraped listings)`);
+}
+
+async function importBoats(filePath: string, sourceSite: string, options: ImportOptions = {}) {
   const source = SOURCES[sourceSite];
   if (!source) {
     console.error(`Unknown source: ${sourceSite}. Valid: ${Object.keys(SOURCES).join(", ")}`);
@@ -452,6 +486,7 @@ async function importBoats(filePath: string, sourceSite: string) {
       }
 
       const currency = detectCurrency(b);
+      const locationSignals = inferLocationMarketSignals({ locationText: location });
 
       // Insert with ON CONFLICT for bulletproof dedup:
       // - source_url unique index catches exact URL duplicates
@@ -460,12 +495,16 @@ async function importBoats(filePath: string, sourceSite: string) {
         `INSERT INTO boats (
           seller_id, slug, make, model, year, asking_price, currency,
           asking_price_usd, status, location_text, listing_source,
-          source_site, source_name, source_url, is_sample, last_seen_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false, NOW())
+          source_site, source_name, source_url, is_sample, last_seen_at,
+          location_country, location_region, location_market_slugs,
+          location_confidence, location_approximate
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, 'imported', $10, $11, $12, false, NOW(), $13, $14, $15, $16, $17)
         ON CONFLICT DO NOTHING
         RETURNING id`,
         [sellerId, finalSlug, make, model, year, price, currency,
-         toUsd(price, currency), location, sourceSite, source.name, sourceUrl]
+         toUsd(price, currency), location, sourceSite, source.name, sourceUrl,
+         locationSignals.country, locationSignals.region, locationSignals.marketSlugs,
+         locationSignals.confidence, locationSignals.approximate]
       );
 
       // ON CONFLICT DO NOTHING returns null if duplicate — skip
@@ -587,13 +626,17 @@ async function importBoats(filePath: string, sourceSite: string) {
     console.log(`Embeddings: generated ${embedded} boat vectors`);
   }
 
+  if (options.fullCrawl) {
+    await recordFullCrawl(sourceSite, boats.length);
+  }
+
   console.log(
     `\nImport complete: ${imported} imported, ${skipped} skipped, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${errors} errors`
   );
   await pool.end();
 }
 
-async function updateBoats(filePath: string, sourceSite: string) {
+async function updateBoats(filePath: string, sourceSite: string, options: ImportOptions = {}) {
   const source = SOURCES[sourceSite];
   if (!source) {
     console.error(`Unknown source: ${sourceSite}`);
@@ -661,6 +704,9 @@ async function updateBoats(filePath: string, sourceSite: string) {
       const model = normalized.model || existing.model;
       const location = parsedLocation || normalizeImportedLocation(existing.location_text) || "";
       const targetLocationText = resolveImportedDedupLocationText(location, existing.location_text);
+      const locationSignals = inferLocationMarketSignals({
+        locationText: targetLocationText ?? existing.location_text ?? location,
+      });
       const normalizedSlug =
         year && location ? buildImportedSlug(year, make, model, location) : null;
       const currency = detectCurrency(b);
@@ -774,7 +820,12 @@ async function updateBoats(filePath: string, sourceSite: string) {
                slug = CASE
                  WHEN NULLIF($9, '') IS NOT NULL THEN $9
                  ELSE slug
-               END
+               END,
+               location_country = $10,
+               location_region = $11,
+               location_market_slugs = $12,
+               location_confidence = $13,
+               location_approximate = $14
            WHERE id = $1`,
           [
             boatId,
@@ -786,6 +837,11 @@ async function updateBoats(filePath: string, sourceSite: string) {
             priceUsd,
             location,
             targetSlug,
+            locationSignals.country,
+            locationSignals.region,
+            locationSignals.marketSlugs,
+            locationSignals.confidence,
+            locationSignals.approximate,
           ]
         );
       } catch (err) {
@@ -844,22 +900,26 @@ async function updateBoats(filePath: string, sourceSite: string) {
   console.log(
     `\nUpdate complete: ${updated} updated, ${notFound} not found, ${invalidSourceUrls} invalid source URLs, ${invalidImageUrls} invalid image URLs, ${duplicateSkips} duplicate skips, ${errors} errors`
   );
+  if (options.fullCrawl && boats.length > 0) {
+    await recordFullCrawl(sourceSite, boats.length);
+  }
   await pool.end();
 }
 
 // CLI
 const args = process.argv.slice(2);
 const updateMode = args.includes("--update");
-const filteredArgs = args.filter(a => a !== "--update");
+const fullCrawlMode = args.includes("--full");
+const filteredArgs = args.filter((a) => a !== "--update" && a !== "--full");
 
 if (filteredArgs.length < 2) {
-  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source> [--update]");
+  console.log("Usage: npx tsx scripts/import-scraped.ts <json-file> <source> [--update] [--full]");
   console.log(`Sources: ${Object.keys(SOURCES).join(", ")}`);
   process.exit(1);
 }
 
 const fn = updateMode ? updateBoats : importBoats;
-fn(filteredArgs[0], filteredArgs[1]).catch((err) => {
+fn(filteredArgs[0], filteredArgs[1], { fullCrawl: fullCrawlMode }).catch((err) => {
   console.error("Import failed:", err);
   process.exit(1);
 });

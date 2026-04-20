@@ -7,6 +7,7 @@ import {
   matchIntelligenceConfigured,
   matchIntelligenceProvider,
   openAIEnabled,
+  publicMapEnabled,
   semanticMatchingEnabled,
   storageEnabled,
 } from "@/lib/capabilities";
@@ -20,6 +21,7 @@ export async function GET() {
     embeddingProvider: embeddingProvider(),
     storageEnabled: storageEnabled(),
     mediaBackend: mediaBackend(),
+    publicMapEnabled: publicMapEnabled(),
     matchIntelligenceEnabled: matchIntelligenceConfigured(),
     matchIntelligenceProvider: matchIntelligenceProvider(),
   });

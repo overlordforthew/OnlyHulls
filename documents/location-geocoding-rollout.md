@@ -1,0 +1,138 @@
+# Location Geocoding Rollout
+
+This runbook is for the first commercial coordinate backfill. It does not launch the public map. Keep `PUBLIC_MAP_ENABLED=false` until the admin readiness panel, readiness report, and sample-pin audit all agree the data is ready.
+
+## Provider Policy
+
+- Use `opencage` for commercial backfills. OpenCage documents long-lived result storage in its API and pricing docs: https://opencagedata.com/api and https://opencagedata.com/pricing.
+- Use public Nominatim only for small validation runs. The OpenStreetMap Foundation Nominatim policy caps public use at about one request per second and discourages bulk geocoding: https://operations.osmfoundation.org/policies/nominatim/.
+- Do not use a geocoder whose terms forbid storing geocoded results unless that provider also supplies the rendered map under compatible terms.
+
+## Preflight
+
+1. Confirm production env:
+
+   ```bash
+   PUBLIC_MAP_ENABLED=false
+   LOCATION_GEOCODING_PROVIDER=opencage
+   LOCATION_GEOCODING_API_KEY=<live OpenCage key>
+   LOCATION_GEOCODING_USER_AGENT=OnlyHulls/1.0 (<monitored support email>)
+   LOCATION_GEOCODING_EMAIL=<monitored support email>
+   ```
+
+2. Refresh derived location markets before buying coordinates:
+
+   ```bash
+   npm run db:backfill-location-markets
+   ```
+
+3. Run the read-only readiness report and fix P0 blockers before any write batch:
+
+   ```bash
+   npm run db:geocode-readiness
+   npm run db:geocode-review
+   ```
+
+4. Refresh the provider comparison/golden-set artifact:
+
+   ```bash
+   npm run db:geocode-compare -- --mode=golden --fetch-missing --provider=opencage --max-fetches=50
+   npm run db:geocode-readiness
+   ```
+
+5. Confirm the admin location readiness panel has no country-hint mismatch groups and no provider/config blockers.
+
+## First Apply Batch
+
+Start with a batch small enough to manually inspect:
+
+```bash
+npm run db:geocode-locations -- --limit=100 --apply
+```
+
+The script refuses `--apply` when `PUBLIC_MAP_ENABLED=true` unless `--allow-public-map-apply` is passed for an intentional live-map maintenance run. Do not use that override during the initial backfill.
+
+Public Nominatim write-runs are intentionally capped to small validation batches. If a Nominatim batch hits the validation ceiling, switch to OpenCage for production instead of overriding by habit.
+
+## Batch Review
+
+After each apply batch, inspect the JSON output:
+
+- `precisionSplit`: exact, street, and marina are public-map candidates; city is searchable but not a hard public pin.
+- `failureReasons`: provider quota/rate-limit failures mean stop and fix provider health before retrying.
+- `geographyMismatches`: any country or region mismatch blocks scale-up until source text or country inference is fixed.
+- `samplePins`: open every audit URL in the first batch. For later batches, inspect at least 20 random pins or every emitted sample, whichever is smaller.
+
+Record each sample pin as accept/reject. Scale only when at least 95% of sampled pins land in the correct city/marina/harbor area and all exact/street/marina pins look defensible to a buyer.
+
+Then rerun:
+
+```bash
+npm run db:geocode-readiness
+npm run db:geocode-review
+```
+
+## Scaling
+
+Increase batch size gradually only when the previous batch has:
+
+- no `geographyMismatches`;
+- no unexpected `failureReasons`;
+- review/failed rows triaged by bucket;
+- public-pin coverage improving without low-score or stale-pin blockers;
+- a fresh compare artifact less than 30 days old.
+
+Recommended sequence:
+
+```bash
+npm run db:geocode-locations -- --limit=250 --apply
+npm run db:geocode-locations -- --limit=250 --apply --include-review
+```
+
+Use `--include-review` only after the review queue has been cleaned up. It should not be used to repeatedly retry bad source text.
+
+## Rollback
+
+Every apply batch creates a `boat_geocode_backup_<timestamp>` table before writing. Keep those tables until the batch has passed the sample-pin audit and readiness report.
+
+To roll back one batch, replace `<backup_table>` with the backup table name printed by the script:
+
+```sql
+BEGIN;
+
+UPDATE boats b
+SET location_lat = backup.location_lat,
+    location_lng = backup.location_lng,
+    location_country = backup.location_country,
+    location_region = backup.location_region,
+    location_market_slugs = backup.location_market_slugs,
+    location_confidence = backup.location_confidence,
+    location_approximate = backup.location_approximate,
+    location_geocoded_at = backup.location_geocoded_at,
+    location_geocode_status = backup.location_geocode_status,
+    location_geocode_provider = backup.location_geocode_provider,
+    location_geocode_query = backup.location_geocode_query,
+    location_geocode_place_name = backup.location_geocode_place_name,
+    location_geocode_precision = backup.location_geocode_precision,
+    location_geocode_score = backup.location_geocode_score,
+    location_geocode_error = backup.location_geocode_error,
+    location_geocode_attempted_at = backup.location_geocode_attempted_at,
+    location_geocode_payload = backup.location_geocode_payload,
+    updated_at = NOW()
+FROM <backup_table> backup
+WHERE b.id = backup.id;
+
+COMMIT;
+```
+
+After rollback, rerun `npm run db:geocode-readiness` and `npm run db:geocode-review`.
+
+## Public Map Gate
+
+Do not enable `PUBLIC_MAP_ENABLED=true` from this runbook. Public map launch is a separate release decision after:
+
+- readiness gates are green;
+- country-hint mismatches are zero;
+- review/failed geocodes are below thresholds;
+- exact/street/marina public-pin coverage is high enough for the buyer experience;
+- tile style, attribution, rate limits, and map UI have been reviewed together.

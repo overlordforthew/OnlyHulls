@@ -49,6 +49,7 @@ import {
   type QuickFactor,
 } from "@/lib/compare-analysis";
 import { isLocalMediaUrl } from "@/lib/media";
+import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 
 interface CompareRow {
@@ -143,7 +144,7 @@ function buildCompareSections(
         },
         {
           label: copy.sections.boatHandling.hullMaterial,
-          render: (boat) => formatTextValue(boat.specs.hull_material),
+          render: (boat) => formatTextValue(sanitizeHullMaterial(boat.specs.hull_material)),
         },
         {
           label: copy.sections.boatHandling.keel,

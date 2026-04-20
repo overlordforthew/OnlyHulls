@@ -43,6 +43,7 @@ async function mockBoatsResponse(page: Page) {
   await page.route("**/api/boats**", async (route) => {
     const url = new URL(route.request().url());
     const query = (url.searchParams.get("q") || "").toLowerCase();
+    const location = (url.searchParams.get("location") || "").toLowerCase().replace(/-/g, " ");
     const hullType = url.searchParams.get("hullType");
 
     let boats = mockBrowseBoats;
@@ -50,6 +51,12 @@ async function mockBoatsResponse(page: Page) {
     if (query) {
       boats = boats.filter((boat) =>
         `${boat.year} ${boat.make} ${boat.model}`.toLowerCase().includes(query)
+      );
+    }
+
+    if (location) {
+      boats = boats.filter((boat) =>
+        String(boat.location_text || "").toLowerCase().includes(location)
       );
     }
 
@@ -161,6 +168,23 @@ test("boats page search flow stays deterministic with mocked API data", async ({
   await page.reload();
   await expect(page.getByTestId("boats-view-toggle-rows")).toHaveClass(/bg-primary-btn/);
   await expect(page.getByTestId("boat-row-card").first()).toBeVisible();
+});
+
+test("boats page location search creates a shareable chip and URL", async ({ page }) => {
+  await mockBoatsResponse(page);
+
+  await page.goto("/boats");
+  await page.getByTestId("boats-location-input").fill("Puerto Rico");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+
+  await expect(page).toHaveURL(/location=puerto-rico/);
+  await expect(page.getByText("Location: Puerto Rico", { exact: true })).toBeVisible();
+  await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
+  await expect(page.getByText("2016 Lagoon 42", { exact: false })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Clear location", exact: true }).click();
+  await expect(page).not.toHaveURL(/location=/);
+  await expect(page.getByText("2016 Lagoon 42", { exact: false })).toBeVisible();
 });
 
 test("boats currency selection persists after reload locally", async ({ page }) => {

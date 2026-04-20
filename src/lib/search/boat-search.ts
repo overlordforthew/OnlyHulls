@@ -5,6 +5,13 @@ import {
   type SupportedCurrency,
   USD_TO_CURRENCY_RATE,
 } from "@/lib/currency";
+import {
+  buildLocationLikePattern,
+  canonicalizeLocationParam,
+  escapeSqlLikePattern,
+  getLocationSearchTerms,
+  getTopLocationMarket,
+} from "@/lib/locations/top-markets";
 
 export type BoatSortField = "price" | "size" | "year" | "newest";
 export type BoatSortDir = "asc" | "desc";
@@ -98,7 +105,7 @@ export function normalizeBoatSearchFilters(input: BoatSearchFilterInput): BoatSe
 
   return {
     search: normalizeText(input.search) ?? "",
-    location: normalizeText(input.location),
+    location: canonicalizeLocationParam(normalizeText(input.location)),
     page: clampPositiveInt(Number(input.page ?? 1), 1, 10_000),
     limit: clampPositiveInt(Number(input.limit ?? 30), 30, 100),
     minPrice: normalizeNumberString(input.minPrice),
@@ -203,14 +210,28 @@ export function buildWhereClause(filters: BoatSearchFilters) {
         array_to_string(COALESCE(d.character_tags, '{}'), ' '),
         COALESCE(d.specs->>'rig_type', ''),
         COALESCE(d.specs->>'hull_material', '')
-      )) LIKE $${paramIdx++}`
+      )) LIKE $${paramIdx++} ESCAPE '\\'`
     );
-    params.push(`%${filters.search.toLowerCase()}%`);
+    params.push(`%${escapeSqlLikePattern(filters.search.toLowerCase())}%`);
   }
 
   if (filters.location) {
-    conditions.push(`LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++}`);
-    params.push(`%${filters.location.toLowerCase()}%`);
+    const locationTerms = getLocationSearchTerms(filters.location);
+    const locationMarket = getTopLocationMarket(filters.location);
+    if (locationTerms.length > 0) {
+      const marketClause = locationMarket
+        ? `b.location_market_slugs @> ARRAY[$${paramIdx++}]::text[]`
+        : null;
+      const textClauses = locationTerms
+        .map(() => `LOWER(COALESCE(b.location_text, '')) LIKE $${paramIdx++} ESCAPE '\\'`)
+        .join(" OR ");
+
+      conditions.push(
+        marketClause ? `(${marketClause} OR (${textClauses}))` : `(${textClauses})`
+      );
+      if (locationMarket) params.push(locationMarket.slug);
+      params.push(...locationTerms.map(buildLocationLikePattern));
+    }
   }
 
   if (filters.minPrice) {

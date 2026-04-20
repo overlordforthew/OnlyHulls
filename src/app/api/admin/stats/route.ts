@@ -6,9 +6,12 @@ import {
   billingEnabled,
   emailEnabled,
   embeddingProvider,
+  locationGeocodingEnabled,
+  locationGeocodingProvider,
   matchIntelligenceConfigured,
   matchIntelligenceProvider,
   openAIEnabled,
+  publicMapEnabled,
   semanticMatchingEnabled,
   storageEnabled,
 } from "@/lib/capabilities";
@@ -16,6 +19,9 @@ import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
+import { PUBLIC_MAP_PRECISIONS } from "@/lib/locations/map-coordinates";
+import { buildCountryHintMismatchGroups } from "@/lib/locations/location-readiness";
+import { TOP_LOCATION_MARKETS } from "@/lib/locations/top-markets";
 import { getSourceDecisionByName } from "@/lib/source-policy";
 import { NextResponse } from "next/server";
 
@@ -88,6 +94,63 @@ export async function GET() {
       signups_24h: string;
       last_signup_at: string | null;
     };
+    type LocationReadinessSummaryRow = {
+      active_visible_count: string;
+      with_location_text_count: string;
+      with_market_slugs_count: string;
+      city_or_better_count: string;
+      exact_coordinates_count: string;
+      mappable_coordinates_count: string;
+      raw_coordinates_count: string;
+      city_coordinates_count: string;
+      regional_coordinates_count: string;
+      approximate_count: string;
+      missing_location_count: string;
+      unclassified_location_count: string;
+      geocode_ready_count: string;
+      geocode_pending_count: string;
+      geocode_review_count: string;
+      geocode_failed_count: string;
+      geocode_skipped_count: string;
+      geocoded_count: string;
+    };
+    type LocationMarketCountRow = {
+      slug: string;
+      count: string;
+    };
+    type UnclassifiedLocationRow = {
+      location_text: string;
+      count: string;
+      source_count: string;
+    };
+    type LocationGeocodeCandidateRow = {
+      location_text: string;
+      count: string;
+      confidence: string | null;
+      country: string | null;
+      region: string | null;
+    };
+    type LocationCountryHintAuditRow = {
+      location_text: string | null;
+      location_country: string | null;
+    };
+    type LocationPrecisionSplitRow = {
+      precision: string;
+      count: string;
+    };
+    type LocationProviderSplitRow = {
+      provider: string;
+      count: string;
+    };
+    type MediaHealthSummaryRow = {
+      external_image_count: string;
+      checked_count: string;
+      ok_count: string;
+      failed_count: string;
+      blocked_count: string;
+      unchecked_count: string;
+      checked_24h_count: string;
+    };
 
     const liveUserWhere = `
       email <> 'system@onlyhulls.com'
@@ -108,8 +171,16 @@ export async function GET() {
       recentActivity,
       importQualitySummary,
       sourceHealth,
+      mediaHealthSummary,
       ownerPulse,
       signupPulse,
+      locationReadinessSummary,
+      locationMarketCounts,
+      unclassifiedLocations,
+      geocodeCandidateLocations,
+      locationCountryHintRows,
+      locationPrecisionSplit,
+      locationProviderSplit,
     ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
@@ -204,6 +275,23 @@ export async function GET() {
          ORDER BY COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")}) DESC, COUNT(*) DESC
          LIMIT 8`
       ),
+      queryOne<MediaHealthSummaryRow>(
+        `SELECT
+           COUNT(*)::text AS external_image_count,
+           COUNT(*) FILTER (WHERE COALESCE(bm.fetch_status, 'unchecked') <> 'unchecked')::text AS checked_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'ok')::text AS ok_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'failed')::text AS failed_count,
+           COUNT(*) FILTER (WHERE bm.fetch_status = 'blocked')::text AS blocked_count,
+           COUNT(*) FILTER (WHERE COALESCE(bm.fetch_status, 'unchecked') = 'unchecked')::text AS unchecked_count,
+           COUNT(*) FILTER (WHERE bm.last_checked_at >= NOW() - INTERVAL '24 hours')::text AS checked_24h_count
+         FROM boat_media bm
+         JOIN boats b ON b.id = bm.boat_id
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE bm.type = 'image'
+           AND bm.url ~* '^https?://'
+           AND b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}`
+      ),
       queryOne<OwnerPulseRow>(
         `SELECT
            COUNT(*) FILTER (WHERE event_type = 'saved_search_created' AND created_at >= NOW() - INTERVAL '24 hours')::text AS saved_searches_24h,
@@ -231,7 +319,181 @@ export async function GET() {
          FROM users
          WHERE ${liveUserWhere}`
       ),
+      queryOne<LocationReadinessSummaryRow>(
+        `SELECT
+           COUNT(*)::text AS active_visible_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           )::text AS with_location_text_count,
+           COUNT(*) FILTER (
+             WHERE CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+           )::text AS with_market_slugs_count,
+           COUNT(*) FILTER (
+             WHERE b.location_confidence IN ('city', 'exact')
+           )::text AS city_or_better_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND COALESCE(b.location_approximate, false) = false
+               AND b.location_geocode_precision = ANY($1::text[])
+           )::text AS exact_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision = ANY($1::text[])
+           )::text AS mappable_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+           )::text AS raw_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision = 'city'
+           )::text AS city_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision IN ('region', 'country', 'unknown')
+           )::text AS regional_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_approximate = true
+               AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           )::text AS approximate_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') = ''
+           )::text AS missing_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+               AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
+           )::text AS unclassified_location_count,
+           COUNT(*) FILTER (
+             WHERE COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+               AND (
+                 b.location_lat IS NULL
+                 OR b.location_lng IS NULL
+                 OR b.location_lat NOT BETWEEN -90 AND 90
+                 OR b.location_lng NOT BETWEEN -180 AND 180
+               )
+               AND b.location_confidence IN ('city', 'exact')
+               AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+               AND (
+                 b.location_country IS NULL
+                 OR LOWER(TRIM(b.location_text)) <> LOWER(TRIM(b.location_country))
+               )
+               AND b.location_geocode_status = 'pending'
+           )::text AS geocode_ready_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'pending')::text AS geocode_pending_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'review')::text AS geocode_review_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'failed')::text AS geocode_failed_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'skipped')::text AS geocode_skipped_count,
+           COUNT(*) FILTER (WHERE b.location_geocode_status = 'geocoded')::text AS geocoded_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}`,
+        [[...PUBLIC_MAP_PRECISIONS]]
+      ),
+      query<LocationMarketCountRow>(
+        `SELECT location_market.market_slug AS slug, COUNT(*)::text AS count
+         FROM boats b
+         CROSS JOIN LATERAL UNNEST(COALESCE(b.location_market_slugs, '{}'::text[])) AS location_market(market_slug)
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+         GROUP BY location_market.market_slug
+         ORDER BY COUNT(*) DESC, location_market.market_slug
+         LIMIT 12`
+      ),
+      query<UnclassifiedLocationRow>(
+        `SELECT
+           MIN(b.location_text) AS location_text,
+           COUNT(*)::text AS count,
+           COUNT(DISTINCT COALESCE(b.source_name, 'Platform'))::text AS source_count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) = 0
+         GROUP BY LOWER(TRIM(b.location_text))
+         ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
+         LIMIT 12`
+      ),
+      query<LocationGeocodeCandidateRow>(
+        `SELECT
+           MIN(b.location_text) AS location_text,
+           COUNT(*)::text AS count,
+           MIN(b.location_confidence) AS confidence,
+           MIN(b.location_country) AS country,
+           MIN(b.location_region) AS region
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+           AND (
+             b.location_lat IS NULL
+             OR b.location_lng IS NULL
+             OR b.location_lat NOT BETWEEN -90 AND 90
+             OR b.location_lng NOT BETWEEN -180 AND 180
+           )
+           AND b.location_confidence IN ('city', 'exact')
+           AND CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) > 0
+           AND (
+             b.location_country IS NULL
+             OR LOWER(TRIM(b.location_text)) <> LOWER(TRIM(b.location_country))
+           )
+           AND b.location_geocode_status = 'pending'
+         GROUP BY LOWER(TRIM(b.location_text))
+        ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
+        LIMIT 12`
+      ),
+      query<LocationCountryHintAuditRow>(
+        `SELECT b.location_text,
+                b.location_country
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+         ORDER BY b.updated_at DESC, b.id
+         LIMIT 20000`
+      ),
+      query<LocationPrecisionSplitRow>(
+        `SELECT COALESCE(b.location_geocode_precision, 'none') AS precision,
+                COUNT(*)::text AS count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+         GROUP BY COALESCE(b.location_geocode_precision, 'none')
+         ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_precision, 'none')`
+      ),
+      query<LocationProviderSplitRow>(
+        `SELECT COALESCE(b.location_geocode_provider, 'none') AS provider,
+                COUNT(*)::text AS count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+         GROUP BY COALESCE(b.location_geocode_provider, 'none')
+         ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_provider, 'none')`
+      ),
     ]);
+    const locationMarketBySlug = new Map(
+      TOP_LOCATION_MARKETS.map((market) => [market.slug, market])
+    );
+    const countryHintMismatches = buildCountryHintMismatchGroups(
+      locationCountryHintRows.map((row) => ({
+        locationText: row.location_text,
+        storedCountry: row.location_country,
+      }))
+    );
 
     return NextResponse.json({
       totalUsers: parseInt(users?.count || "0"),
@@ -299,10 +561,69 @@ export async function GET() {
         lastPaidCheckoutAt: ownerPulse?.last_paid_checkout_at || null,
         lastPaymentFailureAt: ownerPulse?.last_payment_failure_at || null,
       },
+      locationReadiness: {
+        activeVisibleCount: parseInt(locationReadinessSummary?.active_visible_count || "0", 10),
+        withLocationTextCount: parseInt(locationReadinessSummary?.with_location_text_count || "0", 10),
+        withMarketSlugsCount: parseInt(locationReadinessSummary?.with_market_slugs_count || "0", 10),
+        cityOrBetterCount: parseInt(locationReadinessSummary?.city_or_better_count || "0", 10),
+        exactCoordinatesCount: parseInt(locationReadinessSummary?.exact_coordinates_count || "0", 10),
+        mappableCoordinatesCount: parseInt(locationReadinessSummary?.mappable_coordinates_count || "0", 10),
+        rawCoordinatesCount: parseInt(locationReadinessSummary?.raw_coordinates_count || "0", 10),
+        cityCoordinatesCount: parseInt(locationReadinessSummary?.city_coordinates_count || "0", 10),
+        regionalCoordinatesCount: parseInt(locationReadinessSummary?.regional_coordinates_count || "0", 10),
+        approximateCount: parseInt(locationReadinessSummary?.approximate_count || "0", 10),
+        missingLocationCount: parseInt(locationReadinessSummary?.missing_location_count || "0", 10),
+        unclassifiedLocationCount: parseInt(locationReadinessSummary?.unclassified_location_count || "0", 10),
+        geocodeReadyCount: parseInt(locationReadinessSummary?.geocode_ready_count || "0", 10),
+        geocodePendingCount: parseInt(locationReadinessSummary?.geocode_pending_count || "0", 10),
+        geocodeReviewCount: parseInt(locationReadinessSummary?.geocode_review_count || "0", 10),
+        geocodeFailedCount: parseInt(locationReadinessSummary?.geocode_failed_count || "0", 10),
+        geocodeSkippedCount: parseInt(locationReadinessSummary?.geocode_skipped_count || "0", 10),
+        geocodedCount: parseInt(locationReadinessSummary?.geocoded_count || "0", 10),
+        countryHintMismatchCount: countryHintMismatches.reduce((sum, row) => sum + row.count, 0),
+        countryHintMismatches,
+        topMarkets: locationMarketCounts.map((row) => ({
+          slug: row.slug,
+          label: locationMarketBySlug.get(row.slug)?.label || row.slug.replace(/-/g, " "),
+          count: parseInt(row.count || "0", 10),
+        })),
+        unclassifiedLocations: unclassifiedLocations.map((row) => ({
+          locationText: row.location_text,
+          count: parseInt(row.count || "0", 10),
+          sourceCount: parseInt(row.source_count || "0", 10),
+        })),
+        geocodeCandidates: geocodeCandidateLocations.map((row) => ({
+          locationText: row.location_text,
+          count: parseInt(row.count || "0", 10),
+          confidence: row.confidence,
+          country: row.country,
+          region: row.region,
+        })),
+        precisionSplit: locationPrecisionSplit.map((row) => ({
+          precision: row.precision,
+          count: parseInt(row.count || "0", 10),
+        })),
+        providerSplit: locationProviderSplit.map((row) => ({
+          provider: row.provider,
+          count: parseInt(row.count || "0", 10),
+        })),
+      },
+      mediaHealth: {
+        externalImageCount: parseInt(mediaHealthSummary?.external_image_count || "0", 10),
+        checkedCount: parseInt(mediaHealthSummary?.checked_count || "0", 10),
+        okCount: parseInt(mediaHealthSummary?.ok_count || "0", 10),
+        failedCount: parseInt(mediaHealthSummary?.failed_count || "0", 10),
+        blockedCount: parseInt(mediaHealthSummary?.blocked_count || "0", 10),
+        uncheckedCount: parseInt(mediaHealthSummary?.unchecked_count || "0", 10),
+        checked24hCount: parseInt(mediaHealthSummary?.checked_24h_count || "0", 10),
+      },
       serviceStatus: {
         billingEnabled: billingEnabled(),
         emailEnabled: emailEnabled(),
         openAIEnabled: openAIEnabled(),
+        locationGeocodingEnabled: locationGeocodingEnabled(),
+        locationGeocodingProvider: locationGeocodingProvider(),
+        publicMapEnabled: publicMapEnabled(),
         matchIntelligenceEnabled: matchIntelligenceConfigured(),
         matchIntelligenceProvider: matchIntelligenceProvider(),
         semanticMatchingEnabled: semanticMatchingEnabled(),
