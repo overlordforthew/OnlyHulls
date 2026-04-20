@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   buildMapLaunchPreflight,
   type MapLaunchBatchSimulation,
+  type MapLaunchInventorySnapshot,
   type MapLaunchPinAuditInput,
 } from "../../src/lib/locations/map-launch-preflight";
 import type { MapReadinessSnapshot } from "../../src/lib/locations/map-readiness";
@@ -78,6 +79,17 @@ const safeBatch: MapLaunchBatchSimulation = {
   geocodableCandidates: 20,
   selectedRows: 20,
   selectedUniqueQueries: 18,
+};
+
+const inventorySnapshot: MapLaunchInventorySnapshot = {
+  activeCount: 12000,
+  qualityVisibleBeforeFreshnessCount: 11000,
+  qualityVisibleBeforePolicyCount: 4300,
+  visibleCount: 4000,
+  qualitySuppressedCount: 1000,
+  freshnessSuppressedCount: 6700,
+  policySuppressedCount: 300,
+  hiddenCount: 8000,
 };
 
 const launchPinAuditReport = {
@@ -203,6 +215,7 @@ test("map backfill preflight blocks oversized paid-provider batch simulations", 
 test("map launch preflight returns GO only when env, readiness, review queue, and batch safety pass", () => {
   const result = buildMapLaunchPreflight({
     env: launchEnv,
+    inventory: inventorySnapshot,
     pinAudit: launchPinAudit,
     readiness: readySnapshot,
     batchSimulation: safeBatch,
@@ -212,10 +225,25 @@ test("map launch preflight returns GO only when env, readiness, review queue, an
   assert.equal(result.verdict, "GO");
   assert.equal(result.blockers.length, 0);
   assert(result.steps.some((step) => step.key === "pin_audit_review_passed" && step.status === "pass"));
+  assert(result.steps.some((step) => step.key === "inventory_waterfall_available" && step.status === "pass"));
+  assert(result.warnings.some((step) => step.key === "inventory_freshness_suppression_present"));
   assert(result.steps.some((step) => step.key === "batch_apply_safety" && step.status === "pass"));
   assert(result.nextCommands.some((command) => command.includes("staging")));
   assert.equal(JSON.stringify(result).includes("maptiler_live_key"), false);
   assert(JSON.stringify(result).includes("key=redacted"));
+});
+
+test("map launch preflight warns when inventory waterfall is missing", () => {
+  const result = buildMapLaunchPreflight({
+    env: launchEnv,
+    pinAudit: launchPinAudit,
+    readiness: readySnapshot,
+    batchSimulation: safeBatch,
+    generatedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(result.verdict, "GO");
+  assert(result.warnings.some((step) => step.key === "inventory_waterfall_missing"));
 });
 
 test("map launch preflight remains the default strict phase", () => {

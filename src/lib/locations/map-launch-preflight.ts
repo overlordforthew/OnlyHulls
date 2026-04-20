@@ -14,7 +14,15 @@ export type MapLaunchPreflightStatus = "pass" | "fail" | "warn" | "info";
 export type MapLaunchPreflightPhase = "backfill" | "launch";
 
 export type MapLaunchPreflightStep = {
-  section: "env" | "network" | "readiness" | "review_queue" | "pin_audit" | "batch_simulation" | "verdict";
+  section:
+    | "env"
+    | "network"
+    | "readiness"
+    | "inventory"
+    | "review_queue"
+    | "pin_audit"
+    | "batch_simulation"
+    | "verdict";
   key: string;
   status: MapLaunchPreflightStatus;
   message: string;
@@ -68,6 +76,17 @@ export type MapLaunchBatchSimulation = {
   selectedUniqueQueries: number;
 };
 
+export type MapLaunchInventorySnapshot = {
+  activeCount: number;
+  qualityVisibleBeforeFreshnessCount: number;
+  qualityVisibleBeforePolicyCount: number;
+  visibleCount: number;
+  qualitySuppressedCount: number;
+  freshnessSuppressedCount: number;
+  policySuppressedCount: number;
+  hiddenCount: number;
+};
+
 export type MapLaunchPinAuditInput = {
   report: Partial<MapPinAuditAttestation> | null;
   reportPath?: string | null;
@@ -80,6 +99,7 @@ export type MapLaunchPreflightInput = {
   env?: PreflightEnv;
   phase?: MapLaunchPreflightPhase;
   readiness?: MapReadinessSnapshot | MapLaunchReadinessReport | null;
+  inventory?: MapLaunchInventorySnapshot | null;
   batchSimulation?: MapLaunchBatchSimulation | null;
   pinAudit?: MapLaunchPinAuditInput | null;
   externalSteps?: MapLaunchPreflightStep[];
@@ -558,6 +578,69 @@ export function buildMapLaunchPreflight(
           : "Readiness launch gate is still failing during backfill.",
       actual: gate.actual,
       target: gate.target,
+    }));
+  }
+
+  if (input.inventory) {
+    const inventory = input.inventory;
+    steps.push(step({
+      section: "inventory",
+      key: "inventory_waterfall_available",
+      status: "pass",
+      message:
+        `${inventory.visibleCount.toLocaleString()} buyer-visible imported rows out of ${inventory.activeCount.toLocaleString()} active imported rows.`,
+      actual: inventory.visibleCount,
+      target: "inventory drop explained before map launch",
+    }));
+
+    if (inventory.qualitySuppressedCount > 0) {
+      steps.push(step({
+        section: "inventory",
+        key: "inventory_quality_suppression_present",
+        status: "warn",
+        message:
+          `${inventory.qualitySuppressedCount.toLocaleString()} active imported rows are gated by content quality before freshness checks.`,
+        actual: inventory.qualitySuppressedCount,
+        target: "known acceptable quality-gate delta",
+        action: "Use Source Health and the cleanup queue to inspect missing location, image, model, summary, price, or sale-status blockers.",
+      }));
+    }
+
+    if (inventory.freshnessSuppressedCount > 0) {
+      steps.push(step({
+        section: "inventory",
+        key: "inventory_freshness_suppression_present",
+        status: "warn",
+        message:
+          `${inventory.freshnessSuppressedCount.toLocaleString()} quality-passing imported rows are held by source freshness guardrails.`,
+        actual: inventory.freshnessSuppressedCount,
+        target: "freshness suppression understood before launch",
+        action: "Run db:source-health and source freshness recovery before treating the lower public inventory count as permanent.",
+      }));
+    }
+
+    if (inventory.policySuppressedCount > 0) {
+      steps.push(step({
+        section: "inventory",
+        key: "inventory_policy_suppression_present",
+        status: "warn",
+        message:
+          `${inventory.policySuppressedCount.toLocaleString()} quality-passing imported rows are held by source policy.`,
+        actual: inventory.policySuppressedCount,
+        target: "source policy suppression understood before launch",
+        action: "Keep held sources suppressed unless a source-health review explicitly promotes them.",
+      }));
+    }
+  } else {
+    steps.push(step({
+      section: "inventory",
+      key: "inventory_waterfall_missing",
+      status: isLaunchPhase ? "warn" : "info",
+      message: "Imported-inventory waterfall was not available for this preflight run.",
+      target: "active, quality pass, fresh pass, and buyer-visible imported counts",
+      action: isLaunchPhase
+        ? "Run launch preflight with DATABASE_URL configured or run npm run db:source-health -- --format=json before launch."
+        : "Run npm run db:source-health -- --format=json before launch.",
     }));
   }
 

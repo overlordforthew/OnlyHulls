@@ -60,7 +60,7 @@ Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` 
 
 1. `npm run db:map-launch-preflight -- --phase=launch --ping --pin-audit-report=artifacts/map-pin-audit-launch.json` returns `GO` against the intended staging/production database and configured providers.
 2. OpenCage backfill coverage and `/admin/map-readiness` gates are green.
-3. Admin Source Health explains the imported-inventory waterfall: active imported, quality pass, fresh pass, buyer visible, stale-source held, and policy held. Do not launch the map over an unexplained inventory drop.
+3. Admin Source Health and `db:map-launch-preflight` explain the imported-inventory waterfall: active imported, quality pass, fresh pass, buyer visible, stale-source held, and policy held. Do not launch the map over an unexplained inventory drop.
 4. A fresh zero-rejection `npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json` sample has been reviewed.
 5. MapTiler key is referrer-restricted to staging and production domains.
 6. MapTiler budget/session cap is configured.

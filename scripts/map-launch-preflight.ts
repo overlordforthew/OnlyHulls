@@ -2,15 +2,21 @@ import fs from "fs";
 import path from "path";
 
 import { pool, query } from "../src/lib/db";
-import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
+import {
+  buildBaseVisibleImportQualitySql,
+  buildBaseVisibleImportQualitySqlWithoutSourceFreshness,
+  buildVisibleImportQualitySql,
+} from "../src/lib/import-quality";
 import {
   buildMapLaunchPreflight,
   type MapLaunchBatchSimulation,
+  type MapLaunchInventorySnapshot,
   type MapLaunchPinAuditInput,
   type MapLaunchPreflightPhase,
   type MapLaunchPreflightResult,
   type MapLaunchPreflightStep,
 } from "../src/lib/locations/map-launch-preflight";
+import { deriveImportVisibilityCounts } from "../src/lib/source-health";
 import { buildGeocodeQuery, getGeocodingConfig } from "../src/lib/locations/geocoding";
 import { getMapPinAuditReport } from "../src/lib/locations/map-pin-audit-data";
 import {
@@ -27,6 +33,13 @@ type CandidateRow = {
   location_region: string | null;
   location_market_slugs: string[];
   location_confidence: string | null;
+};
+
+type InventoryRow = {
+  active_count: string;
+  quality_visible_before_freshness_count: string;
+  quality_visible_count: string;
+  visible_count: string;
 };
 
 const DEFAULT_BATCH_LIMIT = 100;
@@ -281,6 +294,44 @@ async function getBatchSimulation(limit: number): Promise<MapLaunchBatchSimulati
   };
 }
 
+async function getInventorySnapshot(): Promise<MapLaunchInventorySnapshot> {
+  const row = await query<InventoryRow>(
+    `SELECT
+       COUNT(*)::text AS active_count,
+       COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySqlWithoutSourceFreshness("b")})::text AS quality_visible_before_freshness_count,
+       COUNT(*) FILTER (WHERE ${buildBaseVisibleImportQualitySql("b")})::text AS quality_visible_count,
+       COUNT(*) FILTER (WHERE ${buildVisibleImportQualitySql("b")})::text AS visible_count
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE b.status = 'active'
+       AND b.listing_source = 'imported'`
+  );
+  const first = row[0];
+  const activeCount = Number.parseInt(first?.active_count || "0", 10);
+  const qualityVisibleBeforeFreshnessCount = Number.parseInt(
+    first?.quality_visible_before_freshness_count || "0",
+    10
+  );
+  const qualityVisibleBeforePolicyCount = Number.parseInt(
+    first?.quality_visible_count || "0",
+    10
+  );
+  const visibleCount = Number.parseInt(first?.visible_count || "0", 10);
+
+  return {
+    activeCount,
+    qualityVisibleBeforeFreshnessCount,
+    qualityVisibleBeforePolicyCount,
+    visibleCount,
+    ...deriveImportVisibilityCounts({
+      active: activeCount,
+      qualityVisibleBeforeFreshness: qualityVisibleBeforeFreshnessCount,
+      qualityVisibleBeforePolicy: qualityVisibleBeforePolicyCount,
+      visible: visibleCount,
+    }),
+  };
+}
+
 async function getPinAuditInput(
   reportPath: string | null,
   skipDb: boolean,
@@ -321,6 +372,7 @@ function renderText(result: MapLaunchPreflightResult) {
     "env",
     "network",
     "readiness",
+    "inventory",
     "review_queue",
     "pin_audit",
     "batch_simulation",
@@ -363,6 +415,7 @@ async function main() {
   const externalSteps: MapLaunchPreflightStep[] = [];
   let readiness = null;
   let batchSimulation: MapLaunchBatchSimulation | null = null;
+  let inventory: MapLaunchInventorySnapshot | null = null;
   let pinAudit: MapLaunchPinAuditInput | null = null;
 
   if (readinessReportPath) {
@@ -381,6 +434,7 @@ async function main() {
   }
 
   if (!skipDb && process.env.DATABASE_URL) {
+    inventory = await getInventorySnapshot();
     batchSimulation = await getBatchSimulation(batchLimit);
   } else if (readinessReportPath) {
     externalSteps.push({
@@ -406,6 +460,7 @@ async function main() {
   const result = buildMapLaunchPreflight({
     env: process.env,
     phase,
+    inventory,
     pinAudit,
     readiness,
     batchSimulation,
