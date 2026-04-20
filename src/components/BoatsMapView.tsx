@@ -7,13 +7,16 @@ import { Anchor, AlertTriangle, ExternalLink, Loader2, MapPin, Navigation } from
 import { useTranslations } from "next-intl";
 import { getPublicMapClientConfig } from "@/lib/config/public-map";
 import { MAX_BOUNDS_AREA_DEGREES } from "@/lib/locations/map-bounds";
-import { getInitialMapViewport } from "@/lib/locations/map-viewports";
+import type { MapInitialViewport } from "@/lib/locations/map-viewports";
 import type { PublicMapMarker } from "@/lib/locations/public-map-markers";
 
 type BoatsMapViewProps = {
   searchParams: string;
   locationFilter: string;
   locationLabel: string;
+  initialViewport: MapInitialViewport;
+  urlViewport: MapInitialViewport | null;
+  onViewportChange: (viewport: MapInitialViewport) => void;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -40,20 +43,44 @@ function getMarkerClassName(marker: PublicMapMarker, selected: boolean) {
     .join(" ");
 }
 
+function getCurrentViewport(map: MapLibreMap): MapInitialViewport {
+  const center = map.getCenter();
+  return {
+    latitude: center.lat,
+    longitude: center.lng,
+    zoom: map.getZoom(),
+  };
+}
+
+function isSameViewport(left: MapInitialViewport, right: MapInitialViewport) {
+  return (
+    Math.abs(left.latitude - right.latitude) < 0.00001 &&
+    Math.abs(left.longitude - right.longitude) < 0.00001 &&
+    Math.abs(left.zoom - right.zoom) < 0.01
+  );
+}
+
 export default function BoatsMapView({
   searchParams,
   locationFilter,
   locationLabel,
+  initialViewport,
+  urlViewport,
+  onViewportChange,
 }: BoatsMapViewProps) {
   const t = useTranslations("boatsPage.map");
   const config = useMemo(() => getPublicMapClientConfig(), []);
-  const initialViewport = useMemo(() => getInitialMapViewport(locationFilter), [locationFilter]);
+  const initialViewportRef = useRef(initialViewport);
+  const urlViewportRef = useRef(urlViewport);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const mapReadyRef = useRef(false);
   const popupRef = useRef<Popup | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const requestIdRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const viewportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const programmaticMoveRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const searchParamsRef = useRef(searchParams);
   const [markers, setMarkers] = useState<PublicMapMarker[]>([]);
@@ -108,7 +135,7 @@ export default function BoatsMapView({
 
   const fetchMarkers = useCallback(async () => {
     const map = mapRef.current;
-    if (!map || !config.enabled) return;
+    if (!map || !config.enabled || !mapReadyRef.current) return;
 
     const bounds = map.getBounds();
     const west = clamp(bounds.getWest(), -180, 180);
@@ -180,19 +207,37 @@ export default function BoatsMapView({
     }, delay);
   }, [fetchMarkers]);
 
+  const scheduleViewportWrite = useCallback((delay = 250) => {
+    const map = mapRef.current;
+    if (!map || programmaticMoveRef.current) return;
+
+    if (viewportDebounceRef.current) clearTimeout(viewportDebounceRef.current);
+    viewportDebounceRef.current = setTimeout(() => {
+      const activeMap = mapRef.current;
+      if (!activeMap || programmaticMoveRef.current) return;
+      onViewportChange(getCurrentViewport(activeMap));
+    }, delay);
+  }, [onViewportChange]);
+
   useEffect(() => {
     searchParamsRef.current = searchParams;
     scheduleFetch(0);
   }, [scheduleFetch, searchParams]);
 
   useEffect(() => {
+    urlViewportRef.current = urlViewport;
+  }, [urlViewport]);
+
+  useEffect(() => {
     if (!config.enabled || !containerRef.current || mapRef.current) return;
 
+    const mountViewport = initialViewportRef.current;
+    mapReadyRef.current = false;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: config.styleUrl,
-      center: [initialViewport.longitude, initialViewport.latitude],
-      zoom: initialViewport.zoom,
+      center: [mountViewport.longitude, mountViewport.latitude],
+      zoom: mountViewport.zoom,
       attributionControl: false,
       cooperativeGestures: true,
     });
@@ -206,24 +251,60 @@ export default function BoatsMapView({
       }),
       "bottom-right"
     );
-    map.once("load", () => scheduleFetch(0));
+    map.once("load", () => {
+      mapReadyRef.current = true;
+      scheduleFetch(0);
+      const activeUrlViewport = urlViewportRef.current;
+      if (!activeUrlViewport || !isSameViewport(getCurrentViewport(map), activeUrlViewport)) {
+        scheduleViewportWrite(0);
+      }
+    });
     map.on("error", () => {
       if (!map.isStyleLoaded()) {
         setError(t("styleError"));
         setLoading(false);
       }
     });
-    map.on("moveend", () => scheduleFetch());
+    map.on("moveend", () => {
+      scheduleFetch();
+      scheduleViewportWrite();
+    });
 
     return () => {
       abortRef.current?.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (viewportDebounceRef.current) clearTimeout(viewportDebounceRef.current);
       markersRef.current.forEach((marker) => marker.remove());
       popupRef.current?.remove();
       map.remove();
       mapRef.current = null;
+      mapReadyRef.current = false;
     };
-  }, [config.attribution, config.enabled, config.styleUrl, initialViewport, scheduleFetch, t]);
+  }, [
+    config.attribution,
+    config.enabled,
+    config.styleUrl,
+    scheduleFetch,
+    scheduleViewportWrite,
+    t,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !urlViewport) return;
+    const currentViewport = getCurrentViewport(map);
+    if (isSameViewport(currentViewport, urlViewport)) return;
+
+    programmaticMoveRef.current = true;
+    map.jumpTo({
+      center: [urlViewport.longitude, urlViewport.latitude],
+      zoom: urlViewport.zoom,
+    });
+    scheduleFetch(0);
+    window.setTimeout(() => {
+      programmaticMoveRef.current = false;
+    }, 0);
+  }, [scheduleFetch, urlViewport]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -264,7 +345,9 @@ export default function BoatsMapView({
       className="grid min-h-[620px] overflow-hidden rounded-lg border border-border bg-surface lg:grid-cols-[minmax(0,1fr)_360px]"
     >
       <div className="relative min-h-[420px] bg-muted lg:min-h-[620px]">
-        <div ref={containerRef} data-testid="boats-map-canvas" className="absolute inset-0" />
+        <div className="absolute inset-0">
+          <div ref={containerRef} data-testid="boats-map-canvas" className="h-full w-full" />
+        </div>
         <div className="pointer-events-none absolute left-4 top-4 flex max-w-[min(32rem,calc(100%-2rem))] flex-col gap-2">
           <div className="pointer-events-auto inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-background/90 px-3 py-2 text-xs font-semibold text-foreground shadow-lg backdrop-blur">
             <Navigation className="h-4 w-4 text-primary" />

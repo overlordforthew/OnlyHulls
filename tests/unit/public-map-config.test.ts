@@ -5,6 +5,12 @@ import {
   getPublicMapClientConfig,
   parsePublicMapResourceOrigins,
 } from "../../src/lib/config/public-map";
+import {
+  parseMapViewportFromParams,
+  setMapUrlParams,
+  stripMapUrlParams,
+  wantsMapView,
+} from "../../src/lib/locations/map-url-state";
 import { getInitialMapViewport } from "../../src/lib/locations/map-viewports";
 
 test("public map client capability requires flag, style URL, and attribution", () => {
@@ -67,4 +73,58 @@ test("map initial viewport uses market-specific views and a bounded default", ()
     longitude: -69.5,
     zoom: 5.2,
   });
+});
+
+test("map URL state parses only bounded finite viewport values", () => {
+  assert.deepEqual(
+    parseMapViewportFromParams(new URLSearchParams("view=map&mapCenter=45.52,-122.68&mapZoom=10")),
+    {
+      latitude: 45.52,
+      longitude: -122.68,
+      zoom: 10,
+    }
+  );
+  assert.equal(wantsMapView(new URLSearchParams("view=map")), true);
+  assert.equal(wantsMapView(new URLSearchParams("view=MAP")), false);
+  assert.equal(wantsMapView(new URLSearchParams("view=map&view=grid")), true);
+  assert.equal(wantsMapView(new URLSearchParams("view=grid")), false);
+  assert.equal(parseMapViewportFromParams(new URLSearchParams("view=map")), null);
+  assert.deepEqual(
+    parseMapViewportFromParams(new URLSearchParams("mapCenter=18.35,-65.70&mapZoom=10")),
+    {
+      latitude: 18.35,
+      longitude: -65.7,
+      zoom: 10,
+    }
+  );
+
+  const badValues = [
+    "mapCenter=abc,xyz&mapZoom=10",
+    "mapCenter=200,0&mapZoom=10",
+    "mapCenter=45.52&mapZoom=10",
+    "mapCenter=45.52,-122.68,extra&mapZoom=10",
+    "mapCenter=45.52,-122.68&mapZoom=999",
+    "mapCenter=45.52,-122.68&mapZoom=-5",
+    "mapCenter=45.52,-122.68&mapZoom=Infinity",
+  ];
+
+  for (const value of badValues) {
+    assert.equal(parseMapViewportFromParams(new URLSearchParams(value)), null);
+  }
+});
+
+test("map URL state serializes stable shareable params and strips them cleanly", () => {
+  const params = new URLSearchParams("q=lagoon&location=puerto-rico");
+  setMapUrlParams(params, {
+    latitude: 45.523456,
+    longitude: -122.678901,
+    zoom: 10.237,
+  });
+
+  assert.equal(params.get("view"), "map");
+  assert.equal(params.get("mapCenter"), "45.52346,-122.67890");
+  assert.equal(params.get("mapZoom"), "10.24");
+
+  stripMapUrlParams(params);
+  assert.equal(params.toString(), "q=lagoon&location=puerto-rico");
 });

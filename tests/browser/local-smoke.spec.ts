@@ -110,9 +110,10 @@ async function mockBrokenMapStyle(page: Page) {
   });
 }
 
-async function mockMapMarkersResponse(page: Page) {
+async function mockMapMarkersResponse(page: Page, onRequest?: (url: URL) => void) {
   await page.route(/\/api\/boats\/map(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
+    onRequest?.(url);
     expect(url.searchParams.get("bbox")).toBeTruthy();
     expect(url.searchParams.get("location")).toBe("puerto-rico");
 
@@ -269,10 +270,16 @@ test("boats map toggle stays hidden when public map capability is off", async ({
   test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED === "true", "map-on run verifies the enabled state");
   await mockBoatsResponse(page);
 
-  await page.goto("/boats");
+  await page.goto("/boats?view=map&mapCenter=18.25000,-66.45000&mapZoom=8.00");
   await expect(page.getByTestId("boats-view-toggle-grid")).toBeVisible();
   await expect(page.getByTestId("boats-view-toggle-rows")).toBeVisible();
   await expect(page.getByTestId("boats-view-toggle-map")).toHaveCount(0);
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("view"))
+    .toBeNull();
+  const strippedUrl = new URL(page.url());
+  expect(strippedUrl.searchParams.get("mapCenter")).toBeNull();
+  expect(strippedUrl.searchParams.get("mapZoom")).toBeNull();
 });
 
 test("boats map view fetches precise markers and links back to listings", async ({ page }) => {
@@ -291,6 +298,38 @@ test("boats map view fetches precise markers and links back to listings", async 
     "href",
     "/boats/2018-lagoon-450-f"
   );
+});
+
+test("boats map URL state opens shared map links and updates after zoom", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_MAP_ENABLED !== "true", "requires NEXT_PUBLIC map test env");
+  await mockBoatsResponse(page);
+  await mockMapStyle(page);
+  const markerRequests: URL[] = [];
+  await mockMapMarkersResponse(page, (url) => markerRequests.push(url));
+
+  await page.goto("/boats?location=puerto-rico&view=map&mapCenter=18.35000,-65.70000&mapZoom=10.00");
+  await expect(page.getByTestId("boats-map-shell")).toBeVisible();
+  await expect(page.getByTestId("boats-view-toggle-map")).toHaveClass(/bg-primary-btn/);
+  await expect(page.getByTestId("boats-map-listing").first()).toContainText("2018 Lagoon 450 F");
+
+  await expect.poll(() => markerRequests.length).toBeGreaterThan(0);
+  const firstBbox = markerRequests[0].searchParams.get("bbox");
+  expect(firstBbox).toBeTruthy();
+  const [west, south, east, north] = firstBbox!.split(",").map(Number);
+  expect(east - west).toBeLessThan(1.2);
+  expect(north - south).toBeLessThan(1.2);
+  expect(west).toBeLessThan(-65.7);
+  expect(east).toBeGreaterThan(-65.7);
+  expect(south).toBeLessThan(18.35);
+  expect(north).toBeGreaterThan(18.35);
+
+  const historyLengthBeforeZoom = await page.evaluate(() => window.history.length);
+  await page.locator(".maplibregl-ctrl-zoom-in").click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("mapZoom"))
+    .not.toBe("10.00");
+  expect(new URL(page.url()).searchParams.get("view")).toBe("map");
+  expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBeforeZoom);
 });
 
 test("boats map view handles rate-limited marker responses without crashing", async ({ page }) => {

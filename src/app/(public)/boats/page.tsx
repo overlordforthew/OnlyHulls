@@ -16,6 +16,17 @@ import { buildBoatSearchParams } from "@/lib/search/boat-search";
 import { getPublicMapClientConfig } from "@/lib/config/public-map";
 import { MAP_MARKER_DEFAULT_LIMIT } from "@/lib/locations/map-bounds";
 import {
+  parseMapViewportFromParams,
+  setMapUrlParams,
+  stripMapUrlParams,
+  wantsMapView,
+  MAP_CENTER_PARAM,
+  MAP_ZOOM_PARAM,
+  MAP_VIEW_PARAM,
+  MAP_VIEW_VALUE,
+} from "@/lib/locations/map-url-state";
+import { getInitialMapViewport, type MapInitialViewport } from "@/lib/locations/map-viewports";
+import {
   canonicalizeLocationParam,
   getFeaturedLocationMarkets,
   getLocationDisplayName,
@@ -199,6 +210,9 @@ function BoatsPageInner() {
   const initialSortField = normalizeSortField(searchParams.get("sort"));
   const initialSortDir = normalizeSortDir(searchParams.get("dir"), initialSortField);
   const initialFilters = filtersFromParams(searchParams);
+  const rawSearchParamString = searchParams.toString();
+  const initialViewMode =
+    PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams) ? "map" : "grid";
 
   const [boats, setBoats] = useState<Boat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +228,7 @@ function BoatsPageInner() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortDir);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(() =>
     initialCurrency || readPreferredCurrencyFromBrowser()
   );
@@ -230,14 +244,45 @@ function BoatsPageInner() {
   const compareReady = compareCount > 0;
   const compareCountLabel = t("compareFilled", { count: compareCount });
 
+  const boatSearchParamString = useMemo(() => {
+    const params = new URLSearchParams(rawSearchParamString);
+    stripMapUrlParams(params);
+    return params.toString();
+  }, [rawSearchParamString]);
+  const urlMapViewport = useMemo(
+    () => parseMapViewportFromParams(searchParams),
+    [searchParams]
+  );
+  const initialMapViewport = useMemo(
+    () => urlMapViewport || getInitialMapViewport(locationFilter),
+    [locationFilter, urlMapViewport]
+  );
+
   useEffect(() => {
+    if (PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams)) {
+      setViewMode("map");
+      return;
+    }
+
     const savedView = window.localStorage.getItem("boats_view_mode");
     if (savedView === "grid" || savedView === "rows") {
       setViewMode(savedView);
     } else if (savedView === "map" && PUBLIC_MAP_CLIENT_CONFIG.enabled) {
       setViewMode(savedView);
+      const params = new URLSearchParams(rawSearchParamString);
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }
-  }, []);
+  }, [pathname, rawSearchParamString, router, searchParams]);
+
+  useEffect(() => {
+    if (PUBLIC_MAP_CLIENT_CONFIG.enabled || !wantsMapView(searchParams)) return;
+    const params = new URLSearchParams(rawSearchParamString);
+    stripMapUrlParams(params);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, rawSearchParamString, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,6 +330,15 @@ function BoatsPageInner() {
     if (nextView === "map" && !PUBLIC_MAP_CLIENT_CONFIG.enabled) return;
     setViewMode(nextView);
     window.localStorage.setItem("boats_view_mode", nextView);
+
+    const params = new URLSearchParams(window.location.search);
+    if (nextView === "map") {
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+    } else {
+      stripMapUrlParams(params);
+    }
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
   function clearSearchCriteria() {
@@ -343,9 +397,17 @@ function BoatsPageInner() {
     nextLocation?: string
   ) => {
     const params = buildParams(q, tag, 1, filterState, nextLocation);
+    if (viewMode === "map" && PUBLIC_MAP_CLIENT_CONFIG.enabled) {
+      const currentParams = new URLSearchParams(window.location.search);
+      params.set(MAP_VIEW_PARAM, MAP_VIEW_VALUE);
+      const center = currentParams.get(MAP_CENTER_PARAM);
+      const zoom = currentParams.get(MAP_ZOOM_PARAM);
+      if (center) params.set(MAP_CENTER_PARAM, center);
+      if (zoom) params.set(MAP_ZOOM_PARAM, zoom);
+    }
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
-  }, [buildParams, pathname, router]);
+  }, [buildParams, pathname, router, viewMode]);
 
   async function fetchBoats(
     q?: string,
@@ -399,10 +461,11 @@ function BoatsPageInner() {
   }
 
   useEffect(() => {
-    const q = searchParams.get("q") || "";
-    const location = searchParams.get("location") || "";
-    const tag = searchParams.get("tag") || "";
-    const nextFilters = filtersFromParams(searchParams);
+    const filteredSearchParams = new URLSearchParams(boatSearchParamString);
+    const q = filteredSearchParams.get("q") || "";
+    const location = filteredSearchParams.get("location") || "";
+    const tag = filteredSearchParams.get("tag") || "";
+    const nextFilters = filtersFromParams(filteredSearchParams);
     setSearchInput(q);
     setLocationInput(getLocationDisplayName(location));
     setSearch(q);
@@ -412,7 +475,14 @@ function BoatsPageInner() {
     setAppliedFilters(nextFilters);
     fetchBoats(q, tag, nextFilters, location);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [boatSearchParamString]);
+
+  const handleMapViewportChange = useCallback((viewport: MapInitialViewport) => {
+    const params = new URLSearchParams(window.location.search);
+    setMapUrlParams(params, viewport);
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [pathname]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -965,6 +1035,9 @@ function BoatsPageInner() {
                 searchParams={mapSearchParamString}
                 locationFilter={locationFilter}
                 locationLabel={locationFilterLabel}
+                initialViewport={initialMapViewport}
+                urlViewport={urlMapViewport}
+                onViewportChange={handleMapViewportChange}
               />
             ) : viewMode === "grid" ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
