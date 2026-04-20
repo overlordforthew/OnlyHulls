@@ -56,20 +56,15 @@ test("public map coordinates expose precise and marina-level locations conservat
   );
 });
 
-test("city-level map coordinates are rounded and marked approximate", () => {
-  assert.deepEqual(
+test("city-level map coordinates are not exposed as hard public map pins", () => {
+  assert.equal(
     getPublicMapCoordinate({
       latitude: 5.4141123,
       longitude: 100.3288123,
       precision: "city",
       approximate: false,
     }),
-    {
-      latitude: 5.41,
-      longitude: 100.33,
-      precision: "city",
-      approximate: true,
-    }
+    null
   );
 });
 

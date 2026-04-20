@@ -19,6 +19,7 @@ import { getOwnerAlertRecipients } from "@/lib/email/resend";
 import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
+import { PUBLIC_MAP_PRECISIONS } from "@/lib/locations/map-coordinates";
 import { TOP_LOCATION_MARKETS } from "@/lib/locations/top-markets";
 import { getSourceDecisionByName } from "@/lib/source-policy";
 import { NextResponse } from "next/server";
@@ -99,6 +100,9 @@ export async function GET() {
       city_or_better_count: string;
       exact_coordinates_count: string;
       mappable_coordinates_count: string;
+      raw_coordinates_count: string;
+      city_coordinates_count: string;
+      regional_coordinates_count: string;
       approximate_count: string;
       missing_location_count: string;
       unclassified_location_count: string;
@@ -124,6 +128,14 @@ export async function GET() {
       confidence: string | null;
       country: string | null;
       region: string | null;
+    };
+    type LocationPrecisionSplitRow = {
+      precision: string;
+      count: string;
+    };
+    type LocationProviderSplitRow = {
+      provider: string;
+      count: string;
     };
     type MediaHealthSummaryRow = {
       external_image_count: string;
@@ -161,6 +173,8 @@ export async function GET() {
       locationMarketCounts,
       unclassifiedLocations,
       geocodeCandidateLocations,
+      locationPrecisionSplit,
+      locationProviderSplit,
     ] = await Promise.all([
       queryOne<{ count: string }>(`SELECT COUNT(*) FROM users WHERE ${liveUserWhere}`),
       queryOne<{ count: string }>("SELECT COUNT(*) FROM users WHERE role = 'admin'"),
@@ -315,11 +329,27 @@ export async function GET() {
              WHERE b.location_lat BETWEEN -90 AND 90
                AND b.location_lng BETWEEN -180 AND 180
                AND COALESCE(b.location_approximate, false) = false
+               AND b.location_geocode_precision = ANY($1::text[])
            )::text AS exact_coordinates_count,
            COUNT(*) FILTER (
              WHERE b.location_lat BETWEEN -90 AND 90
                AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision = ANY($1::text[])
            )::text AS mappable_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+           )::text AS raw_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision = 'city'
+           )::text AS city_coordinates_count,
+           COUNT(*) FILTER (
+             WHERE b.location_lat BETWEEN -90 AND 90
+               AND b.location_lng BETWEEN -180 AND 180
+               AND b.location_geocode_precision IN ('region', 'country', 'unknown')
+           )::text AS regional_coordinates_count,
            COUNT(*) FILTER (
              WHERE b.location_approximate = true
                AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
@@ -351,7 +381,8 @@ export async function GET() {
          FROM boats b
          LEFT JOIN boat_dna d ON d.boat_id = b.id
          WHERE b.status = 'active'
-           AND ${buildVisibleImportQualitySql("b")}`
+           AND ${buildVisibleImportQualitySql("b")}`,
+        [[...PUBLIC_MAP_PRECISIONS]]
       ),
       query<LocationMarketCountRow>(
         `SELECT location_market.market_slug AS slug, COUNT(*)::text AS count
@@ -403,6 +434,30 @@ export async function GET() {
          GROUP BY LOWER(TRIM(b.location_text))
          ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
          LIMIT 12`
+      ),
+      query<LocationPrecisionSplitRow>(
+        `SELECT COALESCE(b.location_geocode_precision, 'none') AS precision,
+                COUNT(*)::text AS count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+         GROUP BY COALESCE(b.location_geocode_precision, 'none')
+         ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_precision, 'none')`
+      ),
+      query<LocationProviderSplitRow>(
+        `SELECT COALESCE(b.location_geocode_provider, 'none') AS provider,
+                COUNT(*)::text AS count
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND b.location_lat BETWEEN -90 AND 90
+           AND b.location_lng BETWEEN -180 AND 180
+         GROUP BY COALESCE(b.location_geocode_provider, 'none')
+         ORDER BY COUNT(*) DESC, COALESCE(b.location_geocode_provider, 'none')`
       ),
     ]);
     const locationMarketBySlug = new Map(
@@ -482,6 +537,9 @@ export async function GET() {
         cityOrBetterCount: parseInt(locationReadinessSummary?.city_or_better_count || "0", 10),
         exactCoordinatesCount: parseInt(locationReadinessSummary?.exact_coordinates_count || "0", 10),
         mappableCoordinatesCount: parseInt(locationReadinessSummary?.mappable_coordinates_count || "0", 10),
+        rawCoordinatesCount: parseInt(locationReadinessSummary?.raw_coordinates_count || "0", 10),
+        cityCoordinatesCount: parseInt(locationReadinessSummary?.city_coordinates_count || "0", 10),
+        regionalCoordinatesCount: parseInt(locationReadinessSummary?.regional_coordinates_count || "0", 10),
         approximateCount: parseInt(locationReadinessSummary?.approximate_count || "0", 10),
         missingLocationCount: parseInt(locationReadinessSummary?.missing_location_count || "0", 10),
         unclassifiedLocationCount: parseInt(locationReadinessSummary?.unclassified_location_count || "0", 10),
@@ -507,6 +565,14 @@ export async function GET() {
           confidence: row.confidence,
           country: row.country,
           region: row.region,
+        })),
+        precisionSplit: locationPrecisionSplit.map((row) => ({
+          precision: row.precision,
+          count: parseInt(row.count || "0", 10),
+        })),
+        providerSplit: locationProviderSplit.map((row) => ({
+          provider: row.provider,
+          count: parseInt(row.count || "0", 10),
         })),
       },
       mediaHealth: {

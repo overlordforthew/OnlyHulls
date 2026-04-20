@@ -1,8 +1,9 @@
-export const PUBLIC_MAP_PRECISIONS = ["exact", "street", "marina", "city"] as const;
+export const PUBLIC_MAP_PRECISIONS = ["exact", "street", "marina"] as const;
 
 export type PublicMapPrecision = (typeof PUBLIC_MAP_PRECISIONS)[number];
 export type LocationGeocodePrecision =
   | PublicMapPrecision
+  | "city"
   | "region"
   | "country"
   | "unknown";
@@ -19,7 +20,6 @@ const COORDINATE_DECIMALS: Record<PublicMapPrecision, number> = {
   exact: 5,
   street: 4,
   marina: 4,
-  city: 2,
 };
 
 function toFiniteNumber(value: unknown): number | null {
@@ -89,6 +89,6 @@ export function getPublicMapCoordinate(input: {
     latitude: roundCoordinate(latitude, decimals),
     longitude: roundCoordinate(longitude, decimals),
     precision: publicPrecision,
-    approximate: input.approximate === true || publicPrecision === "city",
+    approximate: input.approximate === true,
   };
 }

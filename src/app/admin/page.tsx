@@ -94,6 +94,9 @@ interface Stats {
     cityOrBetterCount: number;
     exactCoordinatesCount: number;
     mappableCoordinatesCount: number;
+    rawCoordinatesCount: number;
+    cityCoordinatesCount: number;
+    regionalCoordinatesCount: number;
     approximateCount: number;
     missingLocationCount: number;
     unclassifiedLocationCount: number;
@@ -119,6 +122,14 @@ interface Stats {
       confidence: string | null;
       country: string | null;
       region: string | null;
+    }>;
+    precisionSplit: Array<{
+      precision: string;
+      count: number;
+    }>;
+    providerSplit: Array<{
+      provider: string;
+      count: number;
     }>;
   };
   mediaHealth: {
@@ -671,6 +682,8 @@ export default function AdminPage() {
   const marketTagRate = percentOf(locationReadiness?.withMarketSlugsCount || 0, locationReadinessTotal);
   const cityOrBetterRate = percentOf(locationReadiness?.cityOrBetterCount || 0, locationReadinessTotal);
   const mappableCoordinateRate = percentOf(locationReadiness?.mappableCoordinatesCount || 0, locationReadinessTotal);
+  const heldBackCoordinateCount =
+    (locationReadiness?.rawCoordinatesCount || 0) - (locationReadiness?.mappableCoordinatesCount || 0);
   const mapReady =
     marketTagRate >= 95 &&
     cityOrBetterRate >= 85 &&
@@ -1080,7 +1093,7 @@ export default function AdminPage() {
               <div>
                 <h2 className="text-lg font-semibold">Location Readiness</h2>
                 <p className="mt-1 text-sm text-foreground/60">
-                  Map gate: {mapReady ? "ready for product design" : "keep improving coverage before a live map"}.
+                  Map gate: {mapReady ? "ready for product design" : "keep improving verified pin coverage before a live map"}.
                   Geocoder:{" "}
                   {stats.serviceStatus.locationGeocodingEnabled
                     ? formatProviderLabel(stats.serviceStatus.locationGeocodingProvider)
@@ -1111,13 +1124,13 @@ export default function AdminPage() {
                 targetPercent={85}
               />
               <ProgressCard
-                label="Mappable coordinates"
+                label="Public map pins"
                 value={locationReadiness?.mappableCoordinatesCount || 0}
                 total={locationReadinessTotal}
                 targetPercent={85}
               />
               <ProgressCard
-                label="Exact pins"
+                label="Non-approx pins"
                 value={locationReadiness?.exactCoordinatesCount || 0}
                 total={locationReadinessTotal}
                 targetPercent={50}
@@ -1134,6 +1147,12 @@ export default function AdminPage() {
                 value={locationReadiness?.geocodeReadyCount || 0}
                 detail="Specific, market-tagged listings without coordinates."
                 highlight={(locationReadiness?.geocodeReadyCount || 0) > 0}
+              />
+              <StatCard
+                label="Held Back From Map"
+                value={heldBackCoordinateCount}
+                detail={`${(locationReadiness?.cityCoordinatesCount || 0).toLocaleString()} city, ${(locationReadiness?.regionalCoordinatesCount || 0).toLocaleString()} regional or weaker.`}
+                highlight={heldBackCoordinateCount > 0}
               />
               <StatCard
                 label="Needs Review"
@@ -1172,7 +1191,7 @@ export default function AdminPage() {
                 detail="Listings waiting for the geocoding workflow."
               />
             </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <div className="mt-5 grid gap-4 lg:grid-cols-4">
               <div className="rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground">Top Tagged Markets</h3>
                 <div className="mt-3 space-y-3">
@@ -1188,6 +1207,40 @@ export default function AdminPage() {
                       />
                     ))
                   )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border p-4">
+                <h3 className="text-sm font-semibold text-foreground">Coordinate Quality</h3>
+                <div className="mt-3 space-y-3">
+                  {(locationReadiness?.precisionSplit || []).length === 0 ? (
+                    <p className="text-sm text-foreground/60">No visible listings have coordinates yet.</p>
+                  ) : (
+                    locationReadiness!.precisionSplit.map((row) => (
+                      <MetricRow
+                        key={row.precision}
+                        label={row.precision.replace(/_/g, " ")}
+                        value={row.count}
+                        percent={percentOf(row.count, locationReadiness?.rawCoordinatesCount || 0)}
+                      />
+                    ))
+                  )}
+                </div>
+                <div className="mt-4 border-t border-border/60 pt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Providers</p>
+                  <div className="mt-2 space-y-2">
+                    {(locationReadiness?.providerSplit || []).length === 0 ? (
+                      <p className="text-sm text-foreground/60">No provider history yet.</p>
+                    ) : (
+                      locationReadiness!.providerSplit.map((row) => (
+                        <MetricRow
+                          key={row.provider}
+                          label={formatProviderLabel(row.provider)}
+                          value={row.count}
+                          percent={percentOf(row.count, locationReadiness?.rawCoordinatesCount || 0)}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="rounded-lg border border-border p-4">

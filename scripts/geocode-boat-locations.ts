@@ -387,6 +387,7 @@ function getBatchUniqueApplyThreshold(provider: GeocodingConfig["provider"]) {
 
 async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result: GeocodeResult) {
   const hasMappableCoordinates = shouldApplyResult(result);
+  const storedPrecision = hasMappableCoordinates ? result.precision : "unknown";
   const signals = hasMappableCoordinates
     ? inferLocationMarketSignals({
         locationText: boat.location_text,
@@ -431,7 +432,7 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
       result.provider,
       queryText,
       result.placeName,
-      result.precision,
+      storedPrecision,
       result.score,
       result.error || null,
       JSON.stringify(result.payload || null),
