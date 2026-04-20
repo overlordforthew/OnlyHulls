@@ -110,6 +110,13 @@ async function gotoWithRetry(page: Page, path: string, attempts = 3) {
   throw lastError;
 }
 
+function waitForBoatsApi(page: Page) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.ok() && url.pathname === "/api/boats";
+  });
+}
+
 async function expectHealthyPublicPage(page: Page, path: string, heading: string) {
   await gotoWithRetry(page, path);
   await page.waitForLoadState("networkidle");
@@ -316,15 +323,20 @@ test("boats page shows ascending prices when sorting by price", async ({ page })
 });
 
 test("boats page load more appends additional cards", async ({ page }) => {
+  const initialBoats = waitForBoatsApi(page);
   await gotoWithRetry(page, "/boats");
+  await initialBoats;
+
   const cards = page.locator("div.group.card-hover");
-  await expect(cards.first()).toBeVisible();
+  await expect(cards.first()).toBeVisible({ timeout: 15_000 });
   const initialCount = await cards.count();
   expect(initialCount).toBeGreaterThan(5);
 
   const showMore = page.getByRole("button", { name: /Show More/i });
   await expect(showMore).toBeVisible();
+  const nextBoats = waitForBoatsApi(page);
   await showMore.click();
+  await nextBoats;
 
   await expect.poll(async () => cards.count()).toBeGreaterThan(initialCount);
 });
@@ -452,10 +464,12 @@ test("boats no-results state offers recovery paths", async ({ page }) => {
 });
 
 test("boats card opens detail page", async ({ page }) => {
+  const boatsResponse = waitForBoatsApi(page);
   await gotoWithRetry(page, "/boats?q=lagoon");
+  await boatsResponse;
 
   const firstCardTitle = page.locator("div.group.card-hover h3").first();
-  await expect(firstCardTitle).toBeVisible();
+  await expect(firstCardTitle).toBeVisible({ timeout: 15_000 });
   const title = (await firstCardTitle.textContent())?.trim();
   expect(title).toBeTruthy();
 
