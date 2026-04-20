@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Info } from "lucide-react";
 import { getSafeExternalUrl } from "@/lib/url-safety";
+import {
+  getLocationMapReadinessBlockers,
+  isLocationMapDataReady,
+} from "@/lib/locations/location-readiness";
 
 interface Stats {
   totalUsers: number;
@@ -106,6 +110,15 @@ interface Stats {
     geocodeFailedCount: number;
     geocodeSkippedCount: number;
     geocodedCount: number;
+    countryHintMismatchCount: number;
+    countryHintMismatches: Array<{
+      locationText: string;
+      storedCountry: string | null;
+      expectedCountry: string;
+      expectedRegion: string;
+      matchedTerm: string;
+      count: number;
+    }>;
     topMarkets: Array<{
       slug: string;
       label: string;
@@ -684,10 +697,19 @@ export default function AdminPage() {
   const mappableCoordinateRate = percentOf(locationReadiness?.mappableCoordinatesCount || 0, locationReadinessTotal);
   const heldBackCoordinateCount =
     (locationReadiness?.rawCoordinatesCount || 0) - (locationReadiness?.mappableCoordinatesCount || 0);
-  const mapReady =
-    marketTagRate >= 95 &&
-    cityOrBetterRate >= 85 &&
-    mappableCoordinateRate >= 85;
+  const locationReviewBlockerCount =
+    (locationReadiness?.geocodeReviewCount || 0) +
+    (locationReadiness?.geocodeFailedCount || 0);
+  const locationMapReadinessInput = {
+    marketTagRate,
+    cityOrBetterRate,
+    mappableCoordinateRate,
+    countryHintMismatchCount: locationReadiness?.countryHintMismatchCount || 0,
+    reviewFailedCount: locationReviewBlockerCount,
+    geocodingEnabled: stats?.serviceStatus.locationGeocodingEnabled === true,
+  };
+  const locationMapBlockers = getLocationMapReadinessBlockers(locationMapReadinessInput);
+  const mapReady = isLocationMapDataReady(locationMapReadinessInput);
   const mediaHealth = stats?.mediaHealth;
 
   if (loading) {
@@ -1093,11 +1115,12 @@ export default function AdminPage() {
               <div>
                 <h2 className="text-lg font-semibold">Location Readiness</h2>
                 <p className="mt-1 text-sm text-foreground/60">
-                  Map gate: {mapReady ? "ready for product design" : "keep improving verified pin coverage before a live map"}.
+                  Map gate: {mapReady ? "data ready for product design" : locationMapBlockers.join(", ")}.
                   Geocoder:{" "}
                   {stats.serviceStatus.locationGeocodingEnabled
                     ? formatProviderLabel(stats.serviceStatus.locationGeocodingProvider)
                     : "configure provider before applying coordinates"}.
+                  Public map: {stats.serviceStatus.publicMapEnabled ? "enabled" : "gated"}.
                 </p>
               </div>
               <span
@@ -1149,6 +1172,12 @@ export default function AdminPage() {
                 highlight={(locationReadiness?.geocodeReadyCount || 0) > 0}
               />
               <StatCard
+                label="Country Hint Mismatch"
+                value={locationReadiness?.countryHintMismatchCount || 0}
+                detail="Explicit location text conflicts with stored country."
+                highlight={(locationReadiness?.countryHintMismatchCount || 0) > 0}
+              />
+              <StatCard
                 label="Held Back From Map"
                 value={heldBackCoordinateCount}
                 detail={`${(locationReadiness?.cityCoordinatesCount || 0).toLocaleString()} city, ${(locationReadiness?.regionalCoordinatesCount || 0).toLocaleString()} regional or weaker.`}
@@ -1156,9 +1185,9 @@ export default function AdminPage() {
               />
               <StatCard
                 label="Needs Review"
-                value={(locationReadiness?.geocodeReviewCount || 0) + (locationReadiness?.geocodeFailedCount || 0)}
+                value={locationReviewBlockerCount}
                 detail={`${(locationReadiness?.geocodeReviewCount || 0).toLocaleString()} review, ${(locationReadiness?.geocodeFailedCount || 0).toLocaleString()} failed.`}
-                highlight={((locationReadiness?.geocodeReviewCount || 0) + (locationReadiness?.geocodeFailedCount || 0)) > 0}
+                highlight={locationReviewBlockerCount > 0}
               />
               <StatCard
                 label="Approximate Only"
@@ -1191,7 +1220,7 @@ export default function AdminPage() {
                 detail="Listings waiting for the geocoding workflow."
               />
             </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-4">
+            <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
               <div className="rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground">Top Tagged Markets</h3>
                 <div className="mt-3 space-y-3">
@@ -1258,6 +1287,29 @@ export default function AdminPage() {
                           <p className="truncate font-medium text-foreground">{row.locationText}</p>
                           <p className="text-xs text-foreground/50">
                             {row.sourceCount} source{row.sourceCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold text-foreground">{row.count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border p-4">
+                <h3 className="text-sm font-semibold text-foreground">Country Hint Mismatches</h3>
+                <div className="mt-3 space-y-3">
+                  {(locationReadiness?.countryHintMismatches || []).length === 0 ? (
+                    <p className="text-sm text-foreground/60">Stored countries match explicit location hints.</p>
+                  ) : (
+                    locationReadiness!.countryHintMismatches.map((row) => (
+                      <div
+                        key={`${row.locationText}-${row.expectedCountry}`}
+                        className="flex items-start justify-between gap-3 border-b border-border/60 pb-2 text-sm last:border-b-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{row.locationText}</p>
+                          <p className="mt-1 text-xs text-foreground/50">
+                            {row.storedCountry || "Missing country"} to {row.expectedCountry}
                           </p>
                         </div>
                         <span className="shrink-0 font-semibold text-foreground">{row.count}</span>

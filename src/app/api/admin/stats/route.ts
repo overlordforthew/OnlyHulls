@@ -20,6 +20,7 @@ import { getFunnelSnapshot } from "@/lib/funnel";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { getBuildInfo } from "@/lib/build-info";
 import { PUBLIC_MAP_PRECISIONS } from "@/lib/locations/map-coordinates";
+import { buildCountryHintMismatchGroups } from "@/lib/locations/location-readiness";
 import { TOP_LOCATION_MARKETS } from "@/lib/locations/top-markets";
 import { getSourceDecisionByName } from "@/lib/source-policy";
 import { NextResponse } from "next/server";
@@ -129,6 +130,10 @@ export async function GET() {
       country: string | null;
       region: string | null;
     };
+    type LocationCountryHintAuditRow = {
+      location_text: string | null;
+      location_country: string | null;
+    };
     type LocationPrecisionSplitRow = {
       precision: string;
       count: string;
@@ -173,6 +178,7 @@ export async function GET() {
       locationMarketCounts,
       unclassifiedLocations,
       geocodeCandidateLocations,
+      locationCountryHintRows,
       locationPrecisionSplit,
       locationProviderSplit,
     ] = await Promise.all([
@@ -440,8 +446,19 @@ export async function GET() {
            )
            AND b.location_geocode_status = 'pending'
          GROUP BY LOWER(TRIM(b.location_text))
-         ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
-         LIMIT 12`
+        ORDER BY COUNT(*) DESC, LOWER(TRIM(b.location_text))
+        LIMIT 12`
+      ),
+      query<LocationCountryHintAuditRow>(
+        `SELECT b.location_text,
+                b.location_country
+         FROM boats b
+         LEFT JOIN boat_dna d ON d.boat_id = b.id
+         WHERE b.status = 'active'
+           AND ${buildVisibleImportQualitySql("b")}
+           AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
+         ORDER BY b.updated_at DESC, b.id
+         LIMIT 20000`
       ),
       query<LocationPrecisionSplitRow>(
         `SELECT COALESCE(b.location_geocode_precision, 'none') AS precision,
@@ -470,6 +487,12 @@ export async function GET() {
     ]);
     const locationMarketBySlug = new Map(
       TOP_LOCATION_MARKETS.map((market) => [market.slug, market])
+    );
+    const countryHintMismatches = buildCountryHintMismatchGroups(
+      locationCountryHintRows.map((row) => ({
+        locationText: row.location_text,
+        storedCountry: row.location_country,
+      }))
     );
 
     return NextResponse.json({
@@ -557,6 +580,8 @@ export async function GET() {
         geocodeFailedCount: parseInt(locationReadinessSummary?.geocode_failed_count || "0", 10),
         geocodeSkippedCount: parseInt(locationReadinessSummary?.geocode_skipped_count || "0", 10),
         geocodedCount: parseInt(locationReadinessSummary?.geocoded_count || "0", 10),
+        countryHintMismatchCount: countryHintMismatches.reduce((sum, row) => sum + row.count, 0),
+        countryHintMismatches,
         topMarkets: locationMarketCounts.map((row) => ({
           slug: row.slug,
           label: locationMarketBySlug.get(row.slug)?.label || row.slug.replace(/-/g, " "),
