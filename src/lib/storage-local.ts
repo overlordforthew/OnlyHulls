@@ -16,14 +16,34 @@ function getLocalMediaRoot() {
   return process.env.LOCAL_MEDIA_ROOT || getDefaultLocalMediaRoot();
 }
 
+function normalizeLocalMediaKey(key: string) {
+  const segments = key
+    .replace(/^\/+/, "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (
+    segments.length === 0 ||
+    segments.some((segment) => segment === "." || segment === "..")
+  ) {
+    throw new Error("Invalid media path");
+  }
+
+  return segments.join("/");
+}
+
 export function getLocalMediaPublicUrl(key: string): string {
   return `${LOCAL_MEDIA_BASE_PATH}/${key}`;
 }
 
 export function resolveLocalMediaPath(key: string): string {
-  const normalizedKey = key.replace(/^\/+/, "").replace(/\\/g, "/");
-  const root = path.resolve(getLocalMediaRoot());
-  const resolved = path.resolve(path.join(/* turbopackIgnore: true */ root, normalizedKey));
+  const normalizedKey = normalizeLocalMediaKey(key);
+  const root = path.resolve(/* turbopackIgnore: true */ getLocalMediaRoot());
+  const resolved = path.resolve(
+    /* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ root, normalizedKey)
+  );
 
   if (!resolved.startsWith(root + path.sep) && resolved !== root) {
     throw new Error("Invalid media path");
