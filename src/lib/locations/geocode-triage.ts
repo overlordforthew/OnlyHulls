@@ -4,6 +4,7 @@ export type GeocodeTriageInput = {
   precision?: string | null;
   score?: number | null;
   placeName?: string | null;
+  countryHintMismatch?: boolean | null;
 };
 
 export type GeocodeTriageResult = {
@@ -38,6 +39,15 @@ export function classifyGeocodeReviewIssue(input: GeocodeTriageInput): GeocodeTr
   const status = String(input.status || "").toLowerCase();
   const error = String(input.error || "").trim().toLowerCase();
   const precision = String(input.precision || "").trim().toLowerCase();
+
+  if (input.countryHintMismatch) {
+    return {
+      category: "cleanup_source_text",
+      action: "Fix the stored country or source location before paid geocoding.",
+      retryable: false,
+      blocksMap: true,
+    };
+  }
 
   if (status === "geocoded") {
     return {

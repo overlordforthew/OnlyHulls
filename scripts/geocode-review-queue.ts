@@ -1,6 +1,7 @@
 import { pool, query } from "../src/lib/db/index";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 import { classifyGeocodeReviewIssue } from "../src/lib/locations/geocode-triage";
+import { resolveLocationCountryHint } from "../src/lib/locations/top-markets";
 
 type ReviewRow = {
   slug: string;
@@ -37,6 +38,17 @@ function getLimit() {
 
 function increment(record: Record<string, number>, key: string) {
   record[key] = (record[key] || 0) + 1;
+}
+
+function normalizeAuditValue(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function main() {
@@ -102,12 +114,17 @@ async function main() {
   );
 
   const items = rows.map((row) => {
+    const countryHint = resolveLocationCountryHint(row.location_text);
+    const countryHintMismatch =
+      Boolean(countryHint) &&
+      normalizeAuditValue(countryHint?.country) !== normalizeAuditValue(row.location_country);
     const triage = classifyGeocodeReviewIssue({
       status: row.location_geocode_status,
       error: row.location_geocode_error,
       precision: row.location_geocode_precision,
       score: row.location_geocode_score,
       placeName: row.location_geocode_place_name,
+      countryHintMismatch,
     });
 
     return {
@@ -123,6 +140,14 @@ async function main() {
       score: row.location_geocode_score,
       error: row.location_geocode_error,
       attemptedAt: row.location_geocode_attempted_at,
+      countryHint: countryHint
+        ? {
+            country: countryHint.country,
+            region: countryHint.region,
+            matchedTerm: countryHint.matchedTerm,
+            mismatch: countryHintMismatch,
+          }
+        : null,
       triage,
       adminUrl: `/boats/${row.slug}`,
     };

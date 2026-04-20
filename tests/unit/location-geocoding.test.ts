@@ -44,6 +44,45 @@ test("buildGeocodeQuery prepares specific city queries with country hints", () =
   });
 });
 
+test("buildGeocodeQuery uses corrected country hints for ambiguous boat locations", () => {
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Parlin, New Jersey",
+      country: "United States",
+      confidence: "city",
+    }),
+    {
+      queryText: "Parlin, New Jersey, United States",
+      queryKey: "parlin new jersey united states",
+      countryHint: "us",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Cartagena De Indias Colombia",
+      country: "Colombia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Cartagena De Indias Colombia",
+      queryKey: "cartagena de indias colombia",
+      countryHint: "co",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Aegean, Turkey",
+      country: "Turkey",
+      confidence: "city",
+    }),
+    {
+      queryText: "Aegean, Turkey",
+      queryKey: "aegean turkey",
+      countryHint: "tr",
+    }
+  );
+});
+
 test("buildGeocodeQuery rejects generic or region-only locations", () => {
   assert.equal(
     buildGeocodeQuery({
@@ -129,6 +168,12 @@ test("geocode review triage separates enrichment work from provider retries", ()
   assert.deepEqual(classifyGeocodeReviewIssue({ status: "review", error: "low_precision", precision: "region" }), {
     category: "manual_enrichment",
     action: "Add more specific location detail; broad regional results must stay off the public map.",
+    retryable: false,
+    blocksMap: true,
+  });
+  assert.deepEqual(classifyGeocodeReviewIssue({ status: "review", countryHintMismatch: true }), {
+    category: "cleanup_source_text",
+    action: "Fix the stored country or source location before paid geocoding.",
     retryable: false,
     blocksMap: true,
   });

@@ -73,6 +73,7 @@ const COUNTRY_CODES: Record<string, string> = {
   belize: "bz",
   bermuda: "bm",
   canada: "ca",
+  colombia: "co",
   croatia: "hr",
   cyprus: "cy",
   denmark: "dk",

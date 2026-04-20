@@ -7,6 +7,7 @@ import { buildGeocodeQuery, getGeocodeCandidateReason, getGeocodingConfig } from
 import { compareGeocodeResults, type ComparableGeocodeResult } from "../src/lib/locations/geocode-compare";
 import { PUBLIC_MAP_PRECISIONS } from "../src/lib/locations/map-coordinates";
 import { classifyGeocodeReviewIssue, isProviderSideGeocodeError } from "../src/lib/locations/geocode-triage";
+import { resolveLocationCountryHint } from "../src/lib/locations/top-markets";
 
 type SummaryRow = {
   active_visible_count: string;
@@ -25,6 +26,7 @@ type SummaryRow = {
 };
 
 type CandidateRow = {
+  slug?: string;
   location_text: string | null;
   location_country: string | null;
   location_region: string | null;
@@ -139,6 +141,17 @@ function sortEntries(record: Record<string, number>) {
   return Object.entries(record)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([label, count]) => ({ label, count }));
+}
+
+function normalizeAuditValue(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function addCount(record: Record<string, number>, key: string) {
@@ -347,7 +360,8 @@ async function main() {
   );
 
   const activeLocationRows = await query<CandidateRow>(
-    `SELECT b.location_text,
+    `SELECT b.slug,
+            b.location_text,
             b.location_country,
             b.location_region,
             COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
@@ -403,6 +417,23 @@ async function main() {
 
   let geocodableAddressCount = 0;
   const geocodableReasons: Record<string, number> = {};
+  const countryHintMismatches = activeLocationRows
+    .map((row) => {
+      const hint = resolveLocationCountryHint(row.location_text);
+      if (!hint) return null;
+      const storedCountry = normalizeAuditValue(row.location_country);
+      if (storedCountry === normalizeAuditValue(hint.country)) return null;
+
+      return {
+        slug: row.slug || null,
+        locationText: row.location_text,
+        storedCountry: row.location_country || null,
+        expectedCountry: hint.country,
+        expectedRegion: hint.region,
+        matchedTerm: hint.matchedTerm,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
   for (const row of activeLocationRows) {
     const reason = getGeocodeCandidateReason({
       locationText: row.location_text,
@@ -585,6 +616,12 @@ async function main() {
       passed: pendingReadyRate < PENDING_READY_MAX,
     },
     {
+      key: "country_hint_mismatch_zero",
+      target: "0 active visible listings where explicit country/state text conflicts with stored location_country",
+      actual: countryHintMismatches.length,
+      passed: countryHintMismatches.length === 0,
+    },
+    {
       key: "review_failed_rate",
       target: `<${REVIEW_FAILED_MAX}% of attempted geocodes are review/failed`,
       actual: attemptedCount > 0 ? `${reviewFailedRate}%` : "no attempts yet",
@@ -658,6 +695,10 @@ async function main() {
       precisionSplit: toCountMap(precisionRows),
       providerSplit: toCountMap(providerRows),
       geocodableReasons: sortEntries(geocodableReasons),
+      countryHintMismatches: {
+        count: countryHintMismatches.length,
+        sample: countryHintMismatches.slice(0, 20),
+      },
       regionalCoverage: regionalCoverageRows.map((row) => ({
         country: row.label,
         activeVisibleCount: parseCount(row.active_visible_count),

@@ -9,7 +9,10 @@ import {
   buildWhereClause,
   filtersFromSearchParams,
 } from "../../src/lib/search/boat-search";
-import { inferLocationMarketSignals } from "../../src/lib/locations/top-markets";
+import {
+  inferLocationMarketSignals,
+  resolveLocationCountryHint,
+} from "../../src/lib/locations/top-markets";
 
 test("buildSavedSearchName uses stable ASCII separators", () => {
   assert.equal(
@@ -205,6 +208,52 @@ test("location inference keeps broad state-only aliases at regional confidence",
   const annapolis = inferLocationMarketSignals({ locationText: "Annapolis" });
   assert.deepEqual(annapolis.marketSlugs, ["united-states", "chesapeake-bay"]);
   assert.equal(annapolis.confidence, "city");
+});
+
+test("location inference favors explicit countries and longer admin phrases over ambiguous aliases", () => {
+  const newJersey = inferLocationMarketSignals({ locationText: "Parlin, New Jersey" });
+  assert.deepEqual(newJersey.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(newJersey.country, "United States");
+  assert.equal(newJersey.region, "New Jersey");
+
+  const forkedRiver = inferLocationMarketSignals({ locationText: "Forked River, New Jersey" });
+  assert.deepEqual(forkedRiver.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(forkedRiver.country, "United States");
+
+  const cartagena = inferLocationMarketSignals({ locationText: "Cartagena De Indias Colombia" });
+  assert.deepEqual(cartagena.marketSlugs, ["colombia"]);
+  assert.equal(cartagena.country, "Colombia");
+
+  const ensenada = inferLocationMarketSignals({ locationText: "Ensenada Mexico Baja, California" });
+  assert.deepEqual(ensenada.marketSlugs, ["mexico"]);
+  assert.equal(ensenada.country, "Mexico");
+
+  const turkey = inferLocationMarketSignals({ locationText: "Aegean, Turkey" });
+  assert.deepEqual(turkey.marketSlugs, ["mediterranean", "turkey"]);
+  assert.equal(turkey.country, "Turkey");
+
+  const jerseyCity = inferLocationMarketSignals({ locationText: "Jersey City, NJ" });
+  assert.deepEqual(jerseyCity.marketSlugs, ["united-states", "new-jersey"]);
+  assert.equal(jerseyCity.country, "United States");
+  assert.equal(jerseyCity.region, "New Jersey");
+});
+
+test("location country hint resolver catches stale paid-geocoding country hints", () => {
+  assert.deepEqual(resolveLocationCountryHint("Parlin, New Jersey"), {
+    country: "United States",
+    region: "New Jersey",
+    matchedTerm: "new jersey",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Cartagena De Indias Colombia"), {
+    country: "Colombia",
+    region: "Colombia",
+    matchedTerm: "Colombia",
+  });
+  assert.deepEqual(resolveLocationCountryHint("St Helier, Jersey"), {
+    country: "Jersey",
+    region: "Channel Islands",
+    matchedTerm: "Jersey",
+  });
 });
 
 test("saved search signature keeps location and currency distinct", () => {

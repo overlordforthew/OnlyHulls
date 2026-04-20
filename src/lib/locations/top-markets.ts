@@ -19,6 +19,22 @@ export interface LocationMarketSignals {
   approximate: boolean;
 }
 
+export interface LocationCountryHint {
+  country: string;
+  region: string;
+  matchedTerm: string;
+}
+
+type MarketCandidateSource = "label" | "slug" | "alias" | "searchTerm" | "country";
+
+type MarketMatch = {
+  market: TopLocationMarket;
+  normalizedTerm: string;
+  source: MarketCandidateSource;
+  score: number;
+  explicitCountry: boolean;
+};
+
 export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
   {
     slug: "united-states",
@@ -193,6 +209,14 @@ export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
     parentSlugs: ["mediterranean"],
     aliases: ["bodrum", "marmaris", "antalya", "cesme", "çeşme", "didim", "gocek", "göcek", "fethiye", "istanbul", "mugla", "muğla", "atokoy marina", "atakoy marina"],
     searchTerms: ["turkey", "bodrum", "marmaris", "antalya", "cesme", "çeşme", "didim", "gocek", "göcek", "fethiye", "istanbul", "mugla", "muğla", "atokoy marina", "atakoy marina"],
+  },
+  {
+    slug: "colombia",
+    label: "Colombia",
+    country: "Colombia",
+    region: "Colombia",
+    aliases: ["cartagena de indias", "cartagena colombia", "santa marta"],
+    searchTerms: ["colombia", "cartagena de indias", "cartagena colombia", "santa marta"],
   },
   {
     slug: "malta",
@@ -599,8 +623,8 @@ export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
     country: "United States",
     region: "New Jersey",
     parentSlugs: ["united-states"],
-    aliases: ["barnegat", "barnegat new jersey"],
-    searchTerms: ["new jersey", "barnegat", "barnegat new jersey"],
+    aliases: ["barnegat", "barnegat new jersey", "forked river", "forked river new jersey", "jersey city", "jersey city nj", "nj", "n j", "parlin", "parlin new jersey"],
+    searchTerms: ["new jersey", "barnegat", "barnegat new jersey", "forked river", "forked river new jersey", "jersey city", "jersey city nj", "nj", "n j", "parlin", "parlin new jersey"],
   },
   {
     slug: "canada",
@@ -924,6 +948,202 @@ const BROAD_ADMIN_ALIASES = new Set([
   "virginia",
 ]);
 
+const CROSS_BORDER_MARKET_SLUGS = new Set(["pacific-northwest"]);
+
+const EXPLICIT_COUNTRY_EXCLUSION_PHRASES: Record<string, string[]> = {
+  jersey: ["jersey city", "new jersey"],
+};
+
+function isCountryTermExcluded(normalizedLocation: string, normalizedCountry: string) {
+  return (EXPLICIT_COUNTRY_EXCLUSION_PHRASES[normalizedCountry] || []).some((phrase) =>
+    containsNormalizedTerm(normalizedLocation, phrase)
+  );
+}
+
+const ADMIN_COUNTRY_HINTS: LocationCountryHint[] = [
+  { country: "United States", region: "California", matchedTerm: "california" },
+  { country: "United States", region: "California", matchedTerm: "ca" },
+  { country: "United States", region: "Florida", matchedTerm: "fl" },
+  { country: "United States", region: "Georgia", matchedTerm: "ga" },
+  { country: "United States", region: "Hawaii", matchedTerm: "hi" },
+  { country: "United States", region: "Maryland", matchedTerm: "maryland" },
+  { country: "United States", region: "Maryland", matchedTerm: "md" },
+  { country: "United States", region: "Michigan", matchedTerm: "michigan" },
+  { country: "United States", region: "Michigan", matchedTerm: "mi" },
+  { country: "United States", region: "New Jersey", matchedTerm: "new jersey" },
+  { country: "United States", region: "New Jersey", matchedTerm: "nj" },
+  { country: "United States", region: "New Jersey", matchedTerm: "n j" },
+  { country: "United States", region: "New York", matchedTerm: "new york" },
+  { country: "United States", region: "New York", matchedTerm: "ny" },
+  { country: "United States", region: "Rhode Island", matchedTerm: "rhode island" },
+  { country: "United States", region: "Rhode Island", matchedTerm: "ri" },
+  { country: "United States", region: "South Carolina", matchedTerm: "south carolina" },
+  { country: "United States", region: "South Carolina", matchedTerm: "sc" },
+  { country: "United States", region: "Texas", matchedTerm: "texas" },
+  { country: "United States", region: "Texas", matchedTerm: "tx" },
+  { country: "United States", region: "Virginia", matchedTerm: "virginia" },
+  { country: "United States", region: "Virginia", matchedTerm: "va" },
+  { country: "United States", region: "Washington", matchedTerm: "washington" },
+  { country: "United States", region: "Washington", matchedTerm: "wa" },
+  { country: "Canada", region: "British Columbia", matchedTerm: "british columbia" },
+  { country: "Canada", region: "British Columbia", matchedTerm: "bc" },
+  { country: "Canada", region: "Ontario", matchedTerm: "ontario" },
+  { country: "Mexico", region: "Baja California", matchedTerm: "baja california" },
+  { country: "Mexico", region: "Baja California Sur", matchedTerm: "baja california sur" },
+];
+
+const COUNTRY_HINT_SYNONYMS: LocationCountryHint[] = [
+  { country: "United States", region: "United States", matchedTerm: "usa" },
+  { country: "United States", region: "United States", matchedTerm: "u s" },
+  { country: "United States", region: "United States", matchedTerm: "us" },
+  { country: "United States", region: "United States", matchedTerm: "united states of america" },
+  { country: "United Kingdom", region: "United Kingdom", matchedTerm: "uk" },
+  { country: "United Kingdom", region: "United Kingdom", matchedTerm: "u k" },
+  { country: "Spain", region: "Mediterranean", matchedTerm: "espagne" },
+  { country: "Turkey", region: "Mediterranean", matchedTerm: "turkiye" },
+];
+
+function getLocationCountryHints(): LocationCountryHint[] {
+  const byTerm = new Map<string, LocationCountryHint>();
+
+  for (const market of TOP_LOCATION_MARKETS) {
+    if (!market.country) continue;
+    const hint = {
+      country: market.country,
+      region: market.region || market.country,
+      matchedTerm: market.country,
+    };
+    byTerm.set(normalizeLocationLookupValue(hint.matchedTerm), hint);
+  }
+
+  for (const hint of [...COUNTRY_HINT_SYNONYMS, ...ADMIN_COUNTRY_HINTS]) {
+    byTerm.set(normalizeLocationLookupValue(hint.matchedTerm), hint);
+  }
+
+  return Array.from(byTerm.values());
+}
+
+export function resolveLocationCountryHint(locationText?: string | null): LocationCountryHint | null {
+  const normalizedLocation = normalizeLocationLookupValue(locationText);
+  if (!normalizedLocation) return null;
+
+  const matches = getLocationCountryHints()
+    .map((hint) => {
+      const normalizedTerm = normalizeLocationLookupValue(hint.matchedTerm);
+      if (!containsNormalizedTerm(normalizedLocation, normalizedTerm)) return null;
+      if (isCountryTermExcluded(normalizedLocation, normalizeLocationLookupValue(hint.country))) {
+        return null;
+      }
+
+      const isAdminHint = ADMIN_COUNTRY_HINTS.some(
+        (adminHint) =>
+          normalizeLocationLookupValue(adminHint.matchedTerm) === normalizedTerm &&
+          adminHint.country === hint.country
+      );
+      const priority = isAdminHint ? 600 : 1000;
+      return {
+        hint,
+        score: priority + normalizedTerm.length,
+      };
+    })
+    .filter((match): match is { hint: LocationCountryHint; score: number } => Boolean(match))
+    .sort((left, right) => right.score - left.score);
+
+  return matches[0]?.hint ?? null;
+}
+
+function getMarketMatch(normalizedLocation: string, market: TopLocationMarket): MarketMatch | null {
+  const candidates: Array<{ source: MarketCandidateSource; term: string }> = [
+    { source: "label", term: market.label },
+    { source: "slug", term: market.slug },
+    ...(market.country ? [{ source: "country" as const, term: market.country }] : []),
+    ...market.aliases.map((term) => ({ source: "alias" as const, term })),
+    ...market.searchTerms.map((term) => ({ source: "searchTerm" as const, term })),
+  ];
+  let bestMatch: MarketMatch | null = null;
+
+  for (const candidate of candidates) {
+    const normalizedTerm = normalizeLocationLookupValue(candidate.term);
+    if (normalizedTerm.length < 2 || !containsNormalizedTerm(normalizedLocation, normalizedTerm)) {
+      continue;
+    }
+
+    const normalizedCountry = normalizeLocationLookupValue(market.country);
+    const explicitCountry =
+      Boolean(market.country) &&
+      normalizedTerm === normalizedCountry &&
+      containsNormalizedTerm(normalizedLocation, market.country || "") &&
+      !isCountryTermExcluded(normalizedLocation, normalizedCountry);
+    const score =
+      normalizedTerm.length +
+      (explicitCountry ? 300 : 0) +
+      (candidate.source === "label" ? 40 : 0) +
+      (candidate.source === "slug" ? 30 : 0) +
+      (candidate.source === "alias" ? 20 : 0) +
+      (explicitCountry ? 700 : 0);
+
+    if (!bestMatch || score > bestMatch.score) {
+      bestMatch = {
+        market,
+        normalizedTerm,
+        source: candidate.source,
+        score,
+        explicitCountry,
+      };
+    }
+  }
+
+  return bestMatch;
+}
+
+function getMarketMatches(normalizedLocation: string) {
+  return TOP_LOCATION_MARKETS
+    .map((market) => getMarketMatch(normalizedLocation, market))
+    .filter((match): match is MarketMatch => Boolean(match));
+}
+
+function getPrimaryMarketMatch(matches: MarketMatch[]) {
+  return matches
+    .filter((match) => Boolean(match.market.country))
+    .sort((left, right) => {
+      if (right.explicitCountry !== left.explicitCountry) {
+        return Number(right.explicitCountry) - Number(left.explicitCountry);
+      }
+      return right.score - left.score;
+    })[0] ?? matches[0] ?? null;
+}
+
+function isMatchShadowed(
+  match: MarketMatch,
+  matches: MarketMatch[],
+  primaryMatch: MarketMatch | null,
+  countryHint: LocationCountryHint | null
+) {
+  const country = normalizeLocationLookupValue(match.market.country);
+  const primaryCountry = normalizeLocationLookupValue(primaryMatch?.market.country);
+  const hintedCountry = normalizeLocationLookupValue(countryHint?.country);
+
+  if (country && hintedCountry && country !== hintedCountry && !CROSS_BORDER_MARKET_SLUGS.has(match.market.slug)) {
+    return true;
+  }
+
+  if (
+    primaryMatch?.explicitCountry &&
+    country &&
+    primaryCountry &&
+    country !== primaryCountry
+  ) {
+    return true;
+  }
+
+  return matches.some((other) => {
+    if (other === match || other.score <= match.score) return false;
+    if (normalizeLocationLookupValue(other.market.country) === country) return false;
+    if (!other.normalizedTerm.includes(match.normalizedTerm)) return false;
+    return other.normalizedTerm !== match.normalizedTerm;
+  });
+}
+
 function hasFiniteCoordinates(latitude?: number | null, longitude?: number | null) {
   return (
     typeof latitude === "number" &&
@@ -1000,13 +1220,12 @@ export function inferLocationMarketSignals(input: {
   const normalizedLocation = normalizeLocationLookupValue(input.locationText);
   const hasCoordinates = hasFiniteCoordinates(input.latitude, input.longitude);
   const coordinatesApproximate = hasCoordinates && input.coordinatesApproximate === true;
-  const matchedMarkets = normalizedLocation
-    ? TOP_LOCATION_MARKETS.filter((market) =>
-        [market.label, market.slug, ...market.aliases, ...market.searchTerms].some((term) =>
-          containsNormalizedTerm(normalizedLocation, term)
-        )
-      )
-    : [];
+  const marketMatches = normalizedLocation ? getMarketMatches(normalizedLocation) : [];
+  const primaryMatch = getPrimaryMarketMatch(marketMatches);
+  const countryHint = resolveLocationCountryHint(input.locationText);
+  const matchedMarkets = marketMatches
+    .filter((match) => !isMatchShadowed(match, marketMatches, primaryMatch, countryHint))
+    .map((match) => match.market);
   const slugSet = new Set<string>();
 
   matchedMarkets.forEach((market) => {
@@ -1017,8 +1236,9 @@ export function inferLocationMarketSignals(input: {
   const marketSlugs = TOP_LOCATION_MARKETS
     .map((market) => market.slug)
     .filter((slug) => slugSet.has(slug));
-  const primaryMarket =
-    matchedMarkets.find((market) => Boolean(market.country)) ?? matchedMarkets[0] ?? null;
+  const primaryMarket = matchedMarkets.includes(primaryMatch?.market as TopLocationMarket)
+    ? primaryMatch?.market ?? null
+    : matchedMarkets.find((market) => Boolean(market.country)) ?? matchedMarkets[0] ?? null;
   const hasLocationDetail = String(input.locationText || "").includes(",");
   const matchedByLocalTerm =
     hasLocationDetail ||
@@ -1039,8 +1259,8 @@ export function inferLocationMarketSignals(input: {
 
   return {
     marketSlugs,
-    country: primaryMarket?.country ?? null,
-    region: primaryMarket?.region ?? primaryMarket?.label ?? null,
+    country: countryHint?.country ?? primaryMarket?.country ?? null,
+    region: countryHint?.region ?? primaryMarket?.region ?? primaryMarket?.label ?? null,
     confidence,
     approximate: !hasCoordinates || coordinatesApproximate,
   };
