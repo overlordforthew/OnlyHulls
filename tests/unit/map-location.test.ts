@@ -153,3 +153,20 @@ test("public map markers reject rows without a public slug", () => {
     null
   );
 });
+
+test("public map marker titles avoid missing or zero year artifacts", () => {
+  const base = {
+    id: "internal-boat-id",
+    slug: "lagoon-450-penangmalaysia",
+    make: "Lagoon",
+    model: "450",
+    location_text: "Penang, Malaysia",
+    location_lat: "5.4141123",
+    location_lng: "100.3288123",
+    location_geocode_precision: "marina",
+    location_approximate: false,
+  };
+
+  assert.equal(buildPublicMapMarker({ ...base, year: null })?.title, "Lagoon 450");
+  assert.equal(buildPublicMapMarker({ ...base, year: 0 })?.title, "Lagoon 450");
+});

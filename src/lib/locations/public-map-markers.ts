@@ -1,12 +1,13 @@
+import { buildBoatDisplayTitle } from "@/lib/boats/detail-display";
 import { sanitizeImportedBoatRecord } from "@/lib/import-quality";
 import { getPublicMapCoordinate } from "@/lib/locations/map-coordinates";
 
 export type PublicMapBoatRow = {
   id?: string | null;
   slug: string | null;
-  make: string;
-  model: string;
-  year: number;
+  make: string | null;
+  model: string | null;
+  year: number | null;
   location_text: string | null;
   location_lat: number | string | null;
   location_lng: number | string | null;
@@ -26,13 +27,19 @@ export function buildPublicMapMarker(row: PublicMapBoatRow) {
 
   const normalized = sanitizeImportedBoatRecord({
     ...row,
+    make: row.make || "",
+    model: row.model || "",
     source_site: null,
     specs: {},
   });
 
   return {
     slug: row.slug,
-    title: `${row.year} ${normalized.make} ${normalized.model}`.trim(),
+    title: buildBoatDisplayTitle({
+      year: row.year,
+      make: normalized.make,
+      model: normalized.model,
+    }),
     locationText: normalized.location_text,
     lat: publicCoordinate.latitude,
     lng: publicCoordinate.longitude,
