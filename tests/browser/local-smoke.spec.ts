@@ -179,6 +179,10 @@ async function mockBoatsResponse(page: Page) {
   });
 }
 
+async function waitForBoatsSearchForm(page: Page) {
+  await expect(page.getByTestId("boats-search-form")).toHaveAttribute("data-ready", "true");
+}
+
 async function mockMapStyle(page: Page) {
   await page.route("https://images.example.test/lagoon-450.jpg", async (route) => {
     await route.fulfill({
@@ -333,6 +337,7 @@ test("boats page search flow stays deterministic with mocked API data", async ({
   await mockBoatsResponse(page);
 
   await page.goto("/boats");
+  await waitForBoatsSearchForm(page);
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
 
   await page.getByPlaceholder("Search boats...").fill("lagoon");
@@ -357,6 +362,7 @@ test("boats page location search creates a shareable chip and URL", async ({ pag
   await mockBoatsResponse(page);
 
   await page.goto("/boats");
+  await waitForBoatsSearchForm(page);
   await page.getByTestId("boats-location-input").fill("Puerto Rico");
   await page.getByRole("button", { name: "Search", exact: true }).click();
 
