@@ -17,7 +17,8 @@ User=root
 Environment=PAGES_MIN=5
 Environment=PAGES_MAX=20
 ExecStart=/root/projects/OnlyHulls/scripts/daily-scrape-boats-com.sh
-# Hard ceiling: boats.com pacing (30-75s × 15 pages) + import typically finishes in 15min.
+# Hard ceiling: at the upper bound of the random 5..20 page range,
+# pacing (30-75s × ~19 inter-page pauses ≈ 24min) + import comfortably fits under 45min.
 # RuntimeMaxSec does not apply to Type=oneshot; TimeoutStartSec is the hang guard.
 TimeoutStartSec=45min
 KillMode=mixed
