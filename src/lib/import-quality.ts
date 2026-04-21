@@ -675,7 +675,7 @@ export function normalizeImportedLocation(value?: string | null) {
   normalized = normalized
     .replace(/\s*\|\s*/g, ", ")
     .replace(/\s*\/\s*/g, " / ")
-    .replace(/\s+price\s*:\s*(?:[$]\s*)?\d[\d\s,.'-]*$/i, "")
+    .replace(/\s+price\s*:\s*(?:[$]\s*)?\d[\d\s,.'-]*(?:\([^)]*\))?\s*$/i, "")
     .replace(/\s+(?:duty|vat|tax)\s+paid$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();

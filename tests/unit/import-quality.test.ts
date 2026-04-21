@@ -84,6 +84,10 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
     ),
     "Shoreline Marina, Long Beach, California"
   );
+  assert.equal(
+    normalizeImportedLocation("Chaguaramas, Trinidad And Tobago Price: $550, 000 (Motivated Seller!)"),
+    "Chaguaramas, Trinidad And Tobago"
+  );
   assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
   assert.equal(normalizeImportedLocation("At Request"), "");
