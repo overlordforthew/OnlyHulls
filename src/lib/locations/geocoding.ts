@@ -302,7 +302,17 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bChiapas\s+Marina\s*,\s*Mexico\b/gi, "Marina Chiapas, Chiapas, Mexico")
+    .replace(
+      /^\s*\*+\s*Bluffers\s+Park\s+Yacht\s+Club\s*,?\s*Live\s+Aboard\s+Marina!?\s*$/gi,
+      "Bluffer's Park Yacht Club, Toronto, Canada"
+    )
+    .replace(
+      /\bNorthern\s+Ireland\s*,\s*Carrickfergus\s+Marina\b/gi,
+      "Carrickfergus Marina, Carrickfergus, County Antrim, United Kingdom"
+    )
     .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
+    .replace(/\bFoxs\s+Marina\s*,\s*Ipswich\b/gi, "Fox's Marina, Ipswich, United Kingdom")
+    .replace(/\bGreystones\s+Harbou?r\s+Marina\b/gi, "Greystones Marina, Greystones, Ireland")
     .replace(/\bLa\s+Paz\s*,\s*Costa\s+Baja\s+Marina\s*,\s*Americas\b/gi, "Costa Baja Marina, La Paz, Mexico")
     .replace(/\bLinton\s+Bay\s+Marina\s+Garrote\s+Coln\s*,\s*Panama\b/gi, "Linton Bay Marina, Panama")
     .replace(
@@ -326,12 +336,26 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bMarina\s+Vaiare\s*,\s*Moorea\s*,\s*Tahiti\b/gi, "Marina Vaiare, Moorea, French Polynesia")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bNanny\s+Cay\s+Boatyard\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(/\bPenarth\s+Marina\s+Cardiff\b/gi, "Penarth Marina, United Kingdom")
     .replace(
       /\bPanama\s*[-,]?\s*Shelter\s+Bay\s+Marina\s+Atlantic\s+Side\s+Of\s+Canal\b/gi,
       "Shelter Bay Marina, Colon, Panama"
     )
     .replace(/\bPiraeus\s*\(\s*Zea\s+Marina\s*\)(?=$|[\s,])/gi, "Zea Marina, Piraeus, Greece")
+    .replace(
+      /\bPuerto\s+Escondido\s+Loreto\s+Marina\s*,?\s*BCS\b/gi,
+      "Marina Puerto Escondido, Loreto, Baja California Sur, Mexico"
+    )
     .replace(/\bShelter\s+Bay\s+Marina\s+Colon\s+Panama\s+Sa\b/gi, "Shelter Bay Marina, Colon, Panama")
+    .replace(
+      /\bVerkoophaven\s+Schepenkring\s*(?:[-,]\s*)?Delta\s+Marina\s+Kortgene\s*(?:[-,]\s*)?Nederland\b/gi,
+      "Delta Marina, Kortgene, Netherlands"
+    )
+    .replace(
+      /\bVerkoophaven\s+Schepenkring\s+Delta\s+Marina\s*(?:[-,]\s*)?Nederland\b/gi,
+      "Delta Marina, Kortgene, Netherlands"
+    )
+    .replace(/\bDelta\s+Marina\s+Kortgene\s*(?:[-,]\s*)?Nederland\b/gi, "Delta Marina, Kortgene, Netherlands")
     .replace(
       /\bVerkoophaven\s+Delta\s+Marina\s*(?:[-,]\s*)?Kortgene\s*(?:[-,]\s*)?(?:\(\s*Nederland\s*\)|Nederland)(?=$|[\s,])/gi,
       "Delta Marina, Kortgene, Netherlands"
