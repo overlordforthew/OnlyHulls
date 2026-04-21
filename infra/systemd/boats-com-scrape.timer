@@ -1,0 +1,15 @@
+[Unit]
+Description=OnlyHulls — daily boats.com scrape (residential egress via Elmo)
+Documentation=https://github.com/overlordforthew/OnlyHulls
+
+[Timer]
+# Fire once per day at 03:00 UTC with up to 30 minutes of jitter.
+# 03:00 UTC ≈ 11:00 AM Manila (Elmo's daytime, residential-traffic-plausible).
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=1800
+# If the machine was off at the scheduled time, catch up on next boot.
+Persistent=true
+Unit=boats-com-scrape.service
+
+[Install]
+WantedBy=timers.target
