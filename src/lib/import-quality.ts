@@ -1344,6 +1344,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^swallow(?:\s+company)?$/i.test(make) &&
+    /^company\s+scylla\s+ketch$/i.test(model) &&
+    /(?:^|-)swallow-company-scylla-ketch(?:-|$)/.test(slug)
+  ) {
+    make = "Swallow Company";
+    model = "Scylla Ketch";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&

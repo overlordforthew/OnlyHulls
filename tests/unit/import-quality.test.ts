@@ -1005,6 +1005,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Swallow",
+      model: "Company Scylla Ketch",
+      sourceSite: "sailboatlistings",
+      slug: "1985-swallow-company-scylla-ketch-florida",
+    }),
+    { make: "Swallow Company", model: "Scylla Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Swallow",
+      model: "Company Scylla Ketch",
+      sourceSite: "sailboatlistings",
+      slug: "1985-swallow-scylla-ketch-florida",
+    }),
+    { make: "Swallow", model: "Company Scylla Ketch" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
@@ -2450,7 +2468,7 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
       sourceSite: "sailboatlistings",
       slug: "1985-swallow-company-scylla-ketch-florida",
     }),
-    { make: "Swallow", model: "Company Scylla Ketch" }
+    { make: "Swallow Company", model: "Scylla Ketch" }
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
@@ -4558,6 +4576,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     morganMarine.ai_summary,
     "1985 Morgan Marine 323 in Arkansas. 32ft LOA, masthead sloop rig, monohull."
+  );
+
+  const swallowCompany = sanitizeImportedBoatRecord({
+    year: 1985,
+    make: "Swallow",
+    model: "Company Scylla Ketch",
+    slug: "1985-swallow-company-scylla-ketch-florida",
+    source_site: "sailboatlistings",
+    location_text: "Florida",
+    ai_summary: "1985 Swallow Company Scylla Ketch in Florida. 36ft LOA, ketch rig, monohull.",
+    specs: {
+      loa: 36,
+      rig_type: "ketch",
+    },
+  });
+
+  assert.equal(swallowCompany.make, "Swallow Company");
+  assert.equal(swallowCompany.model, "Scylla Ketch");
+  assert.equal(
+    swallowCompany.ai_summary,
+    "1985 Swallow Company Scylla Ketch in Florida. 36ft LOA, ketch rig, monohull."
   );
 });
 
