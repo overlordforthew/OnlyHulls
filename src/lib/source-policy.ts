@@ -51,6 +51,12 @@ const SOURCE_DECISIONS_BY_KEY: Record<string, SourceDecision> = {
     reason:
       "Keep Rightboat in the controlled-test lane only; the operational source directory still flags aggressive rate limiting, and production currently has 0 active imported rows on 2026-04-15.",
   },
+  boats_com: {
+    status: "test",
+    sourceName: "Boats.com",
+    reason:
+      "Keep Boats.com in the controlled-test lane only while we observe the residential-egress scraper variant; production source health on 2026-04-21 showed 71 active buyer-visible rows with 100% field fill across a 5-page sample, zero Cloudflare events. Promote after a week of daily runs at that quality level.",
+  },
   apolloduck_us: {
     status: "hold",
     sourceName: "Apollo Duck US",
