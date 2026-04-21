@@ -81,6 +81,177 @@ test("buildGeocodeQuery uses corrected country hints for ambiguous boat location
       countryHint: "tr",
     }
   );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Tortola (Caribbean)",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Tortola, British Virgin Islands",
+      queryKey: "tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Tortola, Virgin Islands, British",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Tortola, British Virgin Islands",
+      queryKey: "tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas, US Virgin Islands",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Green Cay Marina, St Croix, Virgin Islands (US) (USVI)",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Green Cay Marina, St Croix, US Virgin Islands",
+      queryKey: "green cay marina st croix us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas, Virgin Islands",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Virgin Gorda Boatyard, Virgin Islands (British) (BVI)",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Virgin Gorda Boatyard, British Virgin Islands",
+      queryKey: "virgin gorda boatyard british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "&#8239;Shoreline&#8239;Marina, &#8239;Long&#8239;Beach, &#8239;California Price:&#8239;$52, 500",
+      country: "United States",
+      confidence: "city",
+    }),
+    {
+      queryText: "Shoreline Marina, Long Beach, California, United States",
+      queryKey: "shoreline marina long beach california united states",
+      countryHint: "us",
+    }
+  );
+});
+
+test("buildGeocodeQuery removes broad cruising-region noise and prioritizes marina text", () => {
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Athens, Alimos Marina, Mediterranean",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Alimos Marina, Athens, Greece",
+      queryKey: "alimos marina athens greece",
+      countryHint: "gr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Grenada, Port Louis Marina, Caribbean",
+      country: "Grenada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port Louis Marina, Grenada",
+      queryKey: "port louis marina grenada",
+      countryHint: "gd",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Trogir, Yachtclub Seget (Marina Baotić), Mediterranean",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Yachtclub Seget (Marina Baotić), Trogir, Croatia",
+      queryKey: "yachtclub seget marina baotic trogir croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Nanny Cay British Virgin Islands Caribbean",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Nanny Cay British Virgin Islands",
+      queryKey: "nanny cay british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Preveza Ionian Sea, Greece",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Preveza, Greece",
+      queryKey: "preveza greece",
+      countryHint: "gr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Caribbean Saint Martin",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    {
+      queryText: "Saint Martin, Sint Maarten",
+      queryKey: "saint martin sint maarten",
+      countryHint: "sx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Almerimar, Spain Us Flag",
+      country: "Spain",
+      confidence: "city",
+    }),
+    {
+      queryText: "Almerimar, Spain",
+      queryKey: "almerimar spain",
+      countryHint: "es",
+    }
+  );
 });
 
 test("buildGeocodeQuery rejects generic or region-only locations", () => {
@@ -96,6 +267,22 @@ test("buildGeocodeQuery rejects generic or region-only locations", () => {
     buildGeocodeQuery({
       locationText: "Mediterranean",
       confidence: "region",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "South Of, France",
+      country: "France",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Grenada, West Indies",
+      country: "Grenada",
+      confidence: "city",
     }),
     null
   );
@@ -411,7 +598,7 @@ test("geocodeWithOpenCage routes county boundaries to reviewable region precisio
   }
 });
 
-test("geocodeWithOpenCage rejects low-confidence street pins", async () => {
+test("geocodeWithOpenCage rejects low-confidence marine pins", async () => {
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = (async () =>
@@ -442,8 +629,94 @@ test("geocodeWithOpenCage rejects low-confidence street pins", async () => {
     );
 
     assert.equal(result.status, "review");
-    assert.equal(result.precision, "street");
+    assert.equal(result.precision, "marina");
     assert.equal(result.error, "low_confidence");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage holds POI results for city-level queries", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Vancouver Island Regional Library - Nanaimo North Branch, 6250 Hammond Bay Road, Nanaimo, BC V9T, Canada",
+            geometry: { lat: 49.2350034, lng: -124.0384586 },
+            confidence: 10,
+            components: {
+              _type: "road",
+              road: "Hammond Bay Road",
+              city: "Nanaimo",
+              state: "British Columbia",
+              country: "Canada",
+              country_code: "ca",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Nanaimo Vancouver Island, Canada",
+        queryKey: "nanaimo vancouver island canada",
+        countryHint: "ca",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.precision, "unknown");
+    assert.equal(result.error, "low_precision");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Grenada Marine, Marina Drive, Corinth, Grenada",
+            geometry: { lat: 12.00442, lng: -61.7357 },
+            confidence: 10,
+            components: {
+              _type: "restaurant",
+              _category: "commerce",
+              road: "Marina Drive",
+              village: "Corinth",
+              country: "Grenada",
+              country_code: "gd",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Grenada Marine Grenada",
+        queryKey: "grenada marine grenada",
+        countryHint: "gd",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
   } finally {
     globalThis.fetch = originalFetch;
   }

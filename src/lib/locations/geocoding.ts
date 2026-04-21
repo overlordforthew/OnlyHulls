@@ -58,10 +58,13 @@ const GENERIC_LOCATION_TEXT = new Set([
   "east coast",
   "global",
   "marina",
+  "north of",
   "south",
   "south coast",
+  "south of",
   "unknown",
   "west coast",
+  "west indies",
   "worldwide",
 ]);
 
@@ -72,6 +75,7 @@ const COUNTRY_CODES: Record<string, string> = {
   bahamas: "bs",
   belize: "bz",
   bermuda: "bm",
+  "british virgin islands": "vg",
   canada: "ca",
   colombia: "co",
   croatia: "hr",
@@ -124,9 +128,86 @@ const COUNTRY_CODES: Record<string, string> = {
   "united states": "us",
   "united states virgin islands": "vi",
 };
+const COUNTRY_QUERY_ALIASES: Record<string, string[]> = {
+  "british virgin islands": ["bvi", "virgin islands british"],
+  "united states virgin islands": [
+    "us virgin islands",
+    "u s virgin islands",
+    "usvi",
+    "virgin islands us",
+    "virgin islands us usvi",
+  ],
+};
+const BROAD_GEOCODE_PARTS = new Set([
+  "adriatic",
+  "adriatic sea",
+  "aegean sea",
+  "caribbean",
+  "caribbean sea",
+  "caribbeans",
+  "channel islands",
+  "chesapeake bay",
+  "great lakes",
+  "indian ocean",
+  "ionian sea",
+  "mediterranean",
+  "mediterranean sea",
+  "new england",
+  "north sea",
+  "pacific ocean",
+  "pacific northwest",
+  "south pacific",
+  "west indies",
+]);
+const BROAD_GEOCODE_EDGE_PHRASES = Array.from(BROAD_GEOCODE_PARTS).sort(
+  (left, right) => right.length - left.length
+);
+const MARINE_GEOCODE_TERMS = [
+  "marine",
+  "marina",
+  "yacht club",
+  "yachtclub",
+  "yacht harbour",
+  "yacht harbor",
+  "harbour",
+  "harbor",
+  "boatyard",
+  "shipyard",
+  "dock",
+  "havn",
+  "haven",
+];
 const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "county", "island"]);
 const MARINE_PLACE_TYPES = new Set(["marina", "harbour", "harbor", "dock", "mooring", "ferry_terminal"]);
 const STREET_PLACE_TYPES = new Set(["house", "building", "amenity", "road", "street", "residential"]);
+const POI_PLACE_TYPES = new Set([
+  "bar",
+  "cafe",
+  "club",
+  "commercial",
+  "community_centre",
+  "fuel",
+  "government",
+  "industrial",
+  "office",
+  "police",
+  "restaurant",
+  "shop",
+  "social_centre",
+  "tourism",
+]);
+const POI_PLACE_CATEGORIES = new Set([
+  "building",
+  "commerce",
+  "commercial",
+  "education",
+  "government",
+  "industrial",
+  "office",
+  "road",
+  "social",
+  "tourism",
+]);
 const CITY_PLACE_TYPES = new Set([
   "city",
   "town",
@@ -169,6 +250,143 @@ function uniqueParts(parts: Array<string | null | undefined>) {
   }
 
   return result;
+}
+
+function stripBroadGeocodeParentheticals(value: string) {
+  return value
+    .replace(/\(([^)]*)\)/g, (match, inner) =>
+      BROAD_GEOCODE_PARTS.has(normalizeLookupValue(inner)) ? "" : match
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripGeocodeSourceArtifacts(value: string) {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#x?[0-9a-f]+;/gi, " ")
+    .replace(/\s+\bprice\s*:\s*(?:[$€£]?\s*[\d,\s.]+|upon request|contact(?:\s+\w+)*)\s*$/i, "")
+    .replace(/\s+\bflag\s*[:;-]\s*[a-z .]+$/i, "")
+    .replace(
+      /\s+\b(?:u\.?\s*s\.?\s*a?\.?|usa|us|american|canadian|british|french|german|dutch|spanish|italian|greek|turkish|croatian)\s+flag\b\s*$/i,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeCountryAliasText(value: string, country?: string | null) {
+  let normalized = value
+    .replace(/\bVirgin Islands\s*\(British\)\s*\(BVI\)/gi, "British Virgin Islands")
+    .replace(/\bVirgin Islands\s*\(British\)/gi, "British Virgin Islands")
+    .replace(/\bVirgin Islands\s*,\s*British\b/gi, "British Virgin Islands")
+    .replace(/\b(?:U\.?S\.?|United States)\s*,\s*Virgin Islands\b/gi, "US Virgin Islands")
+    .replace(/\bVirgin Islands\s*\(US\)\s*\(USVI\)/gi, "US Virgin Islands")
+    .replace(/\bVirgin Islands\s*\(US\)/gi, "US Virgin Islands");
+
+  if (normalizeLookupValue(country) === "united states virgin islands") {
+    normalized = normalized.replace(
+      /\b((?:St\.?|Saint)\s+(?:Thomas|John|Croix)|Water Island)\s*,\s*Virgin Islands\b/gi,
+      "$1, US Virgin Islands"
+    );
+  }
+
+  return normalized;
+}
+
+function isBroadGeocodePart(part: string) {
+  return BROAD_GEOCODE_PARTS.has(normalizeLookupValue(part));
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripBroadGeocodeEdgePhrases(value: string) {
+  let result = value.trim();
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const phrase of BROAD_GEOCODE_EDGE_PHRASES) {
+      const escaped = escapeRegExp(phrase).replace(/\s+/g, "\\s+");
+      const leading = new RegExp(`^\\s*${escaped}\\s*(?:,|-)?\\s+`, "i");
+      const trailing = new RegExp(`\\s+(?:,|-)?\\s*${escaped}\\s*$`, "i");
+      const next = result
+        .replace(leading, "")
+        .replace(trailing, "")
+        .replace(/\s+,/g, ",")
+        .replace(/,\s*$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (next !== result) {
+        result = next;
+        changed = true;
+      }
+    }
+  }
+
+  return result;
+}
+
+function isMarineGeocodePart(part: string) {
+  const normalized = normalizeLookupValue(part);
+  return MARINE_GEOCODE_TERMS.some((term) => normalized.includes(term));
+}
+
+function isVagueDirectionalLocation(locationText: string) {
+  const normalized = normalizeLookupValue(locationText);
+  if (GENERIC_LOCATION_TEXT.has(normalized)) return true;
+
+  return /^(?:north|south|east|west)\s+of\b/.test(normalized);
+}
+
+function queryHasAddressLikeStreetDetail(queryText: string) {
+  const normalized = ` ${normalizeLookupValue(queryText)} `;
+  const hasAddressNumber = /\s\d{1,6}\s/.test(normalized);
+  const hasStreetSuffix = /\s(?:street|road|avenue|drive|boulevard|lane|court|highway|route|way)\s/.test(
+    normalized
+  );
+
+  return hasAddressNumber && hasStreetSuffix;
+}
+
+function resultHasMarineTerm(formatted: string, components: Record<string, unknown>) {
+  const componentText = Object.values(components)
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+
+  return isMarineGeocodePart(`${formatted} ${componentText}`);
+}
+
+function isPointOfInterestResult(type: string, category: string) {
+  return (
+    STREET_PLACE_TYPES.has(type) ||
+    STREET_PLACE_TYPES.has(category) ||
+    POI_PLACE_TYPES.has(type) ||
+    POI_PLACE_CATEGORIES.has(category)
+  );
+}
+
+function prepareGeocodeLocationText(locationText: string, country?: string | null) {
+  const stripped = stripBroadGeocodeEdgePhrases(
+    stripBroadGeocodeParentheticals(
+      normalizeCountryAliasText(stripGeocodeSourceArtifacts(locationText), country)
+    )
+  );
+  const parts = uniqueParts(stripped.split(",").map(stripBroadGeocodeEdgePhrases));
+  if (parts.length <= 1) return stripped;
+
+  const filteredParts = parts.filter((part) => !isBroadGeocodePart(part));
+  const marineParts = filteredParts.filter(isMarineGeocodePart);
+  if (marineParts.length === 0) return filteredParts.join(", ");
+
+  return uniqueParts([
+    ...marineParts,
+    ...filteredParts.filter((part) => !isMarineGeocodePart(part)),
+  ]).join(", ");
 }
 
 function numberFromEnv(value: string | undefined, fallback: number) {
@@ -219,14 +437,25 @@ export function getCountryCode(country?: string | null) {
   return COUNTRY_CODES[normalizeLookupValue(country)] || null;
 }
 
+function locationTextIncludesCountry(locationText: string, country?: string | null) {
+  const normalizedCountry = normalizeLookupValue(country);
+  if (!normalizedCountry) return false;
+
+  const normalizedLocation = normalizeLookupValue(locationText);
+  const aliases = [normalizedCountry, ...(COUNTRY_QUERY_ALIASES[normalizedCountry] || [])];
+  return aliases.some((alias) => normalizedLocation.includes(alias));
+}
+
 export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | null {
   const locationText = String(input.locationText || "").trim();
-  const normalizedLocation = normalizeLookupValue(locationText);
-  if (!locationText || normalizedLocation.length < 3 || GENERIC_LOCATION_TEXT.has(normalizedLocation)) {
+  const country = String(input.country || "").trim();
+  const preparedLocationText = prepareGeocodeLocationText(locationText, country);
+  const normalizedLocation = normalizeLookupValue(preparedLocationText);
+  if (!preparedLocationText || normalizedLocation.length < 3 || GENERIC_LOCATION_TEXT.has(normalizedLocation)) {
     return null;
   }
+  if (isVagueDirectionalLocation(preparedLocationText)) return null;
 
-  const country = String(input.country || "").trim();
   const normalizedCountry = normalizeLookupValue(country);
   if (COUNTRY_CODES[normalizedLocation] || (normalizedCountry && normalizedCountry === normalizedLocation)) {
     return null;
@@ -236,13 +465,12 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   const looksSpecific =
     confidence === "city" ||
     confidence === "exact" ||
-    locationText.includes(",");
+    preparedLocationText.includes(",");
   if (!looksSpecific) return null;
 
-  const locationIncludesCountry =
-    country && normalizeLookupValue(locationText).includes(normalizeLookupValue(country));
+  const locationIncludesCountry = locationTextIncludesCountry(preparedLocationText, country);
   const parts = uniqueParts([
-    locationText,
+    preparedLocationText,
     locationIncludesCountry ? null : country,
   ]);
   const queryText = parts.join(", ");
@@ -299,12 +527,21 @@ function scoreNominatimResult(result: Record<string, unknown>, precision: Geocod
   return scorePrecision(importance, precision);
 }
 
-function inferOpenCagePrecision(components: Record<string, unknown>, confidence: number): GeocodePrecision {
+function inferOpenCagePrecision(
+  components: Record<string, unknown>,
+  confidence: number,
+  queryText: string,
+  formatted: string
+): GeocodePrecision {
   const type = normalizeLookupValue(String(components._type || ""));
   const category = normalizeLookupValue(String(components._category || ""));
 
   if (MARINE_PLACE_TYPES.has(type) || MARINE_PLACE_TYPES.has(category)) return "marina";
-  if (STREET_PLACE_TYPES.has(type) || STREET_PLACE_TYPES.has(category)) return "street";
+  if (isPointOfInterestResult(type, category)) {
+    if (isMarineGeocodePart(queryText) && resultHasMarineTerm(formatted, components)) return "marina";
+    if (queryHasAddressLikeStreetDetail(queryText)) return "street";
+    return "unknown";
+  }
   if (CITY_PLACE_TYPES.has(type)) return "city";
   if (OPENCAGE_REGION_TYPES.has(type)) return "region";
   if (type === "country") return "country";
@@ -535,7 +772,13 @@ export async function geocodeWithOpenCage(
       : {};
     const confidence = Number(result.confidence);
     const normalizedConfidence = Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 10) : 0;
-    const precision = inferOpenCagePrecision(components, normalizedConfidence);
+    const formatted = String(result.formatted || "") || null;
+    const precision = inferOpenCagePrecision(
+      components,
+      normalizedConfidence,
+      query.queryText,
+      formatted || ""
+    );
     const score = scorePrecision(normalizedConfidence / 10, precision);
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
     const lowConfidence =
@@ -549,7 +792,7 @@ export async function geocodeWithOpenCage(
       longitude,
       precision,
       score,
-      placeName: String(result.formatted || "") || null,
+      placeName: formatted,
       provider: "opencage",
       payload: result,
       error: lowPrecision ? "low_precision" : lowConfidence ? "low_confidence" : null,

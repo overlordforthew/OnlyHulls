@@ -119,6 +119,13 @@ test("location inference tags exact markets and parent cruising regions", () => 
   assert.equal(florida.confidence, "exact");
   assert.equal(florida.approximate, false);
 
+  const floridaWithCountry = inferLocationMarketSignals({
+    locationText: "Fort Lauderdale, FL, United States",
+  });
+  assert.deepEqual(floridaWithCountry.marketSlugs, ["united-states", "florida"]);
+  assert.equal(floridaWithCountry.country, "United States");
+  assert.equal(floridaWithCountry.region, "Florida");
+
   const approximateCannes = inferLocationMarketSignals({
     locationText: "Cannes",
     latitude: 43.5528,
@@ -236,6 +243,57 @@ test("location inference favors explicit countries and longer admin phrases over
   assert.deepEqual(jerseyCity.marketSlugs, ["united-states", "new-jersey"]);
   assert.equal(jerseyCity.country, "United States");
   assert.equal(jerseyCity.region, "New Jersey");
+
+  const vancouverBc = inferLocationMarketSignals({ locationText: "Vancouver Bc Ca" });
+  assert.deepEqual(vancouverBc.marketSlugs, ["canada", "pacific-northwest"]);
+  assert.equal(vancouverBc.country, "Canada");
+  assert.equal(vancouverBc.region, "British Columbia");
+
+  const stThomas = inferLocationMarketSignals({ locationText: "St. Thomas, US Virgin Islands" });
+  assert.deepEqual(stThomas.marketSlugs, ["caribbean", "usvi"]);
+  assert.equal(stThomas.country, "United States Virgin Islands");
+  assert.equal(stThomas.region, "Caribbean");
+
+  const marinaDelRey = inferLocationMarketSignals({ locationText: "Marina Del Rey, CA" });
+  assert.deepEqual(marinaDelRey.marketSlugs, ["united-states", "california"]);
+  assert.equal(marinaDelRey.country, "United States");
+  assert.equal(marinaDelRey.region, "California");
+
+  const washingtonNc = inferLocationMarketSignals({ locationText: "Washington, North Carolina" });
+  assert.deepEqual(washingtonNc.marketSlugs, ["united-states", "north-carolina"]);
+  assert.equal(washingtonNc.country, "United States");
+  assert.equal(washingtonNc.region, "North Carolina");
+
+  const portWashingtonNy = inferLocationMarketSignals({ locationText: "Port Washington, NY" });
+  assert.deepEqual(portWashingtonNy.marketSlugs, ["united-states", "new-york"]);
+  assert.equal(portWashingtonNy.country, "United States");
+  assert.equal(portWashingtonNy.region, "New York");
+
+  const falmouthMaine = inferLocationMarketSignals({ locationText: "Falmouth, Maine" });
+  assert.deepEqual(falmouthMaine.marketSlugs, ["united-states", "new-england"]);
+  assert.equal(falmouthMaine.country, "United States");
+  assert.equal(falmouthMaine.region, "New England");
+
+  const bainbridge = inferLocationMarketSignals({ locationText: "Bainbridge Island, Washington" });
+  assert.deepEqual(bainbridge.marketSlugs, ["united-states", "washington-state", "pacific-northwest"]);
+  assert.equal(bainbridge.country, "United States");
+  assert.equal(bainbridge.region, "Pacific Northwest");
+
+  const seattleWa = inferLocationMarketSignals({ locationText: "Seattle, WA" });
+  assert.deepEqual(seattleWa.marketSlugs, ["united-states", "washington-state", "pacific-northwest"]);
+  assert.equal(seattleWa.country, "United States");
+
+  const washingtonDc = inferLocationMarketSignals({ locationText: "Washington, D.C." });
+  assert.deepEqual(washingtonDc.marketSlugs, []);
+  assert.equal(washingtonDc.country, null);
+
+  const portlandMaine = inferLocationMarketSignals({ locationText: "Portland, Maine" });
+  assert.deepEqual(portlandMaine.marketSlugs, ["united-states", "new-england"]);
+  assert.equal(portlandMaine.country, "United States");
+
+  const falmouthUk = inferLocationMarketSignals({ locationText: "Falmouth, Cornwall, UK" });
+  assert.deepEqual(falmouthUk.marketSlugs, ["uk"]);
+  assert.equal(falmouthUk.country, "United Kingdom");
 });
 
 test("location country hint resolver catches stale paid-geocoding country hints", () => {
@@ -253,6 +311,26 @@ test("location country hint resolver catches stale paid-geocoding country hints"
     country: "Jersey",
     region: "Channel Islands",
     matchedTerm: "Jersey",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Vancouver Bc Ca"), {
+    country: "Canada",
+    region: "British Columbia",
+    matchedTerm: "bc ca",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Christiansted St. Croix Us, Virgin Islands"), {
+    country: "United States Virgin Islands",
+    region: "Caribbean",
+    matchedTerm: "us virgin islands",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Port Washington, NY"), {
+    country: "United States",
+    region: "New York",
+    matchedTerm: "ny",
+  });
+  assert.deepEqual(resolveLocationCountryHint("Falmouth, Maine"), {
+    country: "United States",
+    region: "New England",
+    matchedTerm: "maine",
   });
 });
 
