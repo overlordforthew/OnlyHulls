@@ -1,5 +1,7 @@
 import { hasConfiguredValue } from "@/lib/capabilities";
 import {
+  getVerifiedPublicPinAliasDefinition,
+  getVerifiedPublicPinAliasInText,
   getVerifiedPublicPinAliasMatch,
   isVerifiedPublicPinAliasAnchorMatch,
   VERIFIED_PUBLIC_PIN_LOCATION_ALIASES,
@@ -29,6 +31,17 @@ export type GeocodeQuery = {
   queryText: string;
   queryKey: string;
   countryHint: string | null;
+  /**
+   * Optional provider-side country filter. When a verified public-pin alias with
+   * multiple countryCodes (e.g. `us`+`vi` for USVI facilities tagged by
+   * OpenCage as country_code=us under ISO state VI) is present in queryText,
+   * this carries the joined list so the provider does not under-rank the
+   * facility below a single-ISO territory result. Left null for single-code or
+   * no-alias queries — `countryHint` alone is used. Does not affect the
+   * internal country-match check at `getExactCityCountryQueryParts` or at the
+   * alias anchor, both of which stay strict on the real result country.
+   */
+  providerCountryCodes?: readonly string[] | null;
 };
 
 export type GeocodeResult = {
@@ -461,6 +474,21 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(
       /\bChatham\s+Marina\s*,\s*(?:Chatham\s+)?Kent\s*(?=$|,)/gi,
       "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom"
+    )
+    // Round 23: Green Cay Marina (USVI). Only the three observed production source texts canonicalize.
+    // Plain `Green Cay Marina` (no country/state) and BVI/Bahamian variants stay untouched — the alias
+    // anchor (country=us/vi, marina component) rejects them if they still reach the provider.
+    .replace(
+      /\bGreen\s+Cay\s+Marina\s+St\.?\s+Croix(?=$|[\s,])(?!\s*,\s*BVI\b)/gi,
+      "Green Cay Marina, Christiansted, US Virgin Islands"
+    )
+    .replace(
+      /\bGreen\s+Cay\s+Marina\s*,\s*St\s+Croix\s*,\s*Virgin\s+Islands\s*\(\s*US\s*\)\s*\(\s*USVI\s*\)/gi,
+      "Green Cay Marina, Christiansted, US Virgin Islands"
+    )
+    .replace(
+      /\bGreen\s+Cay\s+Marina\s*,\s*Virgin\s+Islands\s*\(\s*US\s*\)\s*\(\s*USVI\s*\)/gi,
+      "Green Cay Marina, Christiansted, US Virgin Islands"
     )
     .replace(
       /\bMarina\s+De\s+L'?Anse\s+Marcel(?:\s*,\s*(?:(?:St\.?|Saint)\s+Martin|Sint\s+Maarten))*\b/gi,
@@ -1122,11 +1150,26 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   const queryText = parts.join(", ");
   const queryKey = normalizeLookupValue(queryText);
 
-  return {
+  // If the query contains a verified public-pin alias that spans multiple
+  // provider country codes (e.g. USVI's `us`+`vi`, Sint Maarten's `nl`+`sx`),
+  // carry the full list so the provider call can filter against both. This
+  // keeps tight country filtering for non-alias queries while allowing alias
+  // facilities tagged under any of the declared codes to rank normally.
+  //
+  // The field is only populated when widening is needed; non-alias queries
+  // keep the original 3-field shape so upstream code and tests that check
+  // the full result object remain unaffected.
+  const aliasInQuery = getVerifiedPublicPinAliasInText(queryText);
+  const aliasDef = aliasInQuery ? getVerifiedPublicPinAliasDefinition(aliasInQuery) : null;
+  const providerCountryCodes =
+    aliasDef && aliasDef.countryCodes.length > 1 ? aliasDef.countryCodes : null;
+
+  const base: GeocodeQuery = {
     queryText,
     queryKey,
     countryHint,
   };
+  return providerCountryCodes ? { ...base, providerCountryCodes } : base;
 }
 
 export function getGeocodeCandidateReason(input: GeocodeCandidateInput) {
@@ -1340,7 +1383,13 @@ export async function geocodeWithNominatim(
   url.searchParams.set("limit", "1");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("dedupe", "1");
-  if (query.countryHint) url.searchParams.set("countrycodes", query.countryHint);
+  // Same alias-widening rule as OpenCage. Nominatim `countrycodes` accepts a
+  // comma-separated list.
+  const providerCountryFilter =
+    query.providerCountryCodes && query.providerCountryCodes.length > 0
+      ? query.providerCountryCodes.join(",")
+      : query.countryHint;
+  if (providerCountryFilter) url.searchParams.set("countrycodes", providerCountryFilter);
   if (config.email) url.searchParams.set("email", config.email);
 
   const controller = new AbortController();
@@ -1456,7 +1505,14 @@ export async function geocodeWithOpenCage(
   url.searchParams.set("limit", "1");
   url.searchParams.set("no_annotations", "1");
   url.searchParams.set("language", "en");
-  if (query.countryHint) url.searchParams.set("countrycode", query.countryHint);
+  // When a verified alias widens the allowed provider country codes, pass all
+  // of them as a comma-separated filter. Falls back to the single countryHint
+  // for every non-alias query.
+  const providerCountryFilter =
+    query.providerCountryCodes && query.providerCountryCodes.length > 0
+      ? query.providerCountryCodes.join(",")
+      : query.countryHint;
+  if (providerCountryFilter) url.searchParams.set("countrycode", providerCountryFilter);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
