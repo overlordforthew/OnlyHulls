@@ -301,8 +301,10 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bGenoa\s*,\s*Italyn\s*\/\s*A\b/gi, "Genoa, Italy")
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
+    .replace(/\bChiapas\s+Marina\s*,\s*Mexico\b/gi, "Marina Chiapas, Chiapas, Mexico")
     .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
     .replace(/\bLa\s+Paz\s*,\s*Costa\s+Baja\s+Marina\s*,\s*Americas\b/gi, "Costa Baja Marina, La Paz, Mexico")
+    .replace(/\bLinton\s+Bay\s+Marina\s+Garrote\s+Coln\s*,\s*Panama\b/gi, "Linton Bay Marina, Panama")
     .replace(
       /\bHodge'?s\s+Creek\s+Marina\s+Hotel(?:\s*,\s*Parham\s+Town)?(?:\s*,\s*British\s+Virgin\s+Islands)?\b/gi,
       "Hodge's Creek Marina, British Virgin Islands"
@@ -321,9 +323,24 @@ function normalizeKnownLocationTextArtifacts(value: string) {
       "Marina Bas du Fort, Le Gosier, Guadeloupe"
     )
     .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
+    .replace(/\bMarina\s+Vaiare\s*,\s*Moorea\s*,\s*Tahiti\b/gi, "Marina Vaiare, Moorea, French Polynesia")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bNanny\s+Cay\s+Boatyard\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(
+      /\bPanama\s*[-,]?\s*Shelter\s+Bay\s+Marina\s+Atlantic\s+Side\s+Of\s+Canal\b/gi,
+      "Shelter Bay Marina, Colon, Panama"
+    )
     .replace(/\bPiraeus\s*\(\s*Zea\s+Marina\s*\)(?=$|[\s,])/gi, "Zea Marina, Piraeus, Greece")
+    .replace(/\bShelter\s+Bay\s+Marina\s+Colon\s+Panama\s+Sa\b/gi, "Shelter Bay Marina, Colon, Panama")
+    .replace(
+      /\bVerkoophaven\s+Delta\s+Marina\s*(?:[-,]\s*)?Kortgene\s*(?:[-,]\s*)?(?:\(\s*Nederland\s*\)|Nederland)(?=$|[\s,])/gi,
+      "Delta Marina, Kortgene, Netherlands"
+    )
+    .replace(
+      /\bVerkoophaven\s+Delta\s+Marina\s*(?:[-,]\s*)?(?:\(\s*Nederland\s*\)|Nederland)(?=$|[\s,])/gi,
+      "Delta Marina, Kortgene, Netherlands"
+    )
+    .replace(/\bVerkoophaven\s+Delta\s+Marina\b/gi, "Delta Marina, Kortgene, Netherlands")
     .replace(/\bZea\s+Marina\s*,\s*Athens\b/gi, "Zea Marina, Piraeus, Greece")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
     .replace(/\bSt\.?\s+Martin\b/gi, "Saint Martin")
