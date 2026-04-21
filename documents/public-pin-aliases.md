@@ -21,8 +21,11 @@ Current aliases:
 | `medway yacht club` | Round 16 | Cached OpenCage result is `Medway Yacht Club Pontoon, Riverside Walk, Gillingham, ME4 3SU, United Kingdom`, `score=1`, `country=GB`, with provider component `pier=Medway Yacht Club Pontoon`. | 3 rows applied in backup `boat_geocode_backup_20260421112827`. |
 | `lagoon marina` | Round 16 | Cached OpenCage result is `Lagoon Marina, Wellington Road, Cul-de-Sac, Sint Maarten`, `score=1`, with provider component `pier=Lagoon Marina`; the existing country-equivalence guard handles the provider `nl`/Sint Maarten code nuance. | 1 row applied in backup `boat_geocode_backup_20260421112827`. |
 | `marina frapa` | Round 16 | Cached OpenCage result is `Marina Frapa, Uvala Soline 1, 22203 Općina Rogoznica, Croatia`, `score=1`, `country=HR`, with provider component `reception_desk=Marina Frapa`. | 1 row applied in backup `boat_geocode_backup_20260421112827`. |
+| `marina baotic` | Round 19 | OpenCage preview for `Marina Baotic, Seget Donji, Croatia` returned `Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia`, `precision=marina`, `score=1`, `country=HR`; broader `Yachtclub Seget ... Trogir` and `Marina Baotic, Trogir` queries returned only Trogir city precision. | 12 rows applied in backup `boat_geocode_backup_20260421125714`; post-apply audit returned 12/12 eligible pins. |
 
 Round 16 applied 23 cached reviewed-alias rows with `PUBLIC_MAP_ENABLED=false`; 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 23/23 eligible pins.
+
+Round 19 applied 12 Marina Baotić rows with `PUBLIC_MAP_ENABLED=false`; 8 existing Trogir city coordinates and 4 review rows were promoted to marina-grade pins through the verified-alias changed-geocoded lane, 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 12/12 eligible pins.
 
 Promotion anchors:
 
@@ -33,6 +36,7 @@ Promotion anchors:
 - `medway yacht club`: `gb`, `51.413041, 0.536679`, max 5 km.
 - `lagoon marina`: `nl`/`sx`, `18.033360, -63.085709`, max 5 km.
 - `marina frapa`: `hr`, `43.529953, 15.963572`, max 5 km.
+- `marina baotic`: `hr`, `43.516219, 16.233877`, max 5 km.
 
 Explicit non-aliases from Round 16:
 

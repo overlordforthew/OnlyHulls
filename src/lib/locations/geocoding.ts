@@ -451,6 +451,14 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bLuperon\s+Dominican\s+Republic\s+Can\s+Be\s+Delivered\s+To\s+You\b/gi, "Luperon, Dominican Republic")
     .replace(/\bMarmaris\s+Yacht\s+Marine(?:\s*,\s*Turkey)?\b/gi, "Marmaris Yacht Marina, Turkey")
     .replace(
+      /\bTrogir\s*,\s*Yachtclub\s+Seget\s*\(\s*Marina\s+Baoti[cć]\s*\)(?:\s*,\s*Mediterranean)?(?=$|[\s,])/gi,
+      "Marina Baotic, Seget Donji, Croatia"
+    )
+    .replace(
+      /\bYachtclub\s+Seget\s*\(\s*Marina\s+Baoti[cć]\s*\)\s*,\s*Trogir(?:\s*,\s*Croatia)?(?=$|[\s,])/gi,
+      "Marina Baotic, Seget Donji, Croatia"
+    )
+    .replace(
       /\bMarina\s+De\s+L'?Anse\s+Marcel(?:\s*,\s*(?:(?:St\.?|Saint)\s+Martin|Sint\s+Maarten))*\b/gi,
       "Marina Anse Marcel, Saint Martin"
     )

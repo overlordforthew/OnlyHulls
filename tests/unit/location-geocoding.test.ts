@@ -297,8 +297,8 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
       confidence: "city",
     }),
     {
-      queryText: "Yachtclub Seget (Marina Baotić), Trogir, Croatia",
-      queryKey: "yachtclub seget marina baotic trogir croatia",
+      queryText: "Marina Baotic, Seget Donji, Croatia",
+      queryKey: "marina baotic seget donji croatia",
       countryHint: "hr",
     }
   );
@@ -667,6 +667,42 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Osoyoos, BC, Canada",
       queryKey: "osoyoos bc canada",
       countryHint: "ca",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Trogir, Yachtclub Seget (Marina Baotić)",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Baotic, Seget Donji, Croatia",
+      queryKey: "marina baotic seget donji croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Trogir, Yachtclub Seget (Marina Baotić), Mediterranean",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Baotic, Seget Donji, Croatia",
+      queryKey: "marina baotic seget donji croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Yachtclub Seget (Marina Baotic), Trogir",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Baotic, Seget Donji, Croatia",
+      queryKey: "marina baotic seget donji croatia",
+      countryHint: "hr",
     }
   );
   assert.equal(
@@ -2144,6 +2180,30 @@ test("cached geocode promotion releases verified public-pin aliases", () => {
   assert.equal(result.precisionPromotedFrom, "city");
   assert.equal(result.precisionPromotionAlias, "conwy marina");
   assert.equal(result.error, null);
+
+  const baotic = promoteVerifiedPublicPinAliasPrecision("Marina Baotic, Seget Donji, Croatia", {
+    status: "geocoded",
+    latitude: 43.5162193,
+    longitude: 16.233877,
+    precision: "city",
+    score: 1,
+    placeName: "Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "marina",
+        marina: "Marina Baotić",
+        country: "Croatia",
+        country_code: "hr",
+      },
+    },
+    error: "public_pin_ineligible_precision",
+  });
+
+  assert.equal(baotic.precision, "marina");
+  assert.equal(baotic.precisionPromotedFrom, "city");
+  assert.equal(baotic.precisionPromotionAlias, "marina baotic");
+  assert.equal(baotic.error, null);
 });
 
 test("cached geocode promotion rejects non-contiguous and admin-place aliases", () => {
