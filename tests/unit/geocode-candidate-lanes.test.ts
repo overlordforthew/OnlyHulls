@@ -542,6 +542,7 @@ test("alias acceptedSourceTexts canonicalize EXACTLY to canonicalProviderQuery (
     bs: ["Bahamas"],
     nl: ["Netherlands"],
     sx: ["Sint Maarten"],
+    ca: ["Canada"],
   };
 
   for (const def of VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS) {
@@ -616,6 +617,179 @@ test("alias acceptedSourceTexts canonicalize EXACTLY to canonicalProviderQuery (
       // null queries (e.g. because confidence=unknown or text can't produce a query) are fine.
     }
   }
+});
+
+test("verified Toronto Island Marina alias requires the anchored marina component", () => {
+  // Positive: Canadian marina facility at anchor coords.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "ca",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Toronto Island Marina",
+          country_code: "ca",
+        },
+      },
+    }),
+    true
+  );
+
+  // Wrong country: US result at (spurious) anchor coords must fail the country check.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "us",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Toronto Island Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    false
+  );
+
+  // Missing marina component (e.g. road-type result at matching coords) must fail.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "ca",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 1,
+      payload: { components: { _type: "road", road: "Toronto Island Road", country_code: "ca" } },
+    }),
+    false
+  );
+
+  // Score boundary: 0.9 passes, 0.89 fails.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "ca",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 0.9,
+      payload: {
+        components: { _type: "marina", marina: "Toronto Island Marina", country_code: "ca" },
+      },
+    }),
+    true
+  );
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "ca",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 0.89,
+      payload: {
+        components: { _type: "marina", marina: "Toronto Island Marina", country_code: "ca" },
+      },
+    }),
+    false
+  );
+
+  // Distance boundary: ~0.6 km east of anchor at lat 43.62 (longitude offset ~0.0075
+  // degrees) is well outside the 0.5km ring.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "ca",
+      latitude: 43.6232049,
+      longitude: -79.3822702 + 0.0075,
+      score: 1,
+      payload: {
+        components: { _type: "marina", marina: "Toronto Island Marina", country_code: "ca" },
+      },
+    }),
+    false
+  );
+});
+
+test("round 24 Toronto Island Marina canonicalizes bare text and preserves qualified variants", () => {
+  // Positive: bare source text canonicalizes to the facility query.
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Toronto Island Marina",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Toronto Island Marina, Toronto, Ontario, Canada",
+      queryKey: "toronto island marina toronto ontario canada",
+      countryHint: "ca",
+    }
+  );
+
+  // Near-miss negative: a wrong-country suffix must NOT canonicalize to the Canadian
+  // canonical query. The anchored `^...$` cleanup rule only matches the exact bare text.
+  const usVariant = buildGeocodeQuery({
+    locationText: "Toronto Island Marina, USA",
+    country: "United States",
+    confidence: "city",
+  });
+  assert.ok(usVariant);
+  assert.notEqual(usVariant.queryText, "Toronto Island Marina, Toronto, Ontario, Canada");
+
+  // Qualified but still Canadian variant is safe: canonicalization skips it, but the
+  // alias anchor handles the subsequent provider response on its own.
+  const ontarioVariant = buildGeocodeQuery({
+    locationText: "Toronto Island Marina, Ontario",
+    country: "Canada",
+    confidence: "city",
+  });
+  assert.ok(ontarioVariant);
+  assert.notEqual(
+    ontarioVariant.queryText,
+    "Toronto Island Marina, Toronto, Ontario, Canada",
+    "qualified `Toronto Island Marina, Ontario` should pass through unchanged; alias anchor still catches the promotion"
+  );
+  assert.equal(ontarioVariant.countryHint, "ca");
+});
+
+test("cached geocode promotion rejects wrong-country aliased results (Green Cay BVI, Toronto US)", () => {
+  // Follow-up from Round 23 consensus gate #2: a hypothetical "Green Cay Marina" result
+  // tagged as a BVI/UK territory (country_code=vg) must NOT promote the verified alias
+  // even if the coords happen to match the USVI anchor.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "vg",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country_code: "vg",
+        },
+      },
+    }),
+    false
+  );
+
+  // Same pattern for Toronto Island Marina: a US-tagged near-duplicate result must not
+  // promote via the Canadian anchor even with otherwise matching fields.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("toronto island marina", {
+      countryCode: "us",
+      latitude: 43.6232049,
+      longitude: -79.3822702,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Toronto Island Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    false
+  );
 });
 
 test("verified alias country-filter widening stays narrow to multi-country aliases", () => {

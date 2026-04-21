@@ -475,6 +475,14 @@ function normalizeKnownLocationTextArtifacts(value: string) {
       /\bChatham\s+Marina\s*,\s*(?:Chatham\s+)?Kent\s*(?=$|,)/gi,
       "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom"
     )
+    // Round 24: Toronto Island Marina (Canada). The two observed production rows have
+    // location_text exactly `Toronto Island Marina` with no country/region qualifier.
+    // Anchored to exact match so any qualifier (e.g. `Toronto Island Marina, Ontario`)
+    // passes through unchanged — the alias anchor still handles those rows safely.
+    .replace(
+      /^\s*Toronto\s+Island\s+Marina\s*$/gi,
+      "Toronto Island Marina, Toronto, Ontario, Canada"
+    )
     // Round 23: Green Cay Marina (USVI). Only the three observed production source texts canonicalize.
     // Plain `Green Cay Marina` (no country/state) and BVI/Bahamian variants stay untouched — the alias
     // anchor (country=us/vi, marina component) rejects them if they still reach the provider.

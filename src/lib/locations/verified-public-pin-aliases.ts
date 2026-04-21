@@ -96,6 +96,26 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
     negativeSourceTexts: ["Chatham Marina", "Chatham Marina, Kent Coast"],
   },
   {
+    alias: "toronto island marina",
+    countryCodes: ["ca"],
+    latitude: 43.6232049,
+    longitude: -79.3822702,
+    maxDistanceKm: 0.5,
+    minScore: 0.9,
+    requiredComponent: {
+      type: "marina",
+      key: "marina",
+      value: "Toronto Island Marina",
+    },
+    canonicalProviderQuery: "Toronto Island Marina, Toronto, Ontario, Canada",
+    acceptedSourceTexts: ["Toronto Island Marina"],
+    negativeSourceTexts: [
+      "Toronto Marina",
+      "Toronto Island",
+      "Island Marina, Toronto",
+    ],
+  },
+  {
     alias: "green cay marina",
     countryCodes: ["us", "vi"],
     latitude: 17.7591487,
