@@ -2892,6 +2892,54 @@ test("geocodeWithOpenCage does not promote Green Cay alias when provider returns
   }
 });
 
+test("geocodeWithOpenCage does not promote known-marina names that resolve to island/admin-boundary types", async () => {
+  // Round 28 regression: the `Tortola, Nanny Cay, British Virgin Islands` query
+  // resolved to `Nanny Cay, British Virgin Islands` with `_type=island`,
+  // `_category=natural/water`. Because both query and result contained "nanny cay"
+  // (a STATIC_KNOWN_MARINA_NAME_TERMS entry), the classifier promoted it to marina
+  // precision despite `_type=island`. That put an admin-boundary pin on the public
+  // map, tripping the `public_admin_boundary_zero` readiness gate. The guard in
+  // resultAndQueryHaveKnownMarinaName must reject admin-boundary result types.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Nanny Cay, British Virgin Islands",
+            geometry: { lat: 18.399, lng: -64.63392 },
+            confidence: 9,
+            components: {
+              _type: "island",
+              _category: "natural/water",
+              island: "Nanny Cay",
+              country: "British Virgin Islands",
+              country_code: "vg",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Tortola, Nanny Cay, British Virgin Islands",
+        queryKey: "tortola nanny cay british virgin islands",
+        countryHint: "vg",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.notEqual(result.precision, "marina", "island-type result must not promote to marina");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("geocodeWithOpenCage accepts vetted known-marina names without a marina token", async () => {
   const originalFetch = globalThis.fetch;
 
