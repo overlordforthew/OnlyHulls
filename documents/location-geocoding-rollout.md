@@ -247,7 +247,7 @@ Recent verified location-market hygiene checkpoints:
 
 ## Rollback
 
-Every apply batch creates a `boat_geocode_backup_<timestamp>` table before writing. Keep those tables until the batch has passed the sample-pin audit and readiness report.
+Every apply batch creates a `boat_geocode_backup_<timestamp>` table before writing. Keep those tables until the batch has passed the sample-pin audit and readiness report. New backup tables include `slug` for audit convenience only, but rollback remains keyed on immutable `id`; backup tables created before the round 21 follow-up may not have `slug`, so join those older tables back to `boats` on `id` for slug-based inspection.
 
 Latest round-specific rollback reference: round 20 Linton Bay Marina used `boat_geocode_backup_20260421133028`; the follow-up Lagoon cache-backed repair used `boat_geocode_backup_20260421134416`. The rejected Cole Bay metadata experiment can be inspected through `boat_location_market_backup_round20_202604211333` and `boat_location_market_rollback_backup_round20_202604211343`.
 

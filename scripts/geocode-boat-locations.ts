@@ -168,6 +168,29 @@ const ACCEPTED_COUNTRY_CODE_EQUIVALENTS: Record<string, string[]> = {
   vi: ["us"],
   vg: ["gb"],
 };
+const GEOCODE_BACKUP_COLUMNS = [
+  "id",
+  "slug",
+  "location_lat",
+  "location_lng",
+  "location_country",
+  "location_region",
+  "location_market_slugs",
+  "location_confidence",
+  "location_approximate",
+  "location_geocoded_at",
+  "location_geocode_status",
+  "location_geocode_provider",
+  "location_geocode_query",
+  "location_geocode_place_name",
+  "location_geocode_precision",
+  "location_geocode_score",
+  "location_geocode_error",
+  "location_geocode_attempted_at",
+  "location_geocode_payload",
+  "updated_at",
+  "backed_up_at",
+] as const;
 
 function getArgValue(name: string) {
   const prefix = `${name}=`;
@@ -269,6 +292,23 @@ function formatBackupTableName() {
     .replace(/[-:TZ.]/g, "")
     .slice(0, 14);
   return `boat_geocode_backup_${stamp}`;
+}
+
+async function assertGeocodeBackupSnapshotColumns(tableName: string) {
+  const rows = await query<{ column_name: string }>(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = $1`,
+    [tableName]
+  );
+  const foundColumns = new Set(rows.map((row) => row.column_name));
+  const missingColumns = GEOCODE_BACKUP_COLUMNS.filter((column) => !foundColumns.has(column));
+  if (missingColumns.length > 0) {
+    throw new Error(
+      `Geocode backup snapshot ${tableName} is missing column(s): ${missingColumns.join(", ")}`
+    );
+  }
 }
 
 function getPayloadCountryCode(payload: unknown) {
@@ -588,10 +628,12 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
 async function createBackupSnapshot(candidateIds: string[]) {
   if (candidateIds.length === 0) return null;
   const tableName = formatBackupTableName();
+  // slug is for audit convenience only. Rollback must stay id-based because slugs can change.
   await query(
     `CREATE TABLE ${tableName} AS
      SELECT
        id,
+       slug,
        location_lat,
        location_lng,
        location_country,
@@ -615,6 +657,7 @@ async function createBackupSnapshot(candidateIds: string[]) {
      WHERE id = ANY($1::uuid[])`,
     [candidateIds]
   );
+  await assertGeocodeBackupSnapshotColumns(tableName);
 
   return tableName;
 }
