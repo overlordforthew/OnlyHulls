@@ -1023,6 +1023,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Wright",
+      model: "Yacht Company Inc Allied Seawind MK II",
+      sourceSite: "sailboatlistings",
+      slug: "1977-wright-company-inc-allied-seawind-mk-ii-minnesota",
+    }),
+    { make: "Wright Yacht Company Inc", model: "Allied Seawind Mk II" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Wright",
+      model: "Yacht Company Inc Allied Seawind MK II",
+      sourceSite: "sailboatlistings",
+      slug: "1977-wright-allied-seawind-mk-ii-minnesota",
+    }),
+    { make: "Wright", model: "Company Inc Allied Seawind Mk II" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
@@ -4597,6 +4615,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     swallowCompany.ai_summary,
     "1985 Swallow Company Scylla Ketch in Florida. 36ft LOA, ketch rig, monohull."
+  );
+
+  const wrightYachtCompany = sanitizeImportedBoatRecord({
+    year: 1977,
+    make: "Wright",
+    model: "Yacht Company Inc Allied Seawind MK II",
+    slug: "1977-wright-company-inc-allied-seawind-mk-ii-minnesota",
+    source_site: "sailboatlistings",
+    location_text: "Minnesota",
+    ai_summary:
+      "1977 Wright Yacht Company Inc Allied Seawind Mk Ii in Minnesota. 32ft LOA, ketch rig, monohull.",
+    specs: {
+      loa: 32,
+      rig_type: "ketch",
+    },
+  });
+
+  assert.equal(wrightYachtCompany.make, "Wright Yacht Company Inc");
+  assert.equal(wrightYachtCompany.model, "Allied Seawind Mk II");
+  assert.equal(
+    wrightYachtCompany.ai_summary,
+    "1977 Wright Yacht Company Inc Allied Seawind Mk II in Minnesota. 32ft LOA, ketch rig, monohull."
   );
 });
 

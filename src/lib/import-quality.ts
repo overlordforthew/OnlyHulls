@@ -1354,6 +1354,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^wright(?:\s+yacht\s+company\s+inc)?$/i.test(make) &&
+    modelStartsWith(/^(?:yacht\s+)?company\s+inc\s+allied\s+seawind\s+mk\s+ii\b/i) &&
+    /(?:^|-)wright-company-inc-allied-seawind-mk-ii(?:-|$)/.test(slug)
+  ) {
+    make = "Wright Yacht Company Inc";
+    model = "Allied Seawind Mk II";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&
