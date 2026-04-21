@@ -1304,6 +1304,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^texas(?:\s+boat\s+works)?$/i.test(make) &&
+    /^boat\s+works$/i.test(model) &&
+    /(?:^|-)texas-boat-works(?:-|$)/.test(slug)
+  ) {
+    make = "Texas Boat Works";
+    model = "";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&

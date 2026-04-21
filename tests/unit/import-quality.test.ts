@@ -933,6 +933,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Texas",
+      model: "Boat Works",
+      sourceSite: "sailboatlistings",
+      slug: "1988-texas-boat-works-michigan",
+    }),
+    { make: "Texas Boat Works", model: "" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Texas",
+      model: "Boat Works",
+      sourceSite: "sailboatlistings",
+      slug: "1988-texas-michigan",
+    }),
+    { make: "Texas", model: "Boat Works" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
