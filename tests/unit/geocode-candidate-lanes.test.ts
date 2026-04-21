@@ -73,6 +73,7 @@ test("public pin candidate lane accepts reviewed public-pin aliases", () => {
     "Conwy Marina",
     "Palm Cay Marina, Nassau, Bahamas",
     "Medway Yacht Club Pontoon",
+    "Marina Baotic, Seget Donji, Croatia",
   ];
 
   for (const value of accepted) {
@@ -89,6 +90,7 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Medway Yacht Club Pontoon",
     "Lagoon Marina, Cole Bay",
     "Marina Frapa, Rogoznica",
+    "Marina Baotić, Seget Donji",
   ];
   const rejected = [
     "Dover Marina, Kent",
@@ -98,6 +100,7 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Port Solent Marina, Portsmouth",
     "Marina Del Rey, California",
     "Chatham Maritime Marina Boatyard",
+    "Baotic Marina, Trogir",
     "Generic Marina",
   ];
 
@@ -155,6 +158,13 @@ test("verified public pin aliases require the same alias in query and result", (
       "Los Angeles County, CA 90292, United States of America"
     ),
     null
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Marina Baotic, Seget Donji, Croatia",
+      "Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia"
+    ),
+    "marina baotic"
   );
 });
 

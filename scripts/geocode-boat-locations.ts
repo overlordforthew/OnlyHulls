@@ -17,7 +17,10 @@ import {
   getGeocodeApplySafetyStop,
   isEnabledEnvValue,
 } from "../src/lib/locations/geocode-rollout-safety";
-import { shouldRetryChangedReviewGeocode } from "../src/lib/locations/geocode-review-retry";
+import {
+  shouldRetryChangedGeocodedNonPublicGeocode,
+  shouldRetryChangedReviewGeocode,
+} from "../src/lib/locations/geocode-review-retry";
 import {
   getPublicPinApplyGateStop,
   getPublicPinApplyResult,
@@ -26,6 +29,7 @@ import {
   isPublicPinLikelyGeocodeCandidate,
   isVerifiedPublicPinAliasGeocodeCandidate,
 } from "../src/lib/locations/geocode-candidate-lanes";
+import { textHasVerifiedPublicPinAlias } from "../src/lib/locations/verified-public-pin-aliases";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
 // Public Nominatim is for small validation runs only: single process, <= 1 request/sec,
@@ -45,6 +49,7 @@ type BoatGeocodeCandidate = {
   location_lng: number | null;
   location_geocode_status: GeocodeStatus | "pending" | null;
   location_geocode_query: string | null;
+  location_geocode_precision: GeocodePrecision | null;
 };
 
 type GeocodeCacheRow = {
@@ -103,6 +108,9 @@ type SelectedQuerySample = {
   countryHint: string | null;
   geocodeStatus?: GeocodeStatus | "pending" | null;
   previousQueryText?: string | null;
+  previousPrecision?: GeocodePrecision | null;
+  previousLatitude?: number | null;
+  previousLongitude?: number | null;
 };
 
 type GeocodeAuditRow = SelectedQuerySample & {
@@ -348,6 +356,9 @@ function buildSelectedQuerySample(
     countryHint: geocodeQuery.countryHint,
     geocodeStatus: boat.location_geocode_status,
     previousQueryText: boat.location_geocode_query,
+    previousPrecision: boat.location_geocode_precision,
+    previousLatitude: boat.location_lat,
+    previousLongitude: boat.location_lng,
   };
 }
 
@@ -619,12 +630,46 @@ async function main() {
   const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
   const retryChangedReview = hasFlag("--retry-changed-review");
+  const retryChangedGeocoded = hasFlag("--retry-changed-geocoded");
   const verifiedPublicPinAliases =
     hasFlag("--verified-public-pin-aliases") || hasFlag("--public-pin-aliases");
   const publicPinCandidates =
     hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely") || verifiedPublicPinAliases;
   const config = getGeocodingConfig();
   const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
+  if (retryChangedGeocoded && !verifiedPublicPinAliases) {
+    console.error(
+      "--retry-changed-geocoded is only allowed with --verified-public-pin-aliases."
+    );
+    console.log(JSON.stringify({
+      provider: config.provider,
+      enabled: config.enabled,
+      mode,
+      includeReview,
+      retryChangedReview,
+      retryChangedGeocoded,
+      verifiedPublicPinAliases,
+      stoppedReason: "retry_changed_geocoded_requires_verified_aliases",
+    }, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+  if (retryChangedGeocoded && limit > 50) {
+    console.error("--retry-changed-geocoded is capped at --limit=50.");
+    console.log(JSON.stringify({
+      provider: config.provider,
+      enabled: config.enabled,
+      mode,
+      includeReview,
+      retryChangedReview,
+      retryChangedGeocoded,
+      verifiedPublicPinAliases,
+      limit,
+      stoppedReason: "retry_changed_geocoded_limit_too_high",
+    }, null, 2));
+    process.exitCode = 1;
+    return;
+  }
   const earlyApplySafetyStop = getGeocodeApplySafetyStop({
     apply,
     provider: config.provider,
@@ -642,6 +687,7 @@ async function main() {
       mode,
       includeReview,
       retryChangedReview,
+      retryChangedGeocoded,
       verifiedPublicPinAliases,
       stoppedReason: earlyApplySafetyStop.stoppedReason,
     }, null, 2));
@@ -650,25 +696,36 @@ async function main() {
   }
 
   const visibleSql = buildVisibleImportQualitySql("b");
-  const statusSql = includeReview
-    ? "b.location_geocode_status IN ('pending', 'review', 'failed')"
-    : "b.location_geocode_status = 'pending'";
+  const statusSql = retryChangedGeocoded
+    ? includeReview
+      ? "b.location_geocode_status IN ('pending', 'review', 'failed', 'geocoded')"
+      : "b.location_geocode_status IN ('pending', 'geocoded')"
+    : includeReview
+      ? "b.location_geocode_status IN ('pending', 'review', 'failed')"
+      : "b.location_geocode_status = 'pending'";
+  const missingCoordinateSql = `(
+         b.location_lat IS NULL
+         OR b.location_lng IS NULL
+         OR b.location_lat NOT BETWEEN -90 AND 90
+         OR b.location_lng NOT BETWEEN -180 AND 180
+       )`;
+  const changedGeocodedSql = retryChangedGeocoded
+    ? `(
+         b.location_geocode_status = 'geocoded'
+         AND COALESCE(b.location_geocode_precision, '') IN ('city', 'region', 'country', 'unknown')
+       )`
+    : "FALSE";
   const rows = await query<BoatGeocodeCandidate>(
     `SELECT b.id, b.location_text, b.location_country, b.location_region,
             COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
             b.location_confidence, b.location_lat, b.location_lng,
-            b.location_geocode_status, b.location_geocode_query
+            b.location_geocode_status, b.location_geocode_query, b.location_geocode_precision
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.status = 'active'
        AND ${visibleSql}
        AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
-       AND (
-         b.location_lat IS NULL
-         OR b.location_lng IS NULL
-         OR b.location_lat NOT BETWEEN -90 AND 90
-         OR b.location_lng NOT BETWEEN -180 AND 180
-       )
+       AND (${missingCoordinateSql} OR ${changedGeocodedSql})
        AND ${statusSql}
      ORDER BY CASE b.location_confidence
                 WHEN 'city' THEN 0
@@ -680,16 +737,37 @@ async function main() {
               b.id`
   );
   const candidates = rows.map(prepareCandidate);
-  const retryScopedCandidates = retryChangedReview
-    ? candidates.filter(
-        (candidate) =>
-          candidate.geocodeQuery !== null &&
+  const retryScopedCandidates = retryChangedReview || retryChangedGeocoded
+    ? candidates.filter((candidate) => {
+        if (!candidate.geocodeQuery) return false;
+        if (
+          retryChangedReview &&
           shouldRetryChangedReviewGeocode({
             status: candidate.location_geocode_status,
             previousQueryText: candidate.location_geocode_query,
             currentQueryKey: candidate.geocodeQuery.queryKey,
           })
-      )
+        ) {
+          return true;
+        }
+        if (
+          retryChangedGeocoded &&
+          shouldRetryChangedGeocodedNonPublicGeocode({
+            status: candidate.location_geocode_status,
+            previousPrecision: candidate.location_geocode_precision,
+            previousQueryText: candidate.location_geocode_query,
+            currentQueryKey: candidate.geocodeQuery.queryKey,
+            verifiedAliasInLocationText: textHasVerifiedPublicPinAlias(candidate.location_text),
+            verifiedAliasInQueryText: isVerifiedPublicPinAliasGeocodeCandidate({
+              locationText: candidate.location_text,
+              queryText: candidate.geocodeQuery.queryText,
+            }),
+          })
+        ) {
+          return true;
+        }
+        return false;
+      })
     : candidates;
   const geocodableCandidates = retryScopedCandidates.filter(
     (candidate): candidate is ReadyCandidate => candidate.geocodeQuery !== null
@@ -728,6 +806,7 @@ async function main() {
     mode,
     includeReview,
     retryChangedReview,
+    retryChangedGeocoded,
     verifiedPublicPinAliases,
     selectionLane: verifiedPublicPinAliases
       ? "verified-public-pin-aliases"

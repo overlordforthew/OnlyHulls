@@ -50,6 +50,13 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
     longitude: 15.963572,
     maxDistanceKm: 5,
   },
+  {
+    alias: "marina baotic",
+    countryCodes: ["hr"],
+    latitude: 43.5162193,
+    longitude: 16.233877,
+    maxDistanceKm: 5,
+  },
 ] as const;
 
 export type VerifiedPublicPinLocationAlias =
