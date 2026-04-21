@@ -52,10 +52,26 @@ test("public pin candidate lane rejects broad city and region-only text", () => 
     "Porto Cervo, Sardinia",
     "Marmaris Yacht Marine",
     "Port de Marseille, France",
+    "Suffolk Yacht Harbour",
+    "Suffolk Yacht Harbour Ip10 0ln",
+    "Buckler's Hard Yacht Harbour, Beaulieu, Hampshire So42 7xb",
+    "Generic Yacht Harbour",
   ];
 
   for (const value of rejected) {
     assert.equal(isPublicPinLikelyText(value), false, value);
+  }
+});
+
+test("public pin candidate lane accepts reviewed public-pin aliases", () => {
+  const accepted = [
+    "Burnham Yacht Harbour",
+    "burnham yacht harbour, United Kingdom",
+    "Burnham-Yacht-Harbour",
+  ];
+
+  for (const value of accepted) {
+    assert.equal(isPublicPinLikelyText(value), true, value);
   }
 });
 
@@ -73,6 +89,13 @@ test("public pin candidate lane checks both source text and cleaned query text",
       queryText: "Athens, Greece",
     }),
     false
+  );
+  assert.equal(
+    isPublicPinLikelyGeocodeCandidate({
+      locationText: "Burnham Yacht Harbour",
+      queryText: "Burnham Yacht Harbour, United Kingdom",
+    }),
+    true
   );
 });
 
