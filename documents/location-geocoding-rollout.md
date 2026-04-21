@@ -61,7 +61,41 @@ Use the preflight phase that matches the operation:
 Start with a batch small enough to manually inspect:
 
 ```bash
-npm run db:geocode-locations -- --limit=100 --apply
+npm run db:geocode-locations -- --limit=25 --fetch-missing
+```
+
+For the initial buyer-map pin lane, prefer the opt-in public-pin selector before any apply:
+
+```bash
+npm run db:geocode-locations -- --limit=25 --public-pin-candidates --fetch-missing
+```
+
+The `--public-pin-candidates` lane is intentionally separate from the default search-coverage lane. It selects marina, yacht club, boatyard, shipyard, dock, quay, darsena, `port de plaisance`, and similar marine-specific rows first, so broad city-only rows can be handled later without polluting the initial public-pin rollout. It intentionally excludes standalone `puerto`, `porto`, `harbour`, `marine`, and `yacht` terms because those frequently resolve to city, country, or broad place results rather than public map pins.
+
+In the public-pin lane, only provider results with `exact`, `street`, or `marina` precision are eligible to update boat coordinates. City, region, country, and unknown results are still audited and cached during apply, but they are held in review for later search-coverage work. The summary fields `publicPinEligible`, `publicPinHeldBack`, and `publicPinEligibleRate` are the launch-safety signal for this lane.
+
+Apply only after the preview is clean:
+
+```bash
+npm run db:geocode-locations -- --limit=25 --public-pin-candidates --apply
+```
+
+The apply command blocks when `publicPinEligibleRate` is below `0.6`. Treat that as a data-quality stop, not a script failure: clean the bad source rows, adjust the lane with tests, or run a smaller verified batch before trying again.
+
+Current source-cleanup scope:
+
+- Test-backed query normalization exists for recurring `Nanny Cay Boatyard` and hyphenated/parenthetical `Marina Bas-Du-Fort` source text because provider previews return marina precision for their canonical queries.
+- Production one-off location text cleanup has rollback snapshots in `boat_location_text_cleanup_backup_20260421014841` and `boat_location_text_cleanup_backup_20260421020349`.
+- Do not normalize `Green Cay Marina`, `St. Thomas Yacht Club`, `Puerto Bahia Marina`, `Clarke's Court`, `Riva Di Traiano`, or `Villanova Marina` yet. Current provider previews still return city/review precision for those rows, so they need provider/policy review before public pins.
+
+Rollback for the one-off text cleanup uses the backup table for the affected rows:
+
+```sql
+UPDATE boats b
+SET location_text = backup.location_text,
+    updated_at = backup.updated_at
+FROM boat_location_text_cleanup_backup_YYYYMMDDHHMMSS backup
+WHERE b.id = backup.id;
 ```
 
 The script refuses `--apply` when `PUBLIC_MAP_ENABLED=true` unless `--allow-public-map-apply` is passed for an intentional live-map maintenance run. Do not use that override during the initial backfill.
@@ -121,13 +155,16 @@ Increase batch size gradually only when the previous batch has:
 - no unexpected `failureReasons`;
 - review/failed rows triaged by bucket;
 - public-pin coverage improving without low-score or stale-pin blockers;
+- `publicPinEligibleRate >= 0.6` for the public-pin lane;
 - a fresh compare artifact less than 30 days old.
 
 Recommended sequence:
 
 ```bash
-npm run db:geocode-locations -- --limit=250 --apply
-npm run db:geocode-locations -- --limit=250 --apply --include-review
+npm run db:geocode-locations -- --limit=25 --public-pin-candidates --fetch-missing
+npm run db:geocode-locations -- --limit=25 --public-pin-candidates --apply
+npm run db:geocode-locations -- --limit=100 --public-pin-candidates --fetch-missing
+npm run db:geocode-locations -- --limit=100 --public-pin-candidates --apply
 ```
 
 Use `--include-review` only after the review queue has been cleaned up. It should not be used to repeatedly retry bad source text.
