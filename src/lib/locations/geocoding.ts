@@ -405,8 +405,10 @@ function stripGeocodeSourceArtifacts(value: string) {
 function normalizeKnownLocationTextArtifacts(value: string) {
   // Live broker/source artifacts observed in the geocode review queue; keep each rule scoped and test-backed.
   return value
+    .replace(/^\s*Aan\s+Verkoopsteiger\s+In\s+/gi, "")
     .replace(/\bGenoa\s*,\s*Italyn\s*\/\s*A\b/gi, "Genoa, Italy")
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
+    .replace(/\bBahmas\b/gi, "Bahamas")
     .replace(/\bBizerte\s+Tunis\b/gi, "Bizerte, Tunisia")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bChiapas\s+Marina\s*,\s*Mexico\b/gi, "Marina Chiapas, Chiapas, Mexico")
@@ -462,7 +464,13 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     )
     .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
     .replace(/\bMarina\s+Vaiare\s*,\s*Moorea\s*,\s*Tahiti\b/gi, "Marina Vaiare, Moorea, French Polynesia")
+    .replace(/\bSarnia\s+Ont\s+Lake\s+Huron\b/gi, "Sarnia, Ontario, Canada")
+    .replace(/\bGoderich\s+Ontario\s*[-,]?\s*Lake\s+Huron\b/gi, "Goderich, Ontario, Canada")
+    .replace(/\bOsoyoos\s+Bc\s+\d+\s+Miles\s+North\s+Of\s+Oroville\s+Wa\b/gi, "Osoyoos, BC, Canada")
+    .replace(/\bOsoyoos\s+Bc\s+\d+\s+Miles\s*,\s*Oroville\s+Wa\b/gi, "Osoyoos, BC, Canada")
+    .replace(/\bCanada\s+West\s+Coast\s+Just\s*,\s*Seattle\b/gi, "West Coast")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
+    .replace(/\bMartiniqe\b/gi, "Martinique")
     .replace(/\bNanny\s+Cay\s+Boatyard\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
     .replace(/\bNanny\s+Cay\s+Tortola\b/gi, "Nanny Cay Marina, Tortola")
     .replace(/\bNanny\s+Cay\s+British\s+Virgin\s+Islands\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
@@ -514,9 +522,16 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bVerkoophaven\s+Delta\s+Marina\b/gi, "Delta Marina, Kortgene, Netherlands")
     .replace(/\bZea\s+Marina\s*,\s*Athens\b/gi, "Zea Marina, Piraeus, Greece")
     .replace(/\bCarribean\b/gi, "Caribbean")
+    .replace(/\bEl\s+Hiero\b/gi, "El Hierro")
+    .replace(/\bGrenade\s+Caribbean\b/gi, "Grenada")
     .replace(/\bRoad\s+Town\s+Totola\b/gi, "Road Town, Tortola")
+    .replace(/\bSantantioco\b/gi, "Sant'Antioco")
     .replace(/\bSint\s+Maarten\s+Dutch\s+Part\b/gi, "Sint Maarten")
+    .replace(/\bSt\.?\s+Martin\s+French\b/gi, "Saint Martin")
+    .replace(/\bSaint\s+Martin\s+French\b/gi, "Saint Martin")
     .replace(/\bSt\s+Maarten\s+NA\s+Northeastern\b/gi, "Sint Maarten")
+    .replace(/\bSt\s+Maarten\s+N\.?A\.?\b/gi, "Sint Maarten")
+    .replace(/\bSt\s+Maarten\s+Caribbean\b/gi, "Sint Maarten")
     .replace(/\bHrvatska\b/gi, "Croatia")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
     .replace(/\bSt\.?\s+Martin\b/gi, "Saint Martin")
@@ -683,7 +698,7 @@ function isVagueDirectionalLocation(locationText: string) {
   const normalized = normalizeLookupValue(locationText);
   if (GENERIC_LOCATION_TEXT.has(normalized)) return true;
 
-  return /^(?:north|south|east|west)\s+of\b/.test(normalized);
+  return /^(?:north|south|east|west|northeast|northwest|southeast|southwest|north east|north west|south east|south west)\s+of\b/.test(normalized);
 }
 
 function queryHasAddressLikeStreetDetail(queryText: string) {
