@@ -1,4 +1,8 @@
-# Public Map Launch Readiness — Summary (as of Round 31)
+# Public Map Launch Readiness — Summary (as of Round 35)
+
+> Updated 2026-04-21. Round 31 baseline below marked; rounds 32-35 added classifier extensions (conf=2 component equality, 3-part City,Region,Country, overseas-territory country-code equivalence) and a classifier-bug fix + regression test (admin-boundary guard, caught in R28). `review_failed_rate` dropped from 33.76% to 24.69% across R32-R35. No remaining review boats are drainable via the current classifier rules; the automation ceiling has been hit.
+
+# Historical baseline (Round 31)
 
 This document captures where the OnlyHulls public map stands on its 13 launch gates after rounds 22–31, what the remaining blockers are, and which of them can be moved by additional automated work vs. which require a policy or data-enrichment decision.
 
@@ -72,3 +76,44 @@ Given the data quality ceiling, the automatable state is:
 - `regional_coverage_floor` shows pockets of strong coverage and pockets that need seller enrichment
 
 A **"10/10 for what the map can be with current data"** is a Public-Map-Launched state in select countries with a lower coverage threshold. A **"10/10 by the originally-set thresholds"** requires threshold tuning or bulk enrichment — both outside automated scope.
+
+## Addendum — Rounds 32-35 results
+
+Round 32 (PR #40): extended `allowsExactCityCountryConfidenceFloor` to accept confidence=2 when provider's primary city component (`city`/`town`/`village`/`municipality`/`hamlet`) value EXACTLY equals the queried city part. `Bursa, Turkey` returning `Mudanya` (a town inside Bursa province) stays rejected because the component differs. 24 rows moved review→geocoded.
+
+Round 33 (PR #41): the `--include-review` selection is deterministic and caps at ~250 rows per batch; if the first 250 hit legitimately-unfixable rows, subsequent batches don't advance. Switched to targeted `--boat-ids=<119 UUIDs>` drain for review boats whose stored query has an already-geocoded cache entry. 119 boats promoted in one shot. This pattern is now documented.
+
+Round 34 (PR #42): extended exact City,Country exception to 3-part `City, Region, Country` with same guards. 63 of 89 boats drained.
+
+Round 35 (PR #43): added overseas-territory ↔ sovereign country-code equivalence (mq↔fr for Martinique, vg↔gb for BVI, vi↔us for USVI, sx↔nl for Sint Maarten, plus 12 more pairs). 67 boats drained.
+
+### Updated gate status
+
+| Gate | R31 value | R35 value | Target |
+|---|---|---|---|
+| pending_ready_queue | 9.2% | 9.21% | <10% ✓ |
+| review_failed_rate | 33.76% | **24.69%** | <5% ✗ still failing, but 9.07% improvement |
+| public_pin_coverage | 6.7% | 6.7% | ≥85% ✗ unchanged (structural) |
+| regional_coverage_floor | 20 failing | 20 failing | all ≥60% ✗ unchanged (structural) |
+| golden_set_accuracy | missing_artifact | missing_artifact | fresh <=30d ✗ (prod-runtime) |
+| all invariants | all 0 | all 0 | 0 ✓ (R28 regression caught + fixed) |
+
+### Classifier safety improvements shipped R28-R35
+
+1. **R28 admin-boundary guard**: `resultAndQueryHaveKnownMarinaName` rejects `_type` in `{state, region, province, county, island, country, continent}`. Prevents Nanny-Cay-island-as-marina false promotion.
+2. **R29 cache-invalidation lesson**: after any classifier fix, scan `location_geocode_cache` for stale entries the corrected code would now reject. Snapshot + delete so new rows re-classify via current code. Applied in R30, R32, R34, R35.
+3. **R32 conf=2 component-equality guard**: conf=2 matches only accepted when provider's primary city component value exactly equals queried city part. Prevents ambiguous-name traps.
+4. **R34 3-part query extension**: supports `City, Region, Country` queries where region is a real token (not a country) and city-part is non-broad/non-marine/non-street.
+5. **R35 territory-sovereign equivalence**: 16 territory-sovereign pairs accept OpenCage's sovereign-code responses for overseas-territory queries.
+
+### What's left for "10/10"
+
+- `review_failed_rate`: marginal grinds from here (each remaining cluster is 1-20 rows of complex source-text issues). Realistic floor via automation: ~15-20%. Hitting <5% needs a confidence-floor policy decision or seller-facing source-text enrichment (manual).
+- `public_pin_coverage` and `regional_coverage_floor`: **unchanged.** Structural ceilings. Automation has added the 4 verified aliases and ~13 pins achievable from current data; further pins need new facility-grade provider evidence (rare) or source-text enrichment.
+- `golden_set_accuracy`: one-time prod-runtime operator action.
+
+**Recommended next decisions for Gil:**
+1. Threshold tuning for `public_pin_coverage` and `regional_coverage_floor` based on observed data quality, OR
+2. Region-specific launch strategy (launch UK/Panama/Bahamas/Greece/Sint Maarten where per-country coverage is naturally higher; keep US/Spain/France/Italy gated), OR
+3. Seller-facing source-text enrichment tooling (new feature work), AND
+4. The operator task to run `npm run db:geocode-compare -- --mode=golden --write-artifact` in production.
