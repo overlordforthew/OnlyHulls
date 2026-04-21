@@ -567,6 +567,18 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Aaan Verkoopsteiger In Lelystad",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Lelystad, Netherlands",
+      queryKey: "lelystad netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Aan Verkoopsteiger In Lelystad, Deko Marina",
       country: "Netherlands",
       confidence: "city",
@@ -1756,6 +1768,181 @@ test("geocodeWithOpenCage parses a city result and sends scoped request params",
     assert.match(requested[0], /limit=1/);
     assert.match(requested[0], /no_annotations=1/);
     assert.match(requested[0], /countrycode=fr/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts exact confidence-three city-country results for search coverage", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Lelystad, Flevoland, Netherlands",
+            geometry: { lat: 52.5150949, lng: 5.4768915 },
+            confidence: 3,
+            components: {
+              _type: "city",
+              city: "Lelystad",
+              country: "Netherlands",
+              country_code: "nl",
+              state: "Flevoland",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Lelystad, Netherlands",
+        queryKey: "lelystad netherlands",
+        countryHint: "nl",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
+    assert.equal(result.error, null);
+    assert.equal(result.score, 0.42);
+    assert.equal(result.latitude, 52.5150949);
+    assert.equal(result.longitude, 5.4768915);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage keeps unsafe confidence-three city-like results in review", async () => {
+  const originalFetch = globalThis.fetch;
+  const cases = [
+    {
+      name: "confidence below floor",
+      query: {
+        queryText: "Lelystad, Netherlands",
+        queryKey: "lelystad netherlands",
+        countryHint: "nl",
+      },
+      result: {
+        formatted: "Lelystad, Flevoland, Netherlands",
+        geometry: { lat: 52.5150949, lng: 5.4768915 },
+        confidence: 2,
+        components: {
+          _type: "city",
+          city: "Lelystad",
+          country: "Netherlands",
+          country_code: "nl",
+        },
+      },
+      precision: "city",
+      error: "low_confidence",
+    },
+    {
+      name: "three-part city-region-country query",
+      query: {
+        queryText: "Cannes, Alpes-Maritimes, France",
+        queryKey: "cannes alpes maritimes france",
+        countryHint: "fr",
+      },
+      result: {
+        formatted: "Cannes, Alpes-Maritimes, France",
+        geometry: { lat: 43.5528, lng: 7.0174 },
+        confidence: 3,
+        components: {
+          _type: "city",
+          city: "Cannes",
+          country: "France",
+          country_code: "fr",
+          state: "Provence-Alpes-Cote d'Azur",
+        },
+      },
+      precision: "city",
+      error: "low_confidence",
+    },
+    {
+      name: "country hint mismatch",
+      query: {
+        queryText: "Lelystad, Netherlands",
+        queryKey: "lelystad netherlands",
+        countryHint: "nl",
+      },
+      result: {
+        formatted: "Lelystad, Belgium",
+        geometry: { lat: 50.9, lng: 4.4 },
+        confidence: 3,
+        components: {
+          _type: "city",
+          city: "Lelystad",
+          country: "Belgium",
+          country_code: "be",
+        },
+      },
+      precision: "city",
+      error: "low_confidence",
+    },
+    {
+      name: "formatted result missing queried city",
+      query: {
+        queryText: "Lelystad, Netherlands",
+        queryKey: "lelystad netherlands",
+        countryHint: "nl",
+      },
+      result: {
+        formatted: "Almere, Flevoland, Netherlands",
+        geometry: { lat: 52.3508, lng: 5.2647 },
+        confidence: 3,
+        components: {
+          _type: "city",
+          city: "Almere",
+          country: "Netherlands",
+          country_code: "nl",
+        },
+      },
+      precision: "city",
+      error: "low_confidence",
+    },
+    {
+      name: "street component on city-typed result",
+      query: {
+        queryText: "Lelystad, Netherlands",
+        queryKey: "lelystad netherlands",
+        countryHint: "nl",
+      },
+      result: {
+        formatted: "Station Road, Lelystad, Flevoland, Netherlands",
+        geometry: { lat: 52.51, lng: 5.47 },
+        confidence: 3,
+        components: {
+          _type: "city",
+          city: "Lelystad",
+          road: "Station Road",
+          country: "Netherlands",
+          country_code: "nl",
+        },
+      },
+      precision: "city",
+      error: "low_confidence",
+    },
+  ] as const;
+
+  try {
+    for (const item of cases) {
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ results: [item.result] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })) as typeof fetch;
+
+      const result = await geocodeWithOpenCage(item.query, openCageConfig);
+      assert.equal(result.status, "review", item.name);
+      assert.equal(result.precision, item.precision, item.name);
+      assert.equal(result.error, item.error, item.name);
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }

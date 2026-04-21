@@ -72,9 +72,25 @@ test("location backlog analysis detects cleanup patterns in query text", () => {
   assert.deepEqual(result.cleanupPatternIds, ["dutch_sales_dock_prefix"]);
 });
 
+test("location backlog analysis does not re-rank geocoded search-only rows as cleanup work", () => {
+  const result = analyzeLocationBacklogRow({
+    status: "geocoded",
+    precision: "city",
+    hasValidCoordinates: true,
+    candidateReason: "ready",
+    locationText: "Aan Verkoopsteiger In Lelystad",
+    queryText: "Lelystad, Netherlands",
+  });
+
+  assert.equal(result.bucket, "held_back_coordinate");
+  assert.equal(result.intervention, "manual_enrichment");
+  assert.deepEqual(result.cleanupPatternIds, ["dutch_sales_dock_prefix"]);
+});
+
 test("location backlog analysis detects each cleanup pattern", () => {
   const examples = [
     ["Aan Verkoopsteiger In Lelystad", "dutch_sales_dock_prefix"],
+    ["Aaan Verkoopsteiger In Lelystad", "dutch_sales_dock_prefix"],
     ["St Maarten NA Northeastern Caribbean", "saint_martin_variants"],
     ["Georgetown Exuma Bahmas", "misspelled_country_or_region"],
     ["Bayfield - Lake Huron", "lake_context"],

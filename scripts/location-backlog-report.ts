@@ -352,6 +352,8 @@ function buildCleanupCandidates(rows: EnrichedBacklogRow[], top: number) {
   }>();
 
   for (const row of rows) {
+    if (row.analysis.intervention !== "source_cleanup_rule") continue;
+
     const matches = getSourceCleanupPatternMatchesForTexts(row.location_text, row.queryText);
     for (const match of matches) {
       const group = groups.get(match.id) || {

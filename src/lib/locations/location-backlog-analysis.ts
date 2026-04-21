@@ -56,7 +56,7 @@ export const SOURCE_CLEANUP_PATTERNS: readonly SourceCleanupPattern[] = [
   {
     id: "dutch_sales_dock_prefix",
     label: "Dutch sales-dock boilerplate",
-    pattern: /\baan\s+verkoopsteiger\s+in\b/i,
+    pattern: /\ba?aan\s+verkoopsteiger\s+in\b/i,
     recommendation: "Drop `Aan Verkoopsteiger In` and geocode the remaining place name.",
   },
   {
@@ -203,7 +203,7 @@ export function analyzeLocationBacklogRow(
     interventionProbability = 0.8;
     clusterLabel = verifiedAlias;
     rationale = "Contains a documented alias; review as a narrow alias retry or alias anchor candidate.";
-  } else if (cleanupMatches.length > 0) {
+  } else if (cleanupMatches.length > 0 && bucket !== "held_back_coordinate") {
     intervention = "source_cleanup_rule";
     interventionProbability = bucket === "unknown_location" || input.error === "no_result" ? 0.55 : 0.4;
     clusterLabel = getCleanupClusterLabel(cleanupMatches) || clusterLabel;
