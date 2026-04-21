@@ -186,7 +186,12 @@ Recent verified public-pin apply checkpoints:
 
 Recent verified search-coverage apply checkpoints:
 
+- `boat_geocode_backup_20260421085953`: 100-row round 8 default search-coverage batch applied with `PUBLIC_MAP_ENABLED=false`; 60 rows geocoded, 40 low-confidence/low-precision/no-result rows held in review with null coordinates, 0 failed, 0 geography mismatches, 0 invalid coordinates, and 0 rows missing geocode metadata. The batch wrote 59 city/region/country search-only coordinates plus one legitimate marina-grade `Ventura Harbor, California` coordinate (`fb8e7fbb-be5a-44a9-8cf1-30400f9d7cd4`, `2007-catalina-250-wing-keel-ventura-harbor`) that must remain explicitly reviewed before any public map launch. Public map flags remained false and readiness remained `NO_GO_KEEP_PUBLIC_MAP_DISABLED`.
 - `boat_geocode_backup_20260421035740`: 100-row round 7 default search-coverage batch applied with `PUBLIC_MAP_ENABLED=false`; 63 city/region/country search-only coordinates written, 37 low-confidence/low-precision rows held in review with null coordinates, 0 failed, 0 geography mismatches, 0 public-grade pins created, 0 invalid coordinates, and 0 rows missing geocode metadata. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`; public pins stayed at 185 while raw coordinates increased to 494.
+
+Recent verified location-market hygiene checkpoints:
+
+- `boat_location_market_backup_usvi_20260421090257`: 4-row USVI metadata correction applied after round 8 readiness surfaced country-hint mismatches. Updated only `location_country`, `location_region`, `location_market_slugs`, `location_confidence`, and `location_approximate` for explicit USVI rows; coordinates and geocode provider payloads were byte-identical to the backup after update. Follow-up readiness returned country-hint mismatches `0`.
 
 ## Rollback
 
