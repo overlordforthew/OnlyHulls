@@ -915,6 +915,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Jfc",
+      model: "Marine Lifting Keel Aluminum Voyager",
+      sourceSite: "sailboatlistings",
+      slug: "2014-jfc-marine-lifting-keel-aluminum-voyager-virginia",
+    }),
+    { make: "JFC Marine", model: "Lifting Keel Aluminum Voyager" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Jfc",
+      model: "Marine Lifting Keel Aluminum Voyager",
+      sourceSite: "sailboatlistings",
+      slug: "2014-jfc-lifting-keel-aluminum-voyager-virginia",
+    }),
+    { make: "Jfc", model: "Marine Lifting Keel Aluminum Voyager" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
@@ -4319,6 +4337,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     performanceCatamarans.ai_summary,
     "1998 Performance Catamarans Gemini 105m listed in Crystal River, Florida. 34ft LOA, masthead sloop rig, catamaran hull."
+  );
+
+  const jfcMarine = sanitizeImportedBoatRecord({
+    year: 2014,
+    make: "Jfc",
+    model: "Marine Lifting Keel Aluminum Voyager",
+    slug: "2014-jfc-marine-lifting-keel-aluminum-voyager-virginia",
+    source_site: "sailboatlistings",
+    location_text: "Virginia",
+    ai_summary:
+      "2014 Jfc Marine Lifting Keel Aluminum Voyager in Virginia. 53ft LOA, cutter rig, monohull.",
+    specs: {
+      loa: 53,
+      rig_type: "cutter",
+    },
+  });
+
+  assert.equal(jfcMarine.make, "JFC Marine");
+  assert.equal(jfcMarine.model, "Lifting Keel Aluminum Voyager");
+  assert.equal(
+    jfcMarine.ai_summary,
+    "2014 JFC Marine Lifting Keel Aluminum Voyager in Virginia. 53ft LOA, cutter rig, monohull."
   );
 
   const jBoats = sanitizeImportedBoatRecord({

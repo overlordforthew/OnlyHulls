@@ -1294,6 +1294,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^jfc(?:\s+marine)?$/i.test(make) &&
+    modelStartsWith(/^marine\b[\s-]*lifting\b[\s-]*keel\b[\s-]*aluminum\b[\s-]*voyager\b/i) &&
+    /(?:^|-)jfc-marine-lifting-keel-aluminum-voyager(?:-|$)/.test(slug)
+  ) {
+    make = "JFC Marine";
+    model = "Lifting Keel Aluminum Voyager";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&
