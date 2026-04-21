@@ -1122,6 +1122,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Pedigree",
+      model: "Catamarans PCB52",
+      sourceSite: "sailboatlistings",
+      slug: "2018-pedigree-catamarans-pcb52-washington",
+    }),
+    { make: "Pedigree Catamarans", model: "PCB52" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Pedigree",
+      model: "Catamarans PCB52",
+      sourceSite: "sailboatlistings",
+      slug: "2018-pedigree-pcb52-washington",
+    }),
+    { make: "Pedigree", model: "Catamarans Pcb52" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Tradition",
       model: "Marine Tm 42",
       sourceSite: "theyachtmarket",
@@ -4409,6 +4427,29 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     performanceCatamarans.ai_summary,
     "1998 Performance Catamarans Gemini 105m listed in Crystal River, Florida. 34ft LOA, masthead sloop rig, catamaran hull."
+  );
+
+  const pedigreeCatamarans = sanitizeImportedBoatRecord({
+    year: 2018,
+    make: "Pedigree",
+    model: "Catamarans Pcb52",
+    slug: "2018-pedigree-catamarans-pcb52-washington",
+    source_site: "sailboatlistings",
+    location_text: "Washington",
+    ai_summary:
+      "2018 Pedigree Catamarans Pcb52 in Washington. 52ft LOA, other rig, catamaran.",
+    specs: {
+      loa: 52,
+      vessel_type: "catamaran",
+      rig_type: "other",
+    },
+  });
+
+  assert.equal(pedigreeCatamarans.make, "Pedigree Catamarans");
+  assert.equal(pedigreeCatamarans.model, "PCB52");
+  assert.equal(
+    pedigreeCatamarans.ai_summary,
+    "2018 Pedigree Catamarans PCB52 in Washington. 52ft LOA, other rig, catamaran."
   );
 
   const jfcMarine = sanitizeImportedBoatRecord({

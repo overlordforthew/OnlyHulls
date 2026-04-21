@@ -1484,6 +1484,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^pedigree(?:\s+catamarans)?$/i.test(make) &&
+    /^catamarans\s+pcb52$/i.test(model) &&
+    /(?:^|-)pedigree-catamarans-pcb52(?:-|$)/.test(slug)
+  ) {
+    make = "Pedigree Catamarans";
+    model = "PCB52";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^latini(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*52\b/i) &&
