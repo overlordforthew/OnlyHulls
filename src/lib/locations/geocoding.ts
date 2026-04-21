@@ -150,6 +150,9 @@ const BROAD_GEOCODE_PARTS = new Set([
   "aegean sea",
   "caribbean",
   "caribbean sea",
+  "caraibi",
+  "caraibes",
+  "caraibbean",
   "caribbeans",
   "caribeann",
   "channel islands",
@@ -161,14 +164,21 @@ const BROAD_GEOCODE_PARTS = new Set([
   "mediterranean sea",
   "new england",
   "north sea",
+  "dutch antilles",
+  "netherlands antilles",
   "pacific ocean",
   "pacific northwest",
   "south pacific",
   "west indies",
+  "europe",
 ]);
 const BROAD_GEOCODE_EDGE_PHRASES = Array.from(BROAD_GEOCODE_PARTS).sort(
   (left, right) => right.length - left.length
 );
+const KNOWN_MARINA_NAME_TERMS = [
+  "nanny cay",
+  "puerto del rey marina",
+];
 const MARINE_GEOCODE_TERMS = [
   "marine",
   "marina",
@@ -275,6 +285,7 @@ function stripGeocodeSourceArtifacts(value: string) {
     .replace(/\s+\bprice\s*:\s*(?:[$€£]?\s*[\d,\s.]+|upon request|contact(?:\s+\w+)*)\s*$/i, "")
     .replace(/\s+\bavailable\s+in\b.+?\bupon\s+request\b.*$/i, "")
     .replace(/\s+\bupon\s+request\b.*$/i, "")
+    .replace(/\s+\b(?:north|south|east|west)\s+of\b\s*,?/gi, ",")
     .replace(/\s+\bflag\s*[:;-]\s*[a-z .]+$/i, "")
     .replace(
       /\s+\b(?:u\.?\s*s\.?\s*a?\.?|usa|us|american|canadian|british|french|german|dutch|spanish|italian|greek|turkish|croatian)\s+flag\b\s*$/i,
@@ -291,6 +302,7 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
+    .replace(/\bJolly\s+Harbou?r\s+Antigua\s+Barbuda\b/gi, "Jolly Harbour, Antigua and Barbuda")
     .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
@@ -472,6 +484,22 @@ function resultHasMarineTerm(formatted: string, components: Record<string, unkno
     .join(" ");
 
   return isMarineGeocodePart(`${formatted} ${componentText}`);
+}
+
+function resultAndQueryHaveKnownMarinaName(
+  queryText: string,
+  formatted: string,
+  components: Record<string, unknown>
+) {
+  const normalizedQuery = normalizeLookupValue(queryText);
+  const componentText = Object.values(components)
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  const normalizedResult = normalizeLookupValue(`${formatted} ${componentText}`);
+
+  return KNOWN_MARINA_NAME_TERMS.some(
+    (term) => normalizedQuery.includes(term) && normalizedResult.includes(term)
+  );
 }
 
 function isPointOfInterestResult(type: string, category: string) {
@@ -681,6 +709,7 @@ function inferOpenCagePrecision(
   const type = normalizeLookupValue(String(components._type || ""));
   const category = normalizeLookupValue(String(components._category || ""));
 
+  if (resultAndQueryHaveKnownMarinaName(queryText, formatted, components)) return "marina";
   if (MARINE_PLACE_TYPES.has(type) || MARINE_PLACE_TYPES.has(category)) return "marina";
   if (isPointOfInterestResult(type, category)) {
     if (isMarineGeocodePart(queryText) && resultHasMarineTerm(formatted, components)) return "marina";

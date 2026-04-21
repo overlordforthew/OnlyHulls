@@ -427,6 +427,58 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       countryHint: "hn",
     }
   );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Tivat Montenegro Europe",
+      country: "Montenegro",
+      confidence: "city",
+    }),
+    {
+      queryText: "Tivat Montenegro",
+      queryKey: "tivat montenegro",
+      countryHint: "me",
+    }
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Saint Martin Caraibi",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "St Maarten, Dutch Antilles",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Port De Gallician Aigues-Mortes South Of, France",
+      country: "France",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port De Gallician Aigues-Mortes, France",
+      queryKey: "port de gallician aigues mortes france",
+      countryHint: "fr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Jolly Harbour Antigua Barbuda",
+      country: "Antigua and Barbuda",
+      confidence: "city",
+    }),
+    {
+      queryText: "Jolly Harbour, Antigua and Barbuda",
+      queryKey: "jolly harbour antigua and barbuda",
+      countryHint: "ag",
+    }
+  );
 });
 
 test("buildGeocodeQuery rejects generic or region-only locations", () => {
@@ -885,6 +937,90 @@ test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
         queryText: "Grenada Marine Grenada",
         queryKey: "grenada marine grenada",
         countryHint: "gd",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts vetted known-marina names without a marina token", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Nanny Cay, Nanny Cay Road, Road Town, British Virgin Islands, VG1110",
+            geometry: { lat: 18.4002615, lng: -64.6346599 },
+            confidence: 10,
+            components: {
+              _type: "road",
+              road: "Nanny Cay Road",
+              town: "Road Town",
+              country: "British Virgin Islands",
+              country_code: "vg",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Nanny Cay Tortola, British Virgin Islands",
+        queryKey: "nanny cay tortola british virgin islands",
+        countryHint: "vg",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts vetted known-marina names over generic city typing", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Puerto del Rey Marina, Fajardo, Puerto Rico, 00738, United States of America",
+            geometry: { lat: 18.2882, lng: -65.6362 },
+            confidence: 10,
+            components: {
+              _type: "city",
+              city: "Puerto del Rey Marina",
+              municipality: "Fajardo",
+              country: "United States",
+              country_code: "us",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Puerto Del Rey Marina Fajardo, Puerto Rico",
+        queryKey: "puerto del rey marina fajardo puerto rico",
+        countryHint: "pr",
       },
       openCageConfig
     );

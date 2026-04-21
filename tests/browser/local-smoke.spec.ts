@@ -338,7 +338,10 @@ test("boats page search flow stays deterministic with mocked API data", async ({
   await page.getByPlaceholder("Search boats...").fill("lagoon");
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await Promise.all([
+    page.waitForURL(/\/boats\?.*q=lagoon/),
+    page.getByRole("button", { name: "Search", exact: true }).click(),
+  ]);
   await expect(page.getByText("Explore Search Hubs", { exact: true })).toHaveCount(0);
   await expect(page.getByText("2018 Lagoon 450 F", { exact: false })).toBeVisible();
 
