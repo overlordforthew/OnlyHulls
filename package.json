@@ -30,6 +30,7 @@
     "db:geocode-compare": "npx tsx scripts/geocode-provider-compare.ts",
     "db:geocode-readiness": "npx tsx scripts/geocode-readiness-report.ts",
     "db:geocode-review": "npx tsx scripts/geocode-review-queue.ts",
+    "db:location-backlog": "npx tsx scripts/location-backlog-report.ts",
     "db:map-launch-preflight": "npx tsx scripts/map-launch-preflight.ts",
     "db:map-pin-audit": "npx tsx scripts/map-pin-audit.ts",
     "db:recompute-matches": "npx tsx scripts/recompute-matches.ts",

@@ -149,6 +149,16 @@ npm run db:geocode-readiness
 npm run db:geocode-review
 ```
 
+## Backlog Analysis
+
+Before building new gazetteer rules or large cleanup batches, generate a backlog snapshot:
+
+```bash
+npm run db:location-backlog -- --top=30 --stamp=YYYY-MM-DD-roundN --write
+```
+
+The script writes `reports/location-backlog/<stamp>.json` and `.md`. Treat the `actionableLiftCandidates`, `gazetteerSeedRecommendations`, `sourceCleanupPatternCandidates`, and `manualEnrichmentDeduplication` sections as the next-round planning input. Do not use the report as launch approval; it is a targeting tool while `PUBLIC_MAP_ENABLED=false`.
+
 ## Scaling
 
 Increase batch size gradually only when the previous batch has:
@@ -193,6 +203,7 @@ Use this only for documented aliases in `documents/public-pin-aliases.md`. It in
 
 Recent verified public-pin apply checkpoints:
 
+- `reports/location-backlog/2026-04-21-round17.{json,md}`: first round 17 backlog snapshot after the verified-alias rollout. It found 12,666 active visible rows, 248 public pins, 6,462 `needs_more_specific_location` rows, 2,997 pending-ready rows, 2,064 unknown-location rows, 513 held-back coordinate rows, and 382 review rows. The report ranked deterministic cleanup first (`Aan Verkoopsteiger In`, Saint Martin/Sint Maarten variants, misspellings, lake-context, and directional fragments) and identified gazetteer candidates including Yachtclub Seget / Marina Baotic, Marina Anse Marcel, Marina Del Rey, Chatham Marina, Dover Marina, and Green Cay Marina.
 - `boat_geocode_backup_20260421112827`: 23-row round 16 reviewed-alias retry batch applied with `PUBLIC_MAP_ENABLED=false`; 23 cached rows wrote marina-grade pins, 0 held back, 0 failed, 0 geography mismatches, 0 warnings, and 23 precision promotions from cached city/unknown precision to verified alias marina precision. Backup-scoped map-pin audit returned 23/23 eligible pins, follow-up verified-alias lane selected 0 rows, public pins increased to 248, active-visible public coverage increased to 1.97%, raw coordinates increased to 761, and country-hint mismatches remained 0. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`.
 - `boat_geocode_backup_20260421111221`: 13-row round 15 verified-alias public-pin candidate batch applied with `PUBLIC_MAP_ENABLED=false`; 13 Burnham Yacht Harbour rows wrote marina-grade OpenCage pins, 0 held back, 0 failed, 0 geography mismatches, and 0 warnings. Backup-scoped map-pin audit returned 13/13 eligible pins. Follow-up public-pin candidate lane selected 0 rows, readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`, public pins increased to 225, active-visible public coverage increased to 1.79%, raw coordinates increased to 738, and country-hint mismatches remained 0.
 - `boat_geocode_backup_20260421103145`: 11-row round 12 cache-only public-pin candidate batch applied with `PUBLIC_MAP_ENABLED=false`; 10 marina-grade public pins written from already cached Nanny Cay and Port Pin Rolland results, 1 Dover Marina city-level result held in review with null coordinates, 0 provider calls, 0 failed, 0 geography mismatches, and 0 warnings. Follow-up map-pin audit returned 10/10 eligible pins at marina precision, the public-pin candidate lane selected 0 rows after apply, and `/api/boats/map` returned 404 while disabled. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`; public pins increased to 212, public coverage is 1.68%, and raw coordinates increased to 712.

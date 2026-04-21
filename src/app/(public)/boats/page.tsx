@@ -235,6 +235,7 @@ function BoatsPageInner() {
   const [locationMarketCounts, setLocationMarketCounts] = useState<Record<string, number>>({});
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isSearchFormReady, setIsSearchFormReady] = useState(false);
   const { compareCount, isCompared, toggleBoat, maxCompareBoats } = useCompareBoats();
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters);
@@ -261,6 +262,10 @@ function BoatsPageInner() {
     () => urlMapViewport || homeMapViewport,
     [homeMapViewport, urlMapViewport]
   );
+
+  useEffect(() => {
+    setIsSearchFormReady(true);
+  }, []);
 
   useEffect(() => {
     if (PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams)) {
@@ -733,6 +738,8 @@ function BoatsPageInner() {
 
             <form
               onSubmit={handleSearch}
+              data-testid="boats-search-form"
+              data-ready={isSearchFormReady ? "true" : "false"}
               className="grid w-full max-w-2xl flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_auto_auto] sm:justify-end"
             >
               <div className="relative min-w-0">
