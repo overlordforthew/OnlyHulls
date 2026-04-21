@@ -969,6 +969,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Morgan",
+      model: "Marine 323",
+      sourceSite: "sailboatlistings",
+      slug: "1985-morgan-marine-323-arkansas",
+    }),
+    { make: "Morgan Marine", model: "323" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Morgan",
+      model: "Marine 323",
+      sourceSite: "sailboatlistings",
+      slug: "1985-morgan-323-arkansas",
+    }),
+    { make: "Morgan", model: "Marine 323" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
@@ -4459,6 +4477,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     endeavourYachtCorp.ai_summary,
     "1978 Endeavour Yacht Corp Endeavour 32 in Florida. 32ft LOA, masthead sloop rig, monohull."
+  );
+
+  const morganMarine = sanitizeImportedBoatRecord({
+    year: 1985,
+    make: "Morgan",
+    model: "Marine 323",
+    slug: "1985-morgan-marine-323-arkansas",
+    source_site: "sailboatlistings",
+    location_text: "Arkansas",
+    ai_summary:
+      "1985 Morgan Marine 323 in Arkansas. 32ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 32,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(morganMarine.make, "Morgan Marine");
+  assert.equal(morganMarine.model, "323");
+  assert.equal(
+    morganMarine.ai_summary,
+    "1985 Morgan Marine 323 in Arkansas. 32ft LOA, masthead sloop rig, monohull."
   );
 });
 

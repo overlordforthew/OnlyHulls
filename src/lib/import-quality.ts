@@ -1324,6 +1324,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^morgan(?:\s+marine)?$/i.test(make) &&
+    modelStartsWith(/^marine\b[\s-]*323\b/i) &&
+    /(?:^|-)morgan-marine-323(?:-|$)/.test(slug)
+  ) {
+    make = "Morgan Marine";
+    model = "323";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&
