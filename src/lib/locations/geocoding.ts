@@ -405,6 +405,7 @@ function stripGeocodeSourceArtifacts(value: string) {
 function normalizeKnownLocationTextArtifacts(value: string) {
   // Live broker/source artifacts observed in the geocode review queue; keep each rule scoped and test-backed.
   return value
+    .replace(/^\s*Aaan\s+Verkoopsteiger\s+In\s+/gi, "")
     .replace(/^\s*Aan\s+Verkoopsteiger\s+In\s+/gi, "")
     .replace(/\bGenoa\s*,\s*Italyn\s*\/\s*A\b/gi, "Genoa, Italy")
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
@@ -1184,6 +1185,87 @@ function allowsMarineSpecificConfidenceFloor(
   return resultAndQueryHaveKnownMarinaName(queryText, formatted, components);
 }
 
+function getExactCityCountryQueryParts(query: GeocodeQuery) {
+  if (!query.countryHint) return null;
+
+  const parts = uniqueParts(query.queryText.split(",").map(canonicalizeGeocodePart));
+  if (parts.length !== 2) return null;
+
+  const [cityPart, countryPart] = parts;
+  const countryCode = getExactCountryCodeForPart(countryPart);
+  const normalizedCity = normalizeLookupValue(cityPart);
+  if (!countryCode || countryCode !== query.countryHint) return null;
+  if (!normalizedCity || getExactCountryCodeForPart(cityPart)) return null;
+  if (isBroadGeocodePart(cityPart) || isMarineGeocodePart(cityPart)) return null;
+  if (queryHasAddressLikeStreetDetail(cityPart)) return null;
+
+  return {
+    cityPart,
+    countryPart,
+    countryCode,
+    normalizedCity,
+  };
+}
+
+function componentsHaveSearchOnlyCityDisqualifier(components: Record<string, unknown>) {
+  const { type, category } = getPayloadTypeAndCategory(components);
+  if (
+    isPointOfInterestResult(type, category) ||
+    MARINE_PLACE_TYPES.has(type) ||
+    MARINE_PLACE_TYPES.has(category) ||
+    STREET_PLACE_TYPES.has(type) ||
+    STREET_PLACE_TYPES.has(category)
+  ) {
+    return true;
+  }
+
+  return Object.keys(components).some((key) => {
+    const normalizedKey = normalizeLookupValue(key);
+    return (
+      MARINE_PLACE_TYPES.has(normalizedKey) ||
+      STREET_PLACE_TYPES.has(normalizedKey) ||
+      POI_PLACE_TYPES.has(normalizedKey) ||
+      POI_PLACE_CATEGORIES.has(normalizedKey)
+    );
+  });
+}
+
+function resultTextHasCountryPart(resultText: string, countryPart: string) {
+  const normalizedCountry = normalizeLookupValue(countryPart);
+  const aliases = [normalizedCountry, ...(COUNTRY_QUERY_ALIASES[normalizedCountry] || [])]
+    .map(normalizeLookupValue)
+    .filter(Boolean);
+
+  return aliases.some((alias) => normalizedHasTerm(resultText, alias));
+}
+
+function allowsExactCityCountryConfidenceFloor(
+  query: GeocodeQuery,
+  precision: GeocodePrecision,
+  confidence: number,
+  formatted: string,
+  components: Record<string, unknown>
+) {
+  if (precision !== "city" || confidence < 3) return false;
+
+  const queryParts = getExactCityCountryQueryParts(query);
+  if (!queryParts) return false;
+
+  const actualCountryCode = getPayloadCountryCode(components);
+  if (!actualCountryCode || actualCountryCode !== queryParts.countryCode) return false;
+  if (componentsHaveSearchOnlyCityDisqualifier(components)) return false;
+
+  const componentText = Object.values(components)
+    .filter((value): value is string | number => typeof value === "string" || typeof value === "number")
+    .join(" ");
+  const resultText = normalizeLookupValue(`${formatted} ${componentText}`);
+
+  return (
+    normalizedHasTerm(resultText, queryParts.normalizedCity) &&
+    resultTextHasCountryPart(resultText, queryParts.countryPart)
+  );
+}
+
 function validCoordinate(latitude: number, longitude: number) {
   return (
     Number.isFinite(latitude) &&
@@ -1414,8 +1496,16 @@ export async function geocodeWithOpenCage(
     );
     const score = scorePrecision(normalizedConfidence / 10, precision);
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
+    const allowsLowConfidenceExactCity = allowsExactCityCountryConfidenceFloor(
+      query,
+      precision,
+      normalizedConfidence,
+      formatted || "",
+      components
+    );
     const lowConfidence =
-      normalizedConfidence <= 3 ||
+      normalizedConfidence < 3 ||
+      (normalizedConfidence <= 3 && !allowsLowConfidenceExactCity) ||
       (typeof precisionConfidenceFloor === "number" &&
         normalizedConfidence < precisionConfidenceFloor &&
         !allowsMarineSpecificConfidenceFloor(
