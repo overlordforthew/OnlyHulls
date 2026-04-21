@@ -1334,6 +1334,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^union(?:\s+ship\s+company\s+taiwan)?$/i.test(make) &&
+    modelStartsWith(/^ship\s+company\s+taiwan\s+union\s+polaris\s+36\b/i) &&
+    /(?:^|-)union-ship-company-taiwan-union-polaris-36(?:-|$)/.test(slug)
+  ) {
+    make = "Union Ship Company Taiwan";
+    model = "Union Polaris 36";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&

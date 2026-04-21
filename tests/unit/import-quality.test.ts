@@ -987,6 +987,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Union",
+      model: "Ship Company Taiwan Union Polaris 36",
+      sourceSite: "sailboatlistings",
+      slug: "1978-union-ship-company-taiwan-union-polaris-36-new-jersey",
+    }),
+    { make: "Union Ship Company Taiwan", model: "Union Polaris 36" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Union",
+      model: "Ship Company Taiwan Union Polaris 36",
+      sourceSite: "sailboatlistings",
+      slug: "1978-union-polaris-36-new-jersey",
+    }),
+    { make: "Union", model: "Ship Company Taiwan Union Polaris 36" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
