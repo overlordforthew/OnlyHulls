@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: shouldUseLocalWebServer
     ? {
         command: process.env.CI
-          ? `npm run start -- --hostname 127.0.0.1 --port ${localPort}`
+          ? `PORT=${localPort} node scripts/start-playwright-standalone.mjs`
           : `npm run dev -- --hostname 127.0.0.1 --port ${localPort}`,
         url: webServerReadinessURL,
         reuseExistingServer: !process.env.CI,
