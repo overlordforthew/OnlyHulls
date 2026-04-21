@@ -303,6 +303,7 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
     .replace(/\bJolly\s+Harbou?r\s+Antigua\s+Barbuda\b/gi, "Jolly Harbour, Antigua and Barbuda")
+    .replace(/\b(?:Guadeloupe\s*,\s*)?La\s+Marina\s+Bas\s+Du\s+Fort(?:\s*,\s*Guadeloupe)?\b/gi, "Marina Bas du Fort, Le Gosier, Guadeloupe")
     .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
