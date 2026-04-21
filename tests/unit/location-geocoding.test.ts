@@ -479,6 +479,18 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       countryHint: "ag",
     }
   );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Guadeloupe, La Marina Bas Du Fort, Caribbean",
+      country: "Guadeloupe",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Bas du Fort, Le Gosier, Guadeloupe",
+      queryKey: "marina bas du fort le gosier guadeloupe",
+      countryHint: "gp",
+    }
+  );
 });
 
 test("buildGeocodeQuery rejects generic or region-only locations", () => {
