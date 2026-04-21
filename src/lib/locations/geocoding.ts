@@ -302,7 +302,20 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
+    .replace(/\bLa\s+Paz\s*,\s*Costa\s+Baja\s+Marina\s*,\s*Americas\b/gi, "Costa Baja Marina, La Paz, Mexico")
+    .replace(
+      /\bHodge'?s\s+Creek\s+Marina\s+Hotel(?:\s*,\s*Parham\s+Town)?(?:\s*,\s*British\s+Virgin\s+Islands)?\b/gi,
+      "Hodge's Creek Marina, British Virgin Islands"
+    )
     .replace(/\bJolly\s+Harbou?r\s+Antigua\s+Barbuda\b/gi, "Jolly Harbour, Antigua and Barbuda")
+    .replace(
+      /\bLa\s+Cruz\s+Marina\s+Near\s+Puerto\s+Vallarta\s*,\s*Mexico\b/gi,
+      "Marina La Cruz, La Cruz de Huanacaxtle, Nayarit, Mexico"
+    )
+    .replace(
+      /\bCamper\s*(?:&|and)\s*Nicholsons\s+Port\s+Louis\s+Marina(?:\s*,\s*(?:St\.?\s*George'?s|Saint-?Georges))?(?:\s*,\s*Grenade)?(?:\s*,\s*Grenada)?\b/gi,
+      "Port Louis Marina, Grenada"
+    )
     .replace(
       /\b(?:Guadeloupe\s*,\s*)?(?:La\s+)?Marina\s+Bas\s*[- ]\s*Du\s*[- ]\s*Fort(?:\s*\([^)]*\))?(?:\s*,\s*Guadeloupe)?(?=$|[\s,])/gi,
       "Marina Bas du Fort, Le Gosier, Guadeloupe"
@@ -310,6 +323,8 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bNanny\s+Cay\s+Boatyard\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(/\bPiraeus\s*\(\s*Zea\s+Marina\s*\)(?=$|[\s,])/gi, "Zea Marina, Piraeus, Greece")
+    .replace(/\bZea\s+Marina\s*,\s*Athens\b/gi, "Zea Marina, Piraeus, Greece")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
     .replace(/\bSt\.?\s+Martin\b/gi, "Saint Martin")
     .replace(
