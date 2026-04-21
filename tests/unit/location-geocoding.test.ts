@@ -218,6 +218,78 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Clarke's Court Boatyard & Marina",
+      country: "Grenada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Clarkes Court Boatyard and Marina, Grenada",
+      queryKey: "clarkes court boatyard and marina grenada",
+      countryHint: "gd",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "British Virgin Islands, Hodge's Creek Marina, Caribbean",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Hodge's Creek Marina, British Virgin Islands",
+      queryKey: "hodge s creek marina british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Dubrovnik, Komolac, ACI Marina Dubrovnik",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "ACI Marina Dubrovnik, Komolac, Croatia",
+      queryKey: "aci marina dubrovnik komolac croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Šibenik, Marina Zaton, Mediterranean",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Zaton, Sibenik, Croatia",
+      queryKey: "marina zaton sibenik croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Kos, Kos Marina, Mediterranean",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Kos Marina, Kos, Greece",
+      queryKey: "kos marina kos greece",
+      countryHint: "gr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marsh Harbour, Conch Inn Marina, Bahamas",
+      country: "Bahamas",
+      confidence: "city",
+    }),
+    {
+      queryText: "Conch Inn Marina, Marsh Harbour, Bahamas",
+      queryKey: "conch inn marina marsh harbour bahamas",
+      countryHint: "bs",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Trogir, Yachtclub Seget (Marina Baotić), Mediterranean",
       country: "Croatia",
       confidence: "city",

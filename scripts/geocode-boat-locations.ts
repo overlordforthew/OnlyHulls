@@ -15,6 +15,7 @@ import {
   getGeocodeApplySafetyStop,
   isEnabledEnvValue,
 } from "../src/lib/locations/geocode-rollout-safety";
+import { shouldRetryChangedReviewGeocode } from "../src/lib/locations/geocode-review-retry";
 import {
   getPublicPinApplyGateStop,
   getPublicPinApplyResult,
@@ -39,6 +40,8 @@ type BoatGeocodeCandidate = {
   location_confidence: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  location_geocode_status: GeocodeStatus | "pending" | null;
+  location_geocode_query: string | null;
 };
 
 type GeocodeCacheRow = {
@@ -94,6 +97,8 @@ type SelectedQuerySample = {
   marketSlugs: string[];
   queryText: string;
   countryHint: string | null;
+  geocodeStatus?: GeocodeStatus | "pending" | null;
+  previousQueryText?: string | null;
 };
 
 type GeocodeAuditRow = SelectedQuerySample & {
@@ -325,6 +330,8 @@ function buildSelectedQuerySample(
     marketSlugs: boat.location_market_slugs,
     queryText: geocodeQuery.queryText,
     countryHint: geocodeQuery.countryHint,
+    geocodeStatus: boat.location_geocode_status,
+    previousQueryText: boat.location_geocode_query,
   };
 }
 
@@ -590,6 +597,7 @@ async function main() {
   const allowLargeBatch = hasFlag("--allow-large-batch");
   const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
+  const retryChangedReview = hasFlag("--retry-changed-review");
   const publicPinCandidates = hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely");
   const config = getGeocodingConfig();
   const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
@@ -609,6 +617,7 @@ async function main() {
       enabled: config.enabled,
       mode,
       includeReview,
+      retryChangedReview,
       stoppedReason: earlyApplySafetyStop.stoppedReason,
     }, null, 2));
     process.exitCode = 1;
@@ -622,7 +631,8 @@ async function main() {
   const rows = await query<BoatGeocodeCandidate>(
     `SELECT b.id, b.location_text, b.location_country, b.location_region,
             COALESCE(b.location_market_slugs, '{}') AS location_market_slugs,
-            b.location_confidence, b.location_lat, b.location_lng
+            b.location_confidence, b.location_lat, b.location_lng,
+            b.location_geocode_status, b.location_geocode_query
      FROM boats b
      LEFT JOIN boat_dna d ON d.boat_id = b.id
      WHERE b.status = 'active'
@@ -645,7 +655,18 @@ async function main() {
               b.id`
   );
   const candidates = rows.map(prepareCandidate);
-  const geocodableCandidates = candidates.filter(
+  const retryScopedCandidates = retryChangedReview
+    ? candidates.filter(
+        (candidate) =>
+          candidate.geocodeQuery !== null &&
+          shouldRetryChangedReviewGeocode({
+            status: candidate.location_geocode_status,
+            previousQueryText: candidate.location_geocode_query,
+            currentQueryKey: candidate.geocodeQuery.queryKey,
+          })
+      )
+    : candidates;
+  const geocodableCandidates = retryScopedCandidates.filter(
     (candidate): candidate is ReadyCandidate => candidate.geocodeQuery !== null
   );
   const selectionCandidates = publicPinCandidates
@@ -674,8 +695,10 @@ async function main() {
     enabled: config.enabled,
     mode,
     includeReview,
+    retryChangedReview,
     selectionLane: publicPinCandidates ? "public-pin-candidates" : "default",
     totalCandidates: candidates.length,
+    retryScopeCandidates: retryScopedCandidates.length,
     geocodableCandidates: geocodableCandidates.length,
     selectionCandidates: selectionCandidates.length,
     uniqueReadyQueries: uniqueReadyQueryKeys.length,
