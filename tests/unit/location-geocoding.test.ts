@@ -64,7 +64,7 @@ test("buildGeocodeQuery uses corrected country hints for ambiguous boat location
       confidence: "city",
     }),
     {
-      queryText: "Cartagena De Indias Colombia",
+      queryText: "Cartagena De Indias, Colombia",
       queryKey: "cartagena de indias colombia",
       countryHint: "co",
     }
@@ -138,6 +138,30 @@ test("buildGeocodeQuery uses corrected country hints for ambiguous boat location
     {
       queryText: "St. Thomas, US Virgin Islands",
       queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. John Us, Virgin Islands",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. John, US Virgin Islands",
+      queryKey: "st john us virgin islands",
       countryHint: "vi",
     }
   );
@@ -230,14 +254,14 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
   );
   assert.deepEqual(
     buildGeocodeQuery({
-      locationText: "Caribbean Saint Martin",
+      locationText: "Marina De L'Anse Marcel, St. Martin, Sint Maarten",
       country: "Sint Maarten",
       confidence: "city",
     }),
     {
-      queryText: "Saint Martin, Sint Maarten",
-      queryKey: "saint martin sint maarten",
-      countryHint: "sx",
+      queryText: "Marina De L'Anse Marcel, Saint Martin",
+      queryKey: "marina de l anse marcel saint martin",
+      countryHint: "mf",
     }
   );
   assert.deepEqual(
@@ -250,6 +274,157 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
       queryText: "Almerimar, Spain",
       queryKey: "almerimar spain",
       countryHint: "es",
+    }
+  );
+});
+
+test("buildGeocodeQuery cleans live review-queue source text before paid geocoding", () => {
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Saint Martin, Sint Maarten",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Caribbean Saint Martin",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marigot, Saint Martin (French Part), Sint Maarten",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marigot, Saint Martin",
+      queryKey: "marigot saint martin",
+      countryHint: "mf",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas Vi",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas Usvis",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "St. Thomas, US Virgin Islands, United States Virgin Islands",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "St. Thomas, US Virgin Islands",
+      queryKey: "st thomas us virgin islands",
+      countryHint: "vi",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Genoa, Italyn / A",
+      country: "Italy",
+      confidence: "city",
+    }),
+    {
+      queryText: "Genoa, Italy",
+      queryKey: "genoa italy",
+      countryHint: "it",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Cartagena De Indias Colombia, Spain",
+      country: "Spain",
+      confidence: "city",
+    }),
+    {
+      queryText: "Cartagena De Indias, Colombia",
+      queryKey: "cartagena de indias colombia",
+      countryHint: "co",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Ensenada Mexico Baja, California, United States",
+      country: "United States",
+      confidence: "city",
+    }),
+    {
+      queryText: "Ensenada, Baja California, Mexico",
+      queryKey: "ensenada baja california mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "La Paz Baja California Sur, Mexico, United States",
+      country: "United States",
+      confidence: "city",
+    }),
+    {
+      queryText: "La Paz, Baja California Sur, Mexico",
+      queryKey: "la paz baja california sur mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Rodney Bay Marina Gros Islet St Lucia Available In Martinique Upon Request",
+      country: "Saint Lucia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Rodney Bay Marina Gros Islet Saint Lucia",
+      queryKey: "rodney bay marina gros islet saint lucia",
+      countryHint: "lc",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Luperon Dominican Republic",
+      country: "Dominican Republic",
+      confidence: "city",
+    }),
+    {
+      queryText: "Luperon Dominican Republic",
+      queryKey: "luperon dominican republic",
+      countryHint: "do",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Roatan Honduras Caribeann",
+      country: "Honduras",
+      confidence: "city",
+    }),
+    {
+      queryText: "Roatan Honduras",
+      queryKey: "roatan honduras",
+      countryHint: "hn",
     }
   );
 });
