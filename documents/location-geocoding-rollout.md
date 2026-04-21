@@ -184,6 +184,10 @@ Recent verified public-pin apply checkpoints:
 - `boat_geocode_backup_20260421032519`: 91-row round 5 public-pin batch applied with `PUBLIC_MAP_ENABLED=false`; 57 marina-grade public pins written, 34 broad/review results held with null coordinates, 0 failed, 0 geography mismatches, 0 broad public coordinates. Follow-up map-pin audit returned 25/25 sampled pins at marina precision, post-apply rerun selected 0 rows and made 0 provider calls, and backfill preflight returned GO with OpenCage configured. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED` while total public-pin coverage is still below launch thresholds.
 - `boat_geocode_backup_20260421025357`: 25-row round 4 public-pin batch applied with `PUBLIC_MAP_ENABLED=false`; 18 marina/street/exact public pins written, 7 city/country results held in review with null coordinates, 0 failed, 0 geography mismatches, 0 broad public coordinates. Follow-up map-pin audit returned 18/18 eligible pins and backfill preflight returned GO with OpenCage configured.
 
+Recent verified search-coverage apply checkpoints:
+
+- `boat_geocode_backup_20260421035740`: 100-row round 7 default search-coverage batch applied with `PUBLIC_MAP_ENABLED=false`; 63 city/region/country search-only coordinates written, 37 low-confidence/low-precision rows held in review with null coordinates, 0 failed, 0 geography mismatches, 0 public-grade pins created, 0 invalid coordinates, and 0 rows missing geocode metadata. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`; public pins stayed at 185 while raw coordinates increased to 494.
+
 ## Rollback
 
 Every apply batch creates a `boat_geocode_backup_<timestamp>` table before writing. Keep those tables until the batch has passed the sample-pin audit and readiness report.
