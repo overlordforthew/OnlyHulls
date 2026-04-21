@@ -529,6 +529,54 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
     }),
     null
   );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "St Maarten Na",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "St Maarten Caribbean",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "St Martin French, West Indies",
+      country: "Sint Maarten",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Aan Verkoopsteiger In Lelystad",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Lelystad, Netherlands",
+      queryKey: "lelystad netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Aan Verkoopsteiger In Lelystad, Deko Marina",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Deko Marina, Lelystad, Netherlands",
+      queryKey: "deko marina lelystad netherlands",
+      countryHint: "nl",
+    }
+  );
   assert.deepEqual(
     buildGeocodeQuery({
       locationText: "Port De Gallician Aigues-Mortes South Of, France",
@@ -539,6 +587,138 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Port De Gallician Aigues-Mortes, France",
       queryKey: "port de gallician aigues mortes france",
       countryHint: "fr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Georgetown Exuma Bahmas",
+      country: "Bahamas",
+      confidence: "city",
+    }),
+    {
+      queryText: "Georgetown Exuma Bahamas",
+      queryKey: "georgetown exuma bahamas",
+      countryHint: "bs",
+    }
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Grenade Caribbean",
+      country: "Grenada",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Santantioco Sardinia, Italy",
+      country: "Italy",
+      confidence: "city",
+    }),
+    {
+      queryText: "Sant'Antioco Sardinia, Italy",
+      queryKey: "sant antioco sardinia italy",
+      countryHint: "it",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Canary Islands El Hiero",
+      country: "Spain",
+      confidence: "city",
+    }),
+    {
+      queryText: "Canary Islands El Hierro, Spain",
+      queryKey: "canary islands el hierro spain",
+      countryHint: "es",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Sarnia Ont Lake Huron",
+      country: "Canada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Sarnia, Ontario, Canada",
+      queryKey: "sarnia ontario canada",
+      countryHint: "ca",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Goderich Ontario - Lake Huron",
+      country: "Canada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Goderich, Ontario, Canada",
+      queryKey: "goderich ontario canada",
+      countryHint: "ca",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Osoyoos Bc 6 Miles North Of Oroville Wa",
+      country: "Canada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Osoyoos, BC, Canada",
+      queryKey: "osoyoos bc canada",
+      countryHint: "ca",
+    }
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Canada West Coast Just North Of Seattle",
+      country: "Canada",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "North East Of, Italy",
+      country: "Italy",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Grenade, Haute-Garonne",
+      country: "France",
+      confidence: "city",
+    }),
+    {
+      queryText: "Grenade, Haute-Garonne, France",
+      queryKey: "grenade haute garonne france",
+      countryHint: "fr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Lake Ontario Kingston Area",
+      country: "Canada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Lake Ontario Kingston Area, Canada",
+      queryKey: "lake ontario kingston area canada",
+      countryHint: "ca",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Bayfield - Lake Huron",
+      country: "Canada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Bayfield - Lake Huron, Canada",
+      queryKey: "bayfield lake huron canada",
+      countryHint: "ca",
     }
   );
   assert.deepEqual(
