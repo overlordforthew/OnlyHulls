@@ -1,0 +1,5239 @@
+{
+  "generatedAt": "2026-04-21T23:48:17.252Z",
+  "metadata": {
+    "generatedAt": "2026-04-21T23:48:17.252Z",
+    "gitSha": "dc798469e9968df7e63322f5d9410928eecee21a",
+    "gitBranch": "main",
+    "publicMapEnabled": "false",
+    "nextPublicMapEnabled": "false",
+    "nodeEnv": null
+  },
+  "parameters": {
+    "top": 30,
+    "publicMapPrecisions": [
+      "exact",
+      "street",
+      "marina"
+    ],
+    "sourceCleanupPatterns": [
+      {
+        "id": "dutch_sales_dock_prefix",
+        "label": "Dutch sales-dock boilerplate",
+        "recommendation": "Drop `Aan Verkoopsteiger In` and geocode the remaining place name."
+      },
+      {
+        "id": "directional_fragment",
+        "label": "Directional fragment around a real place",
+        "recommendation": "Remove directional prose and retain the named nearby city/region."
+      },
+      {
+        "id": "saint_martin_variants",
+        "label": "Saint Martin / Sint Maarten variant text",
+        "recommendation": "Normalize Saint Martin/Sint Maarten region suffixes to a reviewed city or marina."
+      },
+      {
+        "id": "misspelled_country_or_region",
+        "label": "Misspelled country or region token",
+        "recommendation": "Correct the misspelled place token before retrying geocoding."
+      },
+      {
+        "id": "lake_context",
+        "label": "Lake / inland-water context",
+        "recommendation": "Normalize to the named marina/city plus lake only when the listing text has a specific place."
+      }
+    ]
+  },
+  "totals": {
+    "activeVisibleRows": 12724,
+    "publicPinRows": 280,
+    "publicPinLikelyRows": 371,
+    "countryHintMismatches": 0
+  },
+  "byBucket": [
+    {
+      "label": "needs_more_specific_location",
+      "count": 6465
+    },
+    {
+      "label": "unknown_location",
+      "count": 2059
+    },
+    {
+      "label": "held_back_coordinate",
+      "count": 2002
+    },
+    {
+      "label": "pending_ready",
+      "count": 1170
+    },
+    {
+      "label": "review_queue",
+      "count": 748
+    },
+    {
+      "label": "public_pin",
+      "count": 280
+    }
+  ],
+  "byBucketCountry": {
+    "needs_more_specific_location": [
+      {
+        "label": "United States",
+        "count": 5579
+      },
+      {
+        "label": "France",
+        "count": 83
+      },
+      {
+        "label": "Panama",
+        "count": 67
+      },
+      {
+        "label": "Croatia",
+        "count": 65
+      },
+      {
+        "label": "Greece",
+        "count": 62
+      },
+      {
+        "label": "Unknown",
+        "count": 55
+      },
+      {
+        "label": "Sint Maarten",
+        "count": 51
+      },
+      {
+        "label": "Grenada",
+        "count": 47
+      },
+      {
+        "label": "Denmark",
+        "count": 43
+      },
+      {
+        "label": "Netherlands",
+        "count": 30
+      },
+      {
+        "label": "Martinique",
+        "count": 21
+      },
+      {
+        "label": "Turkey",
+        "count": 21
+      },
+      {
+        "label": "United Kingdom",
+        "count": 21
+      },
+      {
+        "label": "Antigua and Barbuda",
+        "count": 20
+      },
+      {
+        "label": "Portugal",
+        "count": 20
+      },
+      {
+        "label": "British Virgin Islands",
+        "count": 17
+      },
+      {
+        "label": "Italy",
+        "count": 17
+      },
+      {
+        "label": "Spain",
+        "count": 16
+      },
+      {
+        "label": "Malta",
+        "count": 14
+      },
+      {
+        "label": "Puerto Rico",
+        "count": 14
+      },
+      {
+        "label": "Fiji",
+        "count": 13
+      },
+      {
+        "label": "Malaysia",
+        "count": 13
+      },
+      {
+        "label": "Mexico",
+        "count": 13
+      },
+      {
+        "label": "Bahamas",
+        "count": 12
+      },
+      {
+        "label": "Dominican Republic",
+        "count": 12
+      },
+      {
+        "label": "Guatemala",
+        "count": 10
+      },
+      {
+        "label": "French Polynesia",
+        "count": 8
+      },
+      {
+        "label": "Cyprus",
+        "count": 7
+      },
+      {
+        "label": "Saint Lucia",
+        "count": 7
+      },
+      {
+        "label": "South Africa",
+        "count": 7
+      }
+    ],
+    "unknown_location": [
+      {
+        "label": "Unknown",
+        "count": 2047
+      },
+      {
+        "label": "Canada",
+        "count": 12
+      }
+    ],
+    "review_queue": [
+      {
+        "label": "Italy",
+        "count": 117
+      },
+      {
+        "label": "Spain",
+        "count": 94
+      },
+      {
+        "label": "Canada",
+        "count": 69
+      },
+      {
+        "label": "Mexico",
+        "count": 65
+      },
+      {
+        "label": "Greece",
+        "count": 63
+      },
+      {
+        "label": "United States",
+        "count": 41
+      },
+      {
+        "label": "France",
+        "count": 38
+      },
+      {
+        "label": "Panama",
+        "count": 34
+      },
+      {
+        "label": "Croatia",
+        "count": 33
+      },
+      {
+        "label": "United Kingdom",
+        "count": 29
+      },
+      {
+        "label": "Turkey",
+        "count": 21
+      },
+      {
+        "label": "Bahamas",
+        "count": 18
+      },
+      {
+        "label": "French Polynesia",
+        "count": 16
+      },
+      {
+        "label": "Sint Maarten",
+        "count": 12
+      },
+      {
+        "label": "Malaysia",
+        "count": 11
+      },
+      {
+        "label": "Australia",
+        "count": 10
+      },
+      {
+        "label": "Martinique",
+        "count": 10
+      },
+      {
+        "label": "Honduras",
+        "count": 9
+      },
+      {
+        "label": "Thailand",
+        "count": 7
+      },
+      {
+        "label": "British Virgin Islands",
+        "count": 6
+      },
+      {
+        "label": "Colombia",
+        "count": 6
+      },
+      {
+        "label": "Dominican Republic",
+        "count": 6
+      },
+      {
+        "label": "Indonesia",
+        "count": 5
+      },
+      {
+        "label": "Netherlands",
+        "count": 4
+      },
+      {
+        "label": "Unknown",
+        "count": 4
+      },
+      {
+        "label": "Guatemala",
+        "count": 3
+      },
+      {
+        "label": "Tunisia",
+        "count": 3
+      },
+      {
+        "label": "Antigua and Barbuda",
+        "count": 2
+      },
+      {
+        "label": "Germany",
+        "count": 2
+      },
+      {
+        "label": "Sweden",
+        "count": 2
+      }
+    ],
+    "held_back_coordinate": [
+      {
+        "label": "United States",
+        "count": 367
+      },
+      {
+        "label": "Spain",
+        "count": 221
+      },
+      {
+        "label": "Canada",
+        "count": 183
+      },
+      {
+        "label": "Greece",
+        "count": 177
+      },
+      {
+        "label": "Croatia",
+        "count": 169
+      },
+      {
+        "label": "France",
+        "count": 139
+      },
+      {
+        "label": "Italy",
+        "count": 89
+      },
+      {
+        "label": "Turkey",
+        "count": 76
+      },
+      {
+        "label": "United States Virgin Islands",
+        "count": 65
+      },
+      {
+        "label": "Mexico",
+        "count": 63
+      },
+      {
+        "label": "British Virgin Islands",
+        "count": 61
+      },
+      {
+        "label": "Martinique",
+        "count": 55
+      },
+      {
+        "label": "United Kingdom",
+        "count": 52
+      },
+      {
+        "label": "Netherlands",
+        "count": 39
+      },
+      {
+        "label": "Puerto Rico",
+        "count": 31
+      },
+      {
+        "label": "Guatemala",
+        "count": 29
+      },
+      {
+        "label": "Bahamas",
+        "count": 16
+      },
+      {
+        "label": "Dominican Republic",
+        "count": 13
+      },
+      {
+        "label": "Grenada",
+        "count": 13
+      },
+      {
+        "label": "Malta",
+        "count": 13
+      },
+      {
+        "label": "Antigua and Barbuda",
+        "count": 12
+      },
+      {
+        "label": "Sint Maarten",
+        "count": 12
+      },
+      {
+        "label": "Portugal",
+        "count": 11
+      },
+      {
+        "label": "Belize",
+        "count": 9
+      },
+      {
+        "label": "New Zealand",
+        "count": 8
+      },
+      {
+        "label": "Cyprus",
+        "count": 7
+      },
+      {
+        "label": "Guadeloupe",
+        "count": 7
+      },
+      {
+        "label": "Montenegro",
+        "count": 7
+      },
+      {
+        "label": "South Africa",
+        "count": 7
+      },
+      {
+        "label": "Denmark",
+        "count": 6
+      }
+    ],
+    "pending_ready": [
+      {
+        "label": "United Kingdom",
+        "count": 672
+      },
+      {
+        "label": "Unknown",
+        "count": 74
+      },
+      {
+        "label": "Netherlands",
+        "count": 55
+      },
+      {
+        "label": "Portugal",
+        "count": 50
+      },
+      {
+        "label": "Germany",
+        "count": 42
+      },
+      {
+        "label": "Ireland",
+        "count": 39
+      },
+      {
+        "label": "Sweden",
+        "count": 38
+      },
+      {
+        "label": "Belgium",
+        "count": 21
+      },
+      {
+        "label": "Mexico",
+        "count": 21
+      },
+      {
+        "label": "Taiwan",
+        "count": 19
+      },
+      {
+        "label": "Panama",
+        "count": 18
+      },
+      {
+        "label": "Thailand",
+        "count": 14
+      },
+      {
+        "label": "Canada",
+        "count": 13
+      },
+      {
+        "label": "United States",
+        "count": 12
+      },
+      {
+        "label": "Poland",
+        "count": 11
+      },
+      {
+        "label": "Denmark",
+        "count": 10
+      },
+      {
+        "label": "Guernsey",
+        "count": 9
+      },
+      {
+        "label": "French Polynesia",
+        "count": 7
+      },
+      {
+        "label": "Guatemala",
+        "count": 6
+      },
+      {
+        "label": "Hungary",
+        "count": 6
+      },
+      {
+        "label": "New Zealand",
+        "count": 6
+      },
+      {
+        "label": "Hong Kong",
+        "count": 5
+      },
+      {
+        "label": "Jersey",
+        "count": 3
+      },
+      {
+        "label": "Malaysia",
+        "count": 3
+      },
+      {
+        "label": "Seychelles",
+        "count": 3
+      },
+      {
+        "label": "South Africa",
+        "count": 3
+      },
+      {
+        "label": "Australia",
+        "count": 2
+      },
+      {
+        "label": "Colombia",
+        "count": 2
+      },
+      {
+        "label": "Indonesia",
+        "count": 2
+      },
+      {
+        "label": "Norway",
+        "count": 2
+      }
+    ],
+    "public_pin": [
+      {
+        "label": "United Kingdom",
+        "count": 85
+      },
+      {
+        "label": "British Virgin Islands",
+        "count": 35
+      },
+      {
+        "label": "Croatia",
+        "count": 30
+      },
+      {
+        "label": "Greece",
+        "count": 21
+      },
+      {
+        "label": "Grenada",
+        "count": 21
+      },
+      {
+        "label": "Panama",
+        "count": 14
+      },
+      {
+        "label": "Guadeloupe",
+        "count": 12
+      },
+      {
+        "label": "France",
+        "count": 9
+      },
+      {
+        "label": "Netherlands",
+        "count": 8
+      },
+      {
+        "label": "Mexico",
+        "count": 6
+      },
+      {
+        "label": "Turkey",
+        "count": 5
+      },
+      {
+        "label": "Unknown",
+        "count": 5
+      },
+      {
+        "label": "Bahamas",
+        "count": 4
+      },
+      {
+        "label": "Canada",
+        "count": 4
+      },
+      {
+        "label": "United States Virgin Islands",
+        "count": 4
+      },
+      {
+        "label": "Antigua and Barbuda",
+        "count": 2
+      },
+      {
+        "label": "Ireland",
+        "count": 2
+      },
+      {
+        "label": "Italy",
+        "count": 2
+      },
+      {
+        "label": "Puerto Rico",
+        "count": 2
+      },
+      {
+        "label": "Sint Maarten",
+        "count": 2
+      },
+      {
+        "label": "French Polynesia",
+        "count": 1
+      },
+      {
+        "label": "Gibraltar",
+        "count": 1
+      },
+      {
+        "label": "Martinique",
+        "count": 1
+      },
+      {
+        "label": "Saint Lucia",
+        "count": 1
+      },
+      {
+        "label": "Spain",
+        "count": 1
+      },
+      {
+        "label": "Thailand",
+        "count": 1
+      },
+      {
+        "label": "United States",
+        "count": 1
+      }
+    ]
+  },
+  "byBucketSource": {
+    "needs_more_specific_location": [
+      {
+        "label": "Sailboat Listings",
+        "count": 6089
+      },
+      {
+        "label": "TheYachtMarket",
+        "count": 368
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 4
+      },
+      {
+        "label": "Dream Yacht Sales",
+        "count": 2
+      },
+      {
+        "label": "Moorings Brokerage",
+        "count": 2
+      }
+    ],
+    "unknown_location": [
+      {
+        "label": "Sailboat Listings",
+        "count": 1813
+      },
+      {
+        "label": "TheYachtMarket",
+        "count": 243
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 3
+      }
+    ],
+    "review_queue": [
+      {
+        "label": "Sailboat Listings",
+        "count": 364
+      },
+      {
+        "label": "TheYachtMarket",
+        "count": 333
+      },
+      {
+        "label": "Boats.com",
+        "count": 18
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 15
+      },
+      {
+        "label": "Dream Yacht Sales",
+        "count": 14
+      },
+      {
+        "label": "Moorings Brokerage",
+        "count": 4
+      }
+    ],
+    "held_back_coordinate": [
+      {
+        "label": "TheYachtMarket",
+        "count": 1159
+      },
+      {
+        "label": "Sailboat Listings",
+        "count": 653
+      },
+      {
+        "label": "Boats.com",
+        "count": 108
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 46
+      },
+      {
+        "label": "Moorings Brokerage",
+        "count": 19
+      },
+      {
+        "label": "Dream Yacht Sales",
+        "count": 17
+      }
+    ],
+    "pending_ready": [
+      {
+        "label": "TheYachtMarket",
+        "count": 1046
+      },
+      {
+        "label": "Sailboat Listings",
+        "count": 114
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 5
+      },
+      {
+        "label": "Dream Yacht Sales",
+        "count": 3
+      },
+      {
+        "label": "Boats.com",
+        "count": 2
+      }
+    ],
+    "public_pin": [
+      {
+        "label": "TheYachtMarket",
+        "count": 146
+      },
+      {
+        "label": "Dream Yacht Sales",
+        "count": 77
+      },
+      {
+        "label": "Sailboat Listings",
+        "count": 51
+      },
+      {
+        "label": "CatamaranSite",
+        "count": 3
+      },
+      {
+        "label": "Moorings Brokerage",
+        "count": 2
+      },
+      {
+        "label": "Boats.com",
+        "count": 1
+      }
+    ]
+  },
+  "byBucketQuery": {
+    "needs_more_specific_location": [
+      {
+        "label": "Florida",
+        "count": 1502,
+        "sampleSlugs": [
+          "1953-concordia-41-florida",
+          "1957-coleman-plastics-company-bounty-rhodes-ii-florida",
+          "1957-rhodes-bounty-ii-florida"
+        ]
+      },
+      {
+        "label": "California",
+        "count": 751,
+        "sampleSlugs": [
+          "1950-luders-16-california",
+          "1951-gordon-s-bloomer-50-gaff-schooner-42-california",
+          "1955-stone-san-francisco-phil-rhodes-california"
+        ]
+      },
+      {
+        "label": "New York",
+        "count": 635,
+        "sampleSlugs": [
+          "1916-crosby-catboat-new-york",
+          "1955-henry-nevins-1955-sparkman-stephens-nevins-40-new-york",
+          "1956-sweden-sloop-folk-new-york"
+        ]
+      },
+      {
+        "label": "Maryland",
+        "count": 432,
+        "sampleSlugs": [
+          "1955-herreshoff-meadowlark-ketch-maryland",
+          "1955-sparkman-and-stephens-gulfstream-36-derecktor-built-maryland",
+          "1958-william-tripp-jramerican-boat-building-company-1958-block-island-40-maryland"
+        ]
+      },
+      {
+        "label": "Michigan",
+        "count": 306,
+        "sampleSlugs": [
+          "1965-chris-craft-capitan-michigan",
+          "1965-pearson-vanguard-michigan",
+          "1965-sparkman-stephens-sloop-michigan"
+        ]
+      },
+      {
+        "label": "Texas",
+        "count": 277,
+        "sampleSlugs": [
+          "1963-chris-craft-sail-yacht-35-texas",
+          "1964-columbia-5-5-texas",
+          "1964-pearson-vanguard-32-texas"
+        ]
+      },
+      {
+        "label": "North Carolina",
+        "count": 259,
+        "sampleSlugs": [
+          "1959-mclntosh-cutter-north-north-carolina",
+          "1961-pearson-triton-north-carolina",
+          "1963-pearson-vanguard-north-carolina"
+        ]
+      },
+      {
+        "label": "Virginia",
+        "count": 221,
+        "sampleSlugs": [
+          "1962-allied-seawind-30-virginia",
+          "1962-pearson-alberg-35-virginia",
+          "1966-ab-telfa-custom-king-s-cruiser-virginia"
+        ]
+      },
+      {
+        "label": "New Jersey",
+        "count": 189,
+        "sampleSlugs": [
+          "1963-tartan-27-new-jersey",
+          "1964-allied-seawind-new-jersey",
+          "1965-ho-sang-shipyard-chinese-junk-new-jersey"
+        ]
+      },
+      {
+        "label": "Maine",
+        "count": 187,
+        "sampleSlugs": [
+          "1956-seth-persson-maine",
+          "1959-ackerman-newporter-40-maine",
+          "1961-alden-challenger-maine"
+        ]
+      },
+      {
+        "label": "Connecticut",
+        "count": 186,
+        "sampleSlugs": [
+          "1955-concordia-40-connecticut",
+          "1959-sparkman-stephens-custom-connecticut",
+          "1963-allied-seawind-connecticut"
+        ]
+      },
+      {
+        "label": "Rhode Island",
+        "count": 174,
+        "sampleSlugs": [
+          "1957-atkins-33ft-gaff-rigged-schooner-rhode-island",
+          "1958-cheoy-lee-john-alden-norfarer-rhode-island",
+          "1960-concordia-39-yawl-rhode-island"
+        ]
+      },
+      {
+        "label": "Ohio",
+        "count": 149,
+        "sampleSlugs": [
+          "1967-pearson-vanguard-ohio",
+          "1967-whitby-alberg-37-ohio",
+          "1969-c-c-c-ohio"
+        ]
+      },
+      {
+        "label": "South Carolina",
+        "count": 140,
+        "sampleSlugs": [
+          "1964-pearson-vanguard-south-carolina",
+          "1965-rhodes-reliant-classic-yawl-south-carolina",
+          "1967-cal-34-south-carolina"
+        ]
+      },
+      {
+        "label": "Georgia",
+        "count": 130,
+        "sampleSlugs": [
+          "1959-custom-geerd-hendel-raised-deck-cutter-georgia",
+          "1961-hinckley-bermuda-40-georgia",
+          "1965-pearson-vanguard-georgia"
+        ]
+      },
+      {
+        "label": "France",
+        "count": 74,
+        "sampleSlugs": [
+          "1975-dufour-34-france",
+          "1978-tucker-charybdis-mk-2-france",
+          "1983-trireme-43-france"
+        ]
+      },
+      {
+        "label": "Greece",
+        "count": 60,
+        "sampleSlugs": [
+          "1972-jongert-trewes-steel-custom-ketch-greece",
+          "1972-westall-nova-27-greece",
+          "1977-cnso-mikado-greece"
+        ]
+      },
+      {
+        "label": "Croatia",
+        "count": 55,
+        "sampleSlugs": [
+          "1963-pearsonjouet-triton-croatia",
+          "1977-seal-47-croatia",
+          "1978-nao-glass-puma-34-croatia"
+        ]
+      },
+      {
+        "label": "Panama",
+        "count": 51,
+        "sampleSlugs": [
+          "1965-florida-steel-catch-panama",
+          "1972-albin-vega-1972-panama",
+          "1972-piver-trimaran-piver-panama"
+        ]
+      },
+      {
+        "label": "Denmark",
+        "count": 40,
+        "sampleSlugs": [
+          "1976-colin-archer-alejuela-38-denmark",
+          "1976-najad-34-denmark",
+          "1977-granada-31-denmark"
+        ]
+      },
+      {
+        "label": "Grenada",
+        "count": 33,
+        "sampleSlugs": [
+          "1969-cheoy-lee-luder-36-grenada",
+          "1974-hinckley-49-grenada",
+          "1978-acva-bat-allegro-27-grenada"
+        ]
+      },
+      {
+        "label": "Hawaii",
+        "count": 33,
+        "sampleSlugs": [
+          "1964-pearson-alberg-35-hawaii",
+          "1969-coronado-c32-hawaii",
+          "1969-hedley-nicol-voyager-hawaii"
+        ]
+      },
+      {
+        "label": "Netherlands",
+        "count": 27,
+        "sampleSlugs": [
+          "1964-dutch-shipyard-classic-ketch-s-shape-netherlands",
+          "1976-vindo-50-sl-ketch-netherlands",
+          "1979-storebro-royal-33-netherlands"
+        ]
+      },
+      {
+        "label": "Portugal",
+        "count": 18,
+        "sampleSlugs": [
+          "1977-dufour-24-portugal",
+          "1979-maxi-108-portugal",
+          "1981-beneteau-first-35-portugal"
+        ]
+      },
+      {
+        "label": "British Virgin Islands",
+        "count": 16,
+        "sampleSlugs": [
+          "1988-contest-38s-british-virgin-islands",
+          "1992-dean-365-british-virgin-islands",
+          "2003-robertson-and-caine-leopard-47-catamaran-british-virgin-islands"
+        ]
+      },
+      {
+        "label": "Italy",
+        "count": 15,
+        "sampleSlugs": [
+          "1977-marieholm-bruck-marieholm-26-italy",
+          "1984-good-will-boats-tauanga-alan-wright-14-italy",
+          "1984-westerly-merlin-italy"
+        ]
+      },
+      {
+        "label": "Turkey",
+        "count": 15,
+        "sampleSlugs": [
+          "1982-dynamique-express-44-turkey",
+          "1985-hallber-rassy-49-turkey",
+          "1987-henriques-oland-brothers-denmark-elvstrom-jan-kiarulf-44-aluminium-cutter-turkey"
+        ]
+      },
+      {
+        "label": "Malta",
+        "count": 14,
+        "sampleSlugs": [
+          "1976-maxi-95-malta",
+          "1977-olympic-staysail-ketch-malta",
+          "1980-sino-america-malta"
+        ]
+      },
+      {
+        "label": "Puerto Rico",
+        "count": 13,
+        "sampleSlugs": [
+          "1976-hans-christian-38t-puerto-rico",
+          "1980-gulfstar-sailmaster-puerto-rico",
+          "1982-maxi-108-puerto-rico"
+        ]
+      },
+      {
+        "label": "Spain",
+        "count": 13,
+        "sampleSlugs": [
+          "1981-moody-33-mk-ii-spain",
+          "1982-ho-hsing-frp-co-ltd-taiwan-nantucket-island-38-spain",
+          "1982-prout-snowgoose-37-spain"
+        ]
+      }
+    ],
+    "unknown_location": [
+      {
+        "label": "Massachusetts",
+        "count": 259,
+        "sampleSlugs": [
+          "1955-ss-crocker-design-bud-mcintosh-classic-small-schooner-37-massachusetts",
+          "1956-atkins-inga-massachusetts",
+          "1956-inga-28-massachusetts"
+        ]
+      },
+      {
+        "label": "Washington",
+        "count": 205,
+        "sampleSlugs": [
+          "1953-concordia-39-washington",
+          "1954-william-atkins-design-eric-jr-washington",
+          "1955-u-s-navy-staysail-cutter-washington"
+        ]
+      },
+      {
+        "label": "Wisconsin",
+        "count": 149,
+        "sampleSlugs": [
+          "1963-pearson-ariel-wisconsin",
+          "1964-pearson-commander-26-wisconsin",
+          "1964-professional-build-thunderbird-wisconsin"
+        ]
+      },
+      {
+        "label": "Illinois",
+        "count": 117,
+        "sampleSlugs": [
+          "1964-whitbey-ontario-alberg-30-illinois",
+          "1965-alberg-30-illinois",
+          "1968-islander-29-illinois"
+        ]
+      },
+      {
+        "label": "Alabama",
+        "count": 69,
+        "sampleSlugs": [
+          "1968-morgan-24-25-alabama",
+          "1971-c-c-mark-i-alabama",
+          "1972-morgan-27-alabama"
+        ]
+      },
+      {
+        "label": "Louisiana",
+        "count": 59,
+        "sampleSlugs": [
+          "1967-cal-48-louisiana",
+          "1967-pearson-commander-louisiana",
+          "1975-bristol-27-louisiana"
+        ]
+      },
+      {
+        "label": "Pennsylvania",
+        "count": 52,
+        "sampleSlugs": [
+          "1968-jensen-cal-34-pennsylvania",
+          "1969-bristol-26-pennsylvania",
+          "1969-soling-2-boats-369-and-172-pennsylvania"
+        ]
+      },
+      {
+        "label": "Missouri",
+        "count": 45,
+        "sampleSlugs": [
+          "1966-pearson-alberg-35-missouri",
+          "1966-pearson-coaster-missouri",
+          "1966-pearson-wanderer-missouri"
+        ]
+      },
+      {
+        "label": "Minnesota",
+        "count": 42,
+        "sampleSlugs": [
+          "1968-morgan-m30-minnesota",
+          "1969-coronado-25-minnesota",
+          "1970-contest-30-minnesota"
+        ]
+      },
+      {
+        "label": "Mississippi",
+        "count": 42,
+        "sampleSlugs": [
+          "1950-custom-chinese-junk-mississippi",
+          "1965-custom-chinese-junk-authentic-mississippi",
+          "1975-prout-35-snowgoose-mississippi"
+        ]
+      },
+      {
+        "label": "Oregon",
+        "count": 42,
+        "sampleSlugs": [
+          "1960-herreshoff-meadow-lark-oregon",
+          "1960-herreshoff-meadowlark-oregon",
+          "1960-herreshoff-meadowlark-wooden-ketch-oregon"
+        ]
+      },
+      {
+        "label": "Vermont",
+        "count": 42,
+        "sampleSlugs": [
+          "1967-fahnrich-31-vermont",
+          "1974-cape-dory-28-vermont",
+          "1974-ouyang-aloha-28-vermont"
+        ]
+      },
+      {
+        "label": "Indiana",
+        "count": 33,
+        "sampleSlugs": [
+          "1974-cc-yachts-33mk1-indiana",
+          "1976-fisher-30-indiana",
+          "1976-islander-28-indiana"
+        ]
+      },
+      {
+        "label": "Oklahoma",
+        "count": 29,
+        "sampleSlugs": [
+          "1958-haussen-folkboat-oklahoma",
+          "1970-coronado-30-oklahoma",
+          "1973-ranger-33-oklahoma"
+        ]
+      },
+      {
+        "label": "Colorado",
+        "count": 28,
+        "sampleSlugs": [
+          "1962-triton-pearson-colorado",
+          "1967-coronado-25-colorado",
+          "1973-catalina-c27-tall-rig-colorado"
+        ]
+      },
+      {
+        "label": "Tennessee",
+        "count": 27,
+        "sampleSlugs": [
+          "1970-albin-vega-tennessee",
+          "1970-seb-marine-aloa-tennessee",
+          "1971-pearson-35-tennessee"
+        ]
+      },
+      {
+        "label": "Toronto",
+        "count": 24,
+        "sampleSlugs": [
+          "1973-c-c-mark-ll-toronto",
+          "1974-irwin-25-toronto",
+          "1976-irwin-10-4-toronto"
+        ]
+      },
+      {
+        "label": "Kentucky",
+        "count": 23,
+        "sampleSlugs": [
+          "1977-venture-macgregor-25-kentucky",
+          "1980-cal-mk-2-kentucky",
+          "1982-commodore-26-kentucky"
+        ]
+      },
+      {
+        "label": "Arkansas",
+        "count": 22,
+        "sampleSlugs": [
+          "1975-columbia-t26-arkansas",
+          "1975-o-day-25-arkansas",
+          "1976-pearson-26-arkansas"
+        ]
+      },
+      {
+        "label": "Nevada",
+        "count": 20,
+        "sampleSlugs": [
+          "1972-ranger-26-nevada",
+          "1975-capital-n28-nevada",
+          "1975-newport-28-nevada"
+        ]
+      },
+      {
+        "label": "Alaska",
+        "count": 18,
+        "sampleSlugs": [
+          "1971-catalina-27-alaska",
+          "1972-albin-vega-alaska",
+          "1972-dekleer-endurance-alaska"
+        ]
+      },
+      {
+        "label": "Arizona",
+        "count": 18,
+        "sampleSlugs": [
+          "1967-cal-36-cutter-arizona",
+          "1975-san-juan-arizona",
+          "1977-chungli-industrial-park-taoyuan-city-taiwan-true-north-34-arizona"
+        ]
+      },
+      {
+        "label": "Iowa",
+        "count": 18,
+        "sampleSlugs": [
+          "1966-acadian-paceship-iowa",
+          "1974-american-mariner-25-iowa",
+          "1974-catalina-27-tall-rig-iowa"
+        ]
+      },
+      {
+        "label": "Kansas",
+        "count": 17,
+        "sampleSlugs": [
+          "1971-easterly-30-kansas",
+          "1972-capital-newport-27-kansas",
+          "1977-nor-sea-27-aft-cabin-kansas"
+        ]
+      },
+      {
+        "label": "Idaho",
+        "count": 16,
+        "sampleSlugs": [
+          "1969-columbia-c-36-idaho",
+          "1972-islander-36-idaho",
+          "1978-heritage-west-indies-idaho"
+        ]
+      },
+      {
+        "label": "Delaware",
+        "count": 15,
+        "sampleSlugs": [
+          "1972-alberg-30-delaware",
+          "1973-pearson-p33-delaware",
+          "1974-bayfield-25-cutter-delaware"
+        ]
+      },
+      {
+        "label": "Montana",
+        "count": 14,
+        "sampleSlugs": [
+          "1967-wayfarer-islander-29-montana",
+          "1970-columbia-c-28-montana",
+          "1972-skookum-47-montana"
+        ]
+      },
+      {
+        "label": "Utah",
+        "count": 8,
+        "sampleSlugs": [
+          "1977-catalina-27-utah",
+          "1978-catalina-30-utah",
+          "1978-ericson-32-2-utah"
+        ]
+      },
+      {
+        "label": "Montreal",
+        "count": 6,
+        "sampleSlugs": [
+          "1969-triangle-32-montreal",
+          "1975-c-c-cc27-montreal",
+          "1980-aloha-27-montreal"
+        ]
+      },
+      {
+        "label": "Port",
+        "count": 6,
+        "sampleSlugs": [
+          "1992-hunter-27-2-port",
+          "1999-caribe-65-custom-alex-simonis-65-port",
+          "2004-lagoon-380-port"
+        ]
+      }
+    ],
+    "review_queue": [
+      {
+        "label": "New Hampshire, United Kingdom",
+        "count": 22,
+        "sampleSlugs": [
+          "1971-hallberg-rassy-mistral-33-new-hampshire",
+          "1973-pearson-26-classic-pocket-cruiser-new-hampshire",
+          "1974-scampi-mark-iv-new-hampshire"
+        ]
+      },
+      {
+        "label": "Liguria, Italy",
+        "count": 21,
+        "sampleSlugs": [
+          "1988-hallberg-rassy-49-ketch-liguria",
+          "1991-grand-soleil-45-frers-liguria",
+          "2003-beneteau-50-liguria"
+        ]
+      },
+      {
+        "label": "Corfu, Greece",
+        "count": 20,
+        "sampleSlugs": [
+          "1978-jaguar-27-corfu",
+          "1983-rc-lazaro-gulfstar-sailmaster-corfu",
+          "1983-tagudo-34-corfu"
+        ]
+      },
+      {
+        "label": "San Carlos Sonora, Mexico",
+        "count": 18,
+        "sampleSlugs": [
+          "1980-shannon-38-ph-san-carlos-sonora",
+          "1981-whitby-42-ketch-san-carlos-sonora",
+          "1983-catalina-38-san-carlos-sonora"
+        ]
+      },
+      {
+        "label": "Bocas Del Toro, Panama",
+        "count": 17,
+        "sampleSlugs": [
+          "1979-morgan-s-j-bocas-del-toro",
+          "1980-gulfstar-bocas-del-toro-bocas-del-toro",
+          "1982-catalac-8-meter-bocas-del-toro"
+        ]
+      },
+      {
+        "label": "French Riviera, France",
+        "count": 17,
+        "sampleSlugs": [
+          "1993-camper-nicholsons-128-ketch-french-riviera",
+          "1998-jongert-2700-sloop-french-riviera",
+          "2000-wally-100-french-riviera"
+        ]
+      },
+      {
+        "label": "Mallorca, Balearic Islands, Spain",
+        "count": 17,
+        "sampleSlugs": [
+          "1977-nauta-wind-46-mallorca",
+          "1982-mcconnel-marine-ltd-custom-pilot-cutter-mallorca",
+          "1984-north-wind-38-mallorca"
+        ]
+      },
+      {
+        "label": "Palma, Balearic Islands, Spain",
+        "count": 16,
+        "sampleSlugs": [
+          "2004-oyster-49-palma",
+          "2005-nautor-swan-82-palma",
+          "2008-spirit-yachts-76-palma"
+        ]
+      },
+      {
+        "label": "S, France",
+        "count": 14,
+        "sampleSlugs": [
+          "1988-jeanneau-sun-kiss-47-s",
+          "1997-bashford-sydney-46-s",
+          "1997-garcia-passoa-47-s"
+        ]
+      },
+      {
+        "label": "Šibenik, Croatia",
+        "count": 12,
+        "sampleSlugs": [
+          "2002-elan-45-ibenik",
+          "2009-beneteau-oceanis-40-ibenik",
+          "2009-fountaine-pajot-lipari-41-ibenik"
+        ]
+      },
+      {
+        "label": "Tahiti, French Polynesia",
+        "count": 10,
+        "sampleSlugs": [
+          "1983-dynamic-express-44-tahiti",
+          "1984-ce-ryder-southern-cross-35-cutter-tahiti",
+          "1996-wharram-narai-tahiti"
+        ]
+      },
+      {
+        "label": "Martinique, Le Marin",
+        "count": 9,
+        "sampleSlugs": [
+          "2017-bali-4-0-lonja-martinique",
+          "2017-bali-4-3-trinidad-martinique",
+          "2017-bali-4-5-bonaire-martinique"
+        ]
+      },
+      {
+        "label": "Langkawi, Malaysia",
+        "count": 8,
+        "sampleSlugs": [
+          "1976-westsail-corp-california-usa-westsail-42-11-langkawi",
+          "1977-cal-39-mkii-langkawi",
+          "1978-la-seinemer-area-870-langkawi"
+        ]
+      },
+      {
+        "label": "San Carlos, Mexico",
+        "count": 8,
+        "sampleSlugs": [
+          "1973-cal-246-san-carlos",
+          "1977-chung-hwa-magellan-san-carlos",
+          "1977-pearson-365-san-carlos"
+        ]
+      },
+      {
+        "label": "Leros, Greece",
+        "count": 7,
+        "sampleSlugs": [
+          "1977-westerly-33-leros",
+          "1991-viudes-german-frers-82-leros",
+          "1994-moody-38-leros"
+        ]
+      },
+      {
+        "label": "New, Mexico",
+        "count": 7,
+        "sampleSlugs": [
+          "1974-ranger-32-new",
+          "1976-pacific-seacraft-25-double-ender-new",
+          "1983-morgan-nelson-merrick-454-new"
+        ]
+      },
+      {
+        "label": "San Diego, California, United States",
+        "count": 7,
+        "sampleSlugs": [
+          "1977-tanton-42-san-diego",
+          "1994-schock-35-sloop-san-diego",
+          "2018-jeanneau-sun-odyssey-479-san-diego"
+        ]
+      },
+      {
+        "label": "Sicilia, Italy",
+        "count": 7,
+        "sampleSlugs": [
+          "2006-fountaine-pajot-bahia-46-sicilia",
+          "2014-beneteau-oceanis-45-sicilia",
+          "2017-beneteau-oceanis-35-1-sicilia"
+        ]
+      },
+      {
+        "label": "Valencian Community, Spain",
+        "count": 7,
+        "sampleSlugs": [
+          "1985-irwin-38-valencian-community",
+          "1986-malo-maverick-106-valencian-community",
+          "1995-gibsea-472-valencian-community"
+        ]
+      },
+      {
+        "label": "Attica, Greece",
+        "count": 6,
+        "sampleSlugs": [
+          "1990-beneteau-first-45f5-attica",
+          "1999-bavaria-38-holiday-attica",
+          "2000-dufour-atoll-43-owners-version-attica"
+        ]
+      },
+      {
+        "label": "Canary Islands, Spain",
+        "count": 6,
+        "sampleSlugs": [
+          "1971-albin-marine-shipman-28-canary-islands",
+          "1989-embrun-40-canary-islands",
+          "1989-jeanneau-sun-magic-44-canary-islands"
+        ]
+      },
+      {
+        "label": "Cartagena, Spain",
+        "count": 6,
+        "sampleSlugs": [
+          "1998-saga-43-cartagena",
+          "2005-jeanneau-sun-odyssey-49-owners-version-cartagena",
+          "2007-lagoon-cartagena-cartagena"
+        ]
+      },
+      {
+        "label": "Dalmatia, Croatia",
+        "count": 6,
+        "sampleSlugs": [
+          "1991-cantiere-navale-r-m-55-dalmatia",
+          "2002-latini-marine-52-dalmatia",
+          "2012-elan-350-performance-dalmatia"
+        ]
+      },
+      {
+        "label": "La Spezia, Italy",
+        "count": 6,
+        "sampleSlugs": [
+          "2009-fora-marine-rm-1200-la-spezia",
+          "2011-cdk-mod-70-la-spezia",
+          "2015-jeanneau-349-la-spezia"
+        ]
+      },
+      {
+        "label": "Palma - Mallorca, Balearic Islands, Spain",
+        "count": 6,
+        "sampleSlugs": [
+          "2000-grand-soleil-463-palma-mallorca",
+          "2024-bavaria-c46-palma-mallorca",
+          "2024-bavaria-c50-palma-mallorca"
+        ]
+      },
+      {
+        "label": "Cartagena Colombia",
+        "count": 5,
+        "sampleSlugs": [
+          "1972-c-c-39-5-cartagena-colombia",
+          "1974-finot-brise-de-mar-cartagena-colombia",
+          "1982-tatoosh-cartagena-colombia-cartagena-colombia"
+        ]
+      },
+      {
+        "label": "Emilia Romagna, Italy",
+        "count": 5,
+        "sampleSlugs": [
+          "1975-hallberg-rassy-35-emilia-romagna",
+          "1976-simeone-minaldo-half-tonner-emilia-romagna",
+          "1997-elan-431-emilia-romagna"
+        ]
+      },
+      {
+        "label": "Kos, Greece",
+        "count": 5,
+        "sampleSlugs": [
+          "1991-moody-35-kos",
+          "1996-jeanneau-sun-odyssey-37-2-kos",
+          "2016-dufour-460-kos"
+        ]
+      },
+      {
+        "label": "Kvarner Gulf, Croatia",
+        "count": 5,
+        "sampleSlugs": [
+          "2003-bavaria-44-ocean-kvarner-gulf",
+          "2007-jeanneau-sun-odyssey-54-kvarner-gulf",
+          "2008-enavigo-kvarner-gulf-kvarner-gulf"
+        ]
+      },
+      {
+        "label": "Mare Adriatico, Italy",
+        "count": 5,
+        "sampleSlugs": [
+          "1974-velmare-vagabond-47-mare-adriatico",
+          "1979-oyster-37-heritage-mare-adriatico",
+          "2002-beneteau-oceanis-361-clipper-mare-adriatico"
+        ]
+      }
+    ],
+    "held_back_coordinate": [
+      {
+        "label": "Le Marin, Martinique",
+        "count": 51,
+        "sampleSlugs": [
+          "1974-cheoy-lee-47-offshore-le-marin",
+          "1979-jouet-37-le-marin",
+          "1981-trireme-43-le-marin"
+        ]
+      },
+      {
+        "label": "Athens, Greece",
+        "count": 48,
+        "sampleSlugs": [
+          "1985-x-yachts-x-402-athens",
+          "1989-beneteau-oceanis-430-owners-version-athens",
+          "1992-custom-motorsailer-84-athens"
+        ]
+      },
+      {
+        "label": "Barcelona, Catalonia, Spain",
+        "count": 46,
+        "sampleSlugs": [
+          "1962-custom-built-sailing-barcelona",
+          "1962-sparkman-and-stephens-40-yawl-barcelona",
+          "1968-carabela-north-sea-24-barcelona"
+        ]
+      },
+      {
+        "label": "Split, Croatia",
+        "count": 34,
+        "sampleSlugs": [
+          "1976-islander-36-tall-rig-split",
+          "1999-x-yachts-x-482-split",
+          "2002-bavaria-40-split"
+        ]
+      },
+      {
+        "label": "Lelystad, Netherlands",
+        "count": 32,
+        "sampleSlugs": [
+          "1982-beneteau-first-32-aan-verkoopsteiger-in-lelystad",
+          "1983-nomad-34-aan-verkoopsteiger-in-lelystad",
+          "1983-southerly-95-aan-verkoopsteiger-in-lelystad"
+        ]
+      },
+      {
+        "label": "Preveza, Greece",
+        "count": 32,
+        "sampleSlugs": [
+          "1978-westerly-33-preveza",
+          "1983-wauquiez-amphitrite-preveza",
+          "1984-southerly-105-preveza"
+        ]
+      },
+      {
+        "label": "St. Thomas, US Virgin Islands",
+        "count": 32,
+        "sampleSlugs": [
+          "1973-pearson-p36-st-thomas",
+          "1975-morgan-out-island-510-st-thomas",
+          "1978-endeavour-37-st-thomas"
+        ]
+      },
+      {
+        "label": "Lefkas, Greece",
+        "count": 31,
+        "sampleSlugs": [
+          "1980-hatecke-55ft-motor-sailor-ketch-lefkas",
+          "1987-hallberg-rassy-49-lefkas",
+          "1990-jeanneau-sundance-36-lefkas"
+        ]
+      },
+      {
+        "label": "Tortola, British Virgin Islands",
+        "count": 29,
+        "sampleSlugs": [
+          "1972-dufour-arpege-tortola",
+          "2005-beneteau-oceanis-473-tortola",
+          "2006-robertson-and-caine-leopard-tortola"
+        ]
+      },
+      {
+        "label": "Marseille, France",
+        "count": 28,
+        "sampleSlugs": [
+          "1973-nautor-swan-65-marseille",
+          "1980-nauticat-44-marseille",
+          "1982-beneteau-first-28-marseille"
+        ]
+      },
+      {
+        "label": "Fort Lauderdale, Florida, United States",
+        "count": 27,
+        "sampleSlugs": [
+          "1980-bristol-40-fort-lauderdale",
+          "2008-privilege-745-fort-lauderdale",
+          "2008-seawind-1000-xl-fort-lauderdale"
+        ]
+      },
+      {
+        "label": "Marmaris, Turkey",
+        "count": 26,
+        "sampleSlugs": [
+          "1981-skye-51-marmaris",
+          "1988-island-packet-ip-38-marmaris",
+          "1991-jeanneau-sun-odyssey-51-marmaris"
+        ]
+      },
+      {
+        "label": "Lefkada, Greece",
+        "count": 23,
+        "sampleSlugs": [
+          "1979-najad-34-lefkada",
+          "1982-maxi-84-lefkada",
+          "1996-north-wind-50-lefkada"
+        ]
+      },
+      {
+        "label": "Bodrum, Turkey",
+        "count": 21,
+        "sampleSlugs": [
+          "1985-gulet-motor-sailor-goulet-bodrum",
+          "1987-lovett-50-bodrum",
+          "1994-oceanhouse-59-pilothouse-bodrum"
+        ]
+      },
+      {
+        "label": "Alicante, Valencian Community, Spain",
+        "count": 17,
+        "sampleSlugs": [
+          "1980-ior-one-tonner-alicante",
+          "1983-nautor-swan-65-alicante",
+          "1987-north-wind-47-alicante"
+        ]
+      },
+      {
+        "label": "Rio Dulce Guatemala",
+        "count": 17,
+        "sampleSlugs": [
+          "1967-van-der-meer-52-copper-nickel-hull-rio-dulce-guatemala",
+          "1970-morgan-m38-rio-dulce-guatemala",
+          "1972-morgan-out-island-rio-dulce-guatemala"
+        ]
+      },
+      {
+        "label": "Valencia, Valencian Community, Spain",
+        "count": 14,
+        "sampleSlugs": [
+          "1991-jeanneau-sun-magic-44-valencia",
+          "1997-cnb-fano-frers-56-4-valencia",
+          "1997-nautor-swan-60-valencia"
+        ]
+      },
+      {
+        "label": "Zadar, Croatia",
+        "count": 14,
+        "sampleSlugs": [
+          "2004-beneteau-oceanis-423-clipper-zadar",
+          "2005-salona-45-zadar",
+          "2006-elan-384-impression-zadar"
+        ]
+      },
+      {
+        "label": "Fajardo, Puerto Rico",
+        "count": 13,
+        "sampleSlugs": [
+          "1967-allied-sea-wind-30-fajardo",
+          "1979-tayana-37-fajardo",
+          "1984-beneteau-idylle-13-5-fajardo"
+        ]
+      },
+      {
+        "label": "Kingston Ontario, Canada",
+        "count": 13,
+        "sampleSlugs": [
+          "1967-c-c-corvette-kingston-ontario",
+          "1976-santa-cruz-santa-cruz-27-kingston-ontario",
+          "1981-niagara-35-classic-kingston-ontario"
+        ]
+      },
+      {
+        "label": "Šibenik, Croatia",
+        "count": 13,
+        "sampleSlugs": [
+          "2003-beneteau-oceanis-clipper-311-ibenik",
+          "2005-grand-soleil-45-ibenik",
+          "2010-grand-soleil-37-r-ibenik"
+        ]
+      },
+      {
+        "label": "Palma De Mallorca, Balearic Islands, Spain",
+        "count": 12,
+        "sampleSlugs": [
+          "1992-catalina-28-palma-de-mallorca",
+          "1994-vitters-hoek-55-custom-palma-de-mallorca",
+          "1999-royal-huisman-full-hybrid-cutter-sloop-palma-de-mallorca"
+        ]
+      },
+      {
+        "label": "Road Town, British Virgin Islands",
+        "count": 12,
+        "sampleSlugs": [
+          "2016-jeanneau-sun-odyssey-509-road-town",
+          "2017-jeanneau-sun-odyssey-469-road-town",
+          "2019-leopard-40-road-town"
+        ]
+      },
+      {
+        "label": "Genoa, Italy",
+        "count": 11,
+        "sampleSlugs": [
+          "1977-fred-preiss-los-angeles-regata-genoa",
+          "1988-atkin-and-lange-classic-cutter-39-genoa",
+          "1994-royal-huisman-112-sloop-genoa"
+        ]
+      },
+      {
+        "label": "Pula, Croatia",
+        "count": 11,
+        "sampleSlugs": [
+          "1983-amel-mango-52-pula",
+          "2007-elan-impression-434-pula",
+          "2008-beneteau-cyclades-50-5-pula"
+        ]
+      },
+      {
+        "label": "Sukošan, Croatia",
+        "count": 11,
+        "sampleSlugs": [
+          "2010-beneteau-oceanis-43-suko-an",
+          "2011-jeanneau-sun-odyssey-30-suko-an",
+          "2015-beneteau-oceanis-38-suko-an"
+        ]
+      },
+      {
+        "label": "Trogir, Croatia",
+        "count": 11,
+        "sampleSlugs": [
+          "2012-bavaria-40s-trogir",
+          "2016-x-yachts-x6-trogir",
+          "2019-fountaine-pajot-astrea-42-trogir"
+        ]
+      },
+      {
+        "label": "Vernicos Yachts- Alimos, Greece",
+        "count": 11,
+        "sampleSlugs": [
+          "1989-gibsea-372-vernicos-yachts-alimos",
+          "1997-beneteau-clipper-311-vernicos-yachts-alimos",
+          "2004-beneteau-clipper-423-vernicos-yachts-alimos"
+        ]
+      },
+      {
+        "label": "Martigues, France",
+        "count": 10,
+        "sampleSlugs": [
+          "1978-gibsea-37-ketch-martigues",
+          "1982-jeanneau-espace-1000-martigues",
+          "1983-jeanneau-melody-martigues"
+        ]
+      },
+      {
+        "label": "Toronto, Canada",
+        "count": 10,
+        "sampleSlugs": [
+          "1973-c-c-30-toronto",
+          "1976-heritage-35-toronto",
+          "1978-hughes-26e-toronto"
+        ]
+      }
+    ],
+    "pending_ready": [
+      {
+        "label": "Plymouth, United Kingdom",
+        "count": 46,
+        "sampleSlugs": [
+          "1964-buchanan-32-sloop-plymouth",
+          "1966-nicholson-32-mk-iii-plymouth",
+          "1970-hillyard-9-ton-plymouth"
+        ]
+      },
+      {
+        "label": "Hamble, United Kingdom",
+        "count": 42,
+        "sampleSlugs": [
+          "1972-camper-nicholsons-nicholson-35-hamble",
+          "1978-moody-33-mk-ii-hamble",
+          "1980-westerly-fulmar-hamble"
+        ]
+      },
+      {
+        "label": "Lisboa, Portugal",
+        "count": 35,
+        "sampleSlugs": [
+          "1973-camper-nicholsons-two-tonner-lisboa",
+          "1973-royal-huisman-49-lisboa",
+          "1974-shipman-28-lisboa"
+        ]
+      },
+      {
+        "label": "Suffolk Yacht Harbour, United Kingdom",
+        "count": 32,
+        "sampleSlugs": [
+          "1962-cheverton-boats-crusader-suffolk-yacht-harbour",
+          "1973-westerly-berwick-suffolk-yacht-harbour",
+          "1974-she-27-suffolk-yacht-harbour"
+        ]
+      },
+      {
+        "label": "Falmouth, United Kingdom",
+        "count": 24,
+        "sampleSlugs": [
+          "1964-alan-buchanan-prior-37-falmouth",
+          "1978-bluewater-41-falmouth",
+          "1984-rossiter-yachts-curlew-32-falmouth"
+        ]
+      },
+      {
+        "label": "Ardrossan, United Kingdom",
+        "count": 22,
+        "sampleSlugs": [
+          "1972-vindo-50-ardrossan",
+          "1982-neptune-33-ardrossan",
+          "1983-sigma-33-cruiser-ardrossan"
+        ]
+      },
+      {
+        "label": "Windermere, Cumbria, United Kingdom",
+        "count": 21,
+        "sampleSlugs": [
+          "1973-camper-nicholsons-32-windermere",
+          "1980-moody-nova-27-windermere",
+          "1989-etap-28-i-windermere"
+        ]
+      },
+      {
+        "label": "Nieuwpoort, Belgium",
+        "count": 20,
+        "sampleSlugs": [
+          "1976-van-wijk-wibo-835-nieuwpoort",
+          "1978-contest-31-ht-nieuwpoort",
+          "1980-delta-46-nieuwpoort"
+        ]
+      },
+      {
+        "label": "Southampton, United Kingdom",
+        "count": 19,
+        "sampleSlugs": [
+          "1978-westerly-conway-southampton",
+          "1988-fastnet-marine-fastnet-34-southampton",
+          "1989-bavaria-32-southampton"
+        ]
+      },
+      {
+        "label": "Gosport, Hampshire, United Kingdom",
+        "count": 16,
+        "sampleSlugs": [
+          "1968-trewes-viscount-40-gosport",
+          "1974-bowman-36-gosport",
+          "1975-bowman-36-gosport"
+        ]
+      },
+      {
+        "label": "Southampton, Hampshire, United Kingdom",
+        "count": 15,
+        "sampleSlugs": [
+          "1980-finnsailer-30-southampton",
+          "1985-moody-41-cc-southampton",
+          "1992-corby-35-southampton"
+        ]
+      },
+      {
+        "label": "Chichester, United Kingdom",
+        "count": 13,
+        "sampleSlugs": [
+          "1963-fairey-atalanta-26-chichester",
+          "1975-neptune-neptunian-33-chichester",
+          "1985-westerly-merlin-chichester"
+        ]
+      },
+      {
+        "label": "Troon Yacht Haven, United Kingdom",
+        "count": 13,
+        "sampleSlugs": [
+          "1971-camper-nicholsons-35-troon-yacht-haven",
+          "1978-moody-42-troon-yacht-haven",
+          "1981-jeanneau-espace-1000-troon-yacht-haven"
+        ]
+      },
+      {
+        "label": "Hamble-Le-Rice, Hampshire, United Kingdom",
+        "count": 12,
+        "sampleSlugs": [
+          "1980-hallberg-rassy-352-hamble-le-rice",
+          "1988-wavetrain-julian-everitt-channel-32-hamble-le-rice",
+          "2000-hallberg-rassy-31-hamble-le-rice"
+        ]
+      },
+      {
+        "label": "Lymington, United Kingdom",
+        "count": 12,
+        "sampleSlugs": [
+          "1981-penpol-27-lymington",
+          "1989-lm-27-lymington",
+          "1990-rustler-36-lymington"
+        ]
+      },
+      {
+        "label": "Wales, United Kingdom",
+        "count": 12,
+        "sampleSlugs": [
+          "1974-hallberg-rassy-35-north-wales",
+          "1977-macwester-malin-north-wales",
+          "1979-cobra-850-north-wales"
+        ]
+      },
+      {
+        "label": "Bangor, Down, United Kingdom",
+        "count": 11,
+        "sampleSlugs": [
+          "1974-westerly-tiger-bangor",
+          "1984-westerly-konsort-29-bangor",
+          "1986-tomahawk-25-bangor"
+        ]
+      },
+      {
+        "label": "Lower Swanwick, Hampshire, United Kingdom",
+        "count": 11,
+        "sampleSlugs": [
+          "2011-jeanneau-sun-odyssey-509-lower-swanwick",
+          "2013-spirit-yachts-50dh-lower-swanwick",
+          "2015-jeanneau-sun-odyssey-349-lower-swanwick"
+        ]
+      },
+      {
+        "label": "Plymouth, Devon, United Kingdom",
+        "count": 11,
+        "sampleSlugs": [
+          "1977-westerly-conway-36-plymouth",
+          "1979-finnsailer-34-plymouth",
+          "1986-dawn-39-plymouth"
+        ]
+      },
+      {
+        "label": "Poole, United Kingdom",
+        "count": 11,
+        "sampleSlugs": [
+          "1980-westerly-konsort-poole",
+          "1985-sadler-34-poole",
+          "1991-lavranos-40-poole"
+        ]
+      },
+      {
+        "label": "Gdansk, Poland",
+        "count": 10,
+        "sampleSlugs": [
+          "2017-pogo-12-50-gdansk",
+          "2017-pogo-1250-gdansk",
+          "2026-sunreef-100-next-gdansk"
+        ]
+      },
+      {
+        "label": "Brixham, United Kingdom",
+        "count": 9,
+        "sampleSlugs": [
+          "1981-jeanneau-melody-brixham",
+          "1986-westerly-merlin-brixham",
+          "1998-beneteau-oceanis-321-brixham"
+        ]
+      },
+      {
+        "label": "Bowness-On-Windermere, Cumbria, United Kingdom",
+        "count": 8,
+        "sampleSlugs": [
+          "1998-beneteau-oceanis-311-bowness-on-windermere",
+          "2001-beneteau-oceanis-361-bowness-on-windermere",
+          "2002-beneteau-oceanis-311-bowness-on-windermere"
+        ]
+      },
+      {
+        "label": "Isle Of Wight, United Kingdom",
+        "count": 8,
+        "sampleSlugs": [
+          "1971-fortuna-46-isle-of-wight",
+          "1976-contessa-32-isle-of-wight",
+          "1978-contessa-28-isle-of-wight"
+        ]
+      },
+      {
+        "label": "Muiderzand, Netherlands",
+        "count": 8,
+        "sampleSlugs": [
+          "1985-bavaria-1060-muiderzand",
+          "1989-judel-vrolijk-one-tonner-muiderzand",
+          "1996-victoire-1044-muiderzand"
+        ]
+      },
+      {
+        "label": "Phuket, Thailand",
+        "count": 8,
+        "sampleSlugs": [
+          "1981-ron-holland-52-phuket",
+          "1989-simpson-48-phuket",
+          "2001-jeanneau-sun-odyssey-45-2-phuket"
+        ]
+      },
+      {
+        "label": "Bocas Del Toro, Panama",
+        "count": 7,
+        "sampleSlugs": [
+          "1973-formosa-yankee-clipper-41-ketch-bocas-del-toro",
+          "1979-maple-leaf-42-center-cockpit-bocas-del-toro",
+          "1981-macgregor-36-bocas-del-toro"
+        ]
+      },
+      {
+        "label": "Breege, Mecklenburg-Vorpommern, Germany",
+        "count": 7,
+        "sampleSlugs": [
+          "2002-bavaria-44-breege",
+          "2010-bavaria-cruiser-55-breege",
+          "2011-bavaria-cruiser-32-breege"
+        ]
+      },
+      {
+        "label": "Cowes, United Kingdom",
+        "count": 7,
+        "sampleSlugs": [
+          "1988-moody-31-mkii-cowes",
+          "1997-grant-firth-custom-51ft-aluminium-cutter-cowes",
+          "2001-hylas-54-raised-saloon-cowes"
+        ]
+      },
+      {
+        "label": "Crosshaven, Cork, Ireland",
+        "count": 7,
+        "sampleSlugs": [
+          "1972-camper-nicholsons-30-crosshaven",
+          "1980-westerly-longbow-crosshaven",
+          "1991-dehler-36-cws-crosshaven"
+        ]
+      }
+    ],
+    "public_pin": [
+      {
+        "label": "Nanny Cay Marina, Tortola, British Virgin Islands",
+        "count": 23,
+        "sampleSlugs": [
+          "1970-cascade-36-nanny-cay-tortola",
+          "1981-morgan-462-nanny-cay",
+          "1984-morgan-moorings-50-nanny-cay-boatyard"
+        ]
+      },
+      {
+        "label": "Port Louis Marina, Grenada",
+        "count": 14,
+        "sampleSlugs": [
+          "2014-lagoon-450-divalto-grenada",
+          "2016-lucia-40-flamboyant-grenada",
+          "2017-bali-4-3-karukera-grenada"
+        ]
+      },
+      {
+        "label": "Burnham Yacht Harbour, United Kingdom",
+        "count": 13,
+        "sampleSlugs": [
+          "1979-rival-32-burnham-yacht-harbour",
+          "1990-moody-376-burnham-yacht-harbour",
+          "1990-omega-yachts-36-burnham-yacht-harbour"
+        ]
+      },
+      {
+        "label": "Hodge's Creek Marina, British Virgin Islands",
+        "count": 12,
+        "sampleSlugs": [
+          "2017-bali-4-3-hodge-s-creek-marina-hotel",
+          "2017-bali-4-3-samoa-british-virgin-islands",
+          "2017-dufour-350-gl-pissaro-british-virgin-islands"
+        ]
+      },
+      {
+        "label": "Marina Baotic, Seget Donji, Croatia",
+        "count": 12,
+        "sampleSlugs": [
+          "2015-bavaria-56-la-vestale-trogir",
+          "2015-lagoon-52-watteau-trogir",
+          "2015-sun-odyssey-509-barbaros-trogir"
+        ]
+      },
+      {
+        "label": "Marina Bas du Fort, Le Gosier, Guadeloupe",
+        "count": 11,
+        "sampleSlugs": [
+          "1981-wauquiez-amphitrite-43-marina-bas-du-fort-pointe-pitre-le-gosier",
+          "2003-giro-34-clair-de-lune-guadeloupe",
+          "2007-harmony-42-orff-guadeloupe"
+        ]
+      },
+      {
+        "label": "Portland Marina, United Kingdom",
+        "count": 11,
+        "sampleSlugs": [
+          "1967-holman-and-pye-northney-34-portland-marina",
+          "1970-hustler-30-portland-marina",
+          "1972-blakes-marine-cruising-folkboat-portland-marina"
+        ]
+      },
+      {
+        "label": "Conwy Marina, United Kingdom",
+        "count": 10,
+        "sampleSlugs": [
+          "1977-moody-30-conwy-marina",
+          "1979-sigma-33-conwy-marina",
+          "1982-noordsvaarder-super-conwy-marina"
+        ]
+      },
+      {
+        "label": "Alimos Marina, Athens, Greece",
+        "count": 9,
+        "sampleSlugs": [
+          "2016-lagoon-450-margeo-xi-athens",
+          "2016-lagoon-52-mojito-athens",
+          "2017-lagoon-450-margeo-xii-athens"
+        ]
+      },
+      {
+        "label": "Delta Marina, Kortgene, Netherlands",
+        "count": 8,
+        "sampleSlugs": [
+          "1976-gibsea-37-ketch-verkoophaven-delta-marina-kortgene-nederland",
+          "1984-beneteau-first-35-verkoophaven-delta-marina-nederland",
+          "1996-hallberg-rassy-34-verkoophaven-schepenkring-delta-marina-kortgene-nederland"
+        ]
+      },
+      {
+        "label": "Penarth Marina, United Kingdom",
+        "count": 8,
+        "sampleSlugs": [
+          "1963-south-coast-one-design-26-penarth-marina",
+          "1969-wing-25-penarth-marina",
+          "1983-sweden-yachts-c34-penarth-marina"
+        ]
+      },
+      {
+        "label": "ACI Marina Dubrovnik, Komolac, Croatia",
+        "count": 5,
+        "sampleSlugs": [
+          "2017-bavaria-34-bashung-dubrovnik",
+          "2017-dufour-460-erasmus-dubrovnik",
+          "2018-bali-4-5-tuvalu-dubrovnik"
+        ]
+      },
+      {
+        "label": "Chichester Marina, United Kingdom",
+        "count": 5,
+        "sampleSlugs": [
+          "1999-bavaria-31-chichester-marina",
+          "2001-catalina-34-chichester-marina",
+          "2020-jeanneau-sun-odyssey-349-chichester-marina"
+        ]
+      },
+      {
+        "label": "Haslar Marina, United Kingdom",
+        "count": 5,
+        "sampleSlugs": [
+          "1991-catalina-36-haslar-marina",
+          "1994-westerly-oceanquest-haslar-marina",
+          "1998-moody-36-mk-ii-haslar-marina"
+        ]
+      },
+      {
+        "label": "Linton Bay Marina, Panama",
+        "count": 5,
+        "sampleSlugs": [
+          "1984-colvin-schooner-brigantine-linton-bay-marina",
+          "1986-lerouge-ville-audrain-42-44-linton-bay-marina",
+          "1990-siltala-finlandia-linton-bay-marina"
+        ]
+      },
+      {
+        "label": "Marina Zaton, Šibenik, Croatia",
+        "count": 5,
+        "sampleSlugs": [
+          "2015-dufour-350-gl-valencia-ibenik",
+          "2015-sun-odyssey-509-pomone-ibenik",
+          "2017-sun-odyssey-449-suchon-ibenik"
+        ]
+      },
+      {
+        "label": "Port Pin Rolland, Saint-Mandrier-sur-Mer, France",
+        "count": 5,
+        "sampleSlugs": [
+          "2017-sun-odyssey-519-gillepsie-cote-d-azur",
+          "2019-jeanneau-sun-odyssey-490-port-pin-rolland",
+          "2019-sun-odyssey-490-fantaisie-cote-d-azur"
+        ]
+      },
+      {
+        "label": "Weymouth Marina, United Kingdom",
+        "count": 5,
+        "sampleSlugs": [
+          "1979-westerly-gk-29-weymouth-marina",
+          "1986-moody-37-weymouth-marina",
+          "1988-sigma-362-weymouth-marina"
+        ]
+      },
+      {
+        "label": "Craobh Marina, Argyll, United Kingdom",
+        "count": 4,
+        "sampleSlugs": [
+          "1984-hallberg-rassy-312-craobh-marina",
+          "1985-lm-27-craobh-marina",
+          "1985-moody-419-craobh-marina"
+        ]
+      },
+      {
+        "label": "Green Cay Marina, Christiansted, US Virgin Islands",
+        "count": 4,
+        "sampleSlugs": [
+          "2009-leopard-37-pc-green-cay-marina",
+          "2010-gemini-105mc-green-cay-marina",
+          "2010-gemini-105mc-green-cay-marina-st-croix"
+        ]
+      },
+      {
+        "label": "Marina Zaton, Sibenik, Croatia",
+        "count": 4,
+        "sampleSlugs": [
+          "2017-bavaria-37-haydn-ibenik",
+          "2017-bavaria-46-armstrong-ibenik",
+          "2018-dufour-310-inezic-ibenik"
+        ]
+      },
+      {
+        "label": "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+        "count": 4,
+        "sampleSlugs": [
+          "1970-great-dane-37-chatham-marina",
+          "1984-jeanneau-arcadia-chatham-marina",
+          "1987-lm-30-chatham-marina"
+        ]
+      },
+      {
+        "label": "Clarkes Court Boatyard and Marina, Grenada",
+        "count": 3,
+        "sampleSlugs": [
+          "2004-passport-470-cc-clarke-s-court-boatyard-marina",
+          "2013-custom-carriacou-sloop-42-clarke-s-court-boatyard-marina",
+          "2023-fountaine-pajot-elba-45-clarke-s-court-boatyard-marina"
+        ]
+      },
+      {
+        "label": "Costa Baja Marina, La Paz, Mexico",
+        "count": 3,
+        "sampleSlugs": [
+          "2017-dufour-460-grieg-la-paz",
+          "2017-oceanis-41-1-tselena-la-paz",
+          "2017-sun-odyssey-519-zanzibar-2-la-paz"
+        ]
+      },
+      {
+        "label": "Medway Yacht Club, Kent, United Kingdom",
+        "count": 3,
+        "sampleSlugs": [
+          "1980-beneteau-first-30-medway-yacht-club",
+          "1984-gibsea-84-medway-yacht-club",
+          "1990-scanmar-345-medway-yacht-club"
+        ]
+      },
+      {
+        "label": "Palm Cay Marina, Nassau, Bahamas",
+        "count": 3,
+        "sampleSlugs": [
+          "2018-lagoon-52-askela-nassau",
+          "2021-bali-5-4-yepa-ii-nassau",
+          "2021-bali-catspace-let-s-go-nassau"
+        ]
+      },
+      {
+        "label": "Port Tino Rossi, Ajaccio, France",
+        "count": 3,
+        "sampleSlugs": [
+          "2016-dufour-460-agrasot-corsica",
+          "2018-astrea-42-doris-corsica",
+          "2019-dufour-430-madher-corsica"
+        ]
+      },
+      {
+        "label": "Shelter Bay Marina, Panama",
+        "count": 3,
+        "sampleSlugs": [
+          "1982-morgan-462-shelter-bay-marina",
+          "1997-55-tayana-center-cockpit-shelter-bay-marina",
+          "2002-beneteau-393-shelter-bay-marina"
+        ]
+      },
+      {
+        "label": "Spice Island Marine, Grenada",
+        "count": 3,
+        "sampleSlugs": [
+          "1982-morgan-41-spice-island-marine",
+          "1987-sigma-362-spice-island-marine",
+          "1991-beneteau-oceanis-440-spice-island-marine"
+        ]
+      },
+      {
+        "label": "Alimos Marina, Alimos, Greece",
+        "count": 2,
+        "sampleSlugs": [
+          "2021-lagoon-50-alimos-marina",
+          "2022-lagoon-50-alimos-marina"
+        ]
+      }
+    ]
+  },
+  "byIntervention": [
+    {
+      "label": "unfixable",
+      "count": 8468
+    },
+    {
+      "label": "manual_enrichment",
+      "count": 2665
+    },
+    {
+      "label": "search_coverage_batch",
+      "count": 1169
+    },
+    {
+      "label": "already_public_pin",
+      "count": 280
+    },
+    {
+      "label": "gazetteer_poi",
+      "count": 99
+    },
+    {
+      "label": "source_cleanup_rule",
+      "count": 39
+    },
+    {
+      "label": "hand_alias",
+      "count": 2
+    },
+    {
+      "label": "manual_pin",
+      "count": 2
+    }
+  ],
+  "byUnfixableReason": [
+    {
+      "label": "broad_region_or_state_only",
+      "count": 6446
+    },
+    {
+      "label": "unknown_location_text",
+      "count": 2022
+    }
+  ],
+  "byInterventionBucket": {
+    "unfixable": [
+      {
+        "label": "needs_more_specific_location",
+        "count": 6446
+      },
+      {
+        "label": "unknown_location",
+        "count": 2022
+      }
+    ],
+    "source_cleanup_rule": [
+      {
+        "label": "review_queue",
+        "count": 25
+      },
+      {
+        "label": "needs_more_specific_location",
+        "count": 12
+      },
+      {
+        "label": "pending_ready",
+        "count": 1
+      },
+      {
+        "label": "unknown_location",
+        "count": 1
+      }
+    ],
+    "gazetteer_poi": [
+      {
+        "label": "held_back_coordinate",
+        "count": 41
+      },
+      {
+        "label": "unknown_location",
+        "count": 36
+      },
+      {
+        "label": "review_queue",
+        "count": 15
+      },
+      {
+        "label": "needs_more_specific_location",
+        "count": 7
+      }
+    ],
+    "manual_enrichment": [
+      {
+        "label": "held_back_coordinate",
+        "count": 1959
+      },
+      {
+        "label": "review_queue",
+        "count": 706
+      }
+    ],
+    "search_coverage_batch": [
+      {
+        "label": "pending_ready",
+        "count": 1169
+      }
+    ],
+    "already_public_pin": [
+      {
+        "label": "public_pin",
+        "count": 280
+      }
+    ],
+    "manual_pin": [
+      {
+        "label": "review_queue",
+        "count": 2
+      }
+    ],
+    "hand_alias": [
+      {
+        "label": "held_back_coordinate",
+        "count": 2
+      }
+    ]
+  },
+  "actionableLiftCandidates": [
+    {
+      "key": "manual_enrichment:le marin martinique",
+      "label": "Le Marin, Martinique",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 53,
+      "estimatedActionableLift": 9.5,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Martinique",
+          "count": 53
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 48
+        },
+        {
+          "label": "Boats.com",
+          "count": 2
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 2
+        },
+        {
+          "label": "CatamaranSite",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1974-cheoy-lee-47-offshore-le-marin",
+        "1979-jouet-37-le-marin",
+        "1981-tayana-37-le-marin-martinique",
+        "1981-trireme-43-le-marin",
+        "1985-pearson-36-2-le-marin-martinique"
+      ],
+      "sampleLocations": [
+        "Le Marin",
+        "Le Marin Martinique",
+        "Le Marin, Martinique"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:athens greece",
+      "label": "Athens, Greece",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 48,
+      "estimatedActionableLift": 8.6,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Greece",
+          "count": 48
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 36
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 10
+        },
+        {
+          "label": "Boats.com",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1985-x-yachts-x-402-athens",
+        "1989-beneteau-oceanis-430-owners-version-athens",
+        "1992-custom-motorsailer-84-athens",
+        "1995-beneteau-oceanis-athens",
+        "1998-beneteau-oceanis-461-clipper-athens"
+      ],
+      "sampleLocations": [
+        "Athens",
+        "Athens, Greece"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:barcelona catalonia spain",
+      "label": "Barcelona, Catalonia, Spain",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 46,
+      "estimatedActionableLift": 8.3,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Spain",
+          "count": 46
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 46
+        }
+      ],
+      "sampleSlugs": [
+        "1962-custom-built-sailing-barcelona",
+        "1962-sparkman-and-stephens-40-yawl-barcelona",
+        "1968-carabela-north-sea-24-barcelona",
+        "1980-baltic-39-barcelona",
+        "1984-frers-43-ketch-clasico-de-fibra-barcelona"
+      ],
+      "sampleLocations": [
+        "Barcelona, Catalonia"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:split croatia",
+      "label": "Split, Croatia",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 34,
+      "estimatedActionableLift": 6.1,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Croatia",
+          "count": 34
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 33
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1976-islander-36-tall-rig-split",
+        "1999-x-yachts-x-482-split",
+        "2002-bavaria-40-split",
+        "2004-bavaria-cruiser-36-split",
+        "2004-beneteau-oceanis-423-split"
+      ],
+      "sampleLocations": [
+        "Split",
+        "Split, Croatia"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:preveza greece",
+      "label": "Preveza, Greece",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 33,
+      "estimatedActionableLift": 5.9,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Greece",
+          "count": 33
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 27
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 6
+        }
+      ],
+      "sampleSlugs": [
+        "1978-westerly-33-preveza",
+        "1983-wauquiez-amphitrite-preveza",
+        "1984-southerly-105-preveza",
+        "1987-prout-snowgoose-37-elite-preveza",
+        "1989-catalina-34-preveza"
+      ],
+      "sampleLocations": [
+        "Preveza",
+        "Preveza, Greece",
+        "Preveza Ionian Sea, Greece",
+        "Preveza Greece Europe"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:lelystad netherlands",
+      "label": "Lelystad, Netherlands",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 32,
+      "estimatedActionableLift": 5.8,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Netherlands",
+          "count": 32
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 32
+        }
+      ],
+      "sampleSlugs": [
+        "1982-beneteau-first-32-aan-verkoopsteiger-in-lelystad",
+        "1983-nomad-34-aan-verkoopsteiger-in-lelystad",
+        "1983-southerly-95-aan-verkoopsteiger-in-lelystad",
+        "1984-hallberg-rassy-352-aan-verkoopsteiger-in-lelystad",
+        "1985-gibsea-84-aan-verkoopsteiger-in-lelystad"
+      ],
+      "sampleLocations": [
+        "Aan Verkoopsteiger In Lelystad",
+        "Aaan Verkoopsteiger In Lelystad"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:st thomas us virgin islands",
+      "label": "St. Thomas, US Virgin Islands",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 32,
+      "estimatedActionableLift": 5.8,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "United States Virgin Islands",
+          "count": 32
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 31
+        },
+        {
+          "label": "TheYachtMarket",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1973-pearson-p36-st-thomas",
+        "1975-morgan-out-island-510-st-thomas",
+        "1978-endeavour-37-st-thomas",
+        "1979-island-trader-ketch-st-thomas",
+        "1979-morgan-382-st-thomas"
+      ],
+      "sampleLocations": [
+        "St. Thomas, Us Virgin Islands",
+        "St. Thomas",
+        "St. Thomas, Virgin Islands",
+        "St. Thomas, US Virgin Islands",
+        "St. Thomas Vi"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:lefkas greece",
+      "label": "Lefkas, Greece",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 31,
+      "estimatedActionableLift": 5.6,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Greece",
+          "count": 31
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 31
+        }
+      ],
+      "sampleSlugs": [
+        "1980-hatecke-55ft-motor-sailor-ketch-lefkas",
+        "1987-hallberg-rassy-49-lefkas",
+        "1990-jeanneau-sundance-36-lefkas",
+        "1991-sadler-starlight-35-lefkas",
+        "1992-sadler-starlight-35-lefkas"
+      ],
+      "sampleLocations": [
+        "Lefkas, Greece",
+        "Lefkas"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "search_coverage_batch:plymouth united kingdom",
+      "label": "Plymouth, United Kingdom",
+      "bucket": "pending_ready",
+      "intervention": "search_coverage_batch",
+      "rowCount": 46,
+      "estimatedActionableLift": 5.5,
+      "probability": 0.12,
+      "countries": [
+        {
+          "label": "United Kingdom",
+          "count": 46
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 46
+        }
+      ],
+      "sampleSlugs": [
+        "1964-buchanan-32-sloop-plymouth",
+        "1966-nicholson-32-mk-iii-plymouth",
+        "1970-hillyard-9-ton-plymouth",
+        "1972-hallberg-rassy-nab-35-rasmus-plymouth",
+        "1975-halcyon-27-plymouth"
+      ],
+      "sampleLocations": [
+        "Plymouth"
+      ],
+      "rationale": "Ready for search-coverage geocoding, but not enough evidence for a hard public pin."
+    },
+    {
+      "key": "manual_enrichment:sibenik croatia",
+      "label": "Sibenik, Croatia",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 30,
+      "estimatedActionableLift": 5.4,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Croatia",
+          "count": 30
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 29
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1997-marine-albin-winga-87-sibenik",
+        "2002-elan-45-ibenik",
+        "2002-elan-45-sibenik",
+        "2003-beneteau-oceanis-clipper-311-ibenik",
+        "2005-grand-soleil-45-ibenik"
+      ],
+      "sampleLocations": [
+        "Sibenik, Croatia",
+        "Šibenik",
+        "Sibenik"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:tortola british virgin islands",
+      "label": "Tortola, British Virgin Islands",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 30,
+      "estimatedActionableLift": 5.4,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "British Virgin Islands",
+          "count": 30
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 16
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 7
+        },
+        {
+          "label": "Moorings Brokerage",
+          "count": 3
+        },
+        {
+          "label": "Boats.com",
+          "count": 2
+        },
+        {
+          "label": "CatamaranSite",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1972-dufour-arpege-tortola",
+        "2005-beneteau-cyclades-43-3-tortola-british-virgin-islands-caribbean",
+        "2005-beneteau-oceanis-473-tortola",
+        "2006-robertson-and-caine-leopard-tortola",
+        "2011-beneteau-first-40-tortola"
+      ],
+      "sampleLocations": [
+        "Tortola, British Virgin Islands",
+        "Tortola British Virgin Islands Caribbean",
+        "Tortola",
+        "Tortola (Caribbean)",
+        "Tortola, Virgin Islands, British"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "source_cleanup_rule:saint martin sint maarten variant text",
+      "label": "Saint Martin / Sint Maarten variant text",
+      "bucket": "review_queue",
+      "intervention": "source_cleanup_rule",
+      "rowCount": 13,
+      "estimatedActionableLift": 5.2,
+      "probability": 0.4,
+      "countries": [
+        {
+          "label": "Sint Maarten",
+          "count": 13
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 9
+        },
+        {
+          "label": "Moorings Brokerage",
+          "count": 2
+        },
+        {
+          "label": "CatamaranSite",
+          "count": 1
+        },
+        {
+          "label": "TheYachtMarket",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1974-beehive-shopfitters-john-atkins-design-st-martin-french",
+        "1977-sparcraft-doug-peterson-admirals-cup-fastnet-st-maarten-na",
+        "1981-oceanic-46-st-maarten-na-northeastern-caribbean",
+        "1985-bruce-roberts-37-st-maarten-caribbean",
+        "1994-freedom-sint-maarten-dutch-part-sint-maarten-dutch-part"
+      ],
+      "sampleLocations": [
+        "St Martin French, West Indies",
+        "St Maarten Na",
+        "St Maarten NA Northeastern Caribbean",
+        "St Maarten Caribbean",
+        "Sint Maarten Dutch Part"
+      ],
+      "rationale": "Normalize Saint Martin/Sint Maarten region suffixes to a reviewed city or marina."
+    },
+    {
+      "key": "search_coverage_batch:hamble united kingdom",
+      "label": "Hamble, United Kingdom",
+      "bucket": "pending_ready",
+      "intervention": "search_coverage_batch",
+      "rowCount": 42,
+      "estimatedActionableLift": 5,
+      "probability": 0.12,
+      "countries": [
+        {
+          "label": "United Kingdom",
+          "count": 42
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 42
+        }
+      ],
+      "sampleSlugs": [
+        "1972-camper-nicholsons-nicholson-35-hamble",
+        "1978-moody-33-mk-ii-hamble",
+        "1980-westerly-fulmar-hamble",
+        "1981-stefini-60-hamble",
+        "1982-contessa-32-hamble"
+      ],
+      "sampleLocations": [
+        "Hamble"
+      ],
+      "rationale": "Ready for search-coverage geocoding, but not enough evidence for a hard public pin."
+    },
+    {
+      "key": "manual_enrichment:marseille france",
+      "label": "Marseille, France",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 28,
+      "estimatedActionableLift": 5,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "France",
+          "count": 28
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 26
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1973-nautor-swan-65-marseille",
+        "1980-nauticat-44-marseille",
+        "1982-beneteau-first-28-marseille",
+        "1985-amel-maramu-marseille",
+        "1994-akbas-custom-gulet-ketch-marseille"
+      ],
+      "sampleLocations": [
+        "Marseille",
+        "Marseille, France"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:fort lauderdale florida united states",
+      "label": "Fort Lauderdale, Florida, United States",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 27,
+      "estimatedActionableLift": 4.9,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "United States",
+          "count": 27
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 17
+        },
+        {
+          "label": "Boats.com",
+          "count": 6
+        },
+        {
+          "label": "CatamaranSite",
+          "count": 2
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1980-bristol-40-fort-lauderdale",
+        "2008-privilege-745-fort-lauderdale",
+        "2008-seawind-1000-xl-fort-lauderdale",
+        "2013-leopard-44-fort-lauderdale",
+        "2014-gunboat-55-fort-lauderdale"
+      ],
+      "sampleLocations": [
+        "Fort Lauderdale, Florida"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:marmaris turkey",
+      "label": "Marmaris, Turkey",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 26,
+      "estimatedActionableLift": 4.7,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Turkey",
+          "count": 26
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 18
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 6
+        },
+        {
+          "label": "Moorings Brokerage",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1981-skye-51-marmaris",
+        "1988-island-packet-ip-38-marmaris",
+        "1991-jeanneau-sun-odyssey-51-marmaris",
+        "1992-gulet-52-marmaris",
+        "1997-beneteau-oceanis-36-cc-marmaris"
+      ],
+      "sampleLocations": [
+        "Marmaris",
+        "Marmaris, Turkey"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:new hampshire united kingdom",
+      "label": "New Hampshire, United Kingdom",
+      "bucket": "review_queue",
+      "intervention": "manual_enrichment",
+      "rowCount": 22,
+      "estimatedActionableLift": 4.4,
+      "probability": 0.2,
+      "countries": [
+        {
+          "label": "United Kingdom",
+          "count": 22
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 22
+        }
+      ],
+      "sampleSlugs": [
+        "1971-hallberg-rassy-mistral-33-new-hampshire",
+        "1973-pearson-26-classic-pocket-cruiser-new-hampshire",
+        "1974-scampi-mark-iv-new-hampshire",
+        "1974-scampi-markiv-new-hampshire",
+        "1975-sabre-s28-new-hampshire"
+      ],
+      "sampleLocations": [
+        "New Hampshire"
+      ],
+      "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+    },
+    {
+      "key": "source_cleanup_rule:lake inland water context",
+      "label": "Lake / inland-water context",
+      "bucket": "unknown_location",
+      "intervention": "source_cleanup_rule",
+      "rowCount": 8,
+      "estimatedActionableLift": 4.4,
+      "probability": 0.55,
+      "countries": [
+        {
+          "label": "United States",
+          "count": 5
+        },
+        {
+          "label": "Canada",
+          "count": 3
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 8
+        }
+      ],
+      "sampleSlugs": [
+        "1973-northamericanfirbreglas-douglas-32-lake-ontario-kingston-area",
+        "1981-canadian-sailcraft-33-bayfield-lake-huron",
+        "1983-jeanneau-fantasia-ny-lake-champlain",
+        "1984-mirage-25-bob-perry-design-kingsville-ontario-lake-erie",
+        "1989-schooner-hans-koll-schooner-lake-ontario-toronto"
+      ],
+      "sampleLocations": [
+        "Lake Ontario Kingston Area",
+        "Bayfield - Lake Huron",
+        "Ny Lake Champlain",
+        "Kingsville Ontario Lake Erie",
+        "Lake Ontario Toronto, Canada"
+      ],
+      "rationale": "Normalize to the named marina/city plus lake only when the listing text has a specific place."
+    },
+    {
+      "key": "search_coverage_batch:lisboa portugal",
+      "label": "Lisboa, Portugal",
+      "bucket": "pending_ready",
+      "intervention": "search_coverage_batch",
+      "rowCount": 35,
+      "estimatedActionableLift": 4.2,
+      "probability": 0.12,
+      "countries": [
+        {
+          "label": "Portugal",
+          "count": 35
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 35
+        }
+      ],
+      "sampleSlugs": [
+        "1973-camper-nicholsons-two-tonner-lisboa",
+        "1973-royal-huisman-49-lisboa",
+        "1974-shipman-28-lisboa",
+        "1975-grampian-30-lisboa",
+        "1977-aloa-27-lisboa"
+      ],
+      "sampleLocations": [
+        "Lisboa, Portugal"
+      ],
+      "rationale": "Ready for search-coverage geocoding, but not enough evidence for a hard public pin."
+    },
+    {
+      "key": "manual_enrichment:liguria italy",
+      "label": "Liguria, Italy",
+      "bucket": "review_queue",
+      "intervention": "manual_enrichment",
+      "rowCount": 21,
+      "estimatedActionableLift": 4.2,
+      "probability": 0.2,
+      "countries": [
+        {
+          "label": "Italy",
+          "count": 21
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 20
+        },
+        {
+          "label": "Boats.com",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1988-hallberg-rassy-49-ketch-liguria",
+        "1991-grand-soleil-45-frers-liguria",
+        "2003-beneteau-50-liguria",
+        "2005-jeanneau-sun-odyssey-40-3-liguria",
+        "2005-mcconaghy-rp-79-nauta-liguria"
+      ],
+      "sampleLocations": [
+        "Liguria",
+        "Liguria, Italy"
+      ],
+      "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+    },
+    {
+      "key": "manual_enrichment:lefkada greece",
+      "label": "Lefkada, Greece",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 23,
+      "estimatedActionableLift": 4.1,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Greece",
+          "count": 23
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 22
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "1979-najad-34-lefkada",
+        "1982-maxi-84-lefkada",
+        "1996-north-wind-50-lefkada",
+        "1997-gibsea-364-lefkada",
+        "1999-dufour-38-classic-lefkada"
+      ],
+      "sampleLocations": [
+        "Lefkada",
+        "Lefkada, Greece"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:corfu greece",
+      "label": "Corfu, Greece",
+      "bucket": "review_queue",
+      "intervention": "manual_enrichment",
+      "rowCount": 20,
+      "estimatedActionableLift": 4,
+      "probability": 0.2,
+      "countries": [
+        {
+          "label": "Greece",
+          "count": 20
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 18
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1978-jaguar-27-corfu",
+        "1983-rc-lazaro-gulfstar-sailmaster-corfu",
+        "1983-tagudo-34-corfu",
+        "1984-wauquiez-centurion-47-corfu",
+        "1986-beneteau-first-29-corfu"
+      ],
+      "sampleLocations": [
+        "Corfu",
+        "Corfu, Greece"
+      ],
+      "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+    },
+    {
+      "key": "source_cleanup_rule:directional fragment around a real place",
+      "label": "Directional fragment around a real place",
+      "bucket": "needs_more_specific_location",
+      "intervention": "source_cleanup_rule",
+      "rowCount": 10,
+      "estimatedActionableLift": 4,
+      "probability": 0.4,
+      "countries": [
+        {
+          "label": "France",
+          "count": 7
+        },
+        {
+          "label": "Canada",
+          "count": 1
+        },
+        {
+          "label": "Italy",
+          "count": 1
+        },
+        {
+          "label": "United States",
+          "count": 1
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 7
+        },
+        {
+          "label": "TheYachtMarket",
+          "count": 3
+        }
+      ],
+      "sampleSlugs": [
+        "1951-de-vries-lentsch-motorsailer-ketch-seagoing-south-of",
+        "1958-55m-class-sailing-yacht-nordic-cruiser-port-de-gallician-aigues-mortes-south-of",
+        "1974-albin-ballad-south-of",
+        "1987-nautor-swan-53-south-of",
+        "1995-corsair-f-31-osoyoos-bc-6-miles-north-of-oroville-wa"
+      ],
+      "sampleLocations": [
+        "South Of, France",
+        "Port De Gallician Aigues-Mortes South Of, France",
+        "Osoyoos Bc 6 Miles North Of Oroville Wa",
+        "North East Of, Italy",
+        "Canada West Coast Just North Of Seattle"
+      ],
+      "rationale": "Remove directional prose and retain the named nearby city/region."
+    },
+    {
+      "key": "gazetteer_poi:marina anse marcel",
+      "label": "Marina Anse Marcel",
+      "bucket": "held_back_coordinate",
+      "intervention": "gazetteer_poi",
+      "rowCount": 6,
+      "estimatedActionableLift": 3.9,
+      "probability": 0.65,
+      "countries": [
+        {
+          "label": "Sint Maarten",
+          "count": 6
+        }
+      ],
+      "sources": [
+        {
+          "label": "Dream Yacht Sales",
+          "count": 6
+        }
+      ],
+      "sampleSlugs": [
+        "2017-bali-4-5-vieques-st-martin",
+        "2018-dufour-390-cassiopeia-st-martin",
+        "2018-dufour-460-torne-st-martin",
+        "2018-oceanis-51-1-modrian-st-martin",
+        "2019-dufour-430-sunny-mango-st-martin"
+      ],
+      "sampleLocations": [
+        "St. Martin, Marina De L'Anse Marcel",
+        "St. Martin, Marina De L'Anse Marcel, Caribbean"
+      ],
+      "rationale": "Names a marine facility-like place; best handled by a vetted POI/gazetteer match."
+    },
+    {
+      "key": "gazetteer_poi:marina del rey",
+      "label": "Marina Del Rey",
+      "bucket": "held_back_coordinate",
+      "intervention": "gazetteer_poi",
+      "rowCount": 6,
+      "estimatedActionableLift": 3.9,
+      "probability": 0.65,
+      "countries": [
+        {
+          "label": "United States",
+          "count": 6
+        }
+      ],
+      "sources": [
+        {
+          "label": "Boats.com",
+          "count": 4
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 1
+        },
+        {
+          "label": "TheYachtMarket",
+          "count": 1
+        }
+      ],
+      "sampleSlugs": [
+        "2003-hunter-426-ac-marina-del-rey",
+        "2005-beneteau-44-7-marina-del-rey",
+        "2023-hanse-388-marina-del-rey",
+        "2026-dufour-48-marina-del-rey",
+        "2026-jeanneau-sun-odyssey-410-marina-del-rey"
+      ],
+      "sampleLocations": [
+        "Marina Del Rey, California"
+      ],
+      "rationale": "Names a marine facility-like place; best handled by a vetted POI/gazetteer match."
+    },
+    {
+      "key": "search_coverage_batch:suffolk yacht harbour united kingdom",
+      "label": "Suffolk Yacht Harbour, United Kingdom",
+      "bucket": "pending_ready",
+      "intervention": "search_coverage_batch",
+      "rowCount": 32,
+      "estimatedActionableLift": 3.8,
+      "probability": 0.12,
+      "countries": [
+        {
+          "label": "United Kingdom",
+          "count": 32
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 32
+        }
+      ],
+      "sampleSlugs": [
+        "1962-cheverton-boats-crusader-suffolk-yacht-harbour",
+        "1973-westerly-berwick-suffolk-yacht-harbour",
+        "1974-she-27-suffolk-yacht-harbour",
+        "1977-contessa-32-suffolk-yacht-harbour",
+        "1978-westerly-berwick-suffolk-yacht-harbour"
+      ],
+      "sampleLocations": [
+        "Suffolk Yacht Harbour"
+      ],
+      "rationale": "Ready for search-coverage geocoding, but not enough evidence for a hard public pin."
+    },
+    {
+      "key": "manual_enrichment:bodrum turkey",
+      "label": "Bodrum, Turkey",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 21,
+      "estimatedActionableLift": 3.8,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Turkey",
+          "count": 21
+        }
+      ],
+      "sources": [
+        {
+          "label": "TheYachtMarket",
+          "count": 19
+        },
+        {
+          "label": "Sailboat Listings",
+          "count": 2
+        }
+      ],
+      "sampleSlugs": [
+        "1985-gulet-motor-sailor-goulet-bodrum",
+        "1987-lovett-50-bodrum",
+        "1994-oceanhouse-59-pilothouse-bodrum",
+        "2000-wooden-gulet-bodrum",
+        "2003-dufour-36-classic-bodrum"
+      ],
+      "sampleLocations": [
+        "Bodrum",
+        "Bodrum, Turkey"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:rio dulce guatemala",
+      "label": "Rio Dulce Guatemala",
+      "bucket": "held_back_coordinate",
+      "intervention": "manual_enrichment",
+      "rowCount": 21,
+      "estimatedActionableLift": 3.8,
+      "probability": 0.18,
+      "countries": [
+        {
+          "label": "Guatemala",
+          "count": 21
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 21
+        }
+      ],
+      "sampleSlugs": [
+        "1967-van-der-meer-52-copper-nickel-hull-rio-dulce-guatemala",
+        "1970-morgan-m38-rio-dulce-guatemala",
+        "1972-morgan-out-island-rio-dulce-guatemala",
+        "1976-c-c-42-rio-dulce",
+        "1976-downeaster-32-rio-dulce-guatemala"
+      ],
+      "sampleLocations": [
+        "Rio Dulce Guatemala",
+        "Rio Dulce",
+        "Rio Dulce, Guatemala"
+      ],
+      "rationale": "Has broad coordinates; keep search-only unless source detail identifies a public pin."
+    },
+    {
+      "key": "manual_enrichment:san carlos sonora mexico",
+      "label": "San Carlos Sonora, Mexico",
+      "bucket": "review_queue",
+      "intervention": "manual_enrichment",
+      "rowCount": 18,
+      "estimatedActionableLift": 3.6,
+      "probability": 0.2,
+      "countries": [
+        {
+          "label": "Mexico",
+          "count": 18
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 18
+        }
+      ],
+      "sampleSlugs": [
+        "1980-shannon-38-ph-san-carlos-sonora",
+        "1981-whitby-42-ketch-san-carlos-sonora",
+        "1983-catalina-38-san-carlos-sonora",
+        "1983-endeavour-40-san-carlos-sonora",
+        "1985-brown-searunner-san-carlos-sonora"
+      ],
+      "sampleLocations": [
+        "San Carlos Sonora, Mexico"
+      ],
+      "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+    },
+    {
+      "key": "manual_enrichment:bocas del toro panama",
+      "label": "Bocas Del Toro, Panama",
+      "bucket": "review_queue",
+      "intervention": "manual_enrichment",
+      "rowCount": 17,
+      "estimatedActionableLift": 3.4,
+      "probability": 0.2,
+      "countries": [
+        {
+          "label": "Panama",
+          "count": 17
+        }
+      ],
+      "sources": [
+        {
+          "label": "Sailboat Listings",
+          "count": 17
+        }
+      ],
+      "sampleSlugs": [
+        "1979-morgan-s-j-bocas-del-toro",
+        "1980-gulfstar-bocas-del-toro-bocas-del-toro",
+        "1982-catalac-8-meter-bocas-del-toro",
+        "1982-watkins-36c-center-cockpit-bocas-del-toro",
+        "1982-watkins-w36c-bocas-del-toro"
+      ],
+      "sampleLocations": [
+        "Bocas Del Toro, Panama",
+        "Bocas Del Toro"
+      ],
+      "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+    }
+  ],
+  "gazetteerSeedRecommendations": [
+    {
+      "name": "Marina Anse Marcel",
+      "country": "Sint Maarten",
+      "rowCount": 6,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2017-bali-4-5-vieques-st-martin",
+        "2018-dufour-390-cassiopeia-st-martin",
+        "2018-dufour-460-torne-st-martin",
+        "2018-oceanis-51-1-modrian-st-martin",
+        "2019-dufour-430-sunny-mango-st-martin"
+      ],
+      "sampleQueries": [
+        "Marina Anse Marcel, Saint Martin"
+      ]
+    },
+    {
+      "name": "Marina Del Rey",
+      "country": "United States",
+      "rowCount": 6,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2003-hunter-426-ac-marina-del-rey",
+        "2005-beneteau-44-7-marina-del-rey",
+        "2023-hanse-388-marina-del-rey",
+        "2026-dufour-48-marina-del-rey",
+        "2026-jeanneau-sun-odyssey-410-marina-del-rey"
+      ],
+      "sampleQueries": [
+        "Marina Del Rey, California, United States"
+      ]
+    },
+    {
+      "name": "Dover Marina",
+      "country": "United Kingdom",
+      "rowCount": 3,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1982-moody-36-dover-marina",
+        "1992-dehler-34-dover-marina",
+        "1997-hunter-legend-410-dover-marina"
+      ],
+      "sampleQueries": [
+        "Dover Marina, Kent, United Kingdom"
+      ]
+    },
+    {
+      "name": "Palm Cay Marina",
+      "country": "Bahamas",
+      "rowCount": 2,
+      "intervention": "hand_alias",
+      "sampleSlugs": [
+        "2019-astrea-42-prince-des-mers-nassau",
+        "2020-astrea-42-eden-blue-nassau"
+      ],
+      "sampleQueries": [
+        "Palm Cay Marina, Nassau, Bahamas"
+      ]
+    },
+    {
+      "name": "Pembroke Dock",
+      "country": "United Kingdom",
+      "rowCount": 2,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1982-jeanneau-sun-fizz-pembroke-dock",
+        "1989-westerly-storm-33-pembroke-dock"
+      ],
+      "sampleQueries": [
+        "Pembroke Dock, Pembrokeshire, United Kingdom"
+      ]
+    },
+    {
+      "name": "Red Frog Marina Bocas Del Toro",
+      "country": "Panama",
+      "rowCount": 2,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1977-nautic-saintonge-ns-44-red-frog-marina-bocas-del-toro",
+        "1979-pacific-seacraft-mariah-red-frog-marina-bocas-del-toro"
+      ],
+      "sampleQueries": [
+        "Red Frog Marina Bocas Del Toro, Panama"
+      ]
+    },
+    {
+      "name": "Sune Carlsson Boatyard",
+      "country": "Sweden",
+      "rowCount": 2,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2019-dufour-360-snowdrop-stockholm",
+        "2019-dufour-460-filao-stockholm"
+      ],
+      "sampleQueries": [
+        "Sune Carlsson Boatyard, Stockholm, Scandinavia, Sweden",
+        "Sune Carlsson Boatyard, Stockholm, Sweden"
+      ]
+    },
+    {
+      "name": "Tollesbury Marina",
+      "country": "United Kingdom",
+      "rowCount": 2,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1988-victoria-frances-26-tollesbury-marina",
+        "2000-vancouver-34-pilothouse-tollesbury-marina"
+      ],
+      "sampleQueries": [
+        "Tollesbury Marina, United Kingdom"
+      ]
+    },
+    {
+      "name": "18th And Lumber Chicago Canal St Boatyard",
+      "country": "United States",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1984-freedom-29-18th-and-lumber-chicago-canal-st-boatyard"
+      ],
+      "sampleQueries": [
+        "18th And Lumber Chicago Canal St Boatyard, Illinois, United States"
+      ]
+    },
+    {
+      "name": "Boatyard Talleres Navales Bercovich La Paz",
+      "country": "Mexico",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1976-jensen-marine-cal-2-34-boatyard-talleres-navales-bercovich-la-paz-baja-california-sur"
+      ],
+      "sampleQueries": [
+        "Boatyard Talleres Navales Bercovich La Paz, Baja California Sur, Mexico"
+      ]
+    },
+    {
+      "name": "Carlyle West Access Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1979-seafarer-swiftsure-carlyle-west-access-marina"
+      ],
+      "sampleQueries": [
+        "Carlyle West Access Marina, Illinois"
+      ]
+    },
+    {
+      "name": "Cathedral Bluffs Yacht Club Toronto",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1986-o-day-31-cathedral-bluffs-yacht-club-toronto"
+      ],
+      "sampleQueries": [
+        "Cathedral Bluffs Yacht Club Toronto"
+      ]
+    },
+    {
+      "name": "Chatham Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2000-jeanneau-sun-odyssey-32-2-chatham-marina"
+      ],
+      "sampleQueries": [
+        "Chatham Marina"
+      ]
+    },
+    {
+      "name": "Cooks Bay Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1973-catalina-c27-cooks-bay-marina"
+      ],
+      "sampleQueries": [
+        "Cooks Bay Marina"
+      ]
+    },
+    {
+      "name": "Croatia - Veli Rat Marina On Dugi Otok",
+      "country": "Croatia",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1987-tashing-tashiba-36-croatia-veli-rat-marina-on-dugi-otok"
+      ],
+      "sampleQueries": [
+        "Croatia - Veli Rat Marina On Dugi Otok"
+      ]
+    },
+    {
+      "name": "Cruise Port Marina Ensenada Baja California",
+      "country": "Mexico",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1984-lancer-island-time-cruise-port-marina-ensenada-baja-california"
+      ],
+      "sampleQueries": [
+        "Cruise Port Marina Ensenada Baja California, Mexico"
+      ]
+    },
+    {
+      "name": "Deko Marina",
+      "country": "Netherlands",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1995-gibsea-362-aan-verkoopsteiger-in-lelystad"
+      ],
+      "sampleQueries": [
+        "Deko Marina, Lelystad, Netherlands"
+      ]
+    },
+    {
+      "name": "Empuriabrava Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2004-sun-odyssey-52-2-slow-roses"
+      ],
+      "sampleQueries": [
+        "Empuriabrava Marina, Roses"
+      ]
+    },
+    {
+      "name": "Ensenada Cruiseport Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1968-classic-ensenada-cruiseport-marina-ensenada-cruiseport-marina"
+      ],
+      "sampleQueries": [
+        "Ensenada Cruiseport Marina"
+      ]
+    },
+    {
+      "name": "Etobicoke Yacht Club",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1994-beneteau-352-etobicoke-yacht-club"
+      ],
+      "sampleQueries": [
+        "Etobicoke Yacht Club"
+      ]
+    },
+    {
+      "name": "Felixstowe Ferry Boatyard",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1993-hunter-legend-35-5-felixstowe-ferry-boatyard"
+      ],
+      "sampleQueries": [
+        "Felixstowe Ferry Boatyard"
+      ]
+    },
+    {
+      "name": "Fort Pierce City Marina",
+      "country": "United States",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2004-catalina-c42-fort-pierce-city-marina"
+      ],
+      "sampleQueries": [
+        "Fort Pierce City Marina, Florida, United States"
+      ]
+    },
+    {
+      "name": "Gulf Harbour Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1990-whiting-40-gulf-harbour-marina"
+      ],
+      "sampleQueries": [
+        "Gulf Harbour Marina"
+      ]
+    },
+    {
+      "name": "Hotel Coral Y Marina",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1988-hunter-legend-hotel-coral-y-marina"
+      ],
+      "sampleQueries": [
+        "Hotel Coral Y Marina"
+      ]
+    },
+    {
+      "name": "Liberty Harbor Marina",
+      "country": "United States",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1984-cape-dory-25d-liberty-harbor-marina"
+      ],
+      "sampleQueries": [
+        "Liberty Harbor Marina, New Jersey, United States"
+      ]
+    },
+    {
+      "name": "Marina",
+      "country": "United Kingdom",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1990-vitesse-33-dover"
+      ],
+      "sampleQueries": [
+        "Marina, Dover, United Kingdom"
+      ]
+    },
+    {
+      "name": "Marina",
+      "country": "Croatia",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2019-leopard-40-marina"
+      ],
+      "sampleQueries": [
+        "Marina, Croatia"
+      ]
+    },
+    {
+      "name": "Marina De Saint François",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2005-bavaria-cruiser-42-marina-de-saint-fran-ois"
+      ],
+      "sampleQueries": [
+        "Marina De Saint François"
+      ]
+    },
+    {
+      "name": "Marina Del Ray Orillia",
+      "country": "Canada",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "1987-hunter-26-5-marina-del-ray-orillia"
+      ],
+      "sampleQueries": [
+        "Marina Del Ray Orillia, Ontario, Canada"
+      ]
+    },
+    {
+      "name": "Marina Di Cala De Medici",
+      "country": "Unknown",
+      "rowCount": 1,
+      "intervention": "gazetteer_poi",
+      "sampleSlugs": [
+        "2007-hanse-430e-marina-di-cala-de-medici"
+      ],
+      "sampleQueries": [
+        "Marina Di Cala De Medici"
+      ]
+    }
+  ],
+  "sourceCleanupPatternCandidates": [
+    {
+      "patternId": "saint_martin_variants",
+      "label": "Saint Martin / Sint Maarten variant text",
+      "rowCount": 13,
+      "recommendation": "Normalize Saint Martin/Sint Maarten region suffixes to a reviewed city or marina.",
+      "sampleLocations": [
+        "St Martin French, West Indies",
+        "St Maarten Na",
+        "St Maarten NA Northeastern Caribbean",
+        "St Maarten Caribbean",
+        "Sint Maarten Dutch Part"
+      ],
+      "sampleSlugs": [
+        "1974-beehive-shopfitters-john-atkins-design-st-martin-french",
+        "1977-sparcraft-doug-peterson-admirals-cup-fastnet-st-maarten-na",
+        "1981-oceanic-46-st-maarten-na-northeastern-caribbean",
+        "1985-bruce-roberts-37-st-maarten-caribbean",
+        "1994-freedom-sint-maarten-dutch-part-sint-maarten-dutch-part"
+      ]
+    },
+    {
+      "patternId": "directional_fragment",
+      "label": "Directional fragment around a real place",
+      "rowCount": 10,
+      "recommendation": "Remove directional prose and retain the named nearby city/region.",
+      "sampleLocations": [
+        "South Of, France",
+        "Port De Gallician Aigues-Mortes South Of, France",
+        "Osoyoos Bc 6 Miles North Of Oroville Wa",
+        "North East Of, Italy",
+        "Canada West Coast Just North Of Seattle"
+      ],
+      "sampleSlugs": [
+        "1951-de-vries-lentsch-motorsailer-ketch-seagoing-south-of",
+        "1958-55m-class-sailing-yacht-nordic-cruiser-port-de-gallician-aigues-mortes-south-of",
+        "1974-albin-ballad-south-of",
+        "1987-nautor-swan-53-south-of",
+        "1995-corsair-f-31-osoyoos-bc-6-miles-north-of-oroville-wa"
+      ]
+    },
+    {
+      "patternId": "lake_context",
+      "label": "Lake / inland-water context",
+      "rowCount": 8,
+      "recommendation": "Normalize to the named marina/city plus lake only when the listing text has a specific place.",
+      "sampleLocations": [
+        "Lake Ontario Kingston Area",
+        "Bayfield - Lake Huron",
+        "Ny Lake Champlain",
+        "Kingsville Ontario Lake Erie",
+        "Lake Ontario Toronto, Canada"
+      ],
+      "sampleSlugs": [
+        "1973-northamericanfirbreglas-douglas-32-lake-ontario-kingston-area",
+        "1981-canadian-sailcraft-33-bayfield-lake-huron",
+        "1983-jeanneau-fantasia-ny-lake-champlain",
+        "1984-mirage-25-bob-perry-design-kingsville-ontario-lake-erie",
+        "1989-schooner-hans-koll-schooner-lake-ontario-toronto"
+      ]
+    },
+    {
+      "patternId": "misspelled_country_or_region",
+      "label": "Misspelled country or region token",
+      "rowCount": 8,
+      "recommendation": "Correct the misspelled place token before retrying geocoding.",
+      "sampleLocations": [
+        "Georgetown Exuma Bahmas",
+        "Grenade Caribbean",
+        "Utila Bahia Islan, Honduras",
+        "Peloponesse",
+        "Gibraltor, Spain"
+      ],
+      "sampleSlugs": [
+        "1969-cassian-and-cutbertson-crc-aft-cockpit-georgetown-exuma-bahmas",
+        "1975-malo-50-grenade-caribbean",
+        "1994-james-wharram-pahi-42-utila-bahia-islan",
+        "2000-bavaria-38-holiday-peloponesse",
+        "2003-beneteau-473-gibraltor"
+      ]
+    }
+  ],
+  "manualEnrichmentDeduplication": {
+    "rowCount": 706,
+    "uniqueClusters": 307,
+    "topTenClusterShare": 23.8,
+    "topClusters": [
+      {
+        "key": "manual_enrichment:new hampshire united kingdom",
+        "label": "New Hampshire, United Kingdom",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 22,
+        "estimatedActionableLift": 4.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "United Kingdom",
+            "count": 22
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 22
+          }
+        ],
+        "sampleSlugs": [
+          "1971-hallberg-rassy-mistral-33-new-hampshire",
+          "1973-pearson-26-classic-pocket-cruiser-new-hampshire",
+          "1974-scampi-mark-iv-new-hampshire",
+          "1974-scampi-markiv-new-hampshire",
+          "1975-sabre-s28-new-hampshire"
+        ],
+        "sampleLocations": [
+          "New Hampshire"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:liguria italy",
+        "label": "Liguria, Italy",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 21,
+        "estimatedActionableLift": 4.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Italy",
+            "count": 21
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 20
+          },
+          {
+            "label": "Boats.com",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1988-hallberg-rassy-49-ketch-liguria",
+          "1991-grand-soleil-45-frers-liguria",
+          "2003-beneteau-50-liguria",
+          "2005-jeanneau-sun-odyssey-40-3-liguria",
+          "2005-mcconaghy-rp-79-nauta-liguria"
+        ],
+        "sampleLocations": [
+          "Liguria",
+          "Liguria, Italy"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:corfu greece",
+        "label": "Corfu, Greece",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 20,
+        "estimatedActionableLift": 4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Greece",
+            "count": 20
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 18
+          },
+          {
+            "label": "Sailboat Listings",
+            "count": 2
+          }
+        ],
+        "sampleSlugs": [
+          "1978-jaguar-27-corfu",
+          "1983-rc-lazaro-gulfstar-sailmaster-corfu",
+          "1983-tagudo-34-corfu",
+          "1984-wauquiez-centurion-47-corfu",
+          "1986-beneteau-first-29-corfu"
+        ],
+        "sampleLocations": [
+          "Corfu",
+          "Corfu, Greece"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:san carlos sonora mexico",
+        "label": "San Carlos Sonora, Mexico",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 18,
+        "estimatedActionableLift": 3.6,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Mexico",
+            "count": 18
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 18
+          }
+        ],
+        "sampleSlugs": [
+          "1980-shannon-38-ph-san-carlos-sonora",
+          "1981-whitby-42-ketch-san-carlos-sonora",
+          "1983-catalina-38-san-carlos-sonora",
+          "1983-endeavour-40-san-carlos-sonora",
+          "1985-brown-searunner-san-carlos-sonora"
+        ],
+        "sampleLocations": [
+          "San Carlos Sonora, Mexico"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:bocas del toro panama",
+        "label": "Bocas Del Toro, Panama",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 17,
+        "estimatedActionableLift": 3.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Panama",
+            "count": 17
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 17
+          }
+        ],
+        "sampleSlugs": [
+          "1979-morgan-s-j-bocas-del-toro",
+          "1980-gulfstar-bocas-del-toro-bocas-del-toro",
+          "1982-catalac-8-meter-bocas-del-toro",
+          "1982-watkins-36c-center-cockpit-bocas-del-toro",
+          "1982-watkins-w36c-bocas-del-toro"
+        ],
+        "sampleLocations": [
+          "Bocas Del Toro, Panama",
+          "Bocas Del Toro"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:french riviera france",
+        "label": "French Riviera, France",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 17,
+        "estimatedActionableLift": 3.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "France",
+            "count": 17
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 17
+          }
+        ],
+        "sampleSlugs": [
+          "1993-camper-nicholsons-128-ketch-french-riviera",
+          "1998-jongert-2700-sloop-french-riviera",
+          "2000-wally-100-french-riviera",
+          "2002-alloy-yachts-53m-ketch-french-riviera",
+          "2002-nautor-swan-77-fd-french-riviera"
+        ],
+        "sampleLocations": [
+          "French Riviera"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:mallorca balearic islands spain",
+        "label": "Mallorca, Balearic Islands, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 17,
+        "estimatedActionableLift": 3.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 17
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 17
+          }
+        ],
+        "sampleSlugs": [
+          "1977-nauta-wind-46-mallorca",
+          "1982-mcconnel-marine-ltd-custom-pilot-cutter-mallorca",
+          "1984-north-wind-38-mallorca",
+          "2002-hallberg-rassy-43-mallorca",
+          "2006-beneteau-oceanis-323-mallorca"
+        ],
+        "sampleLocations": [
+          "Mallorca, Balearic Islands"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:palma balearic islands spain",
+        "label": "Palma, Balearic Islands, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 16,
+        "estimatedActionableLift": 3.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 16
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 16
+          }
+        ],
+        "sampleSlugs": [
+          "2004-oyster-49-palma",
+          "2005-nautor-swan-82-palma",
+          "2008-spirit-yachts-76-palma",
+          "2009-nautor-swan-60-palma",
+          "2015-mills-45-palma"
+        ],
+        "sampleLocations": [
+          "Palma, Balearic Islands"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "source_cleanup_rule:misspelled country or region token",
+        "label": "Misspelled country or region token",
+        "bucket": "review_queue",
+        "intervention": "source_cleanup_rule",
+        "rowCount": 8,
+        "estimatedActionableLift": 3.2,
+        "probability": 0.4,
+        "countries": [
+          {
+            "label": "Croatia",
+            "count": 2
+          },
+          {
+            "label": "Greece",
+            "count": 2
+          },
+          {
+            "label": "Bahamas",
+            "count": 1
+          },
+          {
+            "label": "Grenada",
+            "count": 1
+          },
+          {
+            "label": "Honduras",
+            "count": 1
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 5
+          },
+          {
+            "label": "TheYachtMarket",
+            "count": 2
+          },
+          {
+            "label": "CatamaranSite",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1969-cassian-and-cutbertson-crc-aft-cockpit-georgetown-exuma-bahmas",
+          "1975-malo-50-grenade-caribbean",
+          "1994-james-wharram-pahi-42-utila-bahia-islan",
+          "2000-bavaria-38-holiday-peloponesse",
+          "2003-beneteau-473-gibraltor"
+        ],
+        "sampleLocations": [
+          "Georgetown Exuma Bahmas",
+          "Grenade Caribbean",
+          "Utila Bahia Islan, Honduras",
+          "Peloponesse",
+          "Gibraltor, Spain"
+        ],
+        "rationale": "Correct the misspelled place token before retrying geocoding."
+      },
+      {
+        "key": "manual_enrichment:sibenik croatia",
+        "label": "Šibenik, Croatia",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 12,
+        "estimatedActionableLift": 2.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Croatia",
+            "count": 12
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 12
+          }
+        ],
+        "sampleSlugs": [
+          "2002-elan-45-ibenik",
+          "2009-beneteau-oceanis-40-ibenik",
+          "2009-fountaine-pajot-lipari-41-ibenik",
+          "2013-bavaria-cruiser-45-ibenik",
+          "2013-lagoon-450f-ibenik"
+        ],
+        "sampleLocations": [
+          "Šibenik"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "source_cleanup_rule:lake inland water context",
+        "label": "Lake / inland-water context",
+        "bucket": "review_queue",
+        "intervention": "source_cleanup_rule",
+        "rowCount": 6,
+        "estimatedActionableLift": 2.4,
+        "probability": 0.4,
+        "countries": [
+          {
+            "label": "United States",
+            "count": 5
+          },
+          {
+            "label": "Canada",
+            "count": 1
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 6
+          }
+        ],
+        "sampleSlugs": [
+          "1981-canadian-sailcraft-33-bayfield-lake-huron",
+          "1983-jeanneau-fantasia-ny-lake-champlain",
+          "1989-schooner-hans-koll-schooner-lake-ontario-toronto",
+          "1995-catalina-270le-lake-travis-austin",
+          "2000-beneteau-352-oceanis-lake-erie"
+        ],
+        "sampleLocations": [
+          "Bayfield - Lake Huron",
+          "Ny Lake Champlain",
+          "Lake Ontario Toronto, Canada",
+          "Lake Travis Austin, Texas",
+          "Lake Erie"
+        ],
+        "rationale": "Normalize to the named marina/city plus lake only when the listing text has a specific place."
+      },
+      {
+        "key": "manual_enrichment:tahiti french polynesia",
+        "label": "Tahiti, French Polynesia",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 10,
+        "estimatedActionableLift": 2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "French Polynesia",
+            "count": 10
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 9
+          },
+          {
+            "label": "CatamaranSite",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1983-dynamic-express-44-tahiti",
+          "1984-ce-ryder-southern-cross-35-cutter-tahiti",
+          "1996-wharram-narai-tahiti",
+          "1999-amateur-lyle-hess-30-tahiti",
+          "1999-island-packet-tahiti-tahiti"
+        ],
+        "sampleLocations": [
+          "Tahiti",
+          "Tahiti, French Polynesia",
+          "Tahiti (South Pacific)"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:martinique le marin",
+        "label": "Martinique, Le Marin",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 9,
+        "estimatedActionableLift": 1.8,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Martinique",
+            "count": 9
+          }
+        ],
+        "sources": [
+          {
+            "label": "Dream Yacht Sales",
+            "count": 9
+          }
+        ],
+        "sampleSlugs": [
+          "2017-bali-4-0-lonja-martinique",
+          "2017-bali-4-3-trinidad-martinique",
+          "2017-bali-4-5-bonaire-martinique",
+          "2017-dufour-412-barbuda-martinique",
+          "2017-dufour-412-bequia-martinique"
+        ],
+        "sampleLocations": [
+          "Martinique, Le Marin",
+          "Martinique, Le Marin, Caribbean"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:langkawi malaysia",
+        "label": "Langkawi, Malaysia",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 8,
+        "estimatedActionableLift": 1.6,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Malaysia",
+            "count": 8
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 8
+          }
+        ],
+        "sampleSlugs": [
+          "1976-westsail-corp-california-usa-westsail-42-11-langkawi",
+          "1977-cal-39-mkii-langkawi",
+          "1978-la-seinemer-area-870-langkawi",
+          "1985-hunter-40-langkawi",
+          "1986-bruce-roberts-44-offshore-plan-d-langkawi"
+        ],
+        "sampleLocations": [
+          "Langkawi, Malaysia"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:san carlos mexico",
+        "label": "San Carlos, Mexico",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 8,
+        "estimatedActionableLift": 1.6,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Mexico",
+            "count": 8
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 8
+          }
+        ],
+        "sampleSlugs": [
+          "1973-cal-246-san-carlos",
+          "1977-chung-hwa-magellan-san-carlos",
+          "1977-pearson-365-san-carlos",
+          "1982-whitby-42-ketch-san-carlos",
+          "1986-cascade-36-san-carlos"
+        ],
+        "sampleLocations": [
+          "San Carlos, Mexico"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:leros greece",
+        "label": "Leros, Greece",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 7,
+        "estimatedActionableLift": 1.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Greece",
+            "count": 7
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 6
+          },
+          {
+            "label": "Sailboat Listings",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1977-westerly-33-leros",
+          "1991-viudes-german-frers-82-leros",
+          "1994-moody-38-leros",
+          "1999-beneteau-44cc-leros",
+          "1999-dufour-43-cc-leros"
+        ],
+        "sampleLocations": [
+          "Leros, Greece"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:san diego california united states",
+        "label": "San Diego, California, United States",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 7,
+        "estimatedActionableLift": 1.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "United States",
+            "count": 7
+          }
+        ],
+        "sources": [
+          {
+            "label": "Boats.com",
+            "count": 4
+          },
+          {
+            "label": "TheYachtMarket",
+            "count": 2
+          },
+          {
+            "label": "Sailboat Listings",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1977-tanton-42-san-diego",
+          "1994-schock-35-sloop-san-diego",
+          "2018-jeanneau-sun-odyssey-479-san-diego",
+          "2023-dufour-37-san-diego",
+          "2025-hylas-h57-san-diego"
+        ],
+        "sampleLocations": [
+          "San Diego, California"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:sicilia italy",
+        "label": "Sicilia, Italy",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 7,
+        "estimatedActionableLift": 1.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Italy",
+            "count": 7
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 7
+          }
+        ],
+        "sampleSlugs": [
+          "2006-fountaine-pajot-bahia-46-sicilia",
+          "2014-beneteau-oceanis-45-sicilia",
+          "2017-beneteau-oceanis-35-1-sicilia",
+          "2017-beneteau-oceanis-48-sicilia",
+          "2019-bavaria-c45-sicilia"
+        ],
+        "sampleLocations": [
+          "Sicilia"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:valencian community spain",
+        "label": "Valencian Community, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 7,
+        "estimatedActionableLift": 1.4,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 7
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 7
+          }
+        ],
+        "sampleSlugs": [
+          "1985-irwin-38-valencian-community",
+          "1986-malo-maverick-106-valencian-community",
+          "1995-gibsea-472-valencian-community",
+          "2005-hallberg-rassy-43-valencian-community",
+          "2005-jeanneau-sun-odyssey-45-valencian-community"
+        ],
+        "sampleLocations": [
+          "Valencian Community, Spain",
+          "Valencian Community"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "gazetteer_poi:red frog marina bocas del toro",
+        "label": "Red Frog Marina Bocas Del Toro",
+        "bucket": "review_queue",
+        "intervention": "gazetteer_poi",
+        "rowCount": 2,
+        "estimatedActionableLift": 1.3,
+        "probability": 0.65,
+        "countries": [
+          {
+            "label": "Panama",
+            "count": 2
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 2
+          }
+        ],
+        "sampleSlugs": [
+          "1977-nautic-saintonge-ns-44-red-frog-marina-bocas-del-toro",
+          "1979-pacific-seacraft-mariah-red-frog-marina-bocas-del-toro"
+        ],
+        "sampleLocations": [
+          "Red Frog Marina Bocas Del Toro, Panama"
+        ],
+        "rationale": "Names a marine facility-like place; best handled by a vetted POI/gazetteer match."
+      },
+      {
+        "key": "gazetteer_poi:sune carlsson boatyard",
+        "label": "Sune Carlsson Boatyard",
+        "bucket": "review_queue",
+        "intervention": "gazetteer_poi",
+        "rowCount": 2,
+        "estimatedActionableLift": 1.3,
+        "probability": 0.65,
+        "countries": [
+          {
+            "label": "Sweden",
+            "count": 2
+          }
+        ],
+        "sources": [
+          {
+            "label": "Dream Yacht Sales",
+            "count": 2
+          }
+        ],
+        "sampleSlugs": [
+          "2019-dufour-360-snowdrop-stockholm",
+          "2019-dufour-460-filao-stockholm"
+        ],
+        "sampleLocations": [
+          "Stockholm, Sune Carlsson Boatyard, Scandinavia",
+          "Stockholm, Sune Carlsson Boatyard"
+        ],
+        "rationale": "Names a marine facility-like place; best handled by a vetted POI/gazetteer match."
+      },
+      {
+        "key": "manual_enrichment:attica greece",
+        "label": "Attica, Greece",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Greece",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 6
+          }
+        ],
+        "sampleSlugs": [
+          "1990-beneteau-first-45f5-attica",
+          "1999-bavaria-38-holiday-attica",
+          "2000-dufour-atoll-43-owners-version-attica",
+          "2005-jeanneau-sun-odyssey-43-ds-attica",
+          "2013-bavaria-cruiser-37-attica"
+        ],
+        "sampleLocations": [
+          "Attica"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:canary islands spain",
+        "label": "Canary Islands, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 5
+          },
+          {
+            "label": "TheYachtMarket",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1971-albin-marine-shipman-28-canary-islands",
+          "1989-embrun-40-canary-islands",
+          "1989-jeanneau-sun-magic-44-canary-islands",
+          "1989-oyster-lightwave-395-canary-islands",
+          "1994-pacific-seacraft-crealock-37-canary-islands"
+        ],
+        "sampleLocations": [
+          "Canary Islands",
+          "Canary Islands, Spain"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:cartagena spain",
+        "label": "Cartagena, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 4
+          },
+          {
+            "label": "CatamaranSite",
+            "count": 1
+          },
+          {
+            "label": "TheYachtMarket",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1998-saga-43-cartagena",
+          "2005-jeanneau-sun-odyssey-49-owners-version-cartagena",
+          "2007-lagoon-cartagena-cartagena",
+          "2008-beneteau-first-36-7-cartagena",
+          "2021-privilege-640-cartagena"
+        ],
+        "sampleLocations": [
+          "Cartagena",
+          "Cartagena, Spain"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:dalmatia croatia",
+        "label": "Dalmatia, Croatia",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Croatia",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 6
+          }
+        ],
+        "sampleSlugs": [
+          "1991-cantiere-navale-r-m-55-dalmatia",
+          "2002-latini-marine-52-dalmatia",
+          "2012-elan-350-performance-dalmatia",
+          "2017-beneteau-oceanis-62-dalmatia",
+          "2019-elan-45-dalmatia"
+        ],
+        "sampleLocations": [
+          "Dalmatia"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:la spezia italy",
+        "label": "La Spezia, Italy",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Italy",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 5
+          },
+          {
+            "label": "Sailboat Listings",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "2009-fora-marine-rm-1200-la-spezia",
+          "2011-cdk-mod-70-la-spezia",
+          "2015-jeanneau-349-la-spezia",
+          "2016-solaris-58-la-spezia",
+          "2019-solaris-68-rs-lifting-keel-la-spezia"
+        ],
+        "sampleLocations": [
+          "La Spezia, Italy",
+          "La Spezia"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:palma mallorca balearic islands spain",
+        "label": "Palma - Mallorca, Balearic Islands, Spain",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Spain",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "TheYachtMarket",
+            "count": 6
+          }
+        ],
+        "sampleSlugs": [
+          "2000-grand-soleil-463-palma-mallorca",
+          "2024-bavaria-c46-palma-mallorca",
+          "2024-bavaria-c50-palma-mallorca",
+          "2025-bavaria-c38-palma-mallorca",
+          "2025-bavaria-cruiser-37-palma-mallorca"
+        ],
+        "sampleLocations": [
+          "Palma - Mallorca, Balearic Islands"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:phuket thailand",
+        "label": "Phuket Thailand",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Thailand",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 5
+          },
+          {
+            "label": "Boats.com",
+            "count": 1
+          }
+        ],
+        "sampleSlugs": [
+          "1997-adams-radford-adams-12-alluminum-phuket-thailand",
+          "1997-adams-radford-adams-12-phuket",
+          "2004-fountaine-pajot-belize-43-phuket",
+          "2005-fountaine-pajot-lavezzi-40-phuket-thailand",
+          "2007-beneteau-oceanis-523-clipper-phuket"
+        ],
+        "sampleLocations": [
+          "Phuket Thailand",
+          "Phuket",
+          "Phuket, Thailand"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:roatan honduras",
+        "label": "Roatan, Honduras",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 6,
+        "estimatedActionableLift": 1.2,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Honduras",
+            "count": 6
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 6
+          }
+        ],
+        "sampleSlugs": [
+          "1983-beneteau-first-42-roatan",
+          "1985-gilbert-karoff-chatam-33-roatan",
+          "1987-c-c-38-mkiii-roatan",
+          "1990-hunter-335-roatan",
+          "1994-benetau-510-sailing-sloop-roatan-honduras-caribeann"
+        ],
+        "sampleLocations": [
+          "Roatan, Honduras",
+          "Roatan Honduras Caribeann"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      },
+      {
+        "key": "manual_enrichment:cartagena colombia",
+        "label": "Cartagena Colombia",
+        "bucket": "review_queue",
+        "intervention": "manual_enrichment",
+        "rowCount": 5,
+        "estimatedActionableLift": 1,
+        "probability": 0.2,
+        "countries": [
+          {
+            "label": "Colombia",
+            "count": 5
+          }
+        ],
+        "sources": [
+          {
+            "label": "Sailboat Listings",
+            "count": 5
+          }
+        ],
+        "sampleSlugs": [
+          "1972-c-c-39-5-cartagena-colombia",
+          "1974-finot-brise-de-mar-cartagena-colombia",
+          "1982-tatoosh-cartagena-colombia-cartagena-colombia",
+          "1983-baba-30-cartagena-colombia",
+          "1997-alerion-express-alerion-express-28-cartagena-colombia"
+        ],
+        "sampleLocations": [
+          "Cartagena Colombia"
+        ],
+        "rationale": "Needs manual review or enrichment before it can safely become a public pin."
+      }
+    ]
+  },
+  "notes": {
+    "manualEnrichmentDeduplication": "This section is limited to review/failed rows triaged as manual_enrichment. The byIntervention manual_enrichment total also includes held-back broad-coordinate rows and other rows that need enrichment."
+  },
+  "recommendedNextMove": "gazetteer_first"
+}
