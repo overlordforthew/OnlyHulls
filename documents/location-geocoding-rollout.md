@@ -178,6 +178,8 @@ npm run db:geocode-locations -- --limit=100 --public-pin-candidates --include-re
 
 `--retry-changed-review` excludes pending rows and only reprocesses review/failed rows whose current normalized query key differs from the stored `location_geocode_query`. This keeps source-cleanup rounds bounded to rows the new code actually changed. Apply still requires the normal public-pin gates: `publicPinEligibleRate >= 0.6`, `failed=0`, `warnings=[]`, and `geographyMismatches=[]`.
 
+Round 14 classifier hardening is preview-only: `yacht harbour` remains outside the public-pin candidate lane until a later round validates lane expansion. The guard now requires marine POI result/query term agreement instead of substring matches, so `Suffolk Yacht Harbour` resolving to `Harbourside Kitchen` stays review/unknown while `Burnham Yacht Harbour` remains marina precision when the provider result names the harbour directly.
+
 Recent verified public-pin apply checkpoints:
 
 - `boat_geocode_backup_20260421103145`: 11-row round 12 cache-only public-pin candidate batch applied with `PUBLIC_MAP_ENABLED=false`; 10 marina-grade public pins written from already cached Nanny Cay and Port Pin Rolland results, 1 Dover Marina city-level result held in review with null coordinates, 0 provider calls, 0 failed, 0 geography mismatches, and 0 warnings. Follow-up map-pin audit returned 10/10 eligible pins at marina precision, the public-pin candidate lane selected 0 rows after apply, and `/api/boats/map` returned 404 while disabled. Readiness remains `NO_GO_KEEP_PUBLIC_MAP_DISABLED`; public pins increased to 212, public coverage is 1.68%, and raw coordinates increased to 712.

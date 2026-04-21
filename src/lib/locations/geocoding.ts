@@ -204,6 +204,21 @@ const MARINE_GEOCODE_TERMS = [
   "port de plaisance",
   "tino rossi",
 ];
+const MARINE_POI_RESULT_ALIGNMENT_TERMS = [
+  "marine",
+  "marina",
+  "yacht club",
+  "yachtclub",
+  "yacht harbour",
+  "yacht harbor",
+  "boatyard",
+  "shipyard",
+  "marmaris yacht marina",
+  "marina du marin",
+  "pin rolland",
+  "port de plaisance",
+  "tino rossi",
+];
 const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "county", "island"]);
 const MARINE_PLACE_TYPES = new Set(["marina", "harbour", "harbor", "dock", "mooring", "ferry_terminal"]);
 const STREET_PLACE_TYPES = new Set(["house", "building", "amenity", "road", "street", "residential"]);
@@ -617,6 +632,10 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizedHasTerm(value: string, term: string) {
+  return new RegExp(`(^|\\s)${escapeRegExp(term)}(\\s|$)`).test(value);
+}
+
 function stripBroadGeocodeEdgePhrases(value: string) {
   let result = value.trim();
   let changed = true;
@@ -648,7 +667,7 @@ function stripBroadGeocodeEdgePhrases(value: string) {
 
 function isMarineGeocodePart(part: string) {
   const normalized = normalizeLookupValue(part);
-  return MARINE_GEOCODE_TERMS.some((term) => normalized.includes(term));
+  return MARINE_GEOCODE_TERMS.some((term) => normalizedHasTerm(normalized, term));
 }
 
 function isVagueDirectionalLocation(locationText: string) {
@@ -668,14 +687,6 @@ function queryHasAddressLikeStreetDetail(queryText: string) {
   return hasAddressNumber && hasStreetSuffix;
 }
 
-function resultHasMarineTerm(formatted: string, components: Record<string, unknown>) {
-  const componentText = Object.values(components)
-    .filter((value): value is string => typeof value === "string")
-    .join(" ");
-
-  return isMarineGeocodePart(`${formatted} ${componentText}`);
-}
-
 function resultAndQueryHaveKnownMarinaName(
   queryText: string,
   formatted: string,
@@ -689,6 +700,22 @@ function resultAndQueryHaveKnownMarinaName(
 
   return KNOWN_MARINA_NAME_TERMS.some(
     (term) => normalizedQuery.includes(term) && normalizedResult.includes(term)
+  );
+}
+
+function resultAndQueryHaveMarinePoiTerm(
+  queryText: string,
+  formatted: string,
+  components: Record<string, unknown>
+) {
+  const normalizedQuery = normalizeLookupValue(queryText);
+  const componentText = Object.values(components)
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  const normalizedResult = normalizeLookupValue(`${formatted} ${componentText}`);
+
+  return MARINE_POI_RESULT_ALIGNMENT_TERMS.some(
+    (term) => normalizedHasTerm(normalizedQuery, term) && normalizedHasTerm(normalizedResult, term)
   );
 }
 
@@ -707,10 +734,6 @@ function getCoreQueryText(queryText: string) {
   );
 
   return parts.join(", ").trim() || queryText.trim();
-}
-
-function normalizedHasTerm(value: string, term: string) {
-  return new RegExp(`(^|\\s)${escapeRegExp(term)}(\\s|$)`).test(value);
 }
 
 function getDegenerateQueryIssue(queryText: string) {
@@ -1056,7 +1079,7 @@ function inferOpenCagePrecision(
   if (resultAndQueryHaveKnownMarinaName(queryText, formatted, components)) return "marina";
   if (MARINE_PLACE_TYPES.has(type) || MARINE_PLACE_TYPES.has(category)) return "marina";
   if (isPointOfInterestResult(type, category)) {
-    if (isMarineGeocodePart(queryText) && resultHasMarineTerm(formatted, components)) return "marina";
+    if (resultAndQueryHaveMarinePoiTerm(queryText, formatted, components)) return "marina";
     if (queryHasAddressLikeStreetDetail(queryText)) return "street";
     return "unknown";
   }

@@ -1851,6 +1851,51 @@ test("coastal-name guard accepts the vetted Argentario coastal area", () => {
   assert.equal(result.error, null);
 });
 
+test("geocodeWithOpenCage does not infer marina from harbourside substrings", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Harbourside Kitchen, Strattonhall Drift, East Suffolk, IP10 0LN, United Kingdom",
+            geometry: { lat: 51.9965539, lng: 1.2717108 },
+            confidence: 10,
+            components: {
+              _type: "restaurant",
+              _category: "commerce",
+              amenity: "restaurant",
+              road: "Strattonhall Drift",
+              county: "East Suffolk",
+              postcode: "IP10 0LN",
+              country: "United Kingdom",
+              country_code: "gb",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Suffolk Yacht Harbour, United Kingdom",
+        queryKey: "suffolk yacht harbour united kingdom",
+        countryHint: "gb",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.precision, "unknown");
+    assert.equal(result.error, "low_precision");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
   const originalFetch = globalThis.fetch;
 
