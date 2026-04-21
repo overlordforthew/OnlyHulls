@@ -515,6 +515,114 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       countryHint: "vg",
     }
   );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Hodge's Creek Marina Hotel, Parham Town, British Virgin Islands",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Hodge's Creek Marina, British Virgin Islands",
+      queryKey: "hodge s creek marina british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "La Paz, Costa Baja Marina, Americas",
+      country: "Mexico",
+      confidence: "city",
+    }),
+    {
+      queryText: "Costa Baja Marina, La Paz, Mexico",
+      queryKey: "costa baja marina la paz mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "La Cruz Marina Near Puerto Vallarta, Mexico",
+      country: "Mexico",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina La Cruz, La Cruz de Huanacaxtle, Nayarit, Mexico",
+      queryKey: "marina la cruz la cruz de huanacaxtle nayarit mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Camper & Nicholsons Port Louis Marina, Saint-Georges, Grenade",
+      country: "Grenada",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port Louis Marina, Grenada",
+      queryKey: "port louis marina grenada",
+      countryHint: "gd",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Piraeus (Zea Marina)",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Zea Marina, Piraeus, Greece",
+      queryKey: "zea marina piraeus greece",
+      countryHint: "gr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Zea Marina, Athens",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Zea Marina, Piraeus, Greece",
+      queryKey: "zea marina piraeus greece",
+      countryHint: "gr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marina Di Ragusa, Southern Sicily",
+      country: "Italy",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Di Ragusa, Southern Sicily, Italy",
+      queryKey: "marina di ragusa southern sicily italy",
+      countryHint: "it",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Red Frog Marina Bocas Del Toro, Panama",
+      country: "Panama",
+      confidence: "city",
+    }),
+    {
+      queryText: "Red Frog Marina Bocas Del Toro, Panama",
+      queryKey: "red frog marina bocas del toro panama",
+      countryHint: "pa",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Thailand Ocean Marina Pattaya",
+      country: "Thailand",
+      confidence: "city",
+    }),
+    {
+      queryText: "Thailand Ocean Marina Pattaya",
+      queryKey: "thailand ocean marina pattaya",
+      countryHint: "th",
+    }
+  );
 });
 
 test("buildGeocodeQuery rejects generic or region-only locations", () => {
