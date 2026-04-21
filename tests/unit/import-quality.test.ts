@@ -4399,6 +4399,27 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
     jBoats.ai_summary,
     "1981 J/Boats J/30 in Texas. 30ft LOA, masthead sloop rig, monohull."
   );
+
+  const jBoatsMissingModel = sanitizeImportedBoatRecord({
+    year: 1991,
+    make: "J",
+    model: "Boats",
+    slug: "1991-j-boats-annapolis",
+    source_site: "sailboatlistings",
+    location_text: "Maryland",
+    ai_summary: "1991 J Boats in Maryland. 37.5ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 37.5,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(jBoatsMissingModel.make, "J/Boats");
+  assert.equal(jBoatsMissingModel.model, "");
+  assert.equal(
+    jBoatsMissingModel.ai_summary,
+    "1991 J/Boats in Maryland. 37.5ft LOA, masthead sloop rig, monohull."
+  );
 });
 
 test("normalizeImportedMakeModel repairs live TheYachtMarket builder suffix splits", () => {
