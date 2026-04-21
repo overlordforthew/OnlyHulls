@@ -1,5 +1,18 @@
 // New aliases must have provider-reviewed facility evidence plus a country/coordinate anchor.
 // This keeps same-name marinas in other markets from promoting broad cached geocodes.
+//
+// Accepted provider `_type` values for public-pin promotion:
+// `marina`, `boatyard`, `basin`, `pier`, `reception_desk` — infrastructure tokens
+// whose component value can explicitly name the facility. `_type=water` is NOT
+// accepted; a body of water is not buyer-defensible as a marina pin even when
+// the water component names a harbour. See the Lonvilliers Harbour deferral in
+// Round 23 (scratch/round23/evidence.md) for the evidence trail.
+//
+// `acceptedSourceTexts` pairs with a `.replace()` rule in
+// `normalizeKnownLocationTextArtifacts` (src/lib/locations/geocoding.ts). The
+// alias file is the source of truth: a contract test asserts every entry
+// canonicalizes exactly to `canonicalProviderQuery` via `prepareGeocodeLocationText`,
+// and every entry in `negativeSourceTexts` is rejected. Remove both sides together.
 export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
   {
     alias: "burnham yacht harbour",
@@ -78,6 +91,34 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
       key: "boatyard",
       value: "MDL Chatham Maritime Marina Boatyard",
     },
+    canonicalProviderQuery: "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+    acceptedSourceTexts: ["Chatham Marina, Kent", "Chatham Marina, Chatham Kent"],
+    negativeSourceTexts: ["Chatham Marina", "Chatham Marina, Kent Coast"],
+  },
+  {
+    alias: "green cay marina",
+    countryCodes: ["us", "vi"],
+    latitude: 17.7591487,
+    longitude: -64.6694756,
+    maxDistanceKm: 0.5,
+    minScore: 0.95,
+    requiredComponent: {
+      type: "marina",
+      key: "marina",
+      value: "Green Cay Marina",
+    },
+    canonicalProviderQuery: "Green Cay Marina, Christiansted, US Virgin Islands",
+    acceptedSourceTexts: [
+      "Green Cay Marina St. Croix",
+      "Green Cay Marina, St Croix, Virgin Islands (US) (USVI)",
+      "Green Cay Marina, Virgin Islands (US) (USVI)",
+    ],
+    negativeSourceTexts: [
+      "Green Cay, Bahamas",
+      "Green Cay Marina, Bahamas",
+      "Green Cay Marina, St Croix, BVI",
+      "Cay Marina, St. Croix",
+    ],
   },
 ] as const;
 

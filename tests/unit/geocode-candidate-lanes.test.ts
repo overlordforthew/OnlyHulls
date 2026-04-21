@@ -12,10 +12,14 @@ import {
   isVerifiedPublicPinAliasGeocodeCandidate,
 } from "../../src/lib/locations/geocode-candidate-lanes";
 import {
+  VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS,
   getVerifiedPublicPinAliasMatch,
   isVerifiedPublicPinAliasAnchorMatch,
 } from "../../src/lib/locations/verified-public-pin-aliases";
-import type { GeocodeResult } from "../../src/lib/locations/geocoding";
+import {
+  buildGeocodeQuery,
+  type GeocodeResult,
+} from "../../src/lib/locations/geocoding";
 
 test("public pin candidate lane accepts marine-specific location text", () => {
   const accepted = [
@@ -98,10 +102,16 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Marina Baotić, Seget Donji",
     "Linton Bay Marina, Puerto Lindo",
     "MDL Chatham Maritime Marina Boatyard, Chatham",
+    // Round 23: Green Cay Marina is now a verified alias; the actual
+    // promotion gate still depends on provider anchor (country, coords,
+    // marina component, score). The lane-candidate predicate just checks
+    // that the alias text is present in both source and query — which is
+    // true for the three observed production source texts and for the
+    // canonical query they canonicalize to.
+    "Green Cay Marina St. Croix",
   ];
   const rejected = [
     "Dover Marina, Kent",
-    "Green Cay Marina St. Croix",
     "Tollesbury Marina",
     "Shotley Marina, IP9 1QJ",
     "Port Solent Marina, Portsmouth",
@@ -270,6 +280,424 @@ test("verified public pin alias anchors preserve Sint Maarten provider country-c
     }),
     false
   );
+});
+
+test("verified Green Cay Marina alias requires the anchored marina component", () => {
+  // Positive: exact facility evidence.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    true
+  );
+
+  // Defensive VI country-code acceptance (provider currently returns `us` but
+  // some call sites may pass ISO alpha-2 `vi` — both must be accepted).
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "vi",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    true
+  );
+
+  // Wrong country rejection: Bahamian Green Cay must not promote.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "bs",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country_code: "bs",
+        },
+      },
+    }),
+    false
+  );
+
+  // `_type=water` at the right coords must NOT promote — no marina component.
+  // (Documents the Lonvilliers-Harbour-style rejection policy.)
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: {
+        components: {
+          _type: "water",
+          water: "Green Cay Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    false
+  );
+
+  // Missing marina component entirely — even if coords/country correct.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 1,
+      payload: { components: { country_code: "us" } },
+    }),
+    false
+  );
+
+  // Score just below minScore 0.95 fails; at boundary passes.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 0.94,
+      payload: {
+        components: { _type: "marina", marina: "Green Cay Marina", country_code: "us" },
+      },
+    }),
+    false
+  );
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      score: 0.95,
+      payload: {
+        components: { _type: "marina", marina: "Green Cay Marina", country_code: "us" },
+      },
+    }),
+    true
+  );
+
+  // Distance just outside 0.5 km fails. 0.5 km at latitude ~17.76 is ~0.0045 degrees.
+  // 0.6 km east of the anchor → lng offset ~0.0057 → well outside the 0.5km ring.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("green cay marina", {
+      countryCode: "us",
+      latitude: 17.7591487,
+      longitude: -64.6694756 + 0.0057,
+      score: 1,
+      payload: {
+        components: { _type: "marina", marina: "Green Cay Marina", country_code: "us" },
+      },
+    }),
+    false
+  );
+});
+
+test("getVerifiedPublicPinAliasMatch recognizes green cay marina across source/result variants", () => {
+  // Canonical query + facility result.
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Green Cay Marina, Christiansted, US Virgin Islands",
+      "Green Cay Marina, 5000 Southgate Estate, Shoys, Christiansted, VI 00820, United States of America"
+    ),
+    "green cay marina"
+  );
+
+  // Dirty production source text also matches (alias regex tolerant).
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Green Cay Marina St. Croix",
+      "Green Cay Marina, 5000 Southgate Estate, Shoys, Christiansted, VI 00820, United States of America"
+    ),
+    "green cay marina"
+  );
+
+  // Missing "Green" token → alias regex rejects.
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Cay Marina, St. Croix",
+      "Green Cay Marina, Christiansted, VI 00820, United States of America"
+    ),
+    null
+  );
+
+  // Missing "Marina" token → alias regex rejects.
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Green Cay, Bahamas",
+      "Green Cay, Bahamas"
+    ),
+    null
+  );
+
+  // Alias in query but provider result lacks it (city-only) → alias match returns null,
+  // because the match requires the alias phrase in BOTH sides.
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Green Cay Marina, St Croix",
+      "St Croix, Virgin Islands, United States of America"
+    ),
+    null
+  );
+});
+
+test("round 23 Green Cay canonicalization maps accepted source texts to canonical query", () => {
+  // Positive: three observed production source texts all canonicalize.
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Green Cay Marina St. Croix",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+      queryKey: "green cay marina christiansted us virgin islands",
+      countryHint: "vi",
+      providerCountryCodes: ["us", "vi"],
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Green Cay Marina, St Croix, Virgin Islands (US) (USVI)",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+      queryKey: "green cay marina christiansted us virgin islands",
+      countryHint: "vi",
+      providerCountryCodes: ["us", "vi"],
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Green Cay Marina, Virgin Islands (US) (USVI)",
+      country: "United States Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+      queryKey: "green cay marina christiansted us virgin islands",
+      countryHint: "vi",
+      providerCountryCodes: ["us", "vi"],
+    }
+  );
+
+  // Near-miss: BVI suffix must NOT canonicalize to the USVI canonical.
+  const bvi = buildGeocodeQuery({
+    locationText: "Green Cay Marina, St Croix, BVI",
+    country: "British Virgin Islands",
+    confidence: "city",
+  });
+  assert.notDeepStrictEqual(bvi?.queryText, "Green Cay Marina, Christiansted, US Virgin Islands");
+
+  // Bare source text passes through unchanged (no canonicalization). Because
+  // "green cay marina" is a verified alias, buildGeocodeQuery emits the raw
+  // text as a query even at confidence=unknown; safety is enforced at the
+  // provider-result anchor stage (country/coords/component), not here.
+  // providerCountryCodes=["us","vi"] is still populated because the alias
+  // text appears in the query, so OpenCage gets a `us,vi` filter that
+  // surfaces the marina rather than under-ranking it behind Christiansted.
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Green Cay Marina",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Green Cay Marina",
+      queryKey: "green cay marina",
+      countryHint: null,
+      providerCountryCodes: ["us", "vi"],
+    }
+  );
+});
+
+test("alias acceptedSourceTexts canonicalize EXACTLY to canonicalProviderQuery (contract)", () => {
+  // Country hints used for canonicalization tests, derived from each alias's countryCodes.
+  const countryHintLabels: Record<string, string[]> = {
+    gb: ["United Kingdom"],
+    us: ["United States", "United States Virgin Islands"],
+    vi: ["United States Virgin Islands", "US Virgin Islands"],
+    hr: ["Croatia"],
+    pa: ["Panama"],
+    bs: ["Bahamas"],
+    nl: ["Netherlands"],
+    sx: ["Sint Maarten"],
+  };
+
+  for (const def of VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS) {
+    const accepted = (def as { acceptedSourceTexts?: readonly string[] }).acceptedSourceTexts;
+    const canonical = (def as { canonicalProviderQuery?: string }).canonicalProviderQuery;
+    const negatives = (def as { negativeSourceTexts?: readonly string[] }).negativeSourceTexts;
+
+    if (!accepted && !negatives) continue;
+    assert.ok(
+      canonical,
+      `alias ${def.alias} declares acceptedSourceTexts or negativeSourceTexts but has no canonicalProviderQuery`
+    );
+
+    // Pick any country hint that maps to one of the alias's countryCodes; fall
+    // back to empty so we still exercise the cleanup behavior even if the hint
+    // map is missing a code.
+    const hintCandidates = def.countryCodes.flatMap((code) => countryHintLabels[code] || []);
+    const countryHint = hintCandidates[0] || "";
+
+    for (const src of accepted || []) {
+      const query = buildGeocodeQuery({
+        locationText: src,
+        country: countryHint,
+        confidence: "city",
+      });
+      assert.ok(
+        query,
+        `alias ${def.alias}: source text "${src}" produced no geocode query (country hint "${countryHint}"). ` +
+          `Either the cleanup rule is missing or the source text should not be in acceptedSourceTexts.`
+      );
+      assert.equal(
+        query.queryText,
+        canonical,
+        `alias ${def.alias}: source text "${src}" produced "${query.queryText}" but expected "${canonical}". ` +
+          `Add the matching rule to normalizeKnownLocationTextArtifacts or remove the entry from acceptedSourceTexts.`
+      );
+    }
+
+    // Also verify canonicalization works with every country-hint variant for the alias,
+    // catching drift where a specific country context inadvertently bypasses the cleanup.
+    for (const src of accepted || []) {
+      for (const countryCode of def.countryCodes) {
+        for (const label of countryHintLabels[countryCode] || []) {
+          const query = buildGeocodeQuery({
+            locationText: src,
+            country: label,
+            confidence: "city",
+          });
+          assert.ok(query, `alias ${def.alias}: source "${src}" with country "${label}" produced null query`);
+          assert.equal(
+            query.queryText,
+            canonical,
+            `alias ${def.alias}: source "${src}" with country "${label}" produced "${query.queryText}" != canonical`
+          );
+        }
+      }
+    }
+
+    for (const neg of negatives || []) {
+      const query = buildGeocodeQuery({
+        locationText: neg,
+        country: countryHint,
+        confidence: "city",
+      });
+      if (query) {
+        assert.notEqual(
+          query.queryText,
+          canonical,
+          `alias ${def.alias}: negative source text "${neg}" incorrectly canonicalized to "${canonical}"`
+        );
+      }
+      // null queries (e.g. because confidence=unknown or text can't produce a query) are fine.
+    }
+  }
+});
+
+test("verified alias country-filter widening stays narrow to multi-country aliases", () => {
+  // Single-country alias (burnham yacht harbour → gb only): no widening needed;
+  // providerCountryCodes should be absent so the single countryHint is used.
+  const burnham = buildGeocodeQuery({
+    locationText: "Burnham Yacht Harbour",
+    country: "United Kingdom",
+    confidence: "city",
+  });
+  assert.ok(burnham);
+  assert.equal(burnham.countryHint, "gb");
+  assert.equal(
+    (burnham as { providerCountryCodes?: unknown }).providerCountryCodes,
+    undefined,
+    "single-code alias must not populate providerCountryCodes"
+  );
+
+  // MDL Chatham (gb only) via canonicalized source text: still no widening.
+  const chatham = buildGeocodeQuery({
+    locationText: "Chatham Marina, Kent",
+    country: "United Kingdom",
+    confidence: "city",
+  });
+  assert.ok(chatham);
+  assert.equal(chatham.countryHint, "gb");
+  assert.equal(
+    (chatham as { providerCountryCodes?: unknown }).providerCountryCodes,
+    undefined,
+    "single-code alias must not populate providerCountryCodes"
+  );
+
+  // Non-alias ordinary query (no public-pin alias in text): no widening.
+  const athens = buildGeocodeQuery({
+    locationText: "Athens, Greece",
+    country: "Greece",
+    confidence: "city",
+  });
+  assert.ok(athens);
+  assert.equal(athens.countryHint, "gr");
+  assert.equal(
+    (athens as { providerCountryCodes?: unknown }).providerCountryCodes,
+    undefined,
+    "non-alias queries must not populate providerCountryCodes"
+  );
+
+  // Multi-country alias (green cay marina → us+vi): field IS populated.
+  const greenCay = buildGeocodeQuery({
+    locationText: "Green Cay Marina St. Croix",
+    country: "United States Virgin Islands",
+    confidence: "city",
+  });
+  assert.ok(greenCay);
+  assert.deepEqual((greenCay as { providerCountryCodes?: readonly string[] }).providerCountryCodes, [
+    "us",
+    "vi",
+  ]);
+
+  // Multi-country alias (lagoon marina → nl+sx): field IS populated.
+  const lagoon = buildGeocodeQuery({
+    locationText: "Lagoon Marina, Cole Bay",
+    country: "Sint Maarten",
+    confidence: "city",
+  });
+  assert.ok(lagoon);
+  assert.deepEqual((lagoon as { providerCountryCodes?: readonly string[] }).providerCountryCodes, [
+    "nl",
+    "sx",
+  ]);
+});
+
+test("alias declaration invariants (contract)", () => {
+  for (const def of VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS) {
+    if ("acceptedSourceTexts" in def || "negativeSourceTexts" in def) {
+      assert.ok(
+        "canonicalProviderQuery" in def,
+        `alias ${def.alias} has acceptedSourceTexts or negativeSourceTexts but no canonicalProviderQuery`
+      );
+    }
+    assert.ok(def.countryCodes.length > 0, `alias ${def.alias} has empty countryCodes`);
+    assert.ok(def.maxDistanceKm > 0, `alias ${def.alias} has non-positive maxDistanceKm`);
+  }
 });
 
 test("public pin candidate lane checks both source text and cleaned query text", () => {

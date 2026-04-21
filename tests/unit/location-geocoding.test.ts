@@ -126,9 +126,16 @@ test("buildGeocodeQuery uses corrected country hints for ambiguous boat location
       confidence: "city",
     }),
     {
-      queryText: "Green Cay Marina, St Croix, US Virgin Islands",
-      queryKey: "green cay marina st croix us virgin islands",
+      // Round 23: this reviewed source text canonicalizes to the facility-grade
+      // OpenCage query so the verified Green Cay Marina alias anchor can promote
+      // the row. The `green cay marina` alias spans us+vi (USVI facilities are
+      // tagged country_code=us by OpenCage), so providerCountryCodes widens the
+      // provider-side filter to prevent Christiansted city from out-ranking the
+      // marina under a `vi`-only filter. See documents/public-pin-aliases.md.
+      queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+      queryKey: "green cay marina christiansted us virgin islands",
       countryHint: "vi",
+      providerCountryCodes: ["us", "vi"],
     }
   );
   assert.deepEqual(
@@ -1475,6 +1482,11 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Lagoon Marina, Cole Bay",
       queryKey: "lagoon marina cole bay",
       countryHint: null,
+      // Round 23: the `lagoon marina` alias spans nl+sx (Sint Maarten provider
+      // code nuance), so buildGeocodeQuery widens the provider-side country
+      // filter. The anchor country check at isVerifiedPublicPinAliasAnchorMatch
+      // still enforces the alias countryCodes list on the real result.
+      providerCountryCodes: ["nl", "sx"],
     }
   );
   assert.deepEqual(
@@ -2684,6 +2696,200 @@ test("cached geocode promotion requires the verified alias anchor", () => {
   assert.equal(result.precision, "city");
   assert.equal(result.error, "public_pin_ineligible_precision");
   assert.equal(result.precisionPromotionAlias, undefined);
+});
+
+test("cached geocode promotion releases Green Cay Marina alias", () => {
+  const greenCay = promoteVerifiedPublicPinAliasPrecision(
+    "Green Cay Marina, Christiansted, US Virgin Islands",
+    {
+      status: "geocoded",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      precision: "city",
+      score: 1,
+      placeName:
+        "Green Cay Marina, 5000 Southgate Estate, Shoys, Christiansted, VI 00820, United States of America",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country: "United States of America",
+          country_code: "us",
+        },
+      },
+      error: "public_pin_ineligible_precision",
+    }
+  );
+
+  assert.equal(greenCay.precision, "marina");
+  assert.equal(greenCay.precisionPromotedFrom, "city");
+  assert.equal(greenCay.precisionPromotionAlias, "green cay marina");
+  assert.equal(greenCay.error, null);
+});
+
+test("cached geocode promotion rejects Green Cay alias without marina component or wrong country", () => {
+  // Wrong country: Bahamian result with marina named "Green Cay Marina" (hypothetical)
+  // must not promote. Anchor country check rejects.
+  const wrongCountry = promoteVerifiedPublicPinAliasPrecision(
+    "Green Cay Marina, Bahamas",
+    {
+      status: "geocoded",
+      latitude: 24.0396,
+      longitude: -77.1716,
+      precision: "city",
+      score: 1,
+      placeName: "Green Cay Marina, Bahamas",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Green Cay Marina",
+          country: "Bahamas",
+          country_code: "bs",
+        },
+      },
+      error: null,
+    }
+  );
+  assert.equal(wrongCountry.precision, "city");
+  assert.equal(wrongCountry.precisionPromotionAlias, undefined);
+
+  // `_type=water` at USVI coords: no marina component → required-component check fails.
+  const waterType = promoteVerifiedPublicPinAliasPrecision(
+    "Green Cay Marina, Christiansted, US Virgin Islands",
+    {
+      status: "geocoded",
+      latitude: 17.7591487,
+      longitude: -64.6694756,
+      precision: "city",
+      score: 1,
+      placeName: "Green Cay Harbour, Christiansted, USVI",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "water",
+          water: "Green Cay Harbour",
+          country_code: "us",
+        },
+      },
+      error: "public_pin_ineligible_precision",
+    }
+  );
+  assert.equal(waterType.precision, "city");
+  assert.equal(waterType.precisionPromotionAlias, undefined);
+
+  // City result lacking "green cay marina" in place name also rejects because
+  // the alias match requires the phrase in both query and result.
+  const cityResult = promoteVerifiedPublicPinAliasPrecision(
+    "Green Cay Marina, St Croix, US Virgin Islands",
+    {
+      status: "geocoded",
+      latitude: 17.74664,
+      longitude: -64.7032,
+      precision: "city",
+      score: 1,
+      placeName: "St Croix, Virgin Islands, United States of America",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "city",
+          town: "St Croix",
+          country_code: "us",
+        },
+      },
+      error: "public_pin_ineligible_precision",
+    }
+  );
+  assert.equal(cityResult.precision, "city");
+  assert.equal(cityResult.precisionPromotionAlias, undefined);
+});
+
+test("geocodeWithOpenCage promotes Green Cay canonical query to marina precision", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted:
+              "Green Cay Marina, 5000 Southgate Estate, Shoys, Christiansted, VI 00820, United States of America",
+            geometry: { lat: 17.7591487, lng: -64.6694756 },
+            confidence: 9,
+            components: {
+              _type: "marina",
+              _category: "outdoors/recreation",
+              marina: "Green Cay Marina",
+              town: "Christiansted",
+              state: "Virgin Islands",
+              country: "United States of America",
+              country_code: "us",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+        queryKey: "green cay marina christiansted us virgin islands",
+        countryHint: "vi",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage does not promote Green Cay alias when provider returns water type", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Green Cay, Christiansted, VI, United States of America",
+            geometry: { lat: 17.7591487, lng: -64.6694756 },
+            confidence: 9,
+            components: {
+              _type: "water",
+              water: "Green Cay",
+              town: "Christiansted",
+              country: "United States of America",
+              country_code: "us",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Green Cay Marina, Christiansted, US Virgin Islands",
+        queryKey: "green cay marina christiansted us virgin islands",
+        countryHint: "vi",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.notEqual(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("geocodeWithOpenCage accepts vetted known-marina names without a marina token", async () => {
