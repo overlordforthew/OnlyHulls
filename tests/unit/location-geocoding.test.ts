@@ -3040,6 +3040,93 @@ test("geocodeWithOpenCage holds confidence=2 when primary city component mismatc
   }
 });
 
+test("geocodeWithOpenCage accepts overseas-territory ↔ sovereign country-code equivalence for exact City,Country", async () => {
+  // Round 35: OpenCage reports Martinique with country_code=fr even when the
+  // query countryHint is `mq` (the ISO alpha-2 for Martinique). Equivalence
+  // list accepts mq↔fr, vg↔gb, vi↔us, sx↔nl, pf↔fr, etc.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Le Marin, Martinique, France",
+            geometry: { lat: 14.471, lng: -60.87 },
+            confidence: 3,
+            components: {
+              _type: "municipality",
+              city: "Le Marin",
+              state: "Martinique",
+              country: "France",
+              country_code: "fr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Le Marin, Martinique",
+        queryKey: "le marin martinique",
+        countryHint: "mq",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage still rejects non-equivalent country-code mismatches at conf=3", async () => {
+  // Round 35 safety: mq↔fr equivalence does NOT imply mq↔es. A similar-sounding
+  // place in Spain with Spanish country code must stay rejected when query
+  // expected Martinique.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Marin, Pontevedra, Spain",
+            geometry: { lat: 42.4, lng: -8.7 },
+            confidence: 3,
+            components: {
+              _type: "city",
+              city: "Marin",
+              country: "Spain",
+              country_code: "es",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Le Marin, Martinique",
+        queryKey: "le marin martinique",
+        countryHint: "mq",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("geocodeWithOpenCage accepts 3-part City,Region,Country at confidence=3 via the exact-city exception", async () => {
   // Round 34: the Round 21 `exact City, Country` exception was widened to also
   // accept `City, Region, Country` 3-part queries. Region is additional

@@ -1379,6 +1379,42 @@ function resultTextHasCountryPart(resultText: string, countryPart: string) {
   return aliases.some((alias) => normalizedHasTerm(resultText, alias));
 }
 
+// Round 35: overseas-territory ↔ sovereign-state country-code equivalence.
+// OpenCage reports many overseas territories under the sovereign country's ISO
+// code (e.g. Martinique → `fr`, British Virgin Islands → `gb`) even when the
+// territory has its own ISO alpha-2 (mq, vg, etc.). Without equivalence the
+// exact-City-Country exception would always reject these cases even when the
+// provider returned the correct city. Extend this list only for clearly
+// documented overseas-territory relationships.
+const TERRITORY_SOVEREIGN_EQUIVALENCE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ["mq", "fr"], // Martinique
+  ["gp", "fr"], // Guadeloupe
+  ["pf", "fr"], // French Polynesia
+  ["re", "fr"], // Réunion
+  ["nc", "fr"], // New Caledonia
+  ["bl", "fr"], // Saint Barthélemy
+  ["mf", "fr"], // Saint Martin (French)
+  ["pm", "fr"], // Saint Pierre and Miquelon
+  ["yt", "fr"], // Mayotte
+  ["vg", "gb"], // British Virgin Islands
+  ["vi", "us"], // US Virgin Islands
+  ["sx", "nl"], // Sint Maarten
+  ["cw", "nl"], // Curaçao
+  ["aw", "nl"], // Aruba
+  ["pr", "us"], // Puerto Rico
+  ["gu", "us"], // Guam
+];
+
+function areCountryCodesEquivalent(actual: string | null, expected: string | null) {
+  if (!actual || !expected) return false;
+  if (actual === expected) return true;
+  return TERRITORY_SOVEREIGN_EQUIVALENCE_PAIRS.some(
+    ([territory, sovereign]) =>
+      (actual === territory && expected === sovereign) ||
+      (actual === sovereign && expected === territory)
+  );
+}
+
 function allowsExactCityCountryConfidenceFloor(
   query: GeocodeQuery,
   precision: GeocodePrecision,
@@ -1392,7 +1428,7 @@ function allowsExactCityCountryConfidenceFloor(
   if (!queryParts) return false;
 
   const actualCountryCode = getPayloadCountryCode(components);
-  if (!actualCountryCode || actualCountryCode !== queryParts.countryCode) return false;
+  if (!areCountryCodesEquivalent(actualCountryCode, queryParts.countryCode)) return false;
   if (componentsHaveSearchOnlyCityDisqualifier(components)) return false;
 
   const componentText = Object.values(components)
