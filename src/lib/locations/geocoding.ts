@@ -198,22 +198,30 @@ const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "coun
 const MARINE_PLACE_TYPES = new Set(["marina", "harbour", "harbor", "dock", "mooring", "ferry_terminal"]);
 const STREET_PLACE_TYPES = new Set(["house", "building", "amenity", "road", "street", "residential"]);
 const POI_PLACE_TYPES = new Set([
+  "accommodation",
   "bar",
   "cafe",
   "club",
   "commercial",
   "community_centre",
+  "camping",
   "fuel",
   "government",
+  "guest_house",
+  "hostel",
+  "hotel",
   "industrial",
+  "motel",
   "office",
   "police",
+  "resort",
   "restaurant",
   "shop",
   "social_centre",
   "tourism",
 ]);
 const POI_PLACE_CATEGORIES = new Set([
+  "accommodation",
   "building",
   "commerce",
   "commercial",
@@ -241,6 +249,36 @@ const OPENCAGE_MIN_CONFIDENCE_BY_PRECISION: Partial<Record<GeocodePrecision, num
   street: 7,
   marina: 7,
 };
+const WATERBODY_QUERY_TERMS = [
+  "sea",
+  "ocean",
+  "gulf",
+  "bay",
+  "strait",
+  "channel",
+  "sound",
+  "lagoon",
+  "fjord",
+  "lake",
+  "canal",
+  "bight",
+];
+const WATERBODY_POI_TERMS = [
+  "apartment",
+  "apartments",
+  "bar",
+  "camping",
+  "campground",
+  "guest house",
+  "hostel",
+  "hotel",
+  "inn",
+  "motel",
+  "restaurant",
+  "resort",
+  "villa",
+  "villas",
+];
 
 function normalizeLookupValue(value?: string | null) {
   return String(value || "")
@@ -597,6 +635,86 @@ function isPointOfInterestResult(type: string, category: string) {
   );
 }
 
+function getCoreQueryText(queryText: string) {
+  const parts = uniqueParts(queryText.split(",").map(canonicalizeGeocodePart)).filter(
+    (part) => !getExactCountryCodeForPart(part)
+  );
+
+  return parts.join(", ").trim() || queryText.trim();
+}
+
+function normalizedHasTerm(value: string, term: string) {
+  return new RegExp(`(^|\\s)${escapeRegExp(term)}(\\s|$)`).test(value);
+}
+
+function getDegenerateQueryIssue(queryText: string) {
+  const coreText = getCoreQueryText(queryText);
+  const normalizedCore = normalizeLookupValue(coreText);
+  const alphaCount = normalizedCore.replace(/[^a-z]/g, "").length;
+  const tokens = normalizedCore.split(/\s+/).filter(Boolean);
+
+  if (alphaCount < 3 || (tokens.length === 1 && tokens[0].length <= 2)) {
+    return "degenerate_query";
+  }
+
+  return null;
+}
+
+function queryHasWaterbodyTerm(queryText: string) {
+  const normalizedCore = normalizeLookupValue(getCoreQueryText(queryText));
+  return WATERBODY_QUERY_TERMS.some((term) => normalizedHasTerm(normalizedCore, term));
+}
+
+function placeNameHasBusinessPoiTerm(placeName?: string | null) {
+  const normalizedPlaceName = normalizeLookupValue(placeName);
+  return WATERBODY_POI_TERMS.some((term) => normalizedHasTerm(normalizedPlaceName, term));
+}
+
+function getPayloadRecord(payload: unknown) {
+  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+}
+
+function payloadHasPointOfInterestType(payload: unknown) {
+  const payloadRecord = getPayloadRecord(payload);
+  const components = payloadRecord.components && typeof payloadRecord.components === "object"
+    ? (payloadRecord.components as Record<string, unknown>)
+    : payloadRecord;
+  const type = normalizeLookupValue(
+    String(components._type || payloadRecord.type || payloadRecord.addresstype || "")
+  );
+  const category = normalizeLookupValue(
+    String(components._category || payloadRecord.category || payloadRecord.class || "")
+  );
+
+  return isPointOfInterestResult(type, category);
+}
+
+function getGeocodeQualityIssue(queryText: string, result: Pick<GeocodeResult, "placeName" | "payload">) {
+  const degenerateIssue = getDegenerateQueryIssue(queryText);
+  if (degenerateIssue) return degenerateIssue;
+
+  if (
+    queryHasWaterbodyTerm(queryText) &&
+    !isMarineGeocodePart(queryText) &&
+    (payloadHasPointOfInterestType(result.payload) || placeNameHasBusinessPoiTerm(result.placeName))
+  ) {
+    return "waterbody_poi_mismatch";
+  }
+
+  return null;
+}
+
+export function reviewGeocodeResultQuality(queryText: string, result: GeocodeResult): GeocodeResult {
+  const issue = getGeocodeQualityIssue(queryText, result);
+  if (!issue) return result;
+
+  return {
+    ...result,
+    status: "review",
+    error: issue,
+  };
+}
+
 function prepareGeocodeLocationText(locationText: string, country?: string | null) {
   const stripped = stripBroadGeocodeEdgePhrases(
     stripBroadGeocodeParentheticals(
@@ -911,7 +1029,7 @@ export async function geocodeWithNominatim(
     const score = scoreNominatimResult(result, precision);
     const needsReview = precision === "country" || precision === "unknown" || score < 0.35;
 
-    return {
+    return reviewGeocodeResultQuality(query.queryText, {
       status: needsReview ? "review" : "geocoded",
       latitude,
       longitude,
@@ -921,7 +1039,7 @@ export async function geocodeWithNominatim(
       provider: "nominatim",
       payload: result,
       error: needsReview ? "low_precision" : null,
-    };
+    });
   } catch (err) {
     return {
       status: "failed",
@@ -1046,7 +1164,7 @@ export async function geocodeWithOpenCage(
       (typeof precisionConfidenceFloor === "number" && normalizedConfidence < precisionConfidenceFloor);
     const lowPrecision = precision === "country" || precision === "unknown";
 
-    return {
+    return reviewGeocodeResultQuality(query.queryText, {
       status: lowConfidence || lowPrecision ? "review" : "geocoded",
       latitude,
       longitude,
@@ -1056,7 +1174,7 @@ export async function geocodeWithOpenCage(
       provider: "opencage",
       payload: result,
       error: lowPrecision ? "low_precision" : lowConfidence ? "low_confidence" : null,
-    };
+    });
   } catch (err) {
     return {
       status: "failed",

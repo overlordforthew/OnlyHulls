@@ -6,6 +6,7 @@ import {
   geocodeWithNominatim,
   getGeocodeCandidateReason,
   getGeocodingConfig,
+  reviewGeocodeResultQuality,
   type GeocodingConfig,
   type GeocodePrecision,
   type GeocodeResult,
@@ -46,6 +47,7 @@ type BoatGeocodeCandidate = {
 
 type GeocodeCacheRow = {
   query_key?: string;
+  query_text: string | null;
   status: GeocodeStatus;
   latitude: number | null;
   longitude: number | null;
@@ -378,7 +380,7 @@ function appendGeocodeAudit(
 }
 
 function fromCache(row: GeocodeCacheRow): GeocodeResult {
-  return {
+  return reviewGeocodeResultQuality(row.query_text || row.query_key || "", {
     status: row.status,
     latitude: row.latitude,
     longitude: row.longitude,
@@ -388,13 +390,13 @@ function fromCache(row: GeocodeCacheRow): GeocodeResult {
     provider: row.provider === "nominatim" || row.provider === "opencage" ? row.provider : "disabled",
     payload: row.payload,
     error: row.error,
-  };
+  });
 }
 
 async function getCachedResults(queryKeys: string[], provider: GeocodingConfig["provider"]) {
   if (queryKeys.length === 0) return new Map<string, GeocodeResult>();
   const rows = await query<GeocodeCacheRow>(
-    `SELECT query_key, status, latitude, longitude, precision, score, place_name, provider, payload, error
+    `SELECT query_key, query_text, status, latitude, longitude, precision, score, place_name, provider, payload, error
      FROM location_geocode_cache
      WHERE query_key = ANY($1::text[])
        AND provider = $2`,
@@ -410,7 +412,7 @@ async function getCachedResults(queryKeys: string[], provider: GeocodingConfig["
 
 async function getCachedResult(queryKey: string, provider: GeocodingConfig["provider"]) {
   const rows = await query<GeocodeCacheRow>(
-    `SELECT status, latitude, longitude, precision, score, place_name, provider, payload, error
+    `SELECT query_key, query_text, status, latitude, longitude, precision, score, place_name, provider, payload, error
      FROM location_geocode_cache
      WHERE query_key = $1
        AND provider = $2`,
@@ -491,14 +493,14 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
 
   await query(
     `UPDATE boats
-     SET location_lat = CASE WHEN $2::boolean THEN $3 ELSE location_lat END,
-         location_lng = CASE WHEN $2::boolean THEN $4 ELSE location_lng END,
+     SET location_lat = CASE WHEN $2::boolean THEN $3 WHEN $10 IN ('review', 'failed') THEN NULL ELSE location_lat END,
+         location_lng = CASE WHEN $2::boolean THEN $4 WHEN $10 IN ('review', 'failed') THEN NULL ELSE location_lng END,
          location_country = COALESCE($5, location_country),
          location_region = COALESCE($6, location_region),
          location_market_slugs = COALESCE($7::text[], location_market_slugs),
          location_confidence = COALESCE($8, location_confidence),
-         location_approximate = COALESCE($9, location_approximate),
-         location_geocoded_at = CASE WHEN $2::boolean THEN NOW() ELSE location_geocoded_at END,
+         location_approximate = CASE WHEN $2::boolean THEN COALESCE($9, location_approximate) WHEN $10 IN ('review', 'failed') THEN TRUE ELSE location_approximate END,
+         location_geocoded_at = CASE WHEN $2::boolean THEN NOW() WHEN $10 IN ('review', 'failed') THEN NULL ELSE location_geocoded_at END,
          location_geocode_status = $10,
          location_geocode_provider = $11,
          location_geocode_query = $12,
@@ -750,10 +752,8 @@ async function main() {
     if (result.status === "failed") summary.failed += 1;
     if (result.status === "skipped") summary.skipped += 1;
     if (result.error) incrementCount(summary.failureReasons, result.error);
-    if (publicPinCandidates) {
-      if (isPublicPinEligibleResult(result)) summary.publicPinEligible += 1;
-      else summary.publicPinHeldBack += 1;
-    }
+    if (isPublicPinEligibleResult(result)) summary.publicPinEligible += 1;
+    else if (publicPinCandidates) summary.publicPinHeldBack += 1;
     appendGeocodeAudit(summary, boat, geocodeQuery, result, source);
   };
 

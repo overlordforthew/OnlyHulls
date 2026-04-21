@@ -7,6 +7,7 @@ import {
   geocodeWithNominatim,
   getGeocodeCandidateReason,
   getGeocodingConfig,
+  reviewGeocodeResultQuality,
   type GeocodingConfig,
 } from "../../src/lib/locations/geocoding";
 import { classifyGeocodeReviewIssue } from "../../src/lib/locations/geocode-triage";
@@ -1504,6 +1505,101 @@ test("geocodeWithOpenCage holds POI results for city-level queries", async () =>
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("geocodeWithOpenCage holds degenerate one-token import fragments for review", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "s, 84600 Grillon, France",
+            geometry: { lat: 44.3901329, lng: 4.9497074 },
+            confidence: 10,
+            components: {
+              _type: "hamlet",
+              hamlet: "s",
+              country: "France",
+              country_code: "fr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      { queryText: "S, France", queryKey: "s france", countryHint: "fr" },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.error, "degenerate_query");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage holds broad waterbody queries that resolve to businesses", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Ionian Sea Hotel, Mantzavinata - Favata, 282 00 Paliki Municipal Unit, Greece",
+            geometry: { lat: 38.1557011, lng: 20.3860003 },
+            confidence: 10,
+            components: {
+              _type: "hotel",
+              _category: "accommodation",
+              tourism: "hotel",
+              country: "Greece",
+              country_code: "gr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      { queryText: "Ionian Sea, Greece", queryKey: "ionian sea greece", countryHint: "gr" },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.error, "waterbody_poi_mismatch");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("cached geocode quality review reclassifies stale accepted bad rows", () => {
+  const result = reviewGeocodeResultQuality("Ionian Sea, Greece", {
+    status: "geocoded",
+    latitude: 38.1557011,
+    longitude: 20.3860003,
+    precision: "city",
+    score: 1,
+    placeName: "Ionian Sea Hotel, Mantzavinata, Greece",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "hotel",
+        _category: "accommodation",
+      },
+    },
+    error: null,
+  });
+
+  assert.equal(result.status, "review");
+  assert.equal(result.error, "waterbody_poi_mismatch");
 });
 
 test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
