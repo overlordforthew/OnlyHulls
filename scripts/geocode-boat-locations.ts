@@ -116,6 +116,7 @@ const BROAD_REGION_NAMES = new Set([
 const ACCEPTED_COUNTRY_CODE_EQUIVALENTS: Record<string, string[]> = {
   aw: ["nl"],
   gp: ["fr"],
+  mf: ["fr"],
   mq: ["fr"],
   pf: ["fr"],
   pr: ["us"],
@@ -569,6 +570,8 @@ function prepareCandidate(boat: BoatGeocodeCandidate): PreparedCandidate {
 async function main() {
   const limit = getLimit();
   const apply = hasFlag("--apply");
+  const fetchMissing = hasFlag("--fetch-missing");
+  const mode = apply ? "apply" : fetchMissing ? "dry-run-fetch-missing" : "dry-run-cache-only";
   const allowLargeBatch = hasFlag("--allow-large-batch");
   const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
@@ -588,7 +591,7 @@ async function main() {
     console.log(JSON.stringify({
       provider: config.provider,
       enabled: config.enabled,
-      mode: apply ? "apply" : "dry-run",
+      mode,
       includeReview,
       stoppedReason: earlyApplySafetyStop.stoppedReason,
     }, null, 2));
@@ -642,7 +645,7 @@ async function main() {
   const summary = {
     provider: config.provider,
     enabled: config.enabled,
-    mode: apply ? "apply" : "dry-run",
+    mode,
     includeReview,
     totalCandidates: candidates.length,
     geocodableCandidates: geocodableCandidates.length,
@@ -650,6 +653,9 @@ async function main() {
     selectedRows: selectedCandidates.length,
     selectedUniqueQueries: selectedQueryKeys.length,
     cached: 0,
+    uncachedSelected: 0,
+    providerFetches: 0,
+    dryRunProviderFetchSkipped: 0,
     geocoded: 0,
     review: 0,
     failed: 0,
@@ -726,9 +732,17 @@ async function main() {
       continue;
     }
 
-    if (!apply || !config.enabled || config.provider === "disabled") continue;
+    summary.uncachedSelected += 1;
+
+    if (!apply && !fetchMissing) {
+      summary.dryRunProviderFetchSkipped += 1;
+      continue;
+    }
+
+    if (!config.enabled || config.provider === "disabled") continue;
 
     const result = await geocodeWithConfiguredProvider(geocodeQuery, config);
+    summary.providerFetches += 1;
     summary.statusSplit[result.status] += 1;
     summary.precisionSplit[result.precision] += 1;
     if (result.status === "geocoded") summary.geocoded += 1;
@@ -759,6 +773,12 @@ async function main() {
     summary.nextBatch.rows > 0
       ? Number((summary.nextBatch.cacheHits / summary.nextBatch.rows).toFixed(3))
       : 0;
+
+  if (summary.dryRunProviderFetchSkipped > 0) {
+    summary.warnings.push(
+      `dry_run_cache_only_skipped_${summary.dryRunProviderFetchSkipped}_uncached_provider_fetches_pass_--fetch-missing_for_paid_prediction`
+    );
+  }
 
   console.log(JSON.stringify(summary, null, 2));
 }
