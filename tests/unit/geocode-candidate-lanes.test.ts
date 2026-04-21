@@ -11,7 +11,10 @@ import {
   isPublicPinLikelyText,
   isVerifiedPublicPinAliasGeocodeCandidate,
 } from "../../src/lib/locations/geocode-candidate-lanes";
-import { getVerifiedPublicPinAliasMatch } from "../../src/lib/locations/verified-public-pin-aliases";
+import {
+  getVerifiedPublicPinAliasMatch,
+  isVerifiedPublicPinAliasAnchorMatch,
+} from "../../src/lib/locations/verified-public-pin-aliases";
 import type { GeocodeResult } from "../../src/lib/locations/geocoding";
 
 test("public pin candidate lane accepts marine-specific location text", () => {
@@ -74,6 +77,7 @@ test("public pin candidate lane accepts reviewed public-pin aliases", () => {
     "Palm Cay Marina, Nassau, Bahamas",
     "Medway Yacht Club Pontoon",
     "Marina Baotic, Seget Donji, Croatia",
+    "Linton Bay Marina, Panama",
   ];
 
   for (const value of accepted) {
@@ -91,6 +95,7 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Lagoon Marina, Cole Bay",
     "Marina Frapa, Rogoznica",
     "Marina Baotić, Seget Donji",
+    "Linton Bay Marina, Puerto Lindo",
   ];
   const rejected = [
     "Dover Marina, Kent",
@@ -101,6 +106,9 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Marina Del Rey, California",
     "Chatham Maritime Marina Boatyard",
     "Baotic Marina, Trogir",
+    "Linton",
+    "Linton Bay",
+    "Bay Marina, Panama",
     "Generic Marina",
   ];
 
@@ -165,6 +173,43 @@ test("verified public pin aliases require the same alias in query and result", (
       "Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia"
     ),
     "marina baotic"
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Linton Bay Marina",
+      "Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama"
+    ),
+    "linton bay marina"
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Linton Bay",
+      "Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama"
+    ),
+    null
+  );
+});
+
+test("verified public pin alias anchors preserve Sint Maarten provider country-code nuance", () => {
+  for (const countryCode of ["nl", "sx"]) {
+    assert.equal(
+      isVerifiedPublicPinAliasAnchorMatch("lagoon marina", {
+        countryCode,
+        latitude: 18.0333598,
+        longitude: -63.0857087,
+      }),
+      true,
+      countryCode
+    );
+  }
+
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("lagoon marina", {
+      countryCode: "fr",
+      latitude: 18.0333598,
+      longitude: -63.0857087,
+    }),
+    false
   );
 });
 

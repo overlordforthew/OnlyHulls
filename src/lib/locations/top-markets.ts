@@ -896,8 +896,8 @@ export const TOP_LOCATION_MARKETS: TopLocationMarket[] = [
     label: "Panama",
     country: "Panama",
     region: "Panama",
-    aliases: ["bocas del toro", "colon", "shelter bay"],
-    searchTerms: ["panama", "bocas del toro", "colon", "shelter bay"],
+    aliases: ["bocas del toro", "colon", "shelter bay", "linton bay", "linton bay marina"],
+    searchTerms: ["panama", "bocas del toro", "colon", "shelter bay", "linton bay", "linton bay marina"],
   },
   {
     slug: "texas",

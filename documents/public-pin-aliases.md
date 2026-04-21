@@ -19,13 +19,16 @@ Current aliases:
 | `chichester marina` | Round 16 | Cached OpenCage result is `Chichester Marina, Appledram, Birdham, Chichester, West Sussex, England, United Kingdom`, `score=1`, `country=GB`, with provider component `water=Chichester Marina`. | 5 rows applied in backup `boat_geocode_backup_20260421112827`. |
 | `palm cay marina` | Round 16 | Cached OpenCage result is `Palm Cay Marina, Palm Cay, Nassau, Bahamas`, `score=1`, `country=BS`, with provider component `basin=Palm Cay Marina`. | 3 rows applied in backup `boat_geocode_backup_20260421112827`. |
 | `medway yacht club` | Round 16 | Cached OpenCage result is `Medway Yacht Club Pontoon, Riverside Walk, Gillingham, ME4 3SU, United Kingdom`, `score=1`, `country=GB`, with provider component `pier=Medway Yacht Club Pontoon`. | 3 rows applied in backup `boat_geocode_backup_20260421112827`. |
-| `lagoon marina` | Round 16 | Cached OpenCage result is `Lagoon Marina, Wellington Road, Cul-de-Sac, Sint Maarten`, `score=1`, with provider component `pier=Lagoon Marina`; the existing country-equivalence guard handles the provider `nl`/Sint Maarten code nuance. | 1 row applied in backup `boat_geocode_backup_20260421112827`. |
+| `lagoon marina` | Round 16 | Cached OpenCage result is `Lagoon Marina, Wellington Road, Cul-de-Sac, Sint Maarten`, `score=1`, with provider component `pier=Lagoon Marina`; the existing country-equivalence guard handles the provider `nl`/Sint Maarten code nuance. Round 20 confirmed that appending `Sint Maarten` to the query returns broad `Cole Bay` city precision, so keep Lagoon on the verified alias/cache path until a facility-specific provider query is proven. | 1 row applied in backup `boat_geocode_backup_20260421112827`; 2 cache-backed Lagoon rows repaired in `boat_geocode_backup_20260421134416` after the rejected Cole Bay metadata experiment. |
 | `marina frapa` | Round 16 | Cached OpenCage result is `Marina Frapa, Uvala Soline 1, 22203 Općina Rogoznica, Croatia`, `score=1`, `country=HR`, with provider component `reception_desk=Marina Frapa`. | 1 row applied in backup `boat_geocode_backup_20260421112827`. |
 | `marina baotic` | Round 19 | OpenCage preview for `Marina Baotic, Seget Donji, Croatia` returned `Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia`, `precision=marina`, `score=1`, `country=HR`; broader `Yachtclub Seget ... Trogir` and `Marina Baotic, Trogir` queries returned only Trogir city precision. | 12 rows applied in backup `boat_geocode_backup_20260421125714`; post-apply audit returned 12/12 eligible pins. |
+| `linton bay marina` | Round 20 | OpenCage preview for `Linton Bay Marina` returned `Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama`, `precision=marina`, `score=1`, `country=PA`; negative checks keep `Linton`, `Linton Bay`, and `Bay Marina, Panama` out of the alias lane. | 2 Linton rows applied in backup `boat_geocode_backup_20260421133028`; the verified-alias queue selected 0 rows afterward. |
 
 Round 16 applied 23 cached reviewed-alias rows with `PUBLIC_MAP_ENABLED=false`; 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 23/23 eligible pins.
 
 Round 19 applied 12 Marina Baotić rows with `PUBLIC_MAP_ENABLED=false`; 8 existing Trogir city coordinates and 4 review rows were promoted to marina-grade pins through the verified-alias changed-geocoded lane, 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 12/12 eligible pins.
+
+Round 20 applied 2 Linton Bay Marina rows with `PUBLIC_MAP_ENABLED=false`, `precision=marina`, `score=1`, 0 held back, 0 failed, 0 geography mismatches, and 0 warnings. A follow-up Cole Bay/Sint Maarten metadata experiment was rolled back because the country-suffixed OpenCage query returned broad `Cole Bay` city precision instead of Lagoon Marina; the affected Lagoon rows were repaired from the existing verified Lagoon Marina cache in `boat_geocode_backup_20260421134416`, and the verified-alias lane selected 0 rows afterward.
 
 Promotion anchors:
 
@@ -37,6 +40,7 @@ Promotion anchors:
 - `lagoon marina`: `nl`/`sx`, `18.033360, -63.085709`, max 5 km.
 - `marina frapa`: `hr`, `43.529953, 15.963572`, max 5 km.
 - `marina baotic`: `hr`, `43.516219, 16.233877`, max 5 km.
+- `linton bay marina`: `pa`, `9.612811, -79.578944`, max 5 km.
 
 Explicit non-aliases from Round 16:
 
