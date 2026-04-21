@@ -308,8 +308,8 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
       confidence: "city",
     }),
     {
-      queryText: "Nanny Cay British Virgin Islands",
-      queryKey: "nanny cay british virgin islands",
+      queryText: "Nanny Cay Marina, Tortola, British Virgin Islands",
+      queryKey: "nanny cay marina tortola british virgin islands",
       countryHint: "vg",
     }
   );
@@ -332,8 +332,8 @@ test("buildGeocodeQuery removes broad cruising-region noise and prioritizes mari
       confidence: "city",
     }),
     {
-      queryText: "Marina De L'Anse Marcel, Saint Martin",
-      queryKey: "marina de l anse marcel saint martin",
+      queryText: "Marina Anse Marcel, Saint Martin",
+      queryKey: "marina anse marcel saint martin",
       countryHint: "mf",
     }
   );
@@ -590,6 +590,66 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Nanny Cay Tortola, British Virgin Islands",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Nanny Cay Marina, Tortola, British Virgin Islands",
+      queryKey: "nanny cay marina tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Nanny Cay",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Nanny Cay Marina, Tortola, British Virgin Islands",
+      queryKey: "nanny cay marina tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Nanny Cay, Virgin Islands (British)",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Nanny Cay Marina, Tortola, British Virgin Islands",
+      queryKey: "nanny cay marina tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Corsica, Ajaccio, Port Tino Rossi, Mediterranean",
+      country: "France",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port Tino Rossi, Ajaccio, France",
+      queryKey: "port tino rossi ajaccio france",
+      countryHint: "fr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Cote D'Azur, Port Pin Rolland, Mediterranean",
+      country: "France",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port Pin Rolland, Saint-Mandrier-sur-Mer, France",
+      queryKey: "port pin rolland saint mandrier sur mer france",
+      countryHint: "fr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Hodge's Creek Marina Hotel, Parham Town, British Virgin Islands",
       country: "British Virgin Islands",
       confidence: "city",
@@ -755,6 +815,94 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryKey: "marina puerto escondido loreto baja california sur mexico",
       countryHint: "mx",
     }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marmaris Yacht Marine, Turkey",
+      country: "Turkey",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marmaris Yacht Marina, Turkey",
+      queryKey: "marmaris yacht marina turkey",
+      countryHint: "tr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Le Marin Martiniqe, Martinique",
+      country: "Martinique",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina du Marin, Martinique",
+      queryKey: "marina du marin martinique",
+      countryHint: "mq",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Bizerte Tunis, Tunisia",
+      country: "Tunisia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Bizerte, Tunisia",
+      queryKey: "bizerte tunisia",
+      countryHint: "tn",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Road Town Totola, British Virgin Islands",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Road Town, Tortola, British Virgin Islands",
+      queryKey: "road town tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Croatiaistrien",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Istria, Croatia",
+      queryKey: "istria croatia",
+      countryHint: "hr",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Peloponesse, Greece",
+      country: "Greece",
+      confidence: "city",
+    }),
+    {
+      queryText: "Peloponnese, Greece",
+      queryKey: "peloponnese greece",
+      countryHint: "gr",
+    }
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "North, Italy",
+      country: "Italy",
+      confidence: "city",
+    }),
+    null
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Hrvatska, Croatia",
+      country: "Croatia",
+      confidence: "city",
+    }),
+    null
   );
   assert.deepEqual(
     buildGeocodeQuery({
@@ -1724,6 +1872,89 @@ test("geocodeWithOpenCage accepts vetted known-marina names over generic city ty
     assert.equal(result.status, "geocoded");
     assert.equal(result.precision, "marina");
     assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts lower-confidence marine hits only when query and result agree", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Port Tino Rossi, 20000 Ajaccio, France",
+            geometry: { lat: 41.9187255, lng: 8.7413568 },
+            confidence: 6,
+            components: {
+              _type: "road",
+              road: "Port Tino Rossi",
+              city: "Ajaccio",
+              country: "France",
+              country_code: "fr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Port Tino Rossi, Ajaccio, France",
+        queryKey: "port tino rossi ajaccio france",
+        countryHint: "fr",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage keeps misleading marine-ish street matches in review", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "le Port Rolland, 44290 Masserac, France",
+            geometry: { lat: 47.6743, lng: -1.9147 },
+            confidence: 6,
+            components: {
+              _type: "road",
+              road: "le Port Rolland",
+              village: "Masserac",
+              country: "France",
+              country_code: "fr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Port Pin Rolland, Saint-Mandrier-sur-Mer, France",
+        queryKey: "port pin rolland saint mandrier sur mer france",
+        countryHint: "fr",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.notEqual(result.precision, "marina");
   } finally {
     globalThis.fetch = originalFetch;
   }
