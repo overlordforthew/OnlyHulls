@@ -751,6 +751,186 @@ test("round 24 Toronto Island Marina canonicalizes bare text and preserves quali
   assert.equal(ontarioVariant.countryHint, "ca");
 });
 
+test("verified Alcaidesa Marina alias accepts es+gi country codes with marina component", () => {
+  // Positive: Spain-tagged facility.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("alcaidesa marina", {
+      countryCode: "es",
+      latitude: 36.1585704,
+      longitude: -5.357562,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Alcaidesa Marina",
+          country_code: "es",
+        },
+      },
+    }),
+    true
+  );
+
+  // Gibraltar-tagged variant also accepted (defensive; provider currently returns `es`).
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("alcaidesa marina", {
+      countryCode: "gi",
+      latitude: 36.1585704,
+      longitude: -5.357562,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Alcaidesa Marina",
+          country_code: "es",
+        },
+      },
+    }),
+    true
+  );
+
+  // Wrong country rejection.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("alcaidesa marina", {
+      countryCode: "us",
+      latitude: 36.1585704,
+      longitude: -5.357562,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "Alcaidesa Marina",
+          country_code: "us",
+        },
+      },
+    }),
+    false
+  );
+
+  // Missing marina component — e.g. a Gibraltar city result — must not promote.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("alcaidesa marina", {
+      countryCode: "gi",
+      latitude: 36.1585704,
+      longitude: -5.357562,
+      score: 1,
+      payload: { components: { _type: "city", country_code: "gi" } },
+    }),
+    false
+  );
+});
+
+test("verified D-Marin Didim Marina alias requires the exact marina component", () => {
+  // Positive.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("d marin didim marina", {
+      countryCode: "tr",
+      latitude: 37.3389407,
+      longitude: 27.2619989,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "D-Marin Didim Marina",
+          country_code: "tr",
+        },
+      },
+    }),
+    true
+  );
+
+  // Wrong marina name (other D-Marin facility e.g. D-Marin Lefkas) — required value
+  // mismatch rejects even with correct country + type.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("d marin didim marina", {
+      countryCode: "tr",
+      latitude: 37.3389407,
+      longitude: 27.2619989,
+      score: 1,
+      payload: {
+        components: {
+          _type: "marina",
+          marina: "D-Marin Lefkas",
+          country_code: "tr",
+        },
+      },
+    }),
+    false
+  );
+
+  // Heliport result (the bare `Didim Marina` query returns `_type=aeroway`); must not
+  // promote because `_type` is not `marina`.
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("d marin didim marina", {
+      countryCode: "tr",
+      latitude: 37.3396333,
+      longitude: 27.2590445,
+      score: 1,
+      payload: {
+        components: {
+          _type: "aeroway",
+          aeroway: "D-Marin Didim Marina Heliport",
+          country_code: "tr",
+        },
+      },
+    }),
+    false
+  );
+});
+
+test("round 25 Alcaidesa and Didim canonicalizations map only the documented source texts", () => {
+  // Positive: Alcaidesa exact source text canonicalizes. Note that the canonicalized
+  // queryText names Spain in the address; `countryHint` is derived from the query text
+  // signal (es) rather than the original row country (gi). The providerCountryCodes
+  // widening still covers both so OpenCage doesn't drop the facility regardless of how
+  // the stored country was tagged.
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Alcaidesa Marina In Spain Near Gibraltar",
+      country: "Gibraltar",
+      confidence: "city",
+    }),
+    {
+      queryText: "Alcaidesa Marina, La Línea de la Concepción, Spain",
+      queryKey: "alcaidesa marina la linea de la concepcion spain",
+      countryHint: "es",
+      providerCountryCodes: ["es", "gi"],
+    }
+  );
+
+  // Positive: Didim Marina, Turkey canonicalizes to D-Marin facility query.
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Didim Marina, Turkey",
+      country: "Turkey",
+      confidence: "city",
+    }),
+    {
+      queryText: "D-Marin Didim Marina, Didim, Turkey",
+      queryKey: "d marin didim marina didim turkey",
+      countryHint: "tr",
+    }
+  );
+
+  // Negative: plain `Didim, Turkey` (no marina token) must NOT canonicalize to the
+  // D-Marin facility query.
+  const didimCity = buildGeocodeQuery({
+    locationText: "Didim, Turkey",
+    country: "Turkey",
+    confidence: "city",
+  });
+  assert.ok(didimCity);
+  assert.notEqual(didimCity.queryText, "D-Marin Didim Marina, Didim, Turkey");
+
+  // Negative: `Didim Harbour, Turkey` (harbour, not marina) does NOT canonicalize.
+  const didimHarbour = buildGeocodeQuery({
+    locationText: "Didim Harbour, Turkey",
+    country: "Turkey",
+    confidence: "city",
+  });
+  assert.ok(didimHarbour);
+  assert.notEqual(didimHarbour.queryText, "D-Marin Didim Marina, Didim, Turkey");
+});
+
 test("cached geocode promotion rejects wrong-country aliased results (Green Cay BVI, Toronto US)", () => {
   // Follow-up from Round 23 consensus gate #2: a hypothetical "Green Cay Marina" result
   // tagged as a BVI/UK territory (country_code=vg) must NOT promote the verified alias

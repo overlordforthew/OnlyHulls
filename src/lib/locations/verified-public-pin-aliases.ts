@@ -116,6 +116,49 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
     ],
   },
   {
+    alias: "alcaidesa marina",
+    // Facility is tagged `country_code=es` by OpenCage but it sits on the
+    // Spain/Gibraltar border and rows sometimes carry `location_country=Gibraltar`.
+    // Round 23's providerCountryCodes widening sends `countrycode=es,gi` so the
+    // provider does not drop the facility when `gi`-only filtering is applied.
+    countryCodes: ["es", "gi"],
+    latitude: 36.1585704,
+    longitude: -5.357562,
+    maxDistanceKm: 0.5,
+    minScore: 0.9,
+    requiredComponent: {
+      type: "marina",
+      key: "marina",
+      value: "Alcaidesa Marina",
+    },
+    canonicalProviderQuery: "Alcaidesa Marina, La Línea de la Concepción, Spain",
+    acceptedSourceTexts: ["Alcaidesa Marina In Spain Near Gibraltar"],
+    negativeSourceTexts: [
+      "Alcaidesa Marina, Gibraltar Bay",
+      "Gibraltar",
+    ],
+  },
+  {
+    alias: "d marin didim marina",
+    countryCodes: ["tr"],
+    latitude: 37.3389407,
+    longitude: 27.2619989,
+    maxDistanceKm: 0.5,
+    minScore: 0.9,
+    requiredComponent: {
+      type: "marina",
+      key: "marina",
+      value: "D-Marin Didim Marina",
+    },
+    canonicalProviderQuery: "D-Marin Didim Marina, Didim, Turkey",
+    acceptedSourceTexts: ["Didim Marina, Turkey"],
+    negativeSourceTexts: [
+      "Didim, Turkey",
+      "Didim Harbour, Turkey",
+      "Lefkas, D-Marin",
+    ],
+  },
+  {
     alias: "green cay marina",
     countryCodes: ["us", "vi"],
     latitude: 17.7591487,
