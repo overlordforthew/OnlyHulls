@@ -163,6 +163,7 @@ const BROAD_GEOCODE_PARTS = new Set([
   "mediterranean",
   "mediterranean sea",
   "new england",
+  "north",
   "north sea",
   "dutch antilles",
   "netherlands antilles",
@@ -176,8 +177,12 @@ const BROAD_GEOCODE_EDGE_PHRASES = Array.from(BROAD_GEOCODE_PARTS).sort(
   (left, right) => right.length - left.length
 );
 const KNOWN_MARINA_NAME_TERMS = [
+  "marmaris yacht marina",
+  "marina du marin",
   "nanny cay",
+  "pin rolland",
   "puerto del rey marina",
+  "tino rossi",
 ];
 const MARINE_GEOCODE_TERMS = [
   "marine",
@@ -193,6 +198,11 @@ const MARINE_GEOCODE_TERMS = [
   "dock",
   "havn",
   "haven",
+  "marmaris yacht marina",
+  "marina du marin",
+  "pin rolland",
+  "port de plaisance",
+  "tino rossi",
 ];
 const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "county", "island"]);
 const MARINE_PLACE_TYPES = new Set(["marina", "harbour", "harbor", "dock", "mooring", "ferry_terminal"]);
@@ -342,8 +352,10 @@ function normalizeKnownLocationTextArtifacts(value: string) {
   return value
     .replace(/\bGenoa\s*,\s*Italyn\s*\/\s*A\b/gi, "Genoa, Italy")
     .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
+    .replace(/\bBizerte\s+Tunis\b/gi, "Bizerte, Tunisia")
     .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
     .replace(/\bChiapas\s+Marina\s*,\s*Mexico\b/gi, "Marina Chiapas, Chiapas, Mexico")
+    .replace(/\bCroatiaistrien\b/gi, "Istria, Croatia")
     .replace(
       /\bClarke'?s\s+Court\s+Boatyard\s*(?:&|and)\s*Marina(?:\s*,\s*Grenada)?\b/gi,
       "Clarkes Court Boatyard and Marina, Grenada"
@@ -378,6 +390,13 @@ function normalizeKnownLocationTextArtifacts(value: string) {
       /\bLa\s+Cruz\s+Marina\s+Near\s+Puerto\s+Vallarta\s*,\s*Mexico\b/gi,
       "Marina La Cruz, La Cruz de Huanacaxtle, Nayarit, Mexico"
     )
+    .replace(/\bLe\s+Marin\s+Martiniqe\b/gi, "Marina du Marin, Martinique")
+    .replace(/\bLuperon\s+Dominican\s+Republic\s+Can\s+Be\s+Delivered\s+To\s+You\b/gi, "Luperon, Dominican Republic")
+    .replace(/\bMarmaris\s+Yacht\s+Marine(?:\s*,\s*Turkey)?\b/gi, "Marmaris Yacht Marina, Turkey")
+    .replace(
+      /\bMarina\s+De\s+L'?Anse\s+Marcel(?:\s*,\s*(?:(?:St\.?|Saint)\s+Martin|Sint\s+Maarten))*\b/gi,
+      "Marina Anse Marcel, Saint Martin"
+    )
     .replace(
       /\bCamper\s*(?:&|and)\s*Nicholsons\s+Port\s+Louis\s+Marina(?:\s*,\s*(?:St\.?\s*George'?s|Saint-?Georges))?(?:\s*,\s*Grenade)?(?:\s*,\s*Grenada)?\b/gi,
       "Port Louis Marina, Grenada"
@@ -390,13 +409,23 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     .replace(/\bMarina\s+Vaiare\s*,\s*Moorea\s*,\s*Tahiti\b/gi, "Marina Vaiare, Moorea, French Polynesia")
     .replace(/\bMartinique\s+French\b/gi, "Martinique")
     .replace(/\bNanny\s+Cay\s+Boatyard\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(/\bNanny\s+Cay\s+Tortola\b/gi, "Nanny Cay Marina, Tortola")
+    .replace(/\bNanny\s+Cay\s+British\s+Virgin\s+Islands\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(/\bNanny\s+Cay\s*,\s*British\s+Virgin\s+Islands\b/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
+    .replace(/^\s*Nanny\s+Cay\s*$/gi, "Nanny Cay Marina, Tortola, British Virgin Islands")
     .replace(/\bKos\s*,\s*Kos\s+Marina\s*,\s*Mediterranean\b/gi, "Kos Marina, Kos, Greece")
+    .replace(/\bPeloponesse\b/gi, "Peloponnese")
     .replace(/\bPenarth\s+Marina\s+Cardiff\b/gi, "Penarth Marina, United Kingdom")
     .replace(
       /\bPanama\s*[-,]?\s*Shelter\s+Bay\s+Marina\s+Atlantic\s+Side\s+Of\s+Canal\b/gi,
       "Shelter Bay Marina, Colon, Panama"
     )
     .replace(/\bPiraeus\s*\(\s*Zea\s+Marina\s*\)(?=$|[\s,])/gi, "Zea Marina, Piraeus, Greece")
+    .replace(/\b(?:Corsica\s*,\s*Ajaccio\s*,\s*)?Port\s+Tino\s+Rossi(?:\s*,\s*Mediterranean)?\b/gi, "Port Tino Rossi, Ajaccio, France")
+    .replace(
+      /\b(?:Cote\s+D'?Azur\s*,\s*)?Port\s+Pin\s+Rolland(?:\s*,\s*Mediterranean)?\b/gi,
+      "Port Pin Rolland, Saint-Mandrier-sur-Mer, France"
+    )
     .replace(
       /(?:\u0160|S)ibenik\s*,\s*Marina\s+Zaton\s*,\s*Mediterranean\b/gi,
       "Marina Zaton, Sibenik, Croatia"
@@ -429,6 +458,11 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     )
     .replace(/\bVerkoophaven\s+Delta\s+Marina\b/gi, "Delta Marina, Kortgene, Netherlands")
     .replace(/\bZea\s+Marina\s*,\s*Athens\b/gi, "Zea Marina, Piraeus, Greece")
+    .replace(/\bCarribean\b/gi, "Caribbean")
+    .replace(/\bRoad\s+Town\s+Totola\b/gi, "Road Town, Tortola")
+    .replace(/\bSint\s+Maarten\s+Dutch\s+Part\b/gi, "Sint Maarten")
+    .replace(/\bSt\s+Maarten\s+NA\s+Northeastern\b/gi, "Sint Maarten")
+    .replace(/\bHrvatska\b/gi, "Croatia")
     .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
     .replace(/\bSt\.?\s+Martin\b/gi, "Saint Martin")
     .replace(
@@ -488,6 +522,7 @@ function canonicalizeGeocodePart(part: string) {
     return "Saint Martin";
   }
   if (normalized === "st lucia") return "Saint Lucia";
+  if (normalized === "hrvatska") return "Croatia";
   if (normalized === "italyn a") return "Italy";
 
   return trimmed;
@@ -716,12 +751,11 @@ export function reviewGeocodeResultQuality(queryText: string, result: GeocodeRes
 }
 
 function prepareGeocodeLocationText(locationText: string, country?: string | null) {
+  const sourceCleaned = normalizeKnownLocationTextArtifacts(stripGeocodeSourceArtifacts(locationText));
+  const aliased = normalizeCountryAliasText(sourceCleaned, country);
   const stripped = stripBroadGeocodeEdgePhrases(
     stripBroadGeocodeParentheticals(
-      normalizeCountryAliasText(
-        normalizeKnownLocationTextArtifacts(stripGeocodeSourceArtifacts(locationText)),
-        country
-      )
+      normalizeKnownLocationTextArtifacts(aliased)
     )
   );
   const parts = removeConflictingCountryParts(
@@ -927,6 +961,19 @@ function inferOpenCagePrecision(
   if (confidence >= 4) return "region";
 
   return "unknown";
+}
+
+function allowsMarineSpecificConfidenceFloor(
+  precision: GeocodePrecision,
+  confidence: number,
+  queryText: string,
+  formatted: string,
+  components: Record<string, unknown>
+) {
+  if (!["marina", "street"].includes(precision)) return false;
+  if (confidence < 5) return false;
+
+  return resultAndQueryHaveKnownMarinaName(queryText, formatted, components);
 }
 
 function validCoordinate(latitude: number, longitude: number) {
@@ -1161,7 +1208,15 @@ export async function geocodeWithOpenCage(
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
     const lowConfidence =
       normalizedConfidence <= 3 ||
-      (typeof precisionConfidenceFloor === "number" && normalizedConfidence < precisionConfidenceFloor);
+      (typeof precisionConfidenceFloor === "number" &&
+        normalizedConfidence < precisionConfidenceFloor &&
+        !allowsMarineSpecificConfidenceFloor(
+          precision,
+          normalizedConfidence,
+          query.queryText,
+          formatted || "",
+          components
+        ));
     const lowPrecision = precision === "country" || precision === "unknown";
 
     return reviewGeocodeResultQuality(query.queryText, {
