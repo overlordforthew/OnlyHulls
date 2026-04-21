@@ -556,10 +556,24 @@ function normalizeLocationPart(value: string) {
 }
 
 export function normalizeSpacing(value?: string | null) {
-  return stripMojibake(String(value || ""))
+  return stripMojibake(decodeHtmlTextArtifacts(String(value || "")))
     .replace(/[|]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtmlTextArtifacts(value: string) {
+  return value
+    .replace(/&#x([0-9a-f]+);?/gi, (_match, code: string) => {
+      const codePoint = Number.parseInt(code, 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : " ";
+    })
+    .replace(/&#(\d+);?/g, (_match, code: string) => {
+      const codePoint = Number.parseInt(code, 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : " ";
+    })
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&");
 }
 
 function findNarrativeLocationBreak(value: string) {
@@ -661,6 +675,7 @@ export function normalizeImportedLocation(value?: string | null) {
   normalized = normalized
     .replace(/\s*\|\s*/g, ", ")
     .replace(/\s*\/\s*/g, " / ")
+    .replace(/\s+price\s*:\s*(?:[$]\s*)?\d[\d\s,.'-]*$/i, "")
     .replace(/\s+(?:duty|vat|tax)\s+paid$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();

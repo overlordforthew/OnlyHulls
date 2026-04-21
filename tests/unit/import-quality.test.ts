@@ -78,6 +78,12 @@ test("normalizeImportedLocation removes duplicate tails and placeholder values",
     "Honolulu, Hawaii"
   );
   assert.equal(normalizeImportedLocation("Mare Adriatico,"), "Mare Adriatico");
+  assert.equal(
+    normalizeImportedLocation(
+      "&#8239;Shoreline&#8239;Marina, &#8239;Long&#8239;Beach, &#8239;California Price:&#8239;$52, 500"
+    ),
+    "Shoreline Marina, Long Beach, California"
+  );
   assert.equal(normalizeImportedLocation("\u{1F1E7}\u{1F1EC}, Bulgaria"), "Bulgaria");
   assert.equal(normalizeImportedLocation("Outside United States"), "");
   assert.equal(normalizeImportedLocation("At Request"), "");
