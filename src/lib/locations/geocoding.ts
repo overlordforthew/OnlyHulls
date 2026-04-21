@@ -1312,15 +1312,32 @@ function getExactCityCountryQueryParts(query: GeocodeQuery) {
   if (!query.countryHint) return null;
 
   const parts = uniqueParts(query.queryText.split(",").map(canonicalizeGeocodePart));
-  if (parts.length !== 2) return null;
+  // Round 34: accept 2-part `City, Country` OR 3-part `City, Region, Country`.
+  // For 3-part, the middle "region" part is additional narrowing; first must be
+  // a city-shaped part, last must be a country code match, middle must be a
+  // real region token (not another country and not broad/marine/street noise).
+  if (parts.length !== 2 && parts.length !== 3) return null;
 
-  const [cityPart, countryPart] = parts;
+  const cityPart = parts[0];
+  const countryPart = parts[parts.length - 1];
   const countryCode = getExactCountryCodeForPart(countryPart);
   const normalizedCity = normalizeLookupValue(cityPart);
   if (!countryCode || countryCode !== query.countryHint) return null;
   if (!normalizedCity || getExactCountryCodeForPart(cityPart)) return null;
   if (isBroadGeocodePart(cityPart) || isMarineGeocodePart(cityPart)) return null;
   if (queryHasAddressLikeStreetDetail(cityPart)) return null;
+
+  if (parts.length === 3) {
+    const regionPart = parts[1];
+    const normalizedRegion = normalizeLookupValue(regionPart);
+    // Region part must be a real token — not empty, not another country, not
+    // broad/marine/street noise, and must not be the same as the city part.
+    if (!normalizedRegion) return null;
+    if (normalizedRegion === normalizedCity) return null;
+    if (getExactCountryCodeForPart(regionPart)) return null;
+    if (isBroadGeocodePart(regionPart) || isMarineGeocodePart(regionPart)) return null;
+    if (queryHasAddressLikeStreetDetail(regionPart)) return null;
+  }
 
   return {
     cityPart,

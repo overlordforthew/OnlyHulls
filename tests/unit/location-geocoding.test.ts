@@ -1892,10 +1892,13 @@ test("geocodeWithOpenCage keeps unsafe confidence-three city-like results in rev
       error: "low_confidence",
     },
     {
-      name: "three-part city-region-country query",
+      // Round 34 extended the exception to 3-part City,Region,Country. To
+      // preserve "unsafe" test coverage, replace this 3-part case with a
+      // 4-part query which the exception still rejects.
+      name: "four-part city-region-region-country query",
       query: {
-        queryText: "Cannes, Alpes-Maritimes, France",
-        queryKey: "cannes alpes maritimes france",
+        queryText: "Cannes, Alpes-Maritimes, Provence, France",
+        queryKey: "cannes alpes maritimes provence france",
         countryHint: "fr",
       },
       result: {
@@ -3027,6 +3030,136 @@ test("geocodeWithOpenCage holds confidence=2 when primary city component mismatc
         queryText: "Bursa, Turkey",
         queryKey: "bursa turkey",
         countryHint: "tr",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts 3-part City,Region,Country at confidence=3 via the exact-city exception", async () => {
+  // Round 34: the Round 21 `exact City, Country` exception was widened to also
+  // accept `City, Region, Country` 3-part queries. Region is additional
+  // narrowing; it must be a real region token (not another country, not broad).
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Alicante, Valencian Community, Spain",
+            geometry: { lat: 38.3452, lng: -0.481 },
+            confidence: 3,
+            components: {
+              _type: "city",
+              city: "Alicante",
+              state: "Valencian Community",
+              country: "Spain",
+              country_code: "es",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Alicante, Valencian Community, Spain",
+        queryKey: "alicante valencian community spain",
+        countryHint: "es",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage still rejects 3-part queries when city component mismatches", async () => {
+  // Round 34 safety: 3-part extension must still reject wrong-city provider
+  // responses. Here the provider returned a same-country different city.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Valencia, Valencian Community, Spain",
+            geometry: { lat: 39.47, lng: -0.37 },
+            confidence: 3,
+            components: {
+              _type: "city",
+              city: "Valencia",
+              state: "Valencian Community",
+              country: "Spain",
+              country_code: "es",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Alicante, Valencian Community, Spain",
+        queryKey: "alicante valencian community spain",
+        countryHint: "es",
+      },
+      openCageConfig
+    );
+
+    // Loose conf=3 check: result text does not contain "alicante" → rejected.
+    assert.equal(result.status, "review");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage rejects 3-part queries when middle part is itself a country", async () => {
+  // Round 34 safety: `City, Country, Country` nonsense pattern must be rejected
+  // because the middle part resolving to a country code indicates the query is
+  // malformed, not a clean City,Region,Country.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Some place, France, Spain",
+            geometry: { lat: 40, lng: 0 },
+            confidence: 3,
+            components: {
+              _type: "city",
+              city: "Someplace",
+              country: "Spain",
+              country_code: "es",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Someplace, France, Spain",
+        queryKey: "someplace france spain",
+        countryHint: "es",
       },
       openCageConfig
     );
