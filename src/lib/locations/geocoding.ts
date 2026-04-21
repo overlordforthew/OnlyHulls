@@ -1,4 +1,10 @@
 import { hasConfiguredValue } from "@/lib/capabilities";
+import {
+  getVerifiedPublicPinAliasMatch,
+  isVerifiedPublicPinAliasAnchorMatch,
+  VERIFIED_PUBLIC_PIN_LOCATION_ALIASES,
+  type VerifiedPublicPinLocationAlias,
+} from "@/lib/locations/verified-public-pin-aliases";
 
 export type GeocodingProvider = "disabled" | "nominatim" | "opencage";
 export type GeocodePrecision =
@@ -35,6 +41,8 @@ export type GeocodeResult = {
   provider: GeocodingProvider;
   payload?: unknown;
   error?: string | null;
+  precisionPromotedFrom?: GeocodePrecision | null;
+  precisionPromotionAlias?: VerifiedPublicPinLocationAlias | null;
 };
 
 export type GeocodingConfig = {
@@ -183,6 +191,7 @@ const KNOWN_MARINA_NAME_TERMS = [
   "pin rolland",
   "puerto del rey marina",
   "tino rossi",
+  ...VERIFIED_PUBLIC_PIN_LOCATION_ALIASES,
 ];
 const MARINE_GEOCODE_TERMS = [
   "marine",
@@ -802,6 +811,49 @@ function getPayloadText(payload: unknown) {
   return Object.values(getPayloadComponents(payload))
     .filter((value): value is string | number => typeof value === "string" || typeof value === "number")
     .join(" ");
+}
+
+function getPayloadCountryCode(payload: unknown) {
+  const payloadRecord = getPayloadRecord(payload);
+  const components = getPayloadComponents(payload);
+  const countryCode =
+    components.country_code ||
+    components.countryCode ||
+    payloadRecord.country_code ||
+    payloadRecord.countryCode;
+
+  return typeof countryCode === "string" ? countryCode.toLowerCase() : null;
+}
+
+export function promoteVerifiedPublicPinAliasPrecision(
+  queryText: string,
+  result: GeocodeResult
+): GeocodeResult {
+  if (result.status !== "geocoded") return result;
+  if (["exact", "street", "marina"].includes(result.precision)) return result;
+
+  const alias = getVerifiedPublicPinAliasMatch(
+    queryText,
+    `${result.placeName || ""} ${getPayloadText(result.payload)}`
+  );
+  if (!alias) return result;
+  if (
+    !isVerifiedPublicPinAliasAnchorMatch(alias, {
+      countryCode: getPayloadCountryCode(result.payload),
+      latitude: result.latitude,
+      longitude: result.longitude,
+    })
+  ) {
+    return result;
+  }
+
+  return {
+    ...result,
+    precision: "marina",
+    error: result.error === "public_pin_ineligible_precision" ? null : result.error,
+    precisionPromotedFrom: result.precision,
+    precisionPromotionAlias: alias,
+  };
 }
 
 function queryIsDirectionalFragment(queryText: string) {
