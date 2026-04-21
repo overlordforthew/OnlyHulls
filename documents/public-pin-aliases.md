@@ -23,12 +23,15 @@ Current aliases:
 | `marina frapa` | Round 16 | Cached OpenCage result is `Marina Frapa, Uvala Soline 1, 22203 Općina Rogoznica, Croatia`, `score=1`, `country=HR`, with provider component `reception_desk=Marina Frapa`. | 1 row applied in backup `boat_geocode_backup_20260421112827`. |
 | `marina baotic` | Round 19 | OpenCage preview for `Marina Baotic, Seget Donji, Croatia` returned `Marina Baotić, Ulica don Petra Špika 2A, 21218 Seget Donji, Croatia`, `precision=marina`, `score=1`, `country=HR`; broader `Yachtclub Seget ... Trogir` and `Marina Baotic, Trogir` queries returned only Trogir city precision. | 12 rows applied in backup `boat_geocode_backup_20260421125714`; post-apply audit returned 12/12 eligible pins. |
 | `linton bay marina` | Round 20 | OpenCage preview for `Linton Bay Marina` returned `Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama`, `precision=marina`, `score=1`, `country=PA`; negative checks keep `Linton`, `Linton Bay`, and `Bay Marina, Panama` out of the alias lane. | 2 Linton rows applied in backup `boat_geocode_backup_20260421133028`; the verified-alias queue selected 0 rows afterward. |
+| `mdl chatham maritime marina boatyard` | Round 22 | OpenCage preview for `MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom` returned `MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom`, `precision=marina`, `score=1`, `country=GB`, with provider component `_type=boatyard` and `boatyard=MDL Chatham Maritime Marina Boatyard`. Negative checks keep plain `Chatham Marina` without Kent/country out of the lane, reject `Chatham Maritime Marina` water results, and keep Dover `New Marina Curve Road` pier/road text out of marina precision. | 4 reviewed Kent-qualified Chatham rows applied in backup `boat_geocode_backup_20260421152318`; post-apply audit returned 4/4 eligible pins and the verified-alias retry lane selected 0 rows afterward. |
 
 Round 16 applied 23 cached reviewed-alias rows with `PUBLIC_MAP_ENABLED=false`; 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 23/23 eligible pins.
 
 Round 19 applied 12 Marina Baotić rows with `PUBLIC_MAP_ENABLED=false`; 8 existing Trogir city coordinates and 4 review rows were promoted to marina-grade pins through the verified-alias changed-geocoded lane, 0 rows were held back, 0 failed, 0 geography mismatches were found, the retry lane selected 0 rows afterward, and the backup-scoped map-pin audit returned 12/12 eligible pins.
 
 Round 20 applied 2 Linton Bay Marina rows with `PUBLIC_MAP_ENABLED=false`, `precision=marina`, `score=1`, 0 held back, 0 failed, 0 geography mismatches, and 0 warnings. A follow-up Cole Bay/Sint Maarten metadata experiment was rolled back because the country-suffixed OpenCage query returned broad `Cole Bay` city precision instead of Lagoon Marina; the affected Lagoon rows were repaired from the existing verified Lagoon Marina cache in `boat_geocode_backup_20260421134416`, and the verified-alias lane selected 0 rows afterward.
+
+Round 22 applied 4 MDL Chatham Maritime Marina Boatyard rows with `PUBLIC_MAP_ENABLED=false`, `precision=marina`, `score=1`, 0 held back, 0 failed, 0 geography mismatches, and 0 warnings. The plain pending `Chatham Marina` row with no country was intentionally not selected; the backup-scoped map-pin audit returned 4/4 eligible pins and `/api/boats/map` still returned 404 while disabled.
 
 Promotion anchors:
 
@@ -41,9 +44,10 @@ Promotion anchors:
 - `marina frapa`: `hr`, `43.529953, 15.963572`, max 5 km.
 - `marina baotic`: `hr`, `43.516219, 16.233877`, max 5 km.
 - `linton bay marina`: `pa`, `9.612811, -79.578944`, max 5 km.
+- `mdl chatham maritime marina boatyard`: `gb`, `51.402555, 0.532160`, max 0.5 km, score at least 0.98, provider `_type=boatyard`, and provider `boatyard=MDL Chatham Maritime Marina Boatyard`.
 
-Explicit non-aliases from Round 16:
+Explicit non-aliases and held-back patterns:
 
-- `chatham marina`: held back because the reviewed result is `MDL Chatham Maritime Marina Boatyard`; this needs a future pair-alias model rather than a contiguous alias.
+- Plain `chatham marina` without Kent/country context remains held back; only the exact reviewed source texts `Chatham Marina, Kent` and `Chatham Marina, Chatham Kent` canonicalize to the documented MDL Chatham boatyard alias.
 - `dover marina`: held back because the reviewed result is `Dover Pier, New Marina Curve Road`; the marina token appears as road text.
 - `green cay marina`, `tollesbury marina`, `shotley marina`, `port solent marina`, and `marina del rey`: held back because reviewed results are broad place, postcode, parking, or admin-area matches rather than verified facility pins.

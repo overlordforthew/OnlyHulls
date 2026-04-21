@@ -184,14 +184,13 @@ const BROAD_GEOCODE_PARTS = new Set([
 const BROAD_GEOCODE_EDGE_PHRASES = Array.from(BROAD_GEOCODE_PARTS).sort(
   (left, right) => right.length - left.length
 );
-const KNOWN_MARINA_NAME_TERMS = [
+const STATIC_KNOWN_MARINA_NAME_TERMS = [
   "marmaris yacht marina",
   "marina du marin",
   "nanny cay",
   "pin rolland",
   "puerto del rey marina",
   "tino rossi",
-  ...VERIFIED_PUBLIC_PIN_LOCATION_ALIASES,
 ];
 const MARINE_GEOCODE_TERMS = [
   "marine",
@@ -460,6 +459,10 @@ function normalizeKnownLocationTextArtifacts(value: string) {
       "Marina Baotic, Seget Donji, Croatia"
     )
     .replace(
+      /\bChatham\s+Marina\s*,\s*(?:Chatham\s+)?Kent\s*(?=$|,)/gi,
+      "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom"
+    )
+    .replace(
       /\bMarina\s+De\s+L'?Anse\s+Marcel(?:\s*,\s*(?:(?:St\.?|Saint)\s+Martin|Sint\s+Maarten))*\b/gi,
       "Marina Anse Marcel, Saint Martin"
     )
@@ -723,7 +726,13 @@ function queryHasAddressLikeStreetDetail(queryText: string) {
 function resultAndQueryHaveKnownMarinaName(
   queryText: string,
   formatted: string,
-  components: Record<string, unknown>
+  components: Record<string, unknown>,
+  anchorInput?: {
+    latitude: number;
+    longitude: number;
+    score: number;
+    payload: unknown;
+  }
 ) {
   const normalizedQuery = normalizeLookupValue(queryText);
   const componentText = Object.values(components)
@@ -731,9 +740,24 @@ function resultAndQueryHaveKnownMarinaName(
     .join(" ");
   const normalizedResult = normalizeLookupValue(`${formatted} ${componentText}`);
 
-  return KNOWN_MARINA_NAME_TERMS.some(
-    (term) => normalizedQuery.includes(term) && normalizedResult.includes(term)
-  );
+  if (
+    STATIC_KNOWN_MARINA_NAME_TERMS.some(
+      (term) => normalizedQuery.includes(term) && normalizedResult.includes(term)
+    )
+  ) {
+    return true;
+  }
+
+  const alias = getVerifiedPublicPinAliasMatch(queryText, `${formatted} ${componentText}`);
+  if (!alias || !anchorInput) return false;
+
+  return isVerifiedPublicPinAliasAnchorMatch(alias, {
+    countryCode: getPayloadCountryCode(anchorInput.payload),
+    latitude: anchorInput.latitude,
+    longitude: anchorInput.longitude,
+    score: anchorInput.score,
+    payload: anchorInput.payload,
+  });
 }
 
 function resultAndQueryHaveMarinePoiTerm(
@@ -866,6 +890,8 @@ export function promoteVerifiedPublicPinAliasPrecision(
       countryCode: getPayloadCountryCode(result.payload),
       latitude: result.latitude,
       longitude: result.longitude,
+      score: result.score,
+      payload: result.payload,
     })
   ) {
     return result;
@@ -1151,12 +1177,20 @@ function inferOpenCagePrecision(
   components: Record<string, unknown>,
   confidence: number,
   queryText: string,
-  formatted: string
+  formatted: string,
+  anchorInput?: {
+    latitude: number;
+    longitude: number;
+    score: number;
+    payload: unknown;
+  }
 ): GeocodePrecision {
   const type = normalizeLookupValue(String(components._type || ""));
   const category = normalizeLookupValue(String(components._category || ""));
 
-  if (resultAndQueryHaveKnownMarinaName(queryText, formatted, components)) return "marina";
+  if (resultAndQueryHaveKnownMarinaName(queryText, formatted, components, anchorInput)) {
+    return "marina";
+  }
   if (MARINE_PLACE_TYPES.has(type) || MARINE_PLACE_TYPES.has(category)) return "marina";
   if (isPointOfInterestResult(type, category)) {
     if (resultAndQueryHaveMarinePoiTerm(queryText, formatted, components)) return "marina";
@@ -1177,12 +1211,18 @@ function allowsMarineSpecificConfidenceFloor(
   confidence: number,
   queryText: string,
   formatted: string,
-  components: Record<string, unknown>
+  components: Record<string, unknown>,
+  anchorInput?: {
+    latitude: number;
+    longitude: number;
+    score: number;
+    payload: unknown;
+  }
 ) {
   if (!["marina", "street"].includes(precision)) return false;
   if (confidence < 5) return false;
 
-  return resultAndQueryHaveKnownMarinaName(queryText, formatted, components);
+  return resultAndQueryHaveKnownMarinaName(queryText, formatted, components, anchorInput);
 }
 
 function getExactCityCountryQueryParts(query: GeocodeQuery) {
@@ -1488,11 +1528,18 @@ export async function geocodeWithOpenCage(
     const confidence = Number(result.confidence);
     const normalizedConfidence = Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 10) : 0;
     const formatted = String(result.formatted || "") || null;
+    const marineAliasAnchorInput = {
+      latitude,
+      longitude,
+      score: scorePrecision(normalizedConfidence / 10, "marina"),
+      payload: result,
+    };
     const precision = inferOpenCagePrecision(
       components,
       normalizedConfidence,
       query.queryText,
-      formatted || ""
+      formatted || "",
+      marineAliasAnchorInput
     );
     const score = scorePrecision(normalizedConfidence / 10, precision);
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
@@ -1513,7 +1560,8 @@ export async function geocodeWithOpenCage(
           normalizedConfidence,
           query.queryText,
           formatted || "",
-          components
+          components,
+          marineAliasAnchorInput
         ));
     const lowPrecision = precision === "country" || precision === "unknown";
 
