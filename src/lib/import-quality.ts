@@ -1314,6 +1314,16 @@ function repairCompoundBrandMakeModel(input: {
   }
 
   if (
+    sourceSite === "sailboatlistings" &&
+    /^endeavour$/i.test(make) &&
+    modelStartsWith(/^(?:yacht\s+)?corp\b[\s-]*endeavour\b[\s-]*32\b/i) &&
+    /(?:^|-)endeavour-(?:yacht-)?corp-endeavour-32(?:-|$)/.test(slug)
+  ) {
+    make = "Endeavour Yacht Corp";
+    model = "Endeavour 32";
+  }
+
+  if (
     sourceSite === "theyachtmarket" &&
     /^tradition(?:\s+marine)?$/i.test(make) &&
     modelStartsWith(/^marine\b[\s-]*tm\b[\s-]*42\b/i) &&

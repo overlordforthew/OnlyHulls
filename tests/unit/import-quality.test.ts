@@ -951,6 +951,24 @@ test("normalizeImportedMakeModel rejoins live compound-brand splits", () => {
   );
   assert.deepEqual(
     normalizeImportedMakeModel({
+      make: "Endeavour",
+      model: "Corp Endeavour 32",
+      sourceSite: "sailboatlistings",
+      slug: "1978-endeavour-corp-endeavour-32-florida",
+    }),
+    { make: "Endeavour Yacht Corp", model: "Endeavour 32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
+      make: "Endeavour",
+      model: "Yacht Corp Endeavour 32",
+      sourceSite: "sailboatlistings",
+      slug: "1978-endeavour-yacht-corp-endeavour-32-florida",
+    }),
+    { make: "Endeavour Yacht Corp", model: "Endeavour 32" }
+  );
+  assert.deepEqual(
+    normalizeImportedMakeModel({
       make: "Calgan",
       model: "Marine Crown",
       sourceSite: "sailboatlistings",
@@ -4419,6 +4437,28 @@ test("sanitizeImportedBoatRecord rewrites summary lead text when make/model norm
   assert.equal(
     jBoatsMissingModel.ai_summary,
     "1991 J/Boats in Maryland. 37.5ft LOA, masthead sloop rig, monohull."
+  );
+
+  const endeavourYachtCorp = sanitizeImportedBoatRecord({
+    year: 1978,
+    make: "Endeavour",
+    model: "Corp Endeavour 32",
+    slug: "1978-endeavour-corp-endeavour-32-florida",
+    source_site: "sailboatlistings",
+    location_text: "Florida",
+    ai_summary:
+      "1978 Endeavour Corp Endeavour 32 in Florida. 32ft LOA, masthead sloop rig, monohull.",
+    specs: {
+      loa: 32,
+      rig_type: "masthead sloop",
+    },
+  });
+
+  assert.equal(endeavourYachtCorp.make, "Endeavour Yacht Corp");
+  assert.equal(endeavourYachtCorp.model, "Endeavour 32");
+  assert.equal(
+    endeavourYachtCorp.ai_summary,
+    "1978 Endeavour Yacht Corp Endeavour 32 in Florida. 32ft LOA, masthead sloop rig, monohull."
   );
 });
 
