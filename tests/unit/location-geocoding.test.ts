@@ -601,6 +601,42 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Verkoophaven Schepenkring - Delta Marina Kortgene Nederland",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Delta Marina, Kortgene, Netherlands",
+      queryKey: "delta marina kortgene netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Verkoophaven Schepenkring Delta Marina - Nederland",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Delta Marina, Kortgene, Netherlands",
+      queryKey: "delta marina kortgene netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Delta Marina Kortgene - Nederland",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Delta Marina, Kortgene, Netherlands",
+      queryKey: "delta marina kortgene netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Verkoophaven Delta Marina",
       country: "Netherlands",
       confidence: "city",
@@ -633,6 +669,78 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Marina Chiapas, Chiapas, Mexico",
       queryKey: "marina chiapas chiapas mexico",
       countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Puerto Escondido Loreto Marina, BCS",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Marina Puerto Escondido, Loreto, Baja California Sur, Mexico",
+      queryKey: "marina puerto escondido loreto baja california sur mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "** Bluffers Park Yacht Club, Live Aboard Marina!",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Bluffer's Park Yacht Club, Toronto, Canada",
+      queryKey: "bluffer s park yacht club toronto canada",
+      countryHint: "ca",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Foxs Marina, Ipswich",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Fox's Marina, Ipswich, United Kingdom",
+      queryKey: "fox s marina ipswich united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Penarth Marina Cardiff",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Penarth Marina, United Kingdom",
+      queryKey: "penarth marina united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Greystones Harbour Marina",
+      country: "Ireland",
+      confidence: "city",
+    }),
+    {
+      queryText: "Greystones Marina, Greystones, Ireland",
+      queryKey: "greystones marina greystones ireland",
+      countryHint: "ie",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Northern Ireland, Carrickfergus Marina",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Carrickfergus Marina, Carrickfergus, County Antrim, United Kingdom",
+      queryKey: "carrickfergus marina carrickfergus county antrim united kingdom",
+      countryHint: "gb",
     }
   );
   assert.deepEqual(
@@ -745,6 +853,18 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Conwy Marina",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Conwy Marina, United Kingdom",
+      queryKey: "conwy marina united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Chichester Marina",
       country: "United Kingdom",
       confidence: "city",
@@ -765,6 +885,126 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Dover Marina, Kent, United Kingdom",
       queryKey: "dover marina kent united kingdom",
       countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Dover, Marina",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina, Dover, United Kingdom",
+      queryKey: "marina dover united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Chatham Marina, Chatham Kent",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Chatham Marina, Chatham Kent, United Kingdom",
+      queryKey: "chatham marina chatham kent united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Medway Yacht Club, Kent",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Medway Yacht Club, Kent, United Kingdom",
+      queryKey: "medway yacht club kent united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Port Solent Marina, Portsmouth",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Port Solent Marina, Portsmouth, United Kingdom",
+      queryKey: "port solent marina portsmouth united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Deko Marina",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Deko Marina, Netherlands",
+      queryKey: "deko marina netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Carrickfergus Harbour Marina",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Carrickfergus Harbour Marina, United Kingdom",
+      queryKey: "carrickfergus harbour marina united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Shotley Marina, Ip9 1qj",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Shotley Marina, Ip9 1qj",
+      queryKey: "shotley marina ip9 1qj",
+      countryHint: null,
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Lagoon Marina, Cole Bay",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Lagoon Marina, Cole Bay",
+      queryKey: "lagoon marina cole bay",
+      countryHint: null,
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Carlyle West Access Marina, Illinois",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Carlyle West Access Marina, Illinois",
+      queryKey: "carlyle west access marina illinois",
+      countryHint: null,
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Shores Of Leech Lake Marina, Minnesota",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Shores Of Leech Lake Marina, Minnesota",
+      queryKey: "shores of leech lake marina minnesota",
+      countryHint: null,
     }
   );
 });
