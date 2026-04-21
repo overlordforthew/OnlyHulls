@@ -289,6 +289,37 @@ const WATERBODY_POI_TERMS = [
   "villa",
   "villas",
 ];
+const DIRECTIONAL_FRAGMENT_TERMS = new Set([
+  "n",
+  "s",
+  "e",
+  "w",
+  "ne",
+  "nw",
+  "se",
+  "sw",
+  "north",
+  "south",
+  "east",
+  "west",
+  "northeast",
+  "northwest",
+  "southeast",
+  "southwest",
+]);
+const AMBIGUOUS_COASTAL_NAME_RULES = [
+  {
+    queryTerm: "argentario",
+    acceptedResultTerms: [
+      "monte argentario",
+      "grosseto",
+      "porto ercole",
+      "porto santo stefano",
+      "toscana",
+      "tuscany",
+    ],
+  },
+];
 
 function normalizeLookupValue(value?: string | null) {
   return String(value || "")
@@ -709,11 +740,16 @@ function getPayloadRecord(payload: unknown) {
   return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
 }
 
-function payloadHasPointOfInterestType(payload: unknown) {
+function getPayloadComponents(payload: unknown) {
   const payloadRecord = getPayloadRecord(payload);
-  const components = payloadRecord.components && typeof payloadRecord.components === "object"
+  return payloadRecord.components && typeof payloadRecord.components === "object"
     ? (payloadRecord.components as Record<string, unknown>)
     : payloadRecord;
+}
+
+function getPayloadTypeAndCategory(payload: unknown) {
+  const payloadRecord = getPayloadRecord(payload);
+  const components = getPayloadComponents(payload);
   const type = normalizeLookupValue(
     String(components._type || payloadRecord.type || payloadRecord.addresstype || "")
   );
@@ -721,12 +757,79 @@ function payloadHasPointOfInterestType(payload: unknown) {
     String(components._category || payloadRecord.category || payloadRecord.class || "")
   );
 
+  return { type, category };
+}
+
+function payloadHasPointOfInterestType(payload: unknown) {
+  const { type, category } = getPayloadTypeAndCategory(payload);
   return isPointOfInterestResult(type, category);
+}
+
+function payloadHasLocalityOrAdminAreaType(payload: unknown) {
+  const { type, category } = getPayloadTypeAndCategory(payload);
+  return (
+    CITY_PLACE_TYPES.has(type) ||
+    CITY_PLACE_TYPES.has(category) ||
+    ADMIN_REGION_ADDRESS_TYPES.has(type) ||
+    ADMIN_REGION_ADDRESS_TYPES.has(category)
+  );
+}
+
+function getPayloadText(payload: unknown) {
+  return Object.values(getPayloadComponents(payload))
+    .filter((value): value is string | number => typeof value === "string" || typeof value === "number")
+    .join(" ");
+}
+
+function queryIsDirectionalFragment(queryText: string) {
+  const normalizedCore = normalizeLookupValue(getCoreQueryText(queryText));
+  const tokens = normalizedCore.split(/\s+/).filter(Boolean);
+
+  return tokens.length === 1 && DIRECTIONAL_FRAGMENT_TERMS.has(tokens[0]);
+}
+
+function getDirectionalFragmentIssue(
+  queryText: string,
+  result: Pick<GeocodeResult, "placeName" | "payload">
+) {
+  if (!queryIsDirectionalFragment(queryText)) return null;
+
+  if (
+    payloadHasPointOfInterestType(result.payload) ||
+    placeNameHasBusinessPoiTerm(result.placeName) ||
+    !payloadHasLocalityOrAdminAreaType(result.payload)
+  ) {
+    return "directional_fragment_poi";
+  }
+
+  return null;
+}
+
+function getAmbiguousCoastalNameIssue(
+  queryText: string,
+  result: Pick<GeocodeResult, "placeName" | "payload">
+) {
+  const normalizedCore = normalizeLookupValue(getCoreQueryText(queryText));
+  const normalizedResult = normalizeLookupValue(`${result.placeName || ""} ${getPayloadText(result.payload)}`);
+
+  for (const rule of AMBIGUOUS_COASTAL_NAME_RULES) {
+    if (!normalizedHasTerm(normalizedCore, rule.queryTerm)) continue;
+
+    const resultMatchesAcceptedCoastalArea = rule.acceptedResultTerms.some((term) =>
+      normalizedHasTerm(normalizedResult, term)
+    );
+    if (!resultMatchesAcceptedCoastalArea) return "ambiguous_coastal_name";
+  }
+
+  return null;
 }
 
 function getGeocodeQualityIssue(queryText: string, result: Pick<GeocodeResult, "placeName" | "payload">) {
   const degenerateIssue = getDegenerateQueryIssue(queryText);
   if (degenerateIssue) return degenerateIssue;
+
+  const directionalFragmentIssue = getDirectionalFragmentIssue(queryText, result);
+  if (directionalFragmentIssue) return directionalFragmentIssue;
 
   if (
     queryHasWaterbodyTerm(queryText) &&
@@ -735,6 +838,9 @@ function getGeocodeQualityIssue(queryText: string, result: Pick<GeocodeResult, "
   ) {
     return "waterbody_poi_mismatch";
   }
+
+  const ambiguousCoastalNameIssue = getAmbiguousCoastalNameIssue(queryText, result);
+  if (ambiguousCoastalNameIssue) return ambiguousCoastalNameIssue;
 
   return null;
 }

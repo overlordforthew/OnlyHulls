@@ -1750,6 +1750,107 @@ test("cached geocode quality review reclassifies stale accepted bad rows", () =>
   assert.equal(result.error, "waterbody_poi_mismatch");
 });
 
+test("geocodeWithOpenCage holds directional fragments that resolve to POIs", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Nefeli Hotel, Komotinis - Alexandroupolis, 681 00 Nea Chili, Greece",
+            geometry: { lat: 40.8540497, lng: 25.8065251 },
+            confidence: 10,
+            components: {
+              _type: "hotel",
+              _category: "accommodation",
+              tourism: "hotel",
+              country: "Greece",
+              country_code: "gr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      { queryText: "West, Greece", queryKey: "west greece", countryHint: "gr" },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.error, "directional_fragment_poi");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage holds ambiguous coastal names that resolve inland", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Argentario, Trento, Italy",
+            geometry: { lat: 46.0921068, lng: 11.1451359 },
+            confidence: 7,
+            components: {
+              _type: "city",
+              city: "Argentario",
+              county: "Trento",
+              state: "Trentino-Alto Adige",
+              country: "Italy",
+              country_code: "it",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      { queryText: "Argentario, Italy", queryKey: "argentario italy", countryHint: "it" },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+    assert.equal(result.error, "ambiguous_coastal_name");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("coastal-name guard accepts the vetted Argentario coastal area", () => {
+  const result = reviewGeocodeResultQuality("Argentario, Italy", {
+    status: "geocoded",
+    latitude: 42.434,
+    longitude: 11.119,
+    precision: "city",
+    score: 0.82,
+    placeName: "58019 Monte Argentario GR, Italy",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "town",
+        town: "Monte Argentario",
+        county: "Grosseto",
+        state: "Tuscany",
+        country: "Italy",
+        country_code: "it",
+      },
+    },
+    error: null,
+  });
+
+  assert.equal(result.status, "geocoded");
+  assert.equal(result.error, null);
+});
+
 test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
   const originalFetch = globalThis.fetch;
 
