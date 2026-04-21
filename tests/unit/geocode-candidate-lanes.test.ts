@@ -78,6 +78,7 @@ test("public pin candidate lane accepts reviewed public-pin aliases", () => {
     "Medway Yacht Club Pontoon",
     "Marina Baotic, Seget Donji, Croatia",
     "Linton Bay Marina, Panama",
+    "MDL Chatham Maritime Marina Boatyard",
   ];
 
   for (const value of accepted) {
@@ -96,6 +97,7 @@ test("verified public pin alias lane stays narrower than broad marina text", () 
     "Marina Frapa, Rogoznica",
     "Marina Baotić, Seget Donji",
     "Linton Bay Marina, Puerto Lindo",
+    "MDL Chatham Maritime Marina Boatyard, Chatham",
   ];
   const rejected = [
     "Dover Marina, Kent",
@@ -162,6 +164,13 @@ test("verified public pin aliases require the same alias in query and result", (
   );
   assert.equal(
     getVerifiedPublicPinAliasMatch(
+      "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+      "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom"
+    ),
+    "mdl chatham maritime marina boatyard"
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
       "Marina Del Rey, California, United States",
       "Los Angeles County, CA 90292, United States of America"
     ),
@@ -187,6 +196,56 @@ test("verified public pin aliases require the same alias in query and result", (
       "Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama"
     ),
     null
+  );
+});
+
+test("verified Chatham alias requires the anchored boatyard component", () => {
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("mdl chatham maritime marina boatyard", {
+      countryCode: "gb",
+      latitude: 51.4025553,
+      longitude: 0.5321595,
+      score: 1,
+      payload: {
+        components: {
+          _type: "boatyard",
+          boatyard: "MDL Chatham Maritime Marina Boatyard",
+        },
+      },
+    }),
+    true
+  );
+
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("mdl chatham maritime marina boatyard", {
+      countryCode: "gb",
+      latitude: 51.4024964,
+      longitude: 0.5406148,
+      score: 0.92,
+      payload: {
+        components: {
+          _type: "water",
+          water: "Chatham Maritime Marina",
+        },
+      },
+    }),
+    false
+  );
+
+  assert.equal(
+    isVerifiedPublicPinAliasAnchorMatch("mdl chatham maritime marina boatyard", {
+      countryCode: "us",
+      latitude: 51.4025553,
+      longitude: 0.5321595,
+      score: 1,
+      payload: {
+        components: {
+          _type: "boatyard",
+          boatyard: "MDL Chatham Maritime Marina Boatyard",
+        },
+      },
+    }),
+    false
   );
 });
 

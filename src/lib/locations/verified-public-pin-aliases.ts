@@ -64,6 +64,21 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
     longitude: -79.5789435,
     maxDistanceKm: 5,
   },
+  {
+    alias: "mdl chatham maritime marina boatyard",
+    countryCodes: ["gb"],
+    latitude: 51.4025553,
+    longitude: 0.5321595,
+    maxDistanceKm: 0.5,
+    // OpenCage confidence is scored as precision-adjusted 0..1; keep Chatham
+    // at high-confidence provider evidence only.
+    minScore: 0.98,
+    requiredComponent: {
+      type: "boatyard",
+      key: "boatyard",
+      value: "MDL Chatham Maritime Marina Boatyard",
+    },
+  },
 ] as const;
 
 export type VerifiedPublicPinLocationAlias =
@@ -156,12 +171,24 @@ function getDistanceKm(
   return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
+function getPayloadComponents(payload: unknown) {
+  if (!payload || typeof payload !== "object") return {};
+  const record = payload as Record<string, unknown>;
+  // Accept either a raw provider result with `.components` or an already-unwrapped
+  // component record.
+  return record.components && typeof record.components === "object"
+    ? (record.components as Record<string, unknown>)
+    : record;
+}
+
 export function isVerifiedPublicPinAliasAnchorMatch(
   alias: VerifiedPublicPinLocationAlias,
   input: {
     countryCode?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    score?: number | null;
+    payload?: unknown;
   }
 ) {
   const definition = getVerifiedPublicPinAliasDefinition(alias);
@@ -178,5 +205,24 @@ export function isVerifiedPublicPinAliasAnchorMatch(
     { latitude: input.latitude, longitude: input.longitude }
   );
 
-  return distanceKm <= definition.maxDistanceKm;
+  if (distanceKm > definition.maxDistanceKm) return false;
+
+  if ("minScore" in definition && typeof definition.minScore === "number") {
+    if (typeof input.score !== "number" || input.score < definition.minScore) return false;
+  }
+
+  if ("requiredComponent" in definition) {
+    const components = getPayloadComponents(input.payload);
+    const required = definition.requiredComponent;
+    if (required.type) {
+      const type = normalizeVerifiedPublicPinAliasText(String(components._type || ""));
+      if (type !== normalizeVerifiedPublicPinAliasText(required.type)) return false;
+    }
+    const componentValue = normalizeVerifiedPublicPinAliasText(
+      String(components[required.key] || "")
+    );
+    if (componentValue !== normalizeVerifiedPublicPinAliasText(required.value)) return false;
+  }
+
+  return true;
 }

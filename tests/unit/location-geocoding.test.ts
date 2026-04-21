@@ -1368,10 +1368,42 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       confidence: "city",
     }),
     {
-      queryText: "Chatham Marina, Chatham Kent, United Kingdom",
-      queryKey: "chatham marina chatham kent united kingdom",
+      queryText: "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+      queryKey: "mdl chatham maritime marina boatyard chatham united kingdom",
       countryHint: "gb",
     }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Chatham Marina, Kent",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+      queryKey: "mdl chatham maritime marina boatyard chatham united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Chatham Marina, Kent Coast",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Chatham Marina, Kent Coast, United Kingdom",
+      queryKey: "chatham marina kent coast united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.equal(
+    buildGeocodeQuery({
+      locationText: "Chatham Marina",
+      country: null,
+      confidence: "unknown",
+    }),
+    null
   );
   assert.deepEqual(
     buildGeocodeQuery({
@@ -2312,6 +2344,49 @@ test("geocodeWithOpenCage does not infer marina from harbourside substrings", as
   }
 });
 
+test("geocodeWithOpenCage does not infer marina from Dover road or pier text", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Dover Pier, New Marina Curve Road, Dover, CT17 9FJ, United Kingdom",
+            geometry: { lat: 51.1191352, lng: 1.317098 },
+            confidence: 10,
+            components: {
+              _type: "pier",
+              pier: "Dover Pier",
+              road: "New Marina Curve Road",
+              town: "Dover",
+              country: "United Kingdom",
+              country_code: "gb",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Dover Marina, Kent, United Kingdom",
+        queryKey: "dover marina kent united kingdom",
+        countryHint: "gb",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
   const originalFetch = globalThis.fetch;
 
@@ -2349,6 +2424,92 @@ test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
 
     assert.equal(result.status, "geocoded");
     assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts the verified Chatham boatyard canonical query", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom",
+            geometry: { lat: 51.4025553, lng: 0.5321595 },
+            confidence: 10,
+            components: {
+              _type: "boatyard",
+              boatyard: "MDL Chatham Maritime Marina Boatyard",
+              town: "Chatham",
+              county: "Medway",
+              country: "United Kingdom",
+              country_code: "gb",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+        queryKey: "mdl chatham maritime marina boatyard chatham united kingdom",
+        countryHint: "gb",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "marina");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage does not promote Chatham alias without boatyard evidence", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom",
+            geometry: { lat: 51.4025553, lng: 0.5321595 },
+            confidence: 10,
+            components: {
+              _type: "water",
+              water: "MDL Chatham Maritime Marina Boatyard",
+              town: "Chatham",
+              county: "Medway",
+              country: "United Kingdom",
+              country_code: "gb",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+        queryKey: "mdl chatham maritime marina boatyard chatham united kingdom",
+        countryHint: "gb",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
     assert.equal(result.error, null);
   } finally {
     globalThis.fetch = originalFetch;
@@ -2427,6 +2588,33 @@ test("cached geocode promotion releases verified public-pin aliases", () => {
   assert.equal(lintonBay.precisionPromotedFrom, "city");
   assert.equal(lintonBay.precisionPromotionAlias, "linton bay marina");
   assert.equal(lintonBay.error, null);
+
+  const chatham = promoteVerifiedPublicPinAliasPrecision(
+    "MDL Chatham Maritime Marina Boatyard, Chatham, United Kingdom",
+    {
+      status: "geocoded",
+      latitude: 51.4025553,
+      longitude: 0.5321595,
+      precision: "city",
+      score: 1,
+      placeName: "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "boatyard",
+          boatyard: "MDL Chatham Maritime Marina Boatyard",
+          country: "United Kingdom",
+          country_code: "gb",
+        },
+      },
+      error: "public_pin_ineligible_precision",
+    }
+  );
+
+  assert.equal(chatham.precision, "marina");
+  assert.equal(chatham.precisionPromotedFrom, "city");
+  assert.equal(chatham.precisionPromotionAlias, "mdl chatham maritime marina boatyard");
+  assert.equal(chatham.error, null);
 });
 
 test("cached geocode promotion rejects non-contiguous and admin-place aliases", () => {
