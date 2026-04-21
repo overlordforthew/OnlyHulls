@@ -6,6 +6,7 @@ import {
   geocodeWithNominatim,
   getGeocodeCandidateReason,
   getGeocodingConfig,
+  promoteVerifiedPublicPinAliasPrecision,
   reviewGeocodeResultQuality,
   type GeocodingConfig,
   type GeocodePrecision,
@@ -23,6 +24,7 @@ import {
   getPublicPinEligibleRate,
   isPublicPinEligibleResult,
   isPublicPinLikelyGeocodeCandidate,
+  isVerifiedPublicPinAliasGeocodeCandidate,
 } from "../src/lib/locations/geocode-candidate-lanes";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
@@ -107,6 +109,8 @@ type GeocodeAuditRow = SelectedQuerySample & {
   source: "cache" | "provider";
   status: GeocodeStatus;
   precision: GeocodePrecision;
+  precisionPromotedFrom?: GeocodePrecision | null;
+  precisionPromotionAlias?: string | null;
   score: number | null;
   placeName: string | null;
   error: string | null;
@@ -121,6 +125,16 @@ type ProcessedGeocodeResult = {
   geocodeQuery: ReadyCandidate["geocodeQuery"];
   result: GeocodeResult;
   source: GeocodeAuditRow["source"];
+};
+
+type PrecisionPromotionAuditRow = {
+  boatId: string;
+  locationText: string | null;
+  queryText: string;
+  source: GeocodeAuditRow["source"];
+  alias: string;
+  from: GeocodePrecision;
+  to: "marina";
 };
 
 const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
@@ -355,6 +369,8 @@ function appendGeocodeAudit(
     source,
     status: result.status,
     precision: result.precision,
+    precisionPromotedFrom: result.precisionPromotedFrom || null,
+    precisionPromotionAlias: result.precisionPromotionAlias || null,
     score: result.score,
     placeName: result.placeName,
     error: result.error || null,
@@ -380,7 +396,8 @@ function appendGeocodeAudit(
 }
 
 function fromCache(row: GeocodeCacheRow): GeocodeResult {
-  return reviewGeocodeResultQuality(row.query_text || row.query_key || "", {
+  const queryText = row.query_text || row.query_key || "";
+  const result = promoteVerifiedPublicPinAliasPrecision(queryText, {
     status: row.status,
     latitude: row.latitude,
     longitude: row.longitude,
@@ -391,6 +408,8 @@ function fromCache(row: GeocodeCacheRow): GeocodeResult {
     payload: row.payload,
     error: row.error,
   });
+
+  return reviewGeocodeResultQuality(queryText, result);
 }
 
 async function getCachedResults(queryKeys: string[], provider: GeocodingConfig["provider"]) {
@@ -600,7 +619,10 @@ async function main() {
   const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
   const retryChangedReview = hasFlag("--retry-changed-review");
-  const publicPinCandidates = hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely");
+  const verifiedPublicPinAliases =
+    hasFlag("--verified-public-pin-aliases") || hasFlag("--public-pin-aliases");
+  const publicPinCandidates =
+    hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely") || verifiedPublicPinAliases;
   const config = getGeocodingConfig();
   const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
   const earlyApplySafetyStop = getGeocodeApplySafetyStop({
@@ -620,6 +642,7 @@ async function main() {
       mode,
       includeReview,
       retryChangedReview,
+      verifiedPublicPinAliases,
       stoppedReason: earlyApplySafetyStop.stoppedReason,
     }, null, 2));
     process.exitCode = 1;
@@ -671,14 +694,21 @@ async function main() {
   const geocodableCandidates = retryScopedCandidates.filter(
     (candidate): candidate is ReadyCandidate => candidate.geocodeQuery !== null
   );
-  const selectionCandidates = publicPinCandidates
+  const selectionCandidates = verifiedPublicPinAliases
     ? geocodableCandidates.filter((candidate) =>
-        isPublicPinLikelyGeocodeCandidate({
+        isVerifiedPublicPinAliasGeocodeCandidate({
           locationText: candidate.location_text,
           queryText: candidate.geocodeQuery.queryText,
         })
       )
-    : geocodableCandidates;
+    : publicPinCandidates
+      ? geocodableCandidates.filter((candidate) =>
+          isPublicPinLikelyGeocodeCandidate({
+            locationText: candidate.location_text,
+            queryText: candidate.geocodeQuery.queryText,
+          })
+        )
+      : geocodableCandidates;
   const selectedCandidates = selectionCandidates.slice(0, limit);
   const nextCandidates = selectionCandidates.slice(limit, limit * 2);
   const uniqueReadyQueryKeys = Array.from(
@@ -698,7 +728,12 @@ async function main() {
     mode,
     includeReview,
     retryChangedReview,
-    selectionLane: publicPinCandidates ? "public-pin-candidates" : "default",
+    verifiedPublicPinAliases,
+    selectionLane: verifiedPublicPinAliases
+      ? "verified-public-pin-aliases"
+      : publicPinCandidates
+        ? "public-pin-candidates"
+        : "default",
     totalCandidates: candidates.length,
     retryScopeCandidates: retryScopedCandidates.length,
     geocodableCandidates: geocodableCandidates.length,
@@ -728,6 +763,7 @@ async function main() {
     auditRows: [] as GeocodeAuditRow[],
     geographyMismatches: [] as GeographyMismatch[],
     samplePins: [] as SamplePin[],
+    precisionPromotions: [] as PrecisionPromotionAuditRow[],
     nextBatch: {
       rows: nextCandidates.length,
       cacheHits: 0,
@@ -754,6 +790,17 @@ async function main() {
     if (result.error) incrementCount(summary.failureReasons, result.error);
     if (isPublicPinEligibleResult(result)) summary.publicPinEligible += 1;
     else if (publicPinCandidates) summary.publicPinHeldBack += 1;
+    if (result.precisionPromotedFrom && result.precisionPromotionAlias) {
+      summary.precisionPromotions.push({
+        boatId: boat.id,
+        locationText: boat.location_text,
+        queryText: geocodeQuery.queryText,
+        source,
+        alias: result.precisionPromotionAlias,
+        from: result.precisionPromotedFrom,
+        to: "marina",
+      });
+    }
     appendGeocodeAudit(summary, boat, geocodeQuery, result, source);
   };
 

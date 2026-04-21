@@ -9,7 +9,9 @@ import {
   isPublicPinEligiblePrecision,
   isPublicPinEligibleResult,
   isPublicPinLikelyText,
+  isVerifiedPublicPinAliasGeocodeCandidate,
 } from "../../src/lib/locations/geocode-candidate-lanes";
+import { getVerifiedPublicPinAliasMatch } from "../../src/lib/locations/verified-public-pin-aliases";
 import type { GeocodeResult } from "../../src/lib/locations/geocoding";
 
 test("public pin candidate lane accepts marine-specific location text", () => {
@@ -68,11 +70,92 @@ test("public pin candidate lane accepts reviewed public-pin aliases", () => {
     "Burnham Yacht Harbour",
     "burnham yacht harbour, United Kingdom",
     "Burnham-Yacht-Harbour",
+    "Conwy Marina",
+    "Palm Cay Marina, Nassau, Bahamas",
+    "Medway Yacht Club Pontoon",
   ];
 
   for (const value of accepted) {
     assert.equal(isPublicPinLikelyText(value), true, value);
   }
+});
+
+test("verified public pin alias lane stays narrower than broad marina text", () => {
+  const accepted = [
+    "Burnham Yacht Harbour, United Kingdom",
+    "Conwy Marina Village, LL32 8GU",
+    "Chichester Marina, Appledram",
+    "Palm Cay Marina, Nassau",
+    "Medway Yacht Club Pontoon",
+    "Lagoon Marina, Cole Bay",
+    "Marina Frapa, Rogoznica",
+  ];
+  const rejected = [
+    "Dover Marina, Kent",
+    "Green Cay Marina St. Croix",
+    "Tollesbury Marina",
+    "Shotley Marina, IP9 1QJ",
+    "Port Solent Marina, Portsmouth",
+    "Marina Del Rey, California",
+    "Chatham Maritime Marina Boatyard",
+    "Generic Marina",
+  ];
+
+  for (const value of accepted) {
+    assert.equal(
+      isVerifiedPublicPinAliasGeocodeCandidate({ locationText: value, queryText: value }),
+      true,
+      value
+    );
+  }
+
+  for (const value of rejected) {
+    assert.equal(
+      isVerifiedPublicPinAliasGeocodeCandidate({ locationText: value, queryText: value }),
+      false,
+      value
+    );
+  }
+
+  assert.equal(
+    isVerifiedPublicPinAliasGeocodeCandidate({
+      locationText: "Conwy Marina",
+      queryText: "Conwy, United Kingdom",
+    }),
+    false,
+    "alias retries must stay anchored to the geocode query"
+  );
+});
+
+test("verified public pin aliases require the same alias in query and result", () => {
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Conwy Marina, United Kingdom",
+      "Conwy Marina, Conwy Marina Village, LL32 8GU, United Kingdom"
+    ),
+    "conwy marina"
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "CONWY MARINA.",
+      "Conwy Marina, Conwy Marina Village, LL32 8GU, United Kingdom."
+    ),
+    "conwy marina"
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Chatham Marina, Kent, United Kingdom",
+      "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom"
+    ),
+    null
+  );
+  assert.equal(
+    getVerifiedPublicPinAliasMatch(
+      "Marina Del Rey, California, United States",
+      "Los Angeles County, CA 90292, United States of America"
+    ),
+    null
+  );
 });
 
 test("public pin candidate lane checks both source text and cleaned query text", () => {

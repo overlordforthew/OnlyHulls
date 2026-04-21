@@ -7,6 +7,7 @@ import {
   geocodeWithNominatim,
   getGeocodeCandidateReason,
   getGeocodingConfig,
+  promoteVerifiedPublicPinAliasPrecision,
   reviewGeocodeResultQuality,
   type GeocodingConfig,
 } from "../../src/lib/locations/geocoding";
@@ -1937,6 +1938,101 @@ test("geocodeWithOpenCage accepts explicit marine POI results", async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("cached geocode promotion releases verified public-pin aliases", () => {
+  const result = promoteVerifiedPublicPinAliasPrecision("Conwy Marina, United Kingdom", {
+    status: "geocoded",
+    latitude: 53.2885,
+    longitude: -3.8396,
+    precision: "city",
+    score: 1,
+    placeName: "Conwy Marina, Conwy Marina Village, LL32 8GU, United Kingdom",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "boatyard",
+        boatyard: "Conwy Marina",
+        country: "United Kingdom",
+        country_code: "gb",
+      },
+    },
+    error: null,
+  });
+
+  assert.equal(result.precision, "marina");
+  assert.equal(result.precisionPromotedFrom, "city");
+  assert.equal(result.precisionPromotionAlias, "conwy marina");
+  assert.equal(result.error, null);
+});
+
+test("cached geocode promotion rejects non-contiguous and admin-place aliases", () => {
+  const chatham = promoteVerifiedPublicPinAliasPrecision("Chatham Marina, Kent, United Kingdom", {
+    status: "geocoded",
+    latitude: 51.397,
+    longitude: 0.527,
+    precision: "city",
+    score: 1,
+    placeName: "MDL Chatham Maritime Marina Boatyard, Chatham, Medway, England, United Kingdom",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "boatyard",
+        boatyard: "MDL Chatham Maritime Marina Boatyard",
+        country_code: "gb",
+      },
+    },
+    error: null,
+  });
+  const marinaDelRey = promoteVerifiedPublicPinAliasPrecision(
+    "Marina Del Rey, California, United States",
+    {
+      status: "geocoded",
+      latitude: 33.98,
+      longitude: -118.45,
+      precision: "city",
+      score: 0.82,
+      placeName: "Los Angeles County, CA 90292, United States of America",
+      provider: "opencage",
+      payload: {
+        components: {
+          _type: "county",
+          county: "Los Angeles County",
+          country_code: "us",
+        },
+      },
+      error: null,
+    }
+  );
+
+  assert.equal(chatham.precision, "city");
+  assert.equal(chatham.precisionPromotionAlias, undefined);
+  assert.equal(marinaDelRey.precision, "city");
+  assert.equal(marinaDelRey.precisionPromotionAlias, undefined);
+});
+
+test("cached geocode promotion requires the verified alias anchor", () => {
+  const result = promoteVerifiedPublicPinAliasPrecision("Lagoon Marina, Cole Bay", {
+    status: "geocoded",
+    latitude: 33.9803,
+    longitude: -118.4517,
+    precision: "city",
+    score: 1,
+    placeName: "Lagoon Marina, Admiralty Way, Marina del Rey, California, United States",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "marina",
+        country_code: "us",
+        marina: "Lagoon Marina",
+      },
+    },
+    error: "public_pin_ineligible_precision",
+  });
+
+  assert.equal(result.precision, "city");
+  assert.equal(result.error, "public_pin_ineligible_precision");
+  assert.equal(result.precisionPromotionAlias, undefined);
 });
 
 test("geocodeWithOpenCage accepts vetted known-marina names without a marina token", async () => {
