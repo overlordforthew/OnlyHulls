@@ -483,6 +483,21 @@ function normalizeKnownLocationTextArtifacts(value: string) {
       /^\s*Toronto\s+Island\s+Marina\s*$/gi,
       "Toronto Island Marina, Toronto, Ontario, Canada"
     )
+    // Round 25: Alcaidesa Marina (Spain) and D-Marin Didim Marina (Turkey). Both are
+    // narrow exact-text canonicalizations — verified provider evidence shows bare/dirty
+    // source text does not resolve to the facility without redirection to the canonical
+    // query. Negative variants (plain `Didim`, `Didim Harbour`, `Alcaidesa Marina, Gibraltar Bay`)
+    // are intentionally not touched; the alias anchor rejects them on wrong provider
+    // response. Alcaidesa's alias uses providerCountryCodes=["es","gi"] so the widened
+    // OpenCage filter returns the marina even when location_country=Gibraltar.
+    .replace(
+      /^\s*Alcaidesa\s+Marina\s+In\s+Spain\s+Near\s+Gibraltar\s*$/gi,
+      "Alcaidesa Marina, La Línea de la Concepción, Spain"
+    )
+    .replace(
+      /^\s*Didim\s+Marina\s*,\s*Turkey\s*$/gi,
+      "D-Marin Didim Marina, Didim, Turkey"
+    )
     // Round 23: Green Cay Marina (USVI). Only the three observed production source texts canonicalize.
     // Plain `Green Cay Marina` (no country/state) and BVI/Bahamian variants stay untouched — the alias
     // anchor (country=us/vi, marina component) rejects them if they still reach the provider.
