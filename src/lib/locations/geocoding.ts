@@ -785,6 +785,23 @@ function resultAndQueryHaveKnownMarinaName(
     payload: unknown;
   }
 ) {
+  // Round 28 guard: reject admin-boundary and country-level result types up
+  // front. When a known marina name happens to also be an island/state/county
+  // (e.g. `Nanny Cay, British Virgin Islands` resolves to `_type=island`), the
+  // result is a natural landmass, not the facility — promoting it to marina
+  // precision puts an admin-boundary pin on the public map. All existing
+  // legitimate marina pins are on facility-shaped types (marina/boatyard/basin/
+  // pier/water with a component explicitly naming the facility), not on
+  // admin-region types, so this guard does not affect any existing alias.
+  const resultType = normalizeLookupValue(String(components._type || ""));
+  if (
+    ADMIN_REGION_ADDRESS_TYPES.has(resultType) ||
+    resultType === "country" ||
+    resultType === "continent"
+  ) {
+    return false;
+  }
+
   const normalizedQuery = normalizeLookupValue(queryText);
   const componentText = Object.values(components)
     .filter((value): value is string => typeof value === "string")
