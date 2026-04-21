@@ -771,13 +771,7 @@ test("boats no-results state still offers recovery paths", async ({ page }) => {
     });
   });
 
-  await Promise.all([
-    page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.ok() && url.pathname === "/api/boats";
-    }),
-    page.goto("/boats?q=not-a-real-match"),
-  ]);
+  await page.goto("/boats?q=not-a-real-match");
   await expect(page.getByText("No hulls found", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toBeVisible();
   await expect(page.getByText("Try these live markets", { exact: true })).toBeVisible();

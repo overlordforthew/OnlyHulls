@@ -201,7 +201,7 @@ function BoatsPageInner() {
   const searchParams = useSearchParams();
   const { status } = useSession();
   const initialQ = searchParams.get("q") || "";
-  const initialLocation = searchParams.get("location") || "";
+  const initialLocation = canonicalizeLocationParam(searchParams.get("location")) || "";
   const initialTag = searchParams.get("tag") || "";
   const requestedCurrency = searchParams.get("currency");
   const initialCurrency = requestedCurrency
@@ -467,9 +467,16 @@ function BoatsPageInner() {
   useEffect(() => {
     const filteredSearchParams = new URLSearchParams(boatSearchParamString);
     const q = filteredSearchParams.get("q") || "";
-    const location = filteredSearchParams.get("location") || "";
+    const rawLocation = filteredSearchParams.get("location") || "";
+    const location = canonicalizeLocationParam(rawLocation) || "";
     const tag = filteredSearchParams.get("tag") || "";
     const nextFilters = filtersFromParams(filteredSearchParams);
+    if (rawLocation && location && rawLocation !== location) {
+      const params = buildParams(q, tag, 1, nextFilters, location);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      return;
+    }
     setSearchInput(q);
     setLocationInput(getLocationDisplayName(location));
     setSearch(q);

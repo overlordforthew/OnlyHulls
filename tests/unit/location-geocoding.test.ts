@@ -553,6 +553,90 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Panama - Shelter Bay Marina Atlantic Side Of Canal",
+      country: "Panama",
+      confidence: "city",
+    }),
+    {
+      queryText: "Shelter Bay Marina, Colon, Panama",
+      queryKey: "shelter bay marina colon panama",
+      countryHint: "pa",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Shelter Bay Marina Colon Panama Sa",
+      country: "Panama",
+      confidence: "city",
+    }),
+    {
+      queryText: "Shelter Bay Marina, Colon, Panama",
+      queryKey: "shelter bay marina colon panama",
+      countryHint: "pa",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Linton Bay Marina Garrote Coln, Panama",
+      country: "Panama",
+      confidence: "city",
+    }),
+    {
+      queryText: "Linton Bay Marina, Panama",
+      queryKey: "linton bay marina panama",
+      countryHint: "pa",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Verkoophaven Delta Marina, Kortgene (Nederland)",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Delta Marina, Kortgene, Netherlands",
+      queryKey: "delta marina kortgene netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Verkoophaven Delta Marina",
+      country: "Netherlands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Delta Marina, Kortgene, Netherlands",
+      queryKey: "delta marina kortgene netherlands",
+      countryHint: "nl",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marina Vaiare, Moorea, Tahiti",
+      country: "French Polynesia",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Vaiare, Moorea, French Polynesia",
+      queryKey: "marina vaiare moorea french polynesia",
+      countryHint: "pf",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Chiapas Marina, Mexico",
+      country: "Mexico",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Chiapas, Chiapas, Mexico",
+      queryKey: "marina chiapas chiapas mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Camper & Nicholsons Port Louis Marina, Saint-Georges, Grenade",
       country: "Grenada",
       confidence: "city",
@@ -621,6 +705,66 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       queryText: "Thailand Ocean Marina Pattaya",
       queryKey: "thailand ocean marina pattaya",
       countryHint: "th",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marina Riviera Nayarit, Mexico",
+      country: "Mexico",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Riviera Nayarit, Mexico",
+      queryKey: "marina riviera nayarit mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marina Guaymas Sonora, Mexico",
+      country: "Mexico",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Guaymas Sonora, Mexico",
+      queryKey: "marina guaymas sonora mexico",
+      countryHint: "mx",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Swanwick Marina, Southampton",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Swanwick Marina, Southampton, United Kingdom",
+      queryKey: "swanwick marina southampton united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Chichester Marina",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Chichester Marina, United Kingdom",
+      queryKey: "chichester marina united kingdom",
+      countryHint: "gb",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Dover Marina, Kent",
+      country: "United Kingdom",
+      confidence: "city",
+    }),
+    {
+      queryText: "Dover Marina, Kent, United Kingdom",
+      queryKey: "dover marina kent united kingdom",
+      countryHint: "gb",
     }
   );
 });

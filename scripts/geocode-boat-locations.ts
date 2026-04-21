@@ -126,6 +126,7 @@ const BROAD_REGION_NAMES = new Set([
   "mediterranean",
   "new england",
   "pacific northwest",
+  "south pacific",
 ]);
 const ACCEPTED_COUNTRY_CODE_EQUIVALENTS: Record<string, string[]> = {
   aw: ["nl"],

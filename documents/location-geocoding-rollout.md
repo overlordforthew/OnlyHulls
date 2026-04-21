@@ -85,9 +85,9 @@ The apply command blocks when `publicPinEligibleRate` is below `0.6`. Treat that
 Current source-cleanup scope:
 
 - Test-backed query normalization exists for recurring `Nanny Cay Boatyard` and hyphenated/parenthetical `Marina Bas-Du-Fort` source text because provider previews return marina precision for their canonical queries.
-- Test-backed query normalization also exists for recurring `Hodge's Creek Marina Hotel`, `Camper & Nicholsons Port Louis Marina`, `Zea Marina`, `La Paz, Costa Baja Marina, Americas`, and `La Cruz Marina Near Puerto Vallarta` source text because provider previews return marina precision for their canonical queries.
+- Test-backed query normalization also exists for recurring `Hodge's Creek Marina Hotel`, `Camper & Nicholsons Port Louis Marina`, `Zea Marina`, `La Paz, Costa Baja Marina, Americas`, `La Cruz Marina Near Puerto Vallarta`, dirty `Shelter Bay Marina` variants, `Linton Bay Marina Garrote Coln`, `Verkoophaven Delta Marina`, `Marina Vaiare`, and `Chiapas Marina` source text because provider previews return marina precision for their canonical queries.
 - Production one-off location text cleanup has rollback snapshots in `boat_location_text_cleanup_backup_20260421014841`, `boat_location_text_cleanup_backup_20260421020349`, and `boat_location_text_cleanup_backup_20260421022049`.
-- Do not normalize `Green Cay Marina`, `St. Thomas Yacht Club`, `Puerto Bahia Marina`, `Clarke's Court`, `Riva Di Traiano`, `Villanova Marina`, `Marina Frapa`, `BVI Yacht Charter Docks`, `Marina Di Ragusa`, `Sune Carlsson Boatyard`, `Red Frog Marina`, `Pankor/Pangkor Marina`, `Ocean Marina Pattaya`, `Wiarton/Wiatron Marina`, or `Marina Del Ray Orillia` yet. Current provider previews still return city/review precision for those rows, so they need provider/policy review before public pins.
+- Do not normalize `Green Cay Marina`, `St. Thomas Yacht Club`, `Puerto Bahia Marina`, `Clarke's Court`, `Riva Di Traiano`, `Villanova Marina`, `Marina Frapa`, `BVI Yacht Charter Docks`, `Marina Di Ragusa`, `Sune Carlsson Boatyard`, `Red Frog Marina`, `Pankor/Pangkor Marina`, `Ocean Marina Pattaya`, `Wiarton/Wiatron Marina`, `Marina Del Ray Orillia`, `Marina Riviera Nayarit`, `Marina Guaymas`, `Rio Dulce Marina`, `Swanwick Marina`, `Chichester Marina`, `Dover Marina`, or `Tollesbury Marina` yet. Current provider previews still return city/review precision for those rows, so they need provider/policy review before public pins.
 
 Rollback for the one-off text cleanup uses the backup table for the affected rows:
 
@@ -169,6 +169,10 @@ npm run db:geocode-locations -- --limit=100 --public-pin-candidates --apply
 ```
 
 Use `--include-review` only after the review queue has been cleaned up. It should not be used to repeatedly retry bad source text.
+
+Recent verified public-pin apply checkpoints:
+
+- `boat_geocode_backup_20260421025357`: 25-row round 4 public-pin batch applied with `PUBLIC_MAP_ENABLED=false`; 18 marina/street/exact public pins written, 7 city/country results held in review with null coordinates, 0 failed, 0 geography mismatches, 0 broad public coordinates. Follow-up map-pin audit returned 18/18 eligible pins and backfill preflight returned GO with OpenCage configured.
 
 ## Rollback
 
