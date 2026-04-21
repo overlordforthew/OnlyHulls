@@ -81,6 +81,7 @@ const COUNTRY_CODES: Record<string, string> = {
   croatia: "hr",
   cyprus: "cy",
   denmark: "dk",
+  "dominican republic": "do",
   fiji: "fj",
   france: "fr",
   "french polynesia": "pf",
@@ -113,6 +114,7 @@ const COUNTRY_CODES: Record<string, string> = {
   poland: "pl",
   portugal: "pt",
   "puerto rico": "pr",
+  "saint martin": "mf",
   "saint lucia": "lc",
   seychelles: "sc",
   "sint maarten": "sx",
@@ -130,10 +132,14 @@ const COUNTRY_CODES: Record<string, string> = {
 };
 const COUNTRY_QUERY_ALIASES: Record<string, string[]> = {
   "british virgin islands": ["bvi", "virgin islands british"],
+  "saint lucia": ["st lucia"],
+  "saint martin": ["st martin", "saint martin french part", "mf saint martin"],
+  "sint maarten": ["st maarten"],
   "united states virgin islands": [
     "us virgin islands",
     "u s virgin islands",
     "usvi",
+    "usvis",
     "virgin islands us",
     "virgin islands us usvi",
   ],
@@ -145,6 +151,7 @@ const BROAD_GEOCODE_PARTS = new Set([
   "caribbean",
   "caribbean sea",
   "caribbeans",
+  "caribeann",
   "channel islands",
   "chesapeake bay",
   "great lakes",
@@ -266,6 +273,8 @@ function stripGeocodeSourceArtifacts(value: string) {
     .replace(/&nbsp;/gi, " ")
     .replace(/&#x?[0-9a-f]+;/gi, " ")
     .replace(/\s+\bprice\s*:\s*(?:[$€£]?\s*[\d,\s.]+|upon request|contact(?:\s+\w+)*)\s*$/i, "")
+    .replace(/\s+\bavailable\s+in\b.+?\bupon\s+request\b.*$/i, "")
+    .replace(/\s+\bupon\s+request\b.*$/i, "")
     .replace(/\s+\bflag\s*[:;-]\s*[a-z .]+$/i, "")
     .replace(
       /\s+\b(?:u\.?\s*s\.?\s*a?\.?|usa|us|american|canadian|british|french|german|dutch|spanish|italian|greek|turkish|croatian)\s+flag\b\s*$/i,
@@ -275,14 +284,42 @@ function stripGeocodeSourceArtifacts(value: string) {
     .trim();
 }
 
+function normalizeKnownLocationTextArtifacts(value: string) {
+  // Live broker/source artifacts observed in the geocode review queue; keep each rule scoped and test-backed.
+  return value
+    .replace(/\bGenoa\s*,\s*Italyn\s*\/\s*A\b/gi, "Genoa, Italy")
+    .replace(/\bItalyn\s*\/\s*A\b/gi, "Italy")
+    .replace(/\bCartagena\s+De\s+Indias\s+Colombia\b/gi, "Cartagena De Indias, Colombia")
+    .replace(/\bEnsenada\s+Mexico\s+Baja\b/gi, "Ensenada, Baja California, Mexico")
+    .replace(/\bLa\s+Paz\s+Baja\s+California\s+Sur\b/gi, "La Paz, Baja California Sur")
+    .replace(/\bMartinique\s+French\b/gi, "Martinique")
+    .replace(/\bSt\.?\s+Lucia\b/gi, "Saint Lucia")
+    .replace(/\bSt\.?\s+Martin\b/gi, "Saint Martin")
+    .replace(
+      /\b((?:St\.?|Saint)\s+(?:Thomas|John|Croix)|Water Island)\s+(?:VI|USVI|USVIS)\b/gi,
+      "$1, US Virgin Islands"
+    )
+    .replace(
+      /\b((?:St\.?|Saint)\s+(?:Thomas|John|Croix)|Water Island)\s+US\s*,\s*Virgin Islands\b/gi,
+      "$1, US Virgin Islands"
+    )
+    .replace(/\bUSVIS\b/gi, "US Virgin Islands")
+    .replace(/\bUSVI\b/gi, "US Virgin Islands")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizeCountryAliasText(value: string, country?: string | null) {
   let normalized = value
+    .replace(/\bSaint Martin\s*\(French Part\)/gi, "Saint Martin")
+    .replace(/\bMF\s*\(Saint Martin\)/gi, "Saint Martin")
     .replace(/\bVirgin Islands\s*\(British\)\s*\(BVI\)/gi, "British Virgin Islands")
     .replace(/\bVirgin Islands\s*\(British\)/gi, "British Virgin Islands")
     .replace(/\bVirgin Islands\s*,\s*British\b/gi, "British Virgin Islands")
     .replace(/\b(?:U\.?S\.?|United States)\s*,\s*Virgin Islands\b/gi, "US Virgin Islands")
-    .replace(/\bVirgin Islands\s*\(US\)\s*\(USVI\)/gi, "US Virgin Islands")
-    .replace(/\bVirgin Islands\s*\(US\)/gi, "US Virgin Islands");
+    .replace(/\bVirgin Islands\s*\(US\)\s*\((?:USVI|US Virgin Islands)\)/gi, "US Virgin Islands")
+    .replace(/\bVirgin Islands\s*\(US\)/gi, "US Virgin Islands")
+    .replace(/\bUnited States Virgin Islands\b/gi, "US Virgin Islands");
 
   if (normalizeLookupValue(country) === "united states virgin islands") {
     normalized = normalized.replace(
@@ -294,8 +331,84 @@ function normalizeCountryAliasText(value: string, country?: string | null) {
   return normalized;
 }
 
+function canonicalizeGeocodePart(part: string) {
+  const trimmed = part.trim();
+  const normalized = normalizeLookupValue(trimmed);
+
+  if (
+    [
+      "united states virgin islands",
+      "us virgin islands",
+      "u s virgin islands",
+      "usvi",
+      "usvis",
+      "virgin islands us",
+      "virgin islands us usvi",
+    ].includes(normalized)
+  ) {
+    return "US Virgin Islands";
+  }
+  if (["st martin", "saint martin french part", "mf saint martin"].includes(normalized)) {
+    return "Saint Martin";
+  }
+  if (normalized === "st lucia") return "Saint Lucia";
+  if (normalized === "italyn a") return "Italy";
+
+  return trimmed;
+}
+
 function isBroadGeocodePart(part: string) {
   return BROAD_GEOCODE_PARTS.has(normalizeLookupValue(part));
+}
+
+function getExactCountryCodeForPart(part: string) {
+  const normalized = normalizeLookupValue(part);
+  const direct = COUNTRY_CODES[normalized];
+  if (direct) return direct;
+
+  for (const [country, aliases] of Object.entries(COUNTRY_QUERY_ALIASES)) {
+    if (aliases.some((alias) => normalizeLookupValue(alias) === normalized)) {
+      return COUNTRY_CODES[country] || null;
+    }
+  }
+
+  return null;
+}
+
+function chooseTargetCountryCode(parts: string[], country?: string | null) {
+  const storedCountryCode = getCountryCode(country);
+  const partCodes = parts
+    .map(getExactCountryCodeForPart)
+    .filter((code): code is string => Boolean(code));
+  const uniqueCodes = Array.from(new Set(partCodes));
+
+  if (uniqueCodes.length === 0) return storedCountryCode;
+  if (uniqueCodes.length === 1) return uniqueCodes[0];
+
+  const firstNonStored = storedCountryCode
+    ? partCodes.find((code) => code !== storedCountryCode)
+    : null;
+  return firstNonStored || storedCountryCode || uniqueCodes[0];
+}
+
+function removeConflictingCountryParts(parts: string[], country?: string | null) {
+  const targetCountryCode = chooseTargetCountryCode(parts, country);
+  const hasMexico = targetCountryCode === "mx";
+  const hasBaja = parts.some((part) => normalizeLookupValue(part).includes("baja california"));
+  const seenCountryCodes = new Set<string>();
+
+  return parts.filter((part) => {
+    const normalized = normalizeLookupValue(part);
+    if (hasMexico && hasBaja && normalized === "california") return false;
+
+    const countryCode = getExactCountryCodeForPart(part);
+    if (!countryCode) return true;
+    if (targetCountryCode && countryCode !== targetCountryCode) return false;
+    if (seenCountryCodes.has(countryCode)) return false;
+
+    seenCountryCodes.add(countryCode);
+    return true;
+  });
 }
 
 function escapeRegExp(value: string) {
@@ -373,10 +486,16 @@ function isPointOfInterestResult(type: string, category: string) {
 function prepareGeocodeLocationText(locationText: string, country?: string | null) {
   const stripped = stripBroadGeocodeEdgePhrases(
     stripBroadGeocodeParentheticals(
-      normalizeCountryAliasText(stripGeocodeSourceArtifacts(locationText), country)
+      normalizeCountryAliasText(
+        normalizeKnownLocationTextArtifacts(stripGeocodeSourceArtifacts(locationText)),
+        country
+      )
     )
   );
-  const parts = uniqueParts(stripped.split(",").map(stripBroadGeocodeEdgePhrases));
+  const parts = removeConflictingCountryParts(
+    uniqueParts(stripped.split(",").map(stripBroadGeocodeEdgePhrases).map(canonicalizeGeocodePart)),
+    country
+  );
   if (parts.length <= 1) return stripped;
 
   const filteredParts = parts.filter((part) => !isBroadGeocodePart(part));
@@ -437,6 +556,24 @@ export function getCountryCode(country?: string | null) {
   return COUNTRY_CODES[normalizeLookupValue(country)] || null;
 }
 
+function getCountryHintForQuery(queryText: string, country?: string | null) {
+  return chooseTargetCountryCode(
+    uniqueParts(queryText.split(",").map(canonicalizeGeocodePart)),
+    country
+  );
+}
+
+function canonicalizeCountryForQuery(country?: string | null) {
+  return canonicalizeGeocodePart(String(country || ""));
+}
+
+function isCountryOnlyGeocodeText(queryText: string) {
+  const parts = uniqueParts(queryText.split(",").map(canonicalizeGeocodePart)).filter(
+    (part) => !isBroadGeocodePart(part)
+  );
+  return parts.length > 0 && parts.every((part) => Boolean(getExactCountryCodeForPart(part)));
+}
+
 function locationTextIncludesCountry(locationText: string, country?: string | null) {
   const normalizedCountry = normalizeLookupValue(country);
   if (!normalizedCountry) return false;
@@ -457,7 +594,11 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   if (isVagueDirectionalLocation(preparedLocationText)) return null;
 
   const normalizedCountry = normalizeLookupValue(country);
-  if (COUNTRY_CODES[normalizedLocation] || (normalizedCountry && normalizedCountry === normalizedLocation)) {
+  if (
+    COUNTRY_CODES[normalizedLocation] ||
+    (normalizedCountry && normalizedCountry === normalizedLocation) ||
+    isCountryOnlyGeocodeText(preparedLocationText)
+  ) {
     return null;
   }
 
@@ -468,10 +609,14 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
     preparedLocationText.includes(",");
   if (!looksSpecific) return null;
 
-  const locationIncludesCountry = locationTextIncludesCountry(preparedLocationText, country);
+  const countryHint = getCountryHintForQuery(preparedLocationText, country);
+  const storedCountryHint = getCountryCode(country);
+  const locationIncludesCountry =
+    locationTextIncludesCountry(preparedLocationText, country) ||
+    Boolean(countryHint && storedCountryHint && countryHint !== storedCountryHint);
   const parts = uniqueParts([
     preparedLocationText,
-    locationIncludesCountry ? null : country,
+    locationIncludesCountry ? null : canonicalizeCountryForQuery(country),
   ]);
   const queryText = parts.join(", ");
   const queryKey = normalizeLookupValue(queryText);
@@ -479,7 +624,7 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   return {
     queryText,
     queryKey,
-    countryHint: getCountryCode(country),
+    countryHint,
   };
 }
 
