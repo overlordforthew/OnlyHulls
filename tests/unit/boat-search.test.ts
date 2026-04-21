@@ -197,6 +197,11 @@ test("location inference covers low-volume marina tail without overpromising coo
   assert.deepEqual(greatLakes.marketSlugs, ["united-states", "great-lakes"]);
   assert.equal(greatLakes.country, "United States");
   assert.equal(greatLakes.confidence, "city");
+
+  const lintonBay = inferLocationMarketSignals({ locationText: "Linton Bay Marina" });
+  assert.deepEqual(lintonBay.marketSlugs, ["panama"]);
+  assert.equal(lintonBay.country, "Panama");
+  assert.equal(lintonBay.confidence, "city");
 });
 
 test("location inference keeps broad state-only aliases at regional confidence", () => {

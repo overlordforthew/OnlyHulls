@@ -1231,6 +1231,18 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
   );
   assert.deepEqual(
     buildGeocodeQuery({
+      locationText: "Linton Bay Marina",
+      country: null,
+      confidence: "unknown",
+    }),
+    {
+      queryText: "Linton Bay Marina",
+      queryKey: "linton bay marina",
+      countryHint: null,
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
       locationText: "Red Frog Marina Bocas Del Toro, Panama",
       country: "Panama",
       confidence: "city",
@@ -2204,6 +2216,30 @@ test("cached geocode promotion releases verified public-pin aliases", () => {
   assert.equal(baotic.precisionPromotedFrom, "city");
   assert.equal(baotic.precisionPromotionAlias, "marina baotic");
   assert.equal(baotic.error, null);
+
+  const lintonBay = promoteVerifiedPublicPinAliasPrecision("Linton Bay Marina", {
+    status: "geocoded",
+    latitude: 9.6128111,
+    longitude: -79.5789435,
+    precision: "city",
+    score: 1,
+    placeName: "Linton Bay Marina, Carretera Portobelo - La Guaira, Puerto Lindo, Colón, Panama",
+    provider: "opencage",
+    payload: {
+      components: {
+        _type: "marina",
+        marina: "Linton Bay Marina",
+        country: "Panama",
+        country_code: "pa",
+      },
+    },
+    error: "public_pin_ineligible_precision",
+  });
+
+  assert.equal(lintonBay.precision, "marina");
+  assert.equal(lintonBay.precisionPromotedFrom, "city");
+  assert.equal(lintonBay.precisionPromotionAlias, "linton bay marina");
+  assert.equal(lintonBay.error, null);
 });
 
 test("cached geocode promotion rejects non-contiguous and admin-place aliases", () => {

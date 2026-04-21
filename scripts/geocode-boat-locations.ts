@@ -175,6 +175,27 @@ function getArgValue(name: string) {
   return value ? value.slice(prefix.length) : null;
 }
 
+function getArgValues(name: string) {
+  const prefix = `${name}=`;
+  return process.argv
+    .filter((arg) => arg.startsWith(prefix))
+    .flatMap((arg) => arg.slice(prefix.length).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function getTargetBoatIds() {
+  const targetBoatIds = [...getArgValues("--boat-id"), ...getArgValues("--boat-ids")];
+  const invalidBoatIds = targetBoatIds.filter(
+    (boatId) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(boatId)
+  );
+  if (invalidBoatIds.length > 0) {
+    throw new Error(`Invalid --boat-id value(s): ${invalidBoatIds.join(", ")}`);
+  }
+
+  return Array.from(new Set(targetBoatIds));
+}
+
 function getLimit() {
   const parsed = Number(getArgValue("--limit") || process.env.LOCATION_GEOCODING_LIMIT || 25);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 250) : 25;
@@ -635,6 +656,7 @@ async function main() {
     hasFlag("--verified-public-pin-aliases") || hasFlag("--public-pin-aliases");
   const publicPinCandidates =
     hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely") || verifiedPublicPinAliases;
+  const targetBoatIds = getTargetBoatIds();
   const config = getGeocodingConfig();
   const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
   if (retryChangedGeocoded && !verifiedPublicPinAliases) {
@@ -727,6 +749,7 @@ async function main() {
        AND COALESCE(NULLIF(TRIM(b.location_text), ''), '') <> ''
        AND (${missingCoordinateSql} OR ${changedGeocodedSql})
        AND ${statusSql}
+       ${targetBoatIds.length > 0 ? "AND b.id = ANY($1::uuid[])" : ""}
      ORDER BY CASE b.location_confidence
                 WHEN 'city' THEN 0
                 WHEN 'region' THEN 1
@@ -734,7 +757,8 @@ async function main() {
               END,
               CARDINALITY(COALESCE(b.location_market_slugs, '{}'::text[])) DESC,
               b.updated_at DESC,
-              b.id`
+              b.id`,
+    targetBoatIds.length > 0 ? [targetBoatIds] : undefined
   );
   const candidates = rows.map(prepareCandidate);
   const retryScopedCandidates = retryChangedReview || retryChangedGeocoded
@@ -808,6 +832,7 @@ async function main() {
     retryChangedReview,
     retryChangedGeocoded,
     verifiedPublicPinAliases,
+    targetBoatIds: targetBoatIds.length,
     selectionLane: verifiedPublicPinAliases
       ? "verified-public-pin-aliases"
       : publicPinCandidates
@@ -935,7 +960,7 @@ async function main() {
     const result = await geocodeWithConfiguredProvider(geocodeQuery, config);
     summary.providerFetches += 1;
     recordProcessedResult(boat, geocodeQuery, result, "provider");
-    if (apply && result.status !== "skipped") cacheByKey.set(geocodeQuery.queryKey, result);
+    if (result.status !== "skipped") cacheByKey.set(geocodeQuery.queryKey, result);
 
     if (isProviderBackoffResult(result)) {
       summary.stoppedReason = result.error || "provider_backoff";

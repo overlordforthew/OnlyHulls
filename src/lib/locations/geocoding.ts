@@ -1073,9 +1073,13 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   }
 
   const confidence = String(input.confidence || "").toLowerCase();
+  const hasVerifiedPublicPinAlias = VERIFIED_PUBLIC_PIN_LOCATION_ALIASES.some((alias) =>
+    normalizedHasTerm(normalizedLocation, alias)
+  );
   const looksSpecific =
     confidence === "city" ||
     confidence === "exact" ||
+    hasVerifiedPublicPinAlias ||
     preparedLocationText.includes(",");
   if (!looksSpecific) return null;
 

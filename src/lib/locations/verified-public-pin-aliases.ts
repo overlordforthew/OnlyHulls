@@ -57,6 +57,13 @@ export const VERIFIED_PUBLIC_PIN_LOCATION_ALIAS_DEFINITIONS = [
     longitude: 16.233877,
     maxDistanceKm: 5,
   },
+  {
+    alias: "linton bay marina",
+    countryCodes: ["pa"],
+    latitude: 9.6128111,
+    longitude: -79.5789435,
+    maxDistanceKm: 5,
+  },
 ] as const;
 
 export type VerifiedPublicPinLocationAlias =
