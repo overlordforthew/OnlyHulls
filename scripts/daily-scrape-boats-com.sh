@@ -6,10 +6,36 @@
 # notification-hub (notify.sh). Discord channel is scaffolded but not
 # configured with a webhook yet; WhatsApp is the admin's primary channel.
 #
-# Usage: daily-scrape-boats-com.sh [pages]   # default: 15
+# Usage:
+#   daily-scrape-boats-com.sh            # random pages in [PAGES_MIN..PAGES_MAX]
+#   daily-scrape-boats-com.sh 7          # explicit page count (bypasses random)
+#
+# Env (optional, only used when no explicit page arg is given):
+#   PAGES_MIN (default 5), PAGES_MAX (default 20)
 set -u
 
-PAGES="${1:-15}"
+if [ "$#" -ge 1 ] && [ -n "$1" ]; then
+    if ! [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Invalid pages argument (want a positive integer): $1" >&2
+        exit 64
+    fi
+    PAGES="$1"
+else
+    PAGES_MIN="${PAGES_MIN:-5}"
+    PAGES_MAX="${PAGES_MAX:-20}"
+    if ! [[ "$PAGES_MIN" =~ ^[0-9]+$ ]] || ! [[ "$PAGES_MAX" =~ ^[0-9]+$ ]] || [ "$PAGES_MIN" -lt 1 ] || [ "$PAGES_MIN" -gt "$PAGES_MAX" ]; then
+        echo "Invalid PAGES_MIN/PAGES_MAX: $PAGES_MIN..$PAGES_MAX" >&2
+        exit 64
+    fi
+    if ! command -v shuf >/dev/null 2>&1; then
+        echo "FATAL: shuf not available; install coreutils." >&2
+        exit 64
+    fi
+    if ! PAGES=$(shuf -i "${PAGES_MIN}-${PAGES_MAX}" -n 1) || ! [[ "$PAGES" =~ ^[0-9]+$ ]]; then
+        echo "FATAL: shuf failed to produce a page count in ${PAGES_MIN}..${PAGES_MAX}" >&2
+        exit 64
+    fi
+fi
 
 ELMO="elmoserver"
 ELMO_SCRAPER_DIR="/root/scrapers/onlyhulls"

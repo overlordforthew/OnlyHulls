@@ -3,14 +3,26 @@ Description=OnlyHulls — daily boats.com scrape (residential egress via Elmo)
 Documentation=https://github.com/overlordforthew/OnlyHulls
 
 [Timer]
-# Four fires per day, 6h apart, each with up to 30 minutes of jitter.
-# Windows are chosen to catch inventory rotation across US, EU, and APAC business hours.
-OnCalendar=*-*-* 03:00:00
-OnCalendar=*-*-* 09:00:00
-OnCalendar=*-*-* 15:00:00
-OnCalendar=*-*-* 21:00:00
-RandomizedDelaySec=1800
+# Sporadic human-like cadence: 10 fires per day at odd-minute base times,
+# each with up to 20 minutes of random jitter. Base spacing ≈ 2h24m, so
+# the maximum actual gap between runs is ~2h 53m — under the "once every
+# 3 hours" floor. Page count per run is randomized separately by the
+# orchestrator (shuf 5..20), so both the timing and the depth vary.
+OnCalendar=*-*-* 00:05:00
+OnCalendar=*-*-* 02:20:00
+OnCalendar=*-*-* 04:43:00
+OnCalendar=*-*-* 07:11:00
+OnCalendar=*-*-* 09:34:00
+OnCalendar=*-*-* 11:58:00
+OnCalendar=*-*-* 14:21:00
+OnCalendar=*-*-* 16:44:00
+OnCalendar=*-*-* 19:17:00
+OnCalendar=*-*-* 21:39:00
+RandomizedDelaySec=1200
 # If the machine was off at the scheduled time, catch up on next boot.
+# (Be aware: updating this timer file inside an open window will fire one
+# immediate catch-up run alongside the next scheduled one. Deploy edits
+# during a quiet window if you care.)
 Persistent=true
 Unit=boats-com-scrape.service
 

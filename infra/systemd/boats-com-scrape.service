@@ -3,14 +3,20 @@ Description=OnlyHulls — scrape boats.com via Elmo and import to DB
 Documentation=https://github.com/overlordforthew/OnlyHulls
 After=network-online.target docker.service
 Wants=network-online.target
+# Cap catch-up storms: at most 3 starts per rolling 3h window. If the box
+# was off for a day with Persistent=true, only the first 3 missed fires
+# will actually run — the rest are dropped.
+StartLimitIntervalSec=3h
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
 User=root
-# PAGES controls how many listing pages to request from boats.com. 15 = ~210 listings.
-# Raise with care; keep it in the 5..30 range while boats_com is in source-policy "test".
-Environment=PAGES=15
-ExecStart=/root/projects/OnlyHulls/scripts/daily-scrape-boats-com.sh ${PAGES}
+# The orchestrator picks a random page count per run (default [PAGES_MIN..PAGES_MAX]).
+# Override the bounds here if you want a wider or narrower range.
+Environment=PAGES_MIN=5
+Environment=PAGES_MAX=20
+ExecStart=/root/projects/OnlyHulls/scripts/daily-scrape-boats-com.sh
 # Hard ceiling: boats.com pacing (30-75s × 15 pages) + import typically finishes in 15min.
 # RuntimeMaxSec does not apply to Type=oneshot; TimeoutStartSec is the hang guard.
 TimeoutStartSec=45min
