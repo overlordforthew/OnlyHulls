@@ -491,6 +491,30 @@ test("buildGeocodeQuery cleans live review-queue source text before paid geocodi
       countryHint: "gp",
     }
   );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Marina Bas-Du-Fort (Pointe-à-Pitre / Le Gosier)",
+      country: "Guadeloupe",
+      confidence: "city",
+    }),
+    {
+      queryText: "Marina Bas du Fort, Le Gosier, Guadeloupe",
+      queryKey: "marina bas du fort le gosier guadeloupe",
+      countryHint: "gp",
+    }
+  );
+  assert.deepEqual(
+    buildGeocodeQuery({
+      locationText: "Nanny Cay Boatyard",
+      country: "British Virgin Islands",
+      confidence: "city",
+    }),
+    {
+      queryText: "Nanny Cay Marina, Tortola, British Virgin Islands",
+      queryKey: "nanny cay marina tortola british virgin islands",
+      countryHint: "vg",
+    }
+  );
 });
 
 test("buildGeocodeQuery rejects generic or region-only locations", () => {

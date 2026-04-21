@@ -15,6 +15,13 @@ import {
   getGeocodeApplySafetyStop,
   isEnabledEnvValue,
 } from "../src/lib/locations/geocode-rollout-safety";
+import {
+  getPublicPinApplyGateStop,
+  getPublicPinApplyResult,
+  getPublicPinEligibleRate,
+  isPublicPinEligibleResult,
+  isPublicPinLikelyGeocodeCandidate,
+} from "../src/lib/locations/geocode-candidate-lanes";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
 // Public Nominatim is for small validation runs only: single process, <= 1 request/sec,
@@ -100,6 +107,13 @@ type GeocodeAuditRow = SelectedQuerySample & {
   longitude: number | null;
   auditUrl: string | null;
   geographyMismatch: GeographyMismatch | null;
+};
+
+type ProcessedGeocodeResult = {
+  boat: ReadyCandidate;
+  geocodeQuery: ReadyCandidate["geocodeQuery"];
+  result: GeocodeResult;
+  source: GeocodeAuditRow["source"];
 };
 
 const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
@@ -457,7 +471,7 @@ async function geocodeWithConfiguredProvider(
 
 async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result: GeocodeResult) {
   const hasMappableCoordinates = shouldApplyResult(result);
-  const storedPrecision = hasMappableCoordinates ? result.precision : "unknown";
+  const storedPrecision = result.precision || "unknown";
   const signals = hasMappableCoordinates
     ? inferLocationMarketSignals({
         locationText: boat.location_text,
@@ -575,6 +589,7 @@ async function main() {
   const allowLargeBatch = hasFlag("--allow-large-batch");
   const allowPublicMapApply = hasFlag("--allow-public-map-apply");
   const includeReview = hasFlag("--include-review");
+  const publicPinCandidates = hasFlag("--public-pin-candidates") || hasFlag("--public-pin-likely");
   const config = getGeocodingConfig();
   const publicMapIsEnabled = isEnabledEnvValue(process.env.PUBLIC_MAP_ENABLED);
   const earlyApplySafetyStop = getGeocodeApplySafetyStop({
@@ -632,30 +647,47 @@ async function main() {
   const geocodableCandidates = candidates.filter(
     (candidate): candidate is ReadyCandidate => candidate.geocodeQuery !== null
   );
-  const selectedCandidates = geocodableCandidates.slice(0, limit);
-  const nextCandidates = geocodableCandidates.slice(limit, limit * 2);
+  const selectionCandidates = publicPinCandidates
+    ? geocodableCandidates.filter((candidate) =>
+        isPublicPinLikelyGeocodeCandidate({
+          locationText: candidate.location_text,
+          queryText: candidate.geocodeQuery.queryText,
+        })
+      )
+    : geocodableCandidates;
+  const selectedCandidates = selectionCandidates.slice(0, limit);
+  const nextCandidates = selectionCandidates.slice(limit, limit * 2);
   const uniqueReadyQueryKeys = Array.from(
     new Set(geocodableCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
+  );
+  const uniqueSelectionQueryKeys = Array.from(
+    new Set(selectionCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
   );
   const selectedQueryKeys = Array.from(
     new Set(selectedCandidates.map((candidate) => candidate.geocodeQuery.queryKey))
   );
-  const cacheByKey = await getCachedResults(uniqueReadyQueryKeys, config.provider);
+  const cacheByKey = await getCachedResults(uniqueSelectionQueryKeys, config.provider);
   let backupTable: string | null = null;
   const summary = {
     provider: config.provider,
     enabled: config.enabled,
     mode,
     includeReview,
+    selectionLane: publicPinCandidates ? "public-pin-candidates" : "default",
     totalCandidates: candidates.length,
     geocodableCandidates: geocodableCandidates.length,
+    selectionCandidates: selectionCandidates.length,
     uniqueReadyQueries: uniqueReadyQueryKeys.length,
+    uniqueSelectionQueries: uniqueSelectionQueryKeys.length,
     selectedRows: selectedCandidates.length,
     selectedUniqueQueries: selectedQueryKeys.length,
     cached: 0,
     uncachedSelected: 0,
     providerFetches: 0,
     dryRunProviderFetchSkipped: 0,
+    publicPinEligible: 0,
+    publicPinHeldBack: 0,
+    publicPinEligibleRate: 0,
     geocoded: 0,
     review: 0,
     failed: 0,
@@ -678,6 +710,27 @@ async function main() {
     backupTable: backupTable as string | null,
     warnings: [] as string[],
     stoppedReason: null as string | null,
+  };
+  const processedResults: ProcessedGeocodeResult[] = [];
+  const recordProcessedResult = (
+    boat: ReadyCandidate,
+    geocodeQuery: ReadyCandidate["geocodeQuery"],
+    result: GeocodeResult,
+    source: GeocodeAuditRow["source"]
+  ) => {
+    processedResults.push({ boat, geocodeQuery, result, source });
+    summary.statusSplit[result.status] += 1;
+    summary.precisionSplit[result.precision] += 1;
+    if (result.status === "geocoded") summary.geocoded += 1;
+    if (result.status === "review") summary.review += 1;
+    if (result.status === "failed") summary.failed += 1;
+    if (result.status === "skipped") summary.skipped += 1;
+    if (result.error) incrementCount(summary.failureReasons, result.error);
+    if (publicPinCandidates) {
+      if (isPublicPinEligibleResult(result)) summary.publicPinEligible += 1;
+      else summary.publicPinHeldBack += 1;
+    }
+    appendGeocodeAudit(summary, boat, geocodeQuery, result, source);
   };
 
   for (const candidate of candidates) {
@@ -710,25 +763,13 @@ async function main() {
     return;
   }
 
-  if (apply && selectedCandidates.length > 0) {
-    backupTable = await createBackupSnapshot(selectedCandidates.map((candidate) => candidate.id));
-    summary.backupTable = backupTable;
-  }
-
   for (const boat of selectedCandidates) {
     const geocodeQuery = boat.geocodeQuery;
 
     const cached = cacheByKey.get(geocodeQuery.queryKey) || (await getCachedResult(geocodeQuery.queryKey, config.provider));
     if (cached) {
       summary.cached += 1;
-      summary.statusSplit[cached.status] += 1;
-      summary.precisionSplit[cached.precision] += 1;
-      if (cached.status === "geocoded") summary.geocoded += 1;
-      if (cached.status === "review") summary.review += 1;
-      if (cached.status === "failed") summary.failed += 1;
-      if (cached.error) incrementCount(summary.failureReasons, cached.error);
-      appendGeocodeAudit(summary, boat, geocodeQuery, cached, "cache");
-      if (apply) await applyResult(boat, geocodeQuery.queryText, cached);
+      recordProcessedResult(boat, geocodeQuery, cached, "cache");
       continue;
     }
 
@@ -743,20 +784,8 @@ async function main() {
 
     const result = await geocodeWithConfiguredProvider(geocodeQuery, config);
     summary.providerFetches += 1;
-    summary.statusSplit[result.status] += 1;
-    summary.precisionSplit[result.precision] += 1;
-    if (result.status === "geocoded") summary.geocoded += 1;
-    if (result.status === "review") summary.review += 1;
-    if (result.status === "failed") summary.failed += 1;
-    if (result.status === "skipped") summary.skipped += 1;
-    if (result.error) incrementCount(summary.failureReasons, result.error);
-    appendGeocodeAudit(summary, boat, geocodeQuery, result, "provider");
-
-    if (apply) {
-      if (result.status !== "skipped") await cacheResult(geocodeQuery.queryKey, geocodeQuery.queryText, result);
-      if (result.status !== "skipped") cacheByKey.set(geocodeQuery.queryKey, result);
-      await applyResult(boat, geocodeQuery.queryText, result);
-    }
+    recordProcessedResult(boat, geocodeQuery, result, "provider");
+    if (apply && result.status !== "skipped") cacheByKey.set(geocodeQuery.queryKey, result);
 
     if (isProviderBackoffResult(result)) {
       summary.stoppedReason = result.error || "provider_backoff";
@@ -778,6 +807,46 @@ async function main() {
     summary.warnings.push(
       `dry_run_cache_only_skipped_${summary.dryRunProviderFetchSkipped}_uncached_provider_fetches_pass_--fetch-missing_for_paid_prediction`
     );
+  }
+
+  summary.publicPinEligibleRate = getPublicPinEligibleRate(
+    summary.publicPinEligible,
+    summary.selectedRows
+  );
+
+  const publicPinApplyGateStop = getPublicPinApplyGateStop({
+    apply,
+    publicPinCandidates,
+    selectedRows: summary.selectedRows,
+    publicPinEligibleRate: summary.publicPinEligibleRate,
+  });
+  if (publicPinApplyGateStop) {
+    summary.stoppedReason = publicPinApplyGateStop.stoppedReason;
+    console.error(publicPinApplyGateStop.message);
+    console.log(JSON.stringify(summary, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+
+  if (apply && selectedCandidates.length > 0) {
+    backupTable = await createBackupSnapshot(selectedCandidates.map((candidate) => candidate.id));
+    summary.backupTable = backupTable;
+
+    for (const processed of processedResults) {
+      if (processed.result.status !== "skipped") {
+        await cacheResult(
+          processed.geocodeQuery.queryKey,
+          processed.geocodeQuery.queryText,
+          processed.result
+        );
+        cacheByKey.set(processed.geocodeQuery.queryKey, processed.result);
+      }
+      await applyResult(
+        processed.boat,
+        processed.geocodeQuery.queryText,
+        publicPinCandidates ? getPublicPinApplyResult(processed.result) : processed.result
+      );
+    }
   }
 
   console.log(JSON.stringify(summary, null, 2));
