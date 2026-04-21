@@ -141,6 +141,8 @@ Required before exposing a buyer-facing map:
 - `NEXT_PUBLIC_MAP_STYLE_URL`
 - `NEXT_PUBLIC_MAP_ATTRIBUTION`
 - `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS` when the style references tile, glyph, sprite, or image hosts beyond the style URL origin.
+- `MAP_STYLE_PING_REFERER` for launch preflight when the tile key is referrer-restricted.
+- Optional `MAP_STYLE_PING_ALLOWED_HOSTS` for staging-only map style ping hosts.
 - Optional `MAP_READINESS_*` thresholds if launch gates should differ from the defaults in `.env.example`.
 
 Recommended first tile provider:

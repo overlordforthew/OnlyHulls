@@ -16,6 +16,7 @@ import {
   type MapLaunchPreflightResult,
   type MapLaunchPreflightStep,
 } from "../src/lib/locations/map-launch-preflight";
+import { buildMapStylePingHeaders } from "../src/lib/locations/map-style-ping";
 import { deriveImportVisibilityCounts } from "../src/lib/source-health";
 import { buildGeocodeQuery, getGeocodingConfig } from "../src/lib/locations/geocoding";
 import { getMapPinAuditReport } from "../src/lib/locations/map-pin-audit-data";
@@ -106,14 +107,14 @@ function redactUrl(value: string) {
   }
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number) {
+async function fetchWithTimeout(url: string, timeoutMs: number, headers: Record<string, string> = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     return await fetch(url, {
       method: "GET",
-      headers: { accept: "application/json" },
+      headers: { accept: "application/json", ...headers },
       signal: controller.signal,
     });
   } finally {
@@ -166,8 +167,29 @@ async function runPingChecks(
         action: "Configure the tile style URL before using --ping.",
       });
     } else {
+      const { headers, resolution } = buildMapStylePingHeaders();
+      steps.push({
+        section: "network",
+        key: "map_style_ping_referer",
+        status: "info",
+        message: "Map style ping is using a browser-realistic Referer.",
+        actual: `${resolution.source}=${resolution.referer}`,
+        target: "referrer-restricted OnlyHulls browser request",
+      });
+
+      if (resolution.rejected.length > 0) {
+        steps.push({
+          section: "network",
+          key: "map_style_ping_referer_rejected",
+          status: "warn",
+          message: "Ignored unsafe or invalid map style ping Referer candidates.",
+          actual: resolution.rejected.map((item) => `${item.source}:${item.reason}`).join(","),
+          target: "OnlyHulls HTTPS Referer or explicitly allowed host",
+        });
+      }
+
       try {
-        const response = await fetchWithTimeout(styleUrl, timeoutMs);
+        const response = await fetchWithTimeout(styleUrl, timeoutMs, headers);
         steps.push({
           section: "network",
           key: "map_style_ping",
@@ -175,7 +197,7 @@ async function runPingChecks(
           message: response.ok
             ? "Map style URL responded successfully."
             : `Map style URL responded with HTTP ${response.status}.`,
-          actual: `${response.status} ${redactUrl(styleUrl)}`,
+          actual: `${response.status} ${redactUrl(styleUrl)} referer=${resolution.referer}`,
           target: "HTTP 2xx",
           action: response.ok ? undefined : "Fix the tile provider key, style URL, or resource restrictions.",
         });

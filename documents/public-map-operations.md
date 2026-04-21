@@ -35,6 +35,7 @@ MAPTILER_KEY=...
 NEXT_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/streets-v2/style.json?key=$MAPTILER_KEY
 NEXT_PUBLIC_MAP_ATTRIBUTION=© MapTiler © OpenStreetMap contributors
 NEXT_PUBLIC_MAP_RESOURCE_ORIGINS=https://api.maptiler.com,https://tiles.maptiler.com
+MAP_STYLE_PING_REFERER=https://onlyhulls.com/boats
 MAP_READINESS_MIN_MARKET_TAG_PCT=95
 MAP_READINESS_MIN_CITY_OR_BETTER_PCT=85
 MAP_READINESS_MIN_PUBLIC_PIN_PCT=85
@@ -50,6 +51,7 @@ Notes:
 - `NEXT_PUBLIC_MAP_ENABLED` gates the buyer-facing Map button.
 - Flip both flags together. If only the client flag is enabled, the UI appears but the marker API returns `404`. If only the server flag is enabled, the API exists but buyers cannot open the map.
 - The MapTiler key is URL-embedded and public by design. Restrict it in the MapTiler dashboard to `https://onlyhulls.com/*` and `https://www.onlyhulls.com/*`.
+- Launch preflight sends a browser-realistic `Referer` for the MapTiler style ping. Keep `MAP_STYLE_PING_REFERER` on an OnlyHulls HTTPS URL, or add staging hosts through `MAP_STYLE_PING_ALLOWED_HOSTS` only when staging truly needs its own referrer.
 - Keep a budget/session cap on the MapTiler account at launch. Prefer graceful map unavailability over surprise overage until real map usage is known.
 - Do not add wildcard CSP origins. Add explicit hosts to `NEXT_PUBLIC_MAP_RESOURCE_ORIGINS`.
 - Use `/admin/map-readiness` as the aggregate launch gate before enabling the public flags. It intentionally reports counts, percentages, precision/status/provider splits, and blockers without exposing coordinates, listing IDs, user IDs, or slugs.
@@ -65,10 +67,11 @@ Use `--phase=launch` for every public-map exposure decision. `--phase=backfill` 
 5. A fresh zero-rejection `npm run db:map-pin-audit -- --limit=25 --seed=launch-review --attest --reviewed-by=<operator> --accepted=25 --rejected=0 --emit-report=artifacts/map-pin-audit-launch.json` sample has been reviewed.
 6. MapTiler key is referrer-restricted to staging and production domains.
 7. MapTiler budget/session cap is configured.
-8. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
-9. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
-10. Browser tests pass with map off, map happy path, 429 response, and broken style response.
-11. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
+8. `MAP_STYLE_PING_REFERER` returns `200` from MapTiler while the same style URL without a referrer returns `403`, proving the key is restricted and preflight is checking the browser path.
+9. Staging env has `PUBLIC_MAP_ENABLED=true` and `NEXT_PUBLIC_MAP_ENABLED=true`.
+10. Staging CSP includes every required style, tile, glyph, sprite, and image origin without using `*`.
+11. Browser tests pass with map off, map happy path, 429 response, and broken style response.
+12. Manual smoke: search a market, switch to Map, click a marker, open the listing, then switch back to grid/rows.
 
 ## Launch Sequence
 
