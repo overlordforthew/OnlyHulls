@@ -1873,9 +1873,14 @@ test("geocodeWithOpenCage keeps unsafe confidence-three city-like results in rev
         countryHint: "nl",
       },
       result: {
+        // Round 32 adjusted the `exact City, Country` exception to accept
+        // confidence=2 when the primary city component exactly matches the
+        // queried city part. Dropping the confidence to 1 keeps this case in
+        // the "still unsafe" test bucket — truly low-confidence results must
+        // remain in review regardless of how clean the component is.
         formatted: "Lelystad, Flevoland, Netherlands",
         geometry: { lat: 52.5150949, lng: 5.4768915 },
-        confidence: 2,
+        confidence: 1,
         components: {
           _type: "city",
           city: "Lelystad",
@@ -2887,6 +2892,146 @@ test("geocodeWithOpenCage does not promote Green Cay alias when provider returns
     assert.equal(result.status, "geocoded");
     assert.notEqual(result.precision, "marina");
     assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage accepts confidence=2 exact City,Country when primary city component matches exactly", async () => {
+  // Round 32 extension: conf=2 2-part City,Country queries were previously held
+  // in review even when the provider returned the correct city. Extension allows
+  // conf=2 when components.city (or town/village/etc.) EXACTLY equals the
+  // queried city part. Bodrum/Marmaris/Corfu cases unblock; ambiguous-name
+  // traps still fail because the provider's primary component won't match
+  // exactly.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Bodrum, Turkey",
+            geometry: { lat: 37.0344, lng: 27.4305 },
+            confidence: 2,
+            components: {
+              _type: "city",
+              city: "Bodrum",
+              state: "Muğla",
+              country: "Turkey",
+              country_code: "tr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Bodrum, Turkey",
+        queryKey: "bodrum turkey",
+        countryHint: "tr",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.precision, "city");
+    assert.equal(result.error, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage still holds confidence=2 City,Country when city component differs", async () => {
+  // Round 32 guard: conf=2 is only accepted when the primary city component
+  // EXACTLY matches the queried city. If provider returned a similarly-named
+  // but different city, we must still hold it in review.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Springfield, IL, United States of America",
+            geometry: { lat: 39.78, lng: -89.65 },
+            confidence: 2,
+            components: {
+              _type: "city",
+              city: "Springfield",
+              state: "Illinois",
+              country: "United States of America",
+              country_code: "us",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    // Query is `Springfield, United Kingdom` — a made-up ambiguous case.
+    // Provider country_code=us mismatches queryParts.countryCode=gb → rejected.
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Springfield, United Kingdom",
+        queryKey: "springfield united kingdom",
+        countryHint: "gb",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("geocodeWithOpenCage holds confidence=2 when primary city component mismatches the queried city", async () => {
+  // Sibling guard: same country but provider's primary component is a
+  // DIFFERENT same-country city. Only the city-component-equality check saves
+  // us here — the loose conf=3 text-inclusion would falsely accept.
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        results: [
+          {
+            formatted: "Mudanya, Bursa, Turkey",
+            geometry: { lat: 40.37, lng: 28.88 },
+            confidence: 2,
+            components: {
+              _type: "city",
+              city: "Mudanya",
+              state: "Bursa",
+              country: "Turkey",
+              country_code: "tr",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    // Query is `Bursa, Turkey` but provider returned Mudanya (a town inside
+    // Bursa province). The loose text-inclusion check would pass because
+    // formatted text contains "Bursa". The tight component-equality check
+    // rejects because components.city=Mudanya !== "bursa".
+    const result = await geocodeWithOpenCage(
+      {
+        queryText: "Bursa, Turkey",
+        queryKey: "bursa turkey",
+        countryHint: "tr",
+      },
+      openCageConfig
+    );
+
+    assert.equal(result.status, "review");
   } finally {
     globalThis.fetch = originalFetch;
   }

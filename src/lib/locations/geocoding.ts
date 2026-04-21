@@ -1369,7 +1369,7 @@ function allowsExactCityCountryConfidenceFloor(
   formatted: string,
   components: Record<string, unknown>
 ) {
-  if (precision !== "city" || confidence < 3) return false;
+  if (precision !== "city" || confidence < 2) return false;
 
   const queryParts = getExactCityCountryQueryParts(query);
   if (!queryParts) return false;
@@ -1383,10 +1383,33 @@ function allowsExactCityCountryConfidenceFloor(
     .join(" ");
   const resultText = normalizeLookupValue(`${formatted} ${componentText}`);
 
-  return (
+  const hasCityAndCountry =
     normalizedHasTerm(resultText, queryParts.normalizedCity) &&
-    resultTextHasCountryPart(resultText, queryParts.countryPart)
-  );
+    resultTextHasCountryPart(resultText, queryParts.countryPart);
+
+  // Round 32: accept confidence=2 City,Country matches ONLY when the provider's
+  // primary city/town component value EXACTLY equals the queried city part. This
+  // prevents conf=2 ambiguous-name traps (e.g. `Springfield, France` resolving
+  // to some similar-but-wrong small town) while accepting clean cases where the
+  // provider identified the same city name (Marmaris→Marmaris, Bodrum→Bodrum).
+  // The conf=3 path keeps its looser check (city name present anywhere in
+  // result text) — the conf=2 path tightens it to exact component equality.
+  if (confidence < 3) {
+    if (!hasCityAndCountry) return false;
+    const primaryCityComponent = normalizeLookupValue(
+      String(
+        components.city ||
+          components.town ||
+          components.village ||
+          components.municipality ||
+          components.hamlet ||
+          ""
+      )
+    );
+    return primaryCityComponent !== "" && primaryCityComponent === queryParts.normalizedCity;
+  }
+
+  return hasCityAndCountry;
 }
 
 function validCoordinate(latitude: number, longitude: number) {
@@ -1647,7 +1670,7 @@ export async function geocodeWithOpenCage(
       components
     );
     const lowConfidence =
-      normalizedConfidence < 3 ||
+      (normalizedConfidence < 3 && !allowsLowConfidenceExactCity) ||
       (normalizedConfidence <= 3 && !allowsLowConfidenceExactCity) ||
       (typeof precisionConfidenceFloor === "number" &&
         normalizedConfidence < precisionConfidenceFloor &&
