@@ -79,6 +79,29 @@ type SamplePin = {
   auditUrl: string | null;
 };
 
+type SelectedQuerySample = {
+  boatId: string;
+  locationText: string | null;
+  country: string | null;
+  region: string | null;
+  marketSlugs: string[];
+  queryText: string;
+  countryHint: string | null;
+};
+
+type GeocodeAuditRow = SelectedQuerySample & {
+  source: "cache" | "provider";
+  status: GeocodeStatus;
+  precision: GeocodePrecision;
+  score: number | null;
+  placeName: string | null;
+  error: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  auditUrl: string | null;
+  geographyMismatch: GeographyMismatch | null;
+};
+
 const POPULATION_UNIQUE_NOMINATIM_WARNING_THRESHOLD = 1500;
 const SAMPLE_PIN_LIMIT = 20;
 const BROAD_REGION_NAMES = new Set([
@@ -90,6 +113,16 @@ const BROAD_REGION_NAMES = new Set([
   "new england",
   "pacific northwest",
 ]);
+const ACCEPTED_COUNTRY_CODE_EQUIVALENTS: Record<string, string[]> = {
+  aw: ["nl"],
+  gp: ["fr"],
+  mq: ["fr"],
+  pf: ["fr"],
+  pr: ["us"],
+  sx: ["nl"],
+  vi: ["us"],
+  vg: ["gb"],
+};
 
 function getArgValue(name: string) {
   const prefix = `${name}=`;
@@ -219,7 +252,14 @@ function getGeographyMismatch(
   result: GeocodeResult
 ): GeographyMismatch | null {
   const actualCountryCode = getPayloadCountryCode(result.payload);
-  if (expectedCountryCode && actualCountryCode && actualCountryCode !== expectedCountryCode) {
+  const acceptedActualCountryCodes = expectedCountryCode
+    ? new Set([expectedCountryCode, ...(ACCEPTED_COUNTRY_CODE_EQUIVALENTS[expectedCountryCode] || [])])
+    : null;
+  if (
+    expectedCountryCode &&
+    actualCountryCode &&
+    !acceptedActualCountryCodes?.has(actualCountryCode)
+  ) {
     return {
       boatId: boat.id,
       locationText: boat.location_text,
@@ -257,16 +297,49 @@ function buildPinAuditUrl(latitude: number | null, longitude: number | null) {
   return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=10/${latitude}/${longitude}`;
 }
 
+function buildSelectedQuerySample(
+  boat: BoatGeocodeCandidate,
+  geocodeQuery: ReadyCandidate["geocodeQuery"]
+): SelectedQuerySample {
+  return {
+    boatId: boat.id,
+    locationText: boat.location_text,
+    country: boat.location_country,
+    region: boat.location_region,
+    marketSlugs: boat.location_market_slugs,
+    queryText: geocodeQuery.queryText,
+    countryHint: geocodeQuery.countryHint,
+  };
+}
+
 function appendGeocodeAudit(
-  summary: { geographyMismatches: GeographyMismatch[]; samplePins: SamplePin[] },
+  summary: {
+    auditRows: GeocodeAuditRow[];
+    geographyMismatches: GeographyMismatch[];
+    samplePins: SamplePin[];
+  },
   boat: BoatGeocodeCandidate,
   geocodeQuery: ReadyCandidate["geocodeQuery"],
-  result: GeocodeResult
+  result: GeocodeResult,
+  source: GeocodeAuditRow["source"]
 ) {
-  if (result.status !== "geocoded") return;
-
-  const mismatch = getGeographyMismatch(boat, geocodeQuery.countryHint, result);
+  const mismatch =
+    result.status === "geocoded" ? getGeographyMismatch(boat, geocodeQuery.countryHint, result) : null;
+  summary.auditRows.push({
+    ...buildSelectedQuerySample(boat, geocodeQuery),
+    source,
+    status: result.status,
+    precision: result.precision,
+    score: result.score,
+    placeName: result.placeName,
+    error: result.error || null,
+    latitude: result.latitude,
+    longitude: result.longitude,
+    auditUrl: buildPinAuditUrl(result.latitude, result.longitude),
+    geographyMismatch: mismatch,
+  });
   if (mismatch) summary.geographyMismatches.push(mismatch);
+  if (result.status !== "geocoded") return;
 
   if (summary.samplePins.length >= SAMPLE_PIN_LIMIT) return;
   summary.samplePins.push({
@@ -585,6 +658,10 @@ async function main() {
     statusSplit: emptyStatusSplit(),
     failureReasons: {} as Record<string, number>,
     nonGeocodableReasons: {} as Record<string, number>,
+    selectedQuerySamples: selectedCandidates.slice(0, 50).map((candidate) =>
+      buildSelectedQuerySample(candidate, candidate.geocodeQuery)
+    ),
+    auditRows: [] as GeocodeAuditRow[],
     geographyMismatches: [] as GeographyMismatch[],
     samplePins: [] as SamplePin[],
     nextBatch: {
@@ -644,7 +721,7 @@ async function main() {
       if (cached.status === "review") summary.review += 1;
       if (cached.status === "failed") summary.failed += 1;
       if (cached.error) incrementCount(summary.failureReasons, cached.error);
-      appendGeocodeAudit(summary, boat, geocodeQuery, cached);
+      appendGeocodeAudit(summary, boat, geocodeQuery, cached, "cache");
       if (apply) await applyResult(boat, geocodeQuery.queryText, cached);
       continue;
     }
@@ -659,7 +736,7 @@ async function main() {
     if (result.status === "failed") summary.failed += 1;
     if (result.status === "skipped") summary.skipped += 1;
     if (result.error) incrementCount(summary.failureReasons, result.error);
-    appendGeocodeAudit(summary, boat, geocodeQuery, result);
+    appendGeocodeAudit(summary, boat, geocodeQuery, result, "provider");
 
     if (apply) {
       if (result.status !== "skipped") await cacheResult(geocodeQuery.queryKey, geocodeQuery.queryText, result);

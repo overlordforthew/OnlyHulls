@@ -1,4 +1,5 @@
 import { pool, query } from "../src/lib/db/index";
+import type { GeocodePrecision } from "../src/lib/locations/geocoding";
 import { inferLocationMarketSignals } from "../src/lib/locations/top-markets";
 
 type BoatLocationRow = {
@@ -6,11 +7,26 @@ type BoatLocationRow = {
   location_text: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  location_approximate: boolean | null;
+  location_geocode_precision: GeocodePrecision | null;
 };
+
+function resolveCoordinatesApproximate(row: BoatLocationRow) {
+  if (row.location_geocode_precision) {
+    return !["exact", "street", "marina"].includes(row.location_geocode_precision);
+  }
+
+  return row.location_approximate === true;
+}
 
 async function main() {
   const rows = await query<BoatLocationRow>(
-    `SELECT id, location_text, location_lat, location_lng
+    `SELECT id,
+            location_text,
+            location_lat,
+            location_lng,
+            location_approximate,
+            location_geocode_precision
      FROM boats
      ORDER BY updated_at DESC, id`
   );
@@ -21,6 +37,7 @@ async function main() {
       locationText: row.location_text,
       latitude: row.location_lat,
       longitude: row.location_lng,
+      coordinatesApproximate: resolveCoordinatesApproximate(row),
     });
     const result = await query<{ id: string }>(
       `UPDATE boats
