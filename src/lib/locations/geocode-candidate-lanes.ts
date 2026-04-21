@@ -29,6 +29,7 @@ const PUBLIC_PIN_MARINE_PATTERNS = [
   /\bdarsena\b/i,
   /\bport\s+de\s+plaisance\b/i,
 ];
+const VERIFIED_PUBLIC_PIN_LOCATION_ALIASES = ["burnham yacht harbour"];
 
 function normalizeLaneText(value?: string | null) {
   return String(value || "")
@@ -40,9 +41,26 @@ function normalizeLaneText(value?: string | null) {
     .trim();
 }
 
+function normalizeAliasText(value?: string | null) {
+  return normalizeLaneText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizedHasAlias(value: string, alias: string) {
+  return new RegExp(`(^|\\s)${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`).test(value);
+}
+
 export function isPublicPinLikelyText(value?: string | null) {
   const normalized = normalizeLaneText(value);
   if (!normalized) return false;
+
+  const aliasText = normalizeAliasText(normalized);
+  if (VERIFIED_PUBLIC_PIN_LOCATION_ALIASES.some((alias) => normalizedHasAlias(aliasText, alias))) {
+    return true;
+  }
 
   return PUBLIC_PIN_MARINE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
