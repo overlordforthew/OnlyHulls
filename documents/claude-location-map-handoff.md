@@ -32,6 +32,60 @@ Read these files before changing anything:
 4. `documents/location-geocoding-rollout.md`
 5. `reports/location-backlog/2026-04-21-round22.md`
 
+## Consensus Requirement
+
+The user wants this work to continue with the same consensus discipline Codex
+used during the previous rounds. Do not treat consensus as optional process
+decoration; it is part of the safety system for map/location work.
+
+For every round:
+
+1. Gather evidence first.
+   - Read the relevant code, docs, production data, provider previews, and
+     previous reports.
+   - Bound the question tightly. Do not ask for a repo-wide vague review.
+2. Run an independent review before implementation or production apply.
+   - If you have access to another strong model or reviewer, ask it to challenge
+     the proposed path.
+   - If you are Claude and cannot call a separate reviewer, run a separate
+     written arbitration pass yourself that explicitly labels each proposed
+     action as `Confirmed`, `Partially Confirmed`, or `Rejected`, then act only
+     on the confirmed overlap.
+3. Before production apply, get a clear decision:
+   - `APPLY`
+   - `DO NOT APPLY`
+   - blockers, if any
+   - non-blocking follow-ups
+4. After implementation and verification, do a second ship gate:
+   - `SHIP`
+   - `DO NOT SHIP`
+   - blockers
+   - residual risks
+   - next recommended target
+5. Record the consensus outcome in the docs or PR body.
+
+Consensus should be especially strict for:
+
+- adding verified aliases
+- creating or changing gazetteer evidence
+- promoting rows to public-pin precision
+- changing geocode precision classification
+- enabling any public map flag
+- broadening source cleanup rules
+
+The preferred output shape for each consensus pass:
+
+```text
+1. Decision: APPLY / DO NOT APPLY or SHIP / DO NOT SHIP
+2. Blockers
+3. Non-blocking follow-ups
+4. Why this is safe or unsafe
+5. Next target recommendation, if relevant
+```
+
+If consensus is uncertain, do not apply production changes. Leave the rows held
+back and document why.
+
 ## Absolute Guardrails
 
 Do not enable the public map.
@@ -289,6 +343,8 @@ Instruction:
    - Ask whether to build a small verified gazetteer evidence layer or continue
      with one-off aliases.
    - Recommended answer: build a small structured gazetteer evidence layer.
+   - The consensus output must include a clear `APPLY` / `DO NOT APPLY` or
+     `SHIP` / `DO NOT SHIP` decision when it reaches an action gate.
 3. Query production for the target rows.
    - Capture ID, slug, `location_text`, `location_country`, `location_region`,
      `location_confidence`, geocode status/query/precision, coordinates.
