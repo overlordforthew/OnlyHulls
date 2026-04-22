@@ -68,7 +68,9 @@ test("map pin audit parses bounded limits and public precisions", () => {
   assert.equal(parseMapPinAuditLimit("-1"), 25);
   assert.equal(parseMapPinAuditPrecision("marina"), "marina");
   assert.equal(parseMapPinAuditPrecision("street"), "street");
-  assert.equal(parseMapPinAuditPrecision("city"), null);
+  assert.equal(parseMapPinAuditPrecision("city"), "city");
+  assert.equal(parseMapPinAuditPrecision("region"), null);
+  assert.equal(parseMapPinAuditPrecision("country"), null);
   assert.equal(parseMapPinAuditPrecision(""), null);
 });
 
@@ -92,7 +94,7 @@ test("map pin audit builds safe audit and listing URLs", () => {
 test("map pin audit builds scoped public-coordinate SQL", () => {
   const all = buildMapPinAuditWhereSql({ precision: null, backupTable: null });
 
-  assert.deepEqual(all.params, [["exact", "street", "marina"]]);
+  assert.deepEqual(all.params, [["exact", "street", "marina", "city"]]);
   assert.match(all.whereSql, /b\.location_geocode_precision = ANY\(\$1::text\[\]\)/);
   assert.doesNotMatch(all.whereSql, /location_geocode_precision = \$2/);
 

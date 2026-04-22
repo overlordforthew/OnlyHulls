@@ -57,16 +57,36 @@ test("public map coordinates expose precise and marina-level locations conservat
   );
 });
 
-test("city-level map coordinates are not exposed as hard public map pins", () => {
-  assert.equal(
+test("city-level map coordinates are exposed as approximate area pins with coarse rounding", () => {
+  assert.deepEqual(
     getPublicMapCoordinate({
       latitude: 5.4141123,
       longitude: 100.3288123,
       precision: "city",
-      approximate: false,
+      approximate: true,
     }),
-    null
+    {
+      latitude: 5.41,
+      longitude: 100.33,
+      precision: "city",
+      approximate: true,
+    }
   );
+});
+
+test("region and country precisions remain excluded from the public map", () => {
+  for (const precision of ["region", "country", "unknown"] as const) {
+    assert.equal(
+      getPublicMapCoordinate({
+        latitude: 5.4141123,
+        longitude: 100.3288123,
+        precision,
+        approximate: true,
+      }),
+      null,
+      `precision ${precision} should not expose a public pin`
+    );
+  }
 });
 
 test("map bounds parser accepts bounded viewports and rejects world-sized requests", () => {

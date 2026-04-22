@@ -60,7 +60,14 @@ function getMarkerHref(slug: string) {
 function getPrecisionLabel(precision: PublicMapMarker["precision"]) {
   if (precision === "marina") return "Marina";
   if (precision === "street") return "Street";
+  if (precision === "city") return "City area";
   return "Exact";
+}
+
+function getPrecisionZoomTarget(precision: PublicMapMarker["precision"]) {
+  if (precision === "marina") return 11;
+  if (precision === "city") return 8;
+  return 10;
 }
 
 function getMarkerClassName(marker: PublicMapMarker, selected: boolean) {
@@ -313,7 +320,7 @@ export default function BoatsMapView({
 
     map?.easeTo({
       center: [marker.lng, marker.lat],
-      zoom: Math.max(map.getZoom(), marker.precision === "marina" ? 11 : 10),
+      zoom: Math.max(map.getZoom(), getPrecisionZoomTarget(marker.precision)),
       duration: 420,
     });
   }, [openMarkerPopup, scrollListingIntoView]);
