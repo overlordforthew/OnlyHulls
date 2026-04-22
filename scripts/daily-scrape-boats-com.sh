@@ -138,6 +138,17 @@ DB_URL=$(docker exec "$APP_CONTAINER" printenv DATABASE_URL)
 DB_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}} {{end}}' onlyhulls-db | awk '{print $1}')
 export DATABASE_URL="${DB_URL//@onlyhulls-db:/@${DB_IP}:}"
 
+# Inherit runtime env vars that import-scraped.ts needs to do its scrub work properly.
+# Without OPENROUTER_KEY / OPENAI_API_KEY the import-time embedding generation is
+# silently skipped (embeddingsEnabled() returns false), which leaves matched buyers
+# unable to find these listings. Mirrors the load_runtime_env block in daily-scrape.sh.
+for var in OPENROUTER_KEY OPENROUTER_EMBEDDING_MODEL OPENAI_API_KEY OPENAI_EMBEDDING_MODEL AI_PROVIDER ANTHROPIC_API_KEY; do
+    value=$(docker exec "$APP_CONTAINER" printenv "$var" 2>/dev/null || true)
+    if [ -n "$value" ]; then
+        export "${var}=${value}"
+    fi
+done
+
 mkdir -p "$(dirname "$IMPORT_LOG")"
 : > "$IMPORT_LOG"
 
