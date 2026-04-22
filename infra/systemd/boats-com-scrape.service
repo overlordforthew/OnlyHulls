@@ -1,0 +1,40 @@
+[Unit]
+Description=OnlyHulls — scrape boats.com via Elmo and import to DB
+Documentation=https://github.com/overlordforthew/OnlyHulls
+After=network-online.target docker.service
+Wants=network-online.target
+# Cap catch-up storms: at most 3 starts per rolling 3h window. If the box
+# was off for a day with Persistent=true, only the first 3 missed fires
+# will actually run — the rest are dropped.
+StartLimitIntervalSec=3h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+User=root
+# The orchestrator picks a random page count per run (default [PAGES_MIN..PAGES_MAX]).
+# Override the bounds here if you want a wider or narrower range.
+Environment=PAGES_MIN=5
+Environment=PAGES_MAX=20
+ExecStart=/root/projects/OnlyHulls/scripts/daily-scrape-boats-com.sh
+# Hard ceiling: at the upper bound of the random 5..20 page range,
+# pacing (30-75s × ~19 inter-page pauses ≈ 24min) + import comfortably fits under 45min.
+# RuntimeMaxSec does not apply to Type=oneshot; TimeoutStartSec is the hang guard.
+TimeoutStartSec=45min
+KillMode=mixed
+TimeoutStopSec=60s
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+# Hardening (kept narrow so docker exec / ssh / scp / notify.sh all still work).
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+# Best-effort logs land under /var/log/onlyhulls; journal also captures stdout/stderr.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=boats-com-scrape
+
+[Install]
+WantedBy=multi-user.target
