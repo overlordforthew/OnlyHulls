@@ -1,9 +1,6 @@
 import type { GeocodePrecision } from "@/lib/locations/geocoding";
-import { isPublicPinLikelyGeocodeCandidate } from "@/lib/locations/geocode-candidate-lanes";
-import { getVerifiedPublicPinAliasInText } from "@/lib/locations/verified-public-pin-aliases";
 
 export type LocationBacklogBucket =
-  | "public_pin"
   | "held_back_coordinate"
   | "review_queue"
   | "pending_ready"
@@ -12,11 +9,7 @@ export type LocationBacklogBucket =
   | "other";
 
 export type LocationBacklogIntervention =
-  | "already_public_pin"
-  | "hand_alias"
-  | "gazetteer_poi"
   | "source_cleanup_rule"
-  | "manual_pin"
   | "search_coverage_batch"
   | "manual_enrichment"
   | "unfixable";
@@ -46,8 +39,6 @@ export type LocationBacklogAnalysisResult = {
   unfixableReason: string | null;
   clusterLabel: string;
   clusterKey: string;
-  marinePoiName: string | null;
-  verifiedAlias: string | null;
   cleanupPatternIds: string[];
   rationale: string;
 };
@@ -69,7 +60,7 @@ export const SOURCE_CLEANUP_PATTERNS: readonly SourceCleanupPattern[] = [
     id: "saint_martin_variants",
     label: "Saint Martin / Sint Maarten variant text",
     pattern: /\b(?:st\.?\s*maarten|saint\s+martin|sint\s+maarten|marigot)\b.*\b(?:na|mf|dutch\s+part|french|region|caribbean|carribean)\b/i,
-    recommendation: "Normalize Saint Martin/Sint Maarten region suffixes to a reviewed city or marina.",
+    recommendation: "Normalize Saint Martin/Sint Maarten region suffixes to a reviewed city.",
   },
   {
     id: "misspelled_country_or_region",
@@ -81,12 +72,9 @@ export const SOURCE_CLEANUP_PATTERNS: readonly SourceCleanupPattern[] = [
     id: "lake_context",
     label: "Lake / inland-water context",
     pattern: /\blake\s+(?:huron|erie|ontario|champlain|travis)\b/i,
-    recommendation: "Normalize to the named marina/city plus lake only when the listing text has a specific place.",
+    recommendation: "Normalize to the named city plus lake only when the listing text has a specific place.",
   },
 ];
-
-const MARINE_POI_TERMS =
-  /\b(?:marina|yacht\s*club|yachtclub|yacht\s+harbou?r|boatyard|boat\s*yard|shipyard|ship\s*yard|dock|quay|darsena|port\s+de\s+plaisance)\b/i;
 
 export function normalizeLocationBacklogText(value?: string | null) {
   return String(value || "")
@@ -102,16 +90,10 @@ export function normalizeLocationBacklogText(value?: string | null) {
 
 export function getLocationBacklogBucket(input: LocationBacklogAnalysisInput): LocationBacklogBucket {
   const status = input.status || "pending";
-  const precision = input.precision || "unknown";
 
-  if (
-    status === "geocoded" &&
-    input.hasValidCoordinates &&
-    ["exact", "street", "marina"].includes(String(precision))
-  ) {
-    return "public_pin";
+  if (status === "geocoded" && input.hasValidCoordinates) {
+    return "held_back_coordinate";
   }
-  if (status === "geocoded" && input.hasValidCoordinates) return "held_back_coordinate";
   if (status === "review" || status === "failed") return "review_queue";
   if (input.candidateReason === "ready") return "pending_ready";
   if (input.candidateReason === "needs_more_specific_location") return "needs_more_specific_location";
@@ -135,21 +117,6 @@ export function getSourceCleanupPatternMatchesForTexts(...values: Array<string |
   }
 
   return [...matches.values()];
-}
-
-export function getMarinePoiNameCandidate(value?: string | null) {
-  const text = String(value || "").trim();
-  if (!text) return null;
-
-  const parts = text
-    .split(/[,;|/]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const marinePart = parts.find((part) => MARINE_POI_TERMS.test(part));
-  if (marinePart) return marinePart.replace(/\s+/g, " ").trim();
-  if (MARINE_POI_TERMS.test(text)) return text.replace(/\s+/g, " ").trim();
-
-  return null;
 }
 
 function getFallbackClusterLabel(input: LocationBacklogAnalysisInput) {
@@ -179,48 +146,26 @@ export function analyzeLocationBacklogRow(
 ): LocationBacklogAnalysisResult {
   const bucket = getLocationBacklogBucket(input);
   const cleanupMatches = getSourceCleanupPatternMatchesForTexts(input.locationText, input.queryText);
-  const verifiedAlias =
-    getVerifiedPublicPinAliasInText(input.queryText) || getVerifiedPublicPinAliasInText(input.locationText);
-  const marinePoiName =
-    getMarinePoiNameCandidate(input.queryText) || getMarinePoiNameCandidate(input.locationText);
-  const publicPinLikely = isPublicPinLikelyGeocodeCandidate({
-    locationText: input.locationText,
-    queryText: input.queryText,
-  });
 
   let intervention: LocationBacklogIntervention = "manual_enrichment";
   let interventionProbability = 0.2;
   let unfixableReason: string | null = null;
-  let rationale = "Needs manual review or enrichment before it can safely become a public pin.";
+  let rationale = "Needs manual review or enrichment before it can become a reliable location.";
   let clusterLabel = getFallbackClusterLabel(input);
 
-  if (bucket === "public_pin") {
-    intervention = "already_public_pin";
-    interventionProbability = 1;
-    rationale = "Already has a public-map-safe precision.";
-  } else if (verifiedAlias) {
-    intervention = "hand_alias";
-    interventionProbability = 0.8;
-    clusterLabel = verifiedAlias;
-    rationale = "Contains a documented alias; review as a narrow alias retry or alias anchor candidate.";
+  if (bucket === "held_back_coordinate" && input.precision === "city") {
+    intervention = "search_coverage_batch";
+    interventionProbability = 0.18;
+    rationale = "Has a city-level geocoded anchor; prioritize city/country verification before map updates.";
   } else if (cleanupMatches.length > 0 && bucket !== "held_back_coordinate") {
     intervention = "source_cleanup_rule";
     interventionProbability = bucket === "unknown_location" || input.error === "no_result" ? 0.55 : 0.4;
     clusterLabel = getCleanupClusterLabel(cleanupMatches) || clusterLabel;
     rationale = cleanupMatches[0].recommendation;
-  } else if (publicPinLikely && marinePoiName) {
-    intervention = "gazetteer_poi";
-    interventionProbability = bucket === "pending_ready" ? 0.5 : 0.65;
-    clusterLabel = marinePoiName;
-    rationale = "Names a marine facility-like place; best handled by a vetted POI/gazetteer match.";
-  } else if (bucket === "review_queue" && input.triageCategory === "manual_review") {
-    intervention = "manual_pin";
-    interventionProbability = 0.35;
-    rationale = "Provider returned a reviewable result that needs human acceptance or rejection.";
   } else if (bucket === "pending_ready") {
     intervention = "search_coverage_batch";
     interventionProbability = 0.12;
-    rationale = "Ready for search-coverage geocoding, but not enough evidence for a hard public pin.";
+    rationale = "Ready for search-coverage geocoding, but not enough evidence for map-ready publication.";
   } else if (bucket === "needs_more_specific_location" || bucket === "unknown_location") {
     intervention = "unfixable";
     interventionProbability = 0.02;
@@ -229,7 +174,7 @@ export function analyzeLocationBacklogRow(
   } else if (bucket === "held_back_coordinate") {
     intervention = "manual_enrichment";
     interventionProbability = 0.18;
-    rationale = "Has broad coordinates; keep search-only unless source detail identifies a public pin.";
+    rationale = "Has broad coordinates; keep search-only unless source detail identifies a reliable city or region.";
   }
 
   const clusterKey = `${intervention}:${normalizeLocationBacklogText(clusterLabel) || "unknown"}`;
@@ -241,8 +186,6 @@ export function analyzeLocationBacklogRow(
     unfixableReason,
     clusterLabel,
     clusterKey,
-    marinePoiName,
-    verifiedAlias,
     cleanupPatternIds: cleanupMatches.map((match) => match.id),
     rationale,
   };

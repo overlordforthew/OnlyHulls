@@ -1,13 +1,5 @@
 import { hasConfiguredValue } from "@/lib/capabilities";
 import { getCountryCentroid } from "@/lib/locations/country-centroids";
-import {
-  getVerifiedPublicPinAliasDefinition,
-  getVerifiedPublicPinAliasInText,
-  getVerifiedPublicPinAliasMatch,
-  isVerifiedPublicPinAliasAnchorMatch,
-  VERIFIED_PUBLIC_PIN_LOCATION_ALIASES,
-  type VerifiedPublicPinLocationAlias,
-} from "@/lib/locations/verified-public-pin-aliases";
 
 export type GeocodingProvider = "disabled" | "nominatim" | "opencage" | "derived";
 export type GeocodePrecision =
@@ -32,17 +24,6 @@ export type GeocodeQuery = {
   queryText: string;
   queryKey: string;
   countryHint: string | null;
-  /**
-   * Optional provider-side country filter. When a verified public-pin alias with
-   * multiple countryCodes (e.g. `us`+`vi` for USVI facilities tagged by
-   * OpenCage as country_code=us under ISO state VI) is present in queryText,
-   * this carries the joined list so the provider does not under-rank the
-   * facility below a single-ISO territory result. Left null for single-code or
-   * no-alias queries — `countryHint` alone is used. Does not affect the
-   * internal country-match check at `getExactCityCountryQueryParts` or at the
-   * alias anchor, both of which stay strict on the real result country.
-   */
-  providerCountryCodes?: readonly string[] | null;
 };
 
 export type GeocodeResult = {
@@ -55,8 +36,6 @@ export type GeocodeResult = {
   provider: GeocodingProvider;
   payload?: unknown;
   error?: string | null;
-  precisionPromotedFrom?: GeocodePrecision | null;
-  precisionPromotionAlias?: VerifiedPublicPinLocationAlias | null;
 };
 
 export type GeocodingConfig = {
@@ -198,51 +177,7 @@ const BROAD_GEOCODE_PARTS = new Set([
 const BROAD_GEOCODE_EDGE_PHRASES = Array.from(BROAD_GEOCODE_PARTS).sort(
   (left, right) => right.length - left.length
 );
-const STATIC_KNOWN_MARINA_NAME_TERMS = [
-  "marmaris yacht marina",
-  "marina du marin",
-  "nanny cay",
-  "pin rolland",
-  "puerto del rey marina",
-  "tino rossi",
-];
-const MARINE_GEOCODE_TERMS = [
-  "marine",
-  "marina",
-  "yacht club",
-  "yachtclub",
-  "yacht harbour",
-  "yacht harbor",
-  "harbour",
-  "harbor",
-  "boatyard",
-  "shipyard",
-  "dock",
-  "havn",
-  "haven",
-  "marmaris yacht marina",
-  "marina du marin",
-  "pin rolland",
-  "port de plaisance",
-  "tino rossi",
-];
-const MARINE_POI_RESULT_ALIGNMENT_TERMS = [
-  "marine",
-  "marina",
-  "yacht club",
-  "yachtclub",
-  "yacht harbour",
-  "yacht harbor",
-  "boatyard",
-  "shipyard",
-  "marmaris yacht marina",
-  "marina du marin",
-  "pin rolland",
-  "port de plaisance",
-  "tino rossi",
-];
 const ADMIN_REGION_ADDRESS_TYPES = new Set(["state", "region", "province", "county", "island"]);
-const MARINE_PLACE_TYPES = new Set(["marina", "harbour", "harbor", "dock", "mooring", "ferry_terminal"]);
 const STREET_PLACE_TYPES = new Set(["house", "building", "amenity", "road", "street", "residential"]);
 const POI_PLACE_TYPES = new Set([
   "accommodation",
@@ -488,9 +423,7 @@ function normalizeKnownLocationTextArtifacts(value: string) {
     // narrow exact-text canonicalizations — verified provider evidence shows bare/dirty
     // source text does not resolve to the facility without redirection to the canonical
     // query. Negative variants (plain `Didim`, `Didim Harbour`, `Alcaidesa Marina, Gibraltar Bay`)
-    // are intentionally not touched; the alias anchor rejects them on wrong provider
-    // response. Alcaidesa's alias uses providerCountryCodes=["es","gi"] so the widened
-    // OpenCage filter returns the marina even when location_country=Gibraltar.
+    // are intentionally not touched; country filtering is still applied by query country hint.
     .replace(
       /^\s*Alcaidesa\s+Marina\s+In\s+Spain\s+Near\s+Gibraltar\s*$/gi,
       "Alcaidesa Marina, La Línea de la Concepción, Spain"
@@ -755,7 +688,9 @@ function stripBroadGeocodeEdgePhrases(value: string) {
 
 function isMarineGeocodePart(part: string) {
   const normalized = normalizeLookupValue(part);
-  return MARINE_GEOCODE_TERMS.some((term) => normalizedHasTerm(normalized, term));
+  return /\b(?:marina|yacht\s*club|yachtclub|yacht\s+harbour|yacht\s+harbor|boatyard|shipyard|dock|quay|port\s+de\s+plaisance|darsena|marine)\b/i.test(
+    normalized
+  );
 }
 
 function isVagueDirectionalLocation(locationText: string) {
@@ -763,86 +698,6 @@ function isVagueDirectionalLocation(locationText: string) {
   if (GENERIC_LOCATION_TEXT.has(normalized)) return true;
 
   return /^(?:north|south|east|west|northeast|northwest|southeast|southwest|north east|north west|south east|south west)\s+of\b/.test(normalized);
-}
-
-function queryHasAddressLikeStreetDetail(queryText: string) {
-  const normalized = ` ${normalizeLookupValue(queryText)} `;
-  const hasAddressNumber = /\s\d{1,6}\s/.test(normalized);
-  const hasStreetSuffix = /\s(?:street|road|avenue|drive|boulevard|lane|court|highway|route|way)\s/.test(
-    normalized
-  );
-
-  return hasAddressNumber && hasStreetSuffix;
-}
-
-function resultAndQueryHaveKnownMarinaName(
-  queryText: string,
-  formatted: string,
-  components: Record<string, unknown>,
-  anchorInput?: {
-    latitude: number;
-    longitude: number;
-    score: number;
-    payload: unknown;
-  }
-) {
-  // Round 28 guard: reject admin-boundary and country-level result types up
-  // front. When a known marina name happens to also be an island/state/county
-  // (e.g. `Nanny Cay, British Virgin Islands` resolves to `_type=island`), the
-  // result is a natural landmass, not the facility — promoting it to marina
-  // precision puts an admin-boundary pin on the public map. All existing
-  // legitimate marina pins are on facility-shaped types (marina/boatyard/basin/
-  // pier/water with a component explicitly naming the facility), not on
-  // admin-region types, so this guard does not affect any existing alias.
-  const resultType = normalizeLookupValue(String(components._type || ""));
-  if (
-    ADMIN_REGION_ADDRESS_TYPES.has(resultType) ||
-    resultType === "country" ||
-    resultType === "continent"
-  ) {
-    return false;
-  }
-
-  const normalizedQuery = normalizeLookupValue(queryText);
-  const componentText = Object.values(components)
-    .filter((value): value is string => typeof value === "string")
-    .join(" ");
-  const normalizedResult = normalizeLookupValue(`${formatted} ${componentText}`);
-
-  if (
-    STATIC_KNOWN_MARINA_NAME_TERMS.some(
-      (term) => normalizedQuery.includes(term) && normalizedResult.includes(term)
-    )
-  ) {
-    return true;
-  }
-
-  const alias = getVerifiedPublicPinAliasMatch(queryText, `${formatted} ${componentText}`);
-  if (!alias || !anchorInput) return false;
-
-  return isVerifiedPublicPinAliasAnchorMatch(alias, {
-    countryCode: getPayloadCountryCode(anchorInput.payload),
-    latitude: anchorInput.latitude,
-    longitude: anchorInput.longitude,
-    score: anchorInput.score,
-    payload: anchorInput.payload,
-  });
-}
-
-function resultAndQueryHaveMarinePoiTerm(
-  queryText: string,
-  formatted: string,
-  components: Record<string, unknown>
-) {
-  const normalizedQuery = normalizeLookupValue(queryText);
-  const componentText = Object.values(components)
-    .filter((value): value is string => typeof value === "string")
-    .join(" ");
-  const normalizedResult = normalizeLookupValue(`${formatted} ${componentText}`);
-
-  return MARINE_POI_RESULT_ALIGNMENT_TERMS.some(
-    (term) => normalizedHasTerm(normalizedQuery, term) && normalizedHasTerm(normalizedResult, term)
-  );
 }
 
 function isPointOfInterestResult(type: string, category: string) {
@@ -942,39 +797,6 @@ function getPayloadCountryCode(payload: unknown) {
   return typeof countryCode === "string" ? countryCode.toLowerCase() : null;
 }
 
-export function promoteVerifiedPublicPinAliasPrecision(
-  queryText: string,
-  result: GeocodeResult
-): GeocodeResult {
-  if (result.status !== "geocoded") return result;
-  if (["exact", "street", "marina"].includes(result.precision)) return result;
-
-  const alias = getVerifiedPublicPinAliasMatch(
-    queryText,
-    `${result.placeName || ""} ${getPayloadText(result.payload)}`
-  );
-  if (!alias) return result;
-  if (
-    !isVerifiedPublicPinAliasAnchorMatch(alias, {
-      countryCode: getPayloadCountryCode(result.payload),
-      latitude: result.latitude,
-      longitude: result.longitude,
-      score: result.score,
-      payload: result.payload,
-    })
-  ) {
-    return result;
-  }
-
-  return {
-    ...result,
-    precision: "marina",
-    error: result.error === "public_pin_ineligible_precision" ? null : result.error,
-    precisionPromotedFrom: result.precision,
-    precisionPromotionAlias: alias,
-  };
-}
-
 function queryIsDirectionalFragment(queryText: string) {
   const normalizedCore = normalizeLookupValue(getCoreQueryText(queryText));
   const tokens = normalizedCore.split(/\s+/).filter(Boolean);
@@ -1058,20 +880,39 @@ function prepareGeocodeLocationText(locationText: string, country?: string | nul
       normalizeKnownLocationTextArtifacts(aliased)
     )
   );
+  const marineFacilityPatterns = [
+    /\bmarina\b/i,
+    /\byacht\s*club\b/i,
+    /\byachtclub\b/i,
+    /\bboatyard\b/i,
+    /\bshipyard\b/i,
+    /\bquay\b/i,
+    /\bquays?\b/i,
+    /\bdarsena\b/i,
+    /\bport\s+de\s+plaisance\b/i,
+    /\bdock(?:s|yard)?\b/i,
+    /\bdockside\b/i,
+    /\bmooring\b/i,
+  ];
+  const isMarineFacilityPart = (value: string) => {
+    const normalized = normalizeLookupValue(value);
+    return marineFacilityPatterns.some((pattern) => pattern.test(normalized));
+  };
+  const sanitizedParts = stripped
+    .split(",")
+    .map(stripBroadGeocodeEdgePhrases)
+    .map(canonicalizeGeocodePart)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !isMarineFacilityPart(part));
+
   const parts = removeConflictingCountryParts(
-    uniqueParts(stripped.split(",").map(stripBroadGeocodeEdgePhrases).map(canonicalizeGeocodePart)),
+    uniqueParts(sanitizedParts),
     country
   );
-  if (parts.length <= 1) return stripped;
-
   const filteredParts = parts.filter((part) => !isBroadGeocodePart(part));
-  const marineParts = filteredParts.filter(isMarineGeocodePart);
-  if (marineParts.length === 0) return filteredParts.join(", ");
-
-  return uniqueParts([
-    ...marineParts,
-    ...filteredParts.filter((part) => !isMarineGeocodePart(part)),
-  ]).join(", ");
+  if (filteredParts.length === 0) return "";
+  return filteredParts.join(", ");
 }
 
 function numberFromEnv(value: string | undefined, fallback: number) {
@@ -1190,13 +1031,9 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   }
 
   const confidence = String(input.confidence || "").toLowerCase();
-  const hasVerifiedPublicPinAlias = VERIFIED_PUBLIC_PIN_LOCATION_ALIASES.some((alias) =>
-    normalizedHasTerm(normalizedLocation, alias)
-  );
   const looksSpecific =
     confidence === "city" ||
     confidence === "exact" ||
-    hasVerifiedPublicPinAlias ||
     preparedLocationText.includes(",");
   if (!looksSpecific) return null;
 
@@ -1212,26 +1049,11 @@ export function buildGeocodeQuery(input: GeocodeCandidateInput): GeocodeQuery | 
   const queryText = parts.join(", ");
   const queryKey = normalizeLookupValue(queryText);
 
-  // If the query contains a verified public-pin alias that spans multiple
-  // provider country codes (e.g. USVI's `us`+`vi`, Sint Maarten's `nl`+`sx`),
-  // carry the full list so the provider call can filter against both. This
-  // keeps tight country filtering for non-alias queries while allowing alias
-  // facilities tagged under any of the declared codes to rank normally.
-  //
-  // The field is only populated when widening is needed; non-alias queries
-  // keep the original 3-field shape so upstream code and tests that check
-  // the full result object remain unaffected.
-  const aliasInQuery = getVerifiedPublicPinAliasInText(queryText);
-  const aliasDef = aliasInQuery ? getVerifiedPublicPinAliasDefinition(aliasInQuery) : null;
-  const providerCountryCodes =
-    aliasDef && aliasDef.countryCodes.length > 1 ? aliasDef.countryCodes : null;
-
-  const base: GeocodeQuery = {
+  return {
     queryText,
     queryKey,
     countryHint,
   };
-  return providerCountryCodes ? { ...base, providerCountryCodes } : base;
 }
 
 export function getGeocodeCandidateReason(input: GeocodeCandidateInput) {
@@ -1247,8 +1069,6 @@ function inferNominatimPrecision(result: Record<string, unknown>): GeocodePrecis
   const placeRank = Number(result.place_rank);
   const className = normalizeLookupValue(String(result.class || ""));
 
-  if (MARINE_PLACE_TYPES.has(type)) return "marina";
-  if (STREET_PLACE_TYPES.has(addresstype) || placeRank >= 28) return "street";
   if (ADMIN_REGION_ADDRESS_TYPES.has(addresstype) || ADMIN_REGION_ADDRESS_TYPES.has(type)) return "region";
   if (CITY_PLACE_TYPES.has(addresstype)) return "city";
   if (CITY_PLACE_TYPES.has(type)) return "city";
@@ -1273,6 +1093,11 @@ function scorePrecision(baseValue: number, precision: GeocodePrecision) {
   return Math.max(0, Math.min(1, base + precisionBoost[precision]));
 }
 
+function clampPrecisionToCountryOrCity(precision: GeocodePrecision): GeocodePrecision {
+  if (precision === "city" || precision === "country") return precision;
+  return "unknown";
+}
+
 function scoreNominatimResult(result: Record<string, unknown>, precision: GeocodePrecision) {
   const importance = Number(result.importance);
   return scorePrecision(importance, precision);
@@ -1282,24 +1107,12 @@ function inferOpenCagePrecision(
   components: Record<string, unknown>,
   confidence: number,
   queryText: string,
-  formatted: string,
-  anchorInput?: {
-    latitude: number;
-    longitude: number;
-    score: number;
-    payload: unknown;
-  }
+  formatted: string
 ): GeocodePrecision {
   const type = normalizeLookupValue(String(components._type || ""));
   const category = normalizeLookupValue(String(components._category || ""));
 
-  if (resultAndQueryHaveKnownMarinaName(queryText, formatted, components, anchorInput)) {
-    return "marina";
-  }
-  if (MARINE_PLACE_TYPES.has(type) || MARINE_PLACE_TYPES.has(category)) return "marina";
   if (isPointOfInterestResult(type, category)) {
-    if (resultAndQueryHaveMarinePoiTerm(queryText, formatted, components)) return "marina";
-    if (queryHasAddressLikeStreetDetail(queryText)) return "street";
     return "unknown";
   }
   if (CITY_PLACE_TYPES.has(type)) return "city";
@@ -1309,25 +1122,6 @@ function inferOpenCagePrecision(
   if (confidence >= 4) return "region";
 
   return "unknown";
-}
-
-function allowsMarineSpecificConfidenceFloor(
-  precision: GeocodePrecision,
-  confidence: number,
-  queryText: string,
-  formatted: string,
-  components: Record<string, unknown>,
-  anchorInput?: {
-    latitude: number;
-    longitude: number;
-    score: number;
-    payload: unknown;
-  }
-) {
-  if (!["marina", "street"].includes(precision)) return false;
-  if (confidence < 5) return false;
-
-  return resultAndQueryHaveKnownMarinaName(queryText, formatted, components, anchorInput);
 }
 
 function getExactCityCountryQueryParts(query: GeocodeQuery) {
@@ -1347,7 +1141,6 @@ function getExactCityCountryQueryParts(query: GeocodeQuery) {
   if (!countryCode || countryCode !== query.countryHint) return null;
   if (!normalizedCity || getExactCountryCodeForPart(cityPart)) return null;
   if (isBroadGeocodePart(cityPart) || isMarineGeocodePart(cityPart)) return null;
-  if (queryHasAddressLikeStreetDetail(cityPart)) return null;
 
   if (parts.length === 3) {
     const regionPart = parts[1];
@@ -1358,7 +1151,6 @@ function getExactCityCountryQueryParts(query: GeocodeQuery) {
     if (normalizedRegion === normalizedCity) return null;
     if (getExactCountryCodeForPart(regionPart)) return null;
     if (isBroadGeocodePart(regionPart) || isMarineGeocodePart(regionPart)) return null;
-    if (queryHasAddressLikeStreetDetail(regionPart)) return null;
   }
 
   return {
@@ -1373,8 +1165,6 @@ function componentsHaveSearchOnlyCityDisqualifier(components: Record<string, unk
   const { type, category } = getPayloadTypeAndCategory(components);
   if (
     isPointOfInterestResult(type, category) ||
-    MARINE_PLACE_TYPES.has(type) ||
-    MARINE_PLACE_TYPES.has(category) ||
     STREET_PLACE_TYPES.has(type) ||
     STREET_PLACE_TYPES.has(category)
   ) {
@@ -1384,7 +1174,6 @@ function componentsHaveSearchOnlyCityDisqualifier(components: Record<string, unk
   return Object.keys(components).some((key) => {
     const normalizedKey = normalizeLookupValue(key);
     return (
-      MARINE_PLACE_TYPES.has(normalizedKey) ||
       STREET_PLACE_TYPES.has(normalizedKey) ||
       POI_PLACE_TYPES.has(normalizedKey) ||
       POI_PLACE_CATEGORIES.has(normalizedKey)
@@ -1521,13 +1310,7 @@ export async function geocodeWithNominatim(
   url.searchParams.set("limit", "1");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("dedupe", "1");
-  // Same alias-widening rule as OpenCage. Nominatim `countrycodes` accepts a
-  // comma-separated list.
-  const providerCountryFilter =
-    query.providerCountryCodes && query.providerCountryCodes.length > 0
-      ? query.providerCountryCodes.join(",")
-      : query.countryHint;
-  if (providerCountryFilter) url.searchParams.set("countrycodes", providerCountryFilter);
+  if (query.countryHint) url.searchParams.set("countrycodes", query.countryHint);
   if (config.email) url.searchParams.set("email", config.email);
 
   const controller = new AbortController();
@@ -1589,7 +1372,7 @@ export async function geocodeWithNominatim(
       };
     }
 
-    const precision = inferNominatimPrecision(result);
+    const precision = clampPrecisionToCountryOrCity(inferNominatimPrecision(result));
     const score = scoreNominatimResult(result, precision);
     const needsReview =
       precision === "unknown" || (precision !== "country" && score < 0.35);
@@ -1644,14 +1427,7 @@ export async function geocodeWithOpenCage(
   url.searchParams.set("limit", "1");
   url.searchParams.set("no_annotations", "1");
   url.searchParams.set("language", "en");
-  // When a verified alias widens the allowed provider country codes, pass all
-  // of them as a comma-separated filter. Falls back to the single countryHint
-  // for every non-alias query.
-  const providerCountryFilter =
-    query.providerCountryCodes && query.providerCountryCodes.length > 0
-      ? query.providerCountryCodes.join(",")
-      : query.countryHint;
-  if (providerCountryFilter) url.searchParams.set("countrycode", providerCountryFilter);
+  if (query.countryHint) url.searchParams.set("countrycode", query.countryHint);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -1723,18 +1499,13 @@ export async function geocodeWithOpenCage(
     const confidence = Number(result.confidence);
     const normalizedConfidence = Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 10) : 0;
     const formatted = String(result.formatted || "") || null;
-    const marineAliasAnchorInput = {
-      latitude,
-      longitude,
-      score: scorePrecision(normalizedConfidence / 10, "marina"),
-      payload: result,
-    };
-    const precision = inferOpenCagePrecision(
-      components,
-      normalizedConfidence,
-      query.queryText,
-      formatted || "",
-      marineAliasAnchorInput
+    const precision = clampPrecisionToCountryOrCity(
+      inferOpenCagePrecision(
+        components,
+        normalizedConfidence,
+        query.queryText,
+        formatted || ""
+      )
     );
     const score = scorePrecision(normalizedConfidence / 10, precision);
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
@@ -1750,15 +1521,7 @@ export async function geocodeWithOpenCage(
       ((normalizedConfidence < 3 && !allowsLowConfidenceExactCity) ||
         (normalizedConfidence <= 3 && !allowsLowConfidenceExactCity) ||
         (typeof precisionConfidenceFloor === "number" &&
-          normalizedConfidence < precisionConfidenceFloor &&
-          !allowsMarineSpecificConfidenceFloor(
-            precision,
-            normalizedConfidence,
-            query.queryText,
-            formatted || "",
-            components,
-            marineAliasAnchorInput
-          )));
+          normalizedConfidence < precisionConfidenceFloor));
     const lowPrecision = precision === "unknown";
 
     return reviewGeocodeResultQuality(query.queryText, {

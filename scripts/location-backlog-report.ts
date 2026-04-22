@@ -4,11 +4,9 @@ import { execFileSync } from "child_process";
 
 import { pool, query } from "../src/lib/db";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
-import { isPublicPinLikelyGeocodeCandidate } from "../src/lib/locations/geocode-candidate-lanes";
 import { classifyGeocodeReviewIssue } from "../src/lib/locations/geocode-triage";
 import {
   analyzeLocationBacklogRow,
-  getMarinePoiNameCandidate,
   getSourceCleanupPatternMatchesForTexts,
   normalizeLocationBacklogText,
   SOURCE_CLEANUP_PATTERNS,
@@ -223,7 +221,6 @@ function buildClusterEntries(
   options: { excludeInterventions?: LocationBacklogIntervention[] } = {}
 ) {
   const excludedInterventions = new Set<LocationBacklogIntervention>([
-    "already_public_pin",
     ...(options.excludeInterventions || []),
   ]);
   const grouped = new Map<string, {
@@ -311,9 +308,9 @@ function buildGazetteerSeeds(rows: EnrichedBacklogRow[], top: number) {
   }>();
 
   for (const row of rows) {
-    if (!["gazetteer_poi", "hand_alias", "manual_pin"].includes(row.analysis.intervention)) continue;
+    if (row.analysis.intervention !== "search_coverage_batch") continue;
 
-    const name = row.analysis.marinePoiName || getMarinePoiNameCandidate(row.location_text);
+    const name = row.analysis.clusterLabel;
     if (!name) continue;
 
     const country = getCountryLabel(row);
@@ -478,13 +475,6 @@ function buildReport(rows: EnrichedBacklogRow[], top: number, generatedAt: strin
   const gazetteerSeedRecommendations = buildGazetteerSeeds(rows, top);
   const sourceCleanupPatternCandidates = buildCleanupCandidates(rows, top);
   const manualEnrichmentDeduplication = buildManualEnrichmentDedup(rows, top);
-  const publicPinInvariantRows = rows.filter((row) => row.analysis.bucket === "public_pin");
-  const publicPinLikelyRows = rows.filter((row) =>
-    isPublicPinLikelyGeocodeCandidate({
-      locationText: row.location_text,
-      queryText: row.queryText,
-    })
-  );
 
   return {
     generatedAt,
@@ -500,8 +490,6 @@ function buildReport(rows: EnrichedBacklogRow[], top: number, generatedAt: strin
     },
     totals: {
       activeVisibleRows: rows.length,
-      publicPinRows: publicPinInvariantRows.length,
-      publicPinLikelyRows: publicPinLikelyRows.length,
       countryHintMismatches: rows.filter((row) => row.countryHintMismatch).length,
     },
     ...bucketBreakdowns,
@@ -547,8 +535,6 @@ function renderMarkdown(report: ReturnType<typeof buildReport>) {
       ["Metric", "Value"],
       [
         ["Active visible rows", report.totals.activeVisibleRows.toLocaleString()],
-        ["Public pin rows", report.totals.publicPinRows.toLocaleString()],
-        ["Public-pin-likely rows", report.totals.publicPinLikelyRows.toLocaleString()],
         ["Country hint mismatches", report.totals.countryHintMismatches.toLocaleString()],
       ]
     ),
