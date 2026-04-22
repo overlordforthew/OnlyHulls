@@ -29,7 +29,7 @@ const auditReport: MapPinAuditReport = {
       locationText: "Penang, Malaysia",
       latitude: 5.4141,
       longitude: 100.3288,
-      precision: "marina",
+      precision: "city",
       provider: "opencage",
       score: 0.92,
       geocodedAt: "2026-04-20T00:00:00.000Z",
@@ -43,7 +43,7 @@ const auditReport: MapPinAuditReport = {
       locationText: "Bali, Indonesia",
       latitude: -8.3405,
       longitude: 115.092,
-      precision: "street",
+      precision: "city",
       provider: "opencage",
       score: 0.88,
       geocodedAt: "2026-04-20T00:00:00.000Z",
@@ -66,9 +66,9 @@ test("map pin audit parses bounded limits and public precisions", () => {
   assert.equal(parseMapPinAuditLimit("10"), 10);
   assert.equal(parseMapPinAuditLimit("9999"), 200);
   assert.equal(parseMapPinAuditLimit("-1"), 25);
-  assert.equal(parseMapPinAuditPrecision("marina"), "marina");
-  assert.equal(parseMapPinAuditPrecision("street"), "street");
   assert.equal(parseMapPinAuditPrecision("city"), "city");
+  assert.equal(parseMapPinAuditPrecision("marina"), null);
+  assert.equal(parseMapPinAuditPrecision("street"), null);
   assert.equal(parseMapPinAuditPrecision("region"), null);
   assert.equal(parseMapPinAuditPrecision("country"), null);
   assert.equal(parseMapPinAuditPrecision(""), null);
@@ -94,18 +94,18 @@ test("map pin audit builds safe audit and listing URLs", () => {
 test("map pin audit builds scoped public-coordinate SQL", () => {
   const all = buildMapPinAuditWhereSql({ precision: null, backupTable: null });
 
-  assert.deepEqual(all.params, [["exact", "street", "marina", "city"]]);
+  assert.deepEqual(all.params, [["city"]]);
   assert.match(all.whereSql, /b\.location_geocode_precision = ANY\(\$1::text\[\]\)/);
   assert.doesNotMatch(all.whereSql, /location_geocode_precision = \$2/);
 
-  const street = buildMapPinAuditWhereSql({
-    precision: "street",
+  const city = buildMapPinAuditWhereSql({
+    precision: "city",
     backupTable: "boat_geocode_backup_20260420123456",
   });
 
-  assert.deepEqual(street.params, [["street"]]);
-  assert.match(street.whereSql, /public\.boat_geocode_backup_20260420123456 backup/);
-  assert.doesNotMatch(street.whereSql, /location_geocode_precision = \$2/);
+  assert.deepEqual(city.params, [["city"]]);
+  assert.match(city.whereSql, /public\.boat_geocode_backup_20260420123456 backup/);
+  assert.doesNotMatch(city.whereSql, /location_geocode_precision = \$2/);
   assert.throws(
     () => buildMapPinAuditWhereSql({ precision: null, backupTable: "boat_geocode_backup_latest" }),
     /Invalid --backup-table/

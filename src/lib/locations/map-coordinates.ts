@@ -1,4 +1,4 @@
-export const PUBLIC_MAP_PRECISIONS = ["exact", "street", "marina", "city"] as const;
+export const PUBLIC_MAP_PRECISIONS = ["city"] as const;
 
 export type PublicMapPrecision = (typeof PUBLIC_MAP_PRECISIONS)[number];
 export type LocationGeocodePrecision =
@@ -16,9 +16,6 @@ export interface PublicMapCoordinate {
 
 const PUBLIC_PRECISION_SET = new Set<string>(PUBLIC_MAP_PRECISIONS);
 const COORDINATE_DECIMALS: Record<PublicMapPrecision, number> = {
-  exact: 5,
-  street: 4,
-  marina: 4,
   city: 2,
 };
 
@@ -36,10 +33,7 @@ export function normalizeGeocodePrecision(value: unknown): LocationGeocodePrecis
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
 
-  return normalized === "exact" ||
-    normalized === "street" ||
-    normalized === "marina" ||
-    normalized === "city" ||
+  return normalized === "city" ||
     normalized === "region" ||
     normalized === "country" ||
     normalized === "unknown"

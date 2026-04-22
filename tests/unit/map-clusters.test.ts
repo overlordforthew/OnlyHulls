@@ -15,7 +15,7 @@ function marker(slug: string, lat: number, lng: number): PublicMapMarker {
     locationText: "Fajardo, Puerto Rico",
     lat,
     lng,
-    precision: "marina",
+    precision: "city",
     approximate: false,
     askingPrice: 495000,
     currency: "USD",

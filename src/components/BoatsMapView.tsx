@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import maplibregl, { type Map as MapLibreMap, type Marker, type Popup } from "maplibre-gl";
 import {
-  Anchor,
   AlertTriangle,
   Copy,
   ExternalLink,
@@ -57,17 +56,12 @@ function getMarkerHref(slug: string) {
   return `/boats/${encodeURIComponent(slug)}`;
 }
 
-function getPrecisionLabel(precision: PublicMapMarker["precision"]) {
-  if (precision === "marina") return "Marina";
-  if (precision === "street") return "Street";
-  if (precision === "city") return "City area";
-  return "Exact";
+function getPrecisionLabel(_precision: PublicMapMarker["precision"]) {
+  return "City area";
 }
 
-function getPrecisionZoomTarget(precision: PublicMapMarker["precision"]) {
-  if (precision === "marina") return 11;
-  if (precision === "city") return 8;
-  return 10;
+function getPrecisionZoomTarget(_precision: PublicMapMarker["precision"]) {
+  return 8;
 }
 
 function getMarkerClassName(marker: PublicMapMarker, selected: boolean) {
@@ -965,11 +959,7 @@ export default function BoatsMapView({
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase text-text-tertiary">
                           <span className="inline-flex items-center gap-1">
-                            {marker.precision === "marina" ? (
-                              <Anchor className="h-3.5 w-3.5 text-primary" />
-                            ) : (
-                              <MapPin className="h-3.5 w-3.5 text-primary" />
-                            )}
+                            <MapPin className="h-3.5 w-3.5 text-primary" />
                             {getPrecisionLabel(marker.precision)}
                             {marker.approximate ? ` ${t("approximate")}` : ""}
                           </span>

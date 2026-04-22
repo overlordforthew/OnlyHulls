@@ -25,36 +25,18 @@ test("public map coordinates require a precise enough geocode signal", () => {
   );
 });
 
-test("public map coordinates expose precise and marina-level locations conservatively", () => {
-  assert.deepEqual(
-    getPublicMapCoordinate({
-      latitude: "5.4141123",
-      longitude: "100.3288123",
-      precision: "exact",
-      approximate: false,
-    }),
-    {
-      latitude: 5.41411,
-      longitude: 100.32881,
-      precision: "exact",
-      approximate: false,
-    }
-  );
-
-  assert.deepEqual(
-    getPublicMapCoordinate({
-      latitude: 5.4141123,
-      longitude: 100.3288123,
-      precision: "marina",
-      approximate: false,
-    }),
-    {
-      latitude: 5.4141,
-      longitude: 100.3288,
-      precision: "marina",
-      approximate: false,
-    }
-  );
+test("public map coordinates reject exact/street/marina precisions under the country-minimum policy", () => {
+  for (const precision of ["exact", "street", "marina"] as const) {
+    assert.equal(
+      getPublicMapCoordinate({
+        latitude: 5.4141123,
+        longitude: 100.3288123,
+        precision,
+        approximate: false,
+      }),
+      null
+    );
+  }
 });
 
 test("city-level map coordinates are exposed as approximate area pins with coarse rounding", () => {
@@ -140,8 +122,8 @@ test("public map markers expose only public boat identifiers and safe coordinate
     location_text: "Penang, Malaysia",
     location_lat: "5.4141123",
     location_lng: "100.3288123",
-    location_geocode_precision: "marina",
-    location_approximate: false,
+    location_geocode_precision: "city",
+    location_approximate: true,
     asking_price: "495000",
     currency: "usd",
     asking_price_usd: "495000",
@@ -153,10 +135,10 @@ test("public map markers expose only public boat identifiers and safe coordinate
     slug: "2015-lagoon-450-penangmalaysia",
     title: "2015 Lagoon 450",
     locationText: "Penang, Malaysia",
-    lat: 5.4141,
-    lng: 100.3288,
-    precision: "marina",
-    approximate: false,
+    lat: 5.41,
+    lng: 100.33,
+    precision: "city",
+    approximate: true,
     askingPrice: 495000,
     currency: "USD",
     askingPriceUsd: 495000,
@@ -190,8 +172,8 @@ test("public map marker commerce fields degrade safely", () => {
     location_text: "Penang, Malaysia",
     location_lat: "5.4141123",
     location_lng: "100.3288123",
-    location_geocode_precision: "marina",
-    location_approximate: false,
+    location_geocode_precision: "city",
+    location_approximate: true,
     asking_price: -1,
     currency: "cad",
     asking_price_usd: 0,
@@ -216,8 +198,8 @@ test("public map markers allow local media URLs and reject known placeholders", 
     location_text: "Penang, Malaysia",
     location_lat: "5.4141123",
     location_lng: "100.3288123",
-    location_geocode_precision: "marina",
-    location_approximate: false,
+    location_geocode_precision: "city",
+    location_approximate: true,
   };
 
   assert.equal(
@@ -250,8 +232,8 @@ test("public map markers reject rows without a public slug", () => {
       location_text: "Penang, Malaysia",
       location_lat: "5.4141123",
       location_lng: "100.3288123",
-      location_geocode_precision: "marina",
-      location_approximate: false,
+      location_geocode_precision: "city",
+      location_approximate: true,
     }),
     null
   );
@@ -266,8 +248,8 @@ test("public map marker titles avoid missing or zero year artifacts", () => {
     location_text: "Penang, Malaysia",
     location_lat: "5.4141123",
     location_lng: "100.3288123",
-    location_geocode_precision: "marina",
-    location_approximate: false,
+    location_geocode_precision: "city",
+    location_approximate: true,
   };
 
   assert.equal(buildPublicMapMarker({ ...base, year: null })?.title, "Lagoon 450");
