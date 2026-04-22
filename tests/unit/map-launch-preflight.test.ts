@@ -146,9 +146,16 @@ test("map launch preflight blocks the default unconfigured environment", () => {
 
   assert.equal(result.verdict, "NO_GO");
   assert(result.blockers.some((step) => step.key === "commercial_geocoder_not_configured"));
-  assert(result.blockers.some((step) => step.key === "map_style_url_missing"));
+  // Round 37: the client config falls back to OpenFreeMap defaults when
+  // NEXT_PUBLIC_MAP_STYLE_URL is absent, so `map_style_url_missing` is no
+  // longer a blocker of an unconfigured env — other blockers (commercial
+  // geocoder, readiness, batch simulation) still keep the verdict NO_GO.
   assert(result.blockers.some((step) => step.key === "readiness_missing"));
   assert(result.blockers.some((step) => step.key === "batch_simulation_missing"));
+  assert(
+    !result.blockers.some((step) => step.key === "map_style_url_missing"),
+    "default OpenFreeMap style URL must not register as missing"
+  );
 });
 
 test("map backfill preflight allows safe OpenCage batches before tile-provider launch config", () => {
@@ -291,7 +298,14 @@ test("map launch preflight remains the default strict phase", () => {
 
   assert.equal(result.phase, "launch");
   assert.equal(result.verdict, "NO_GO");
-  assert(result.blockers.some((step) => step.key === "map_style_url_missing"));
+  // Round 37: even without operator-configured tile URLs, the OpenFreeMap
+  // fallback means `map_style_url_missing` no longer blocks. Other launch
+  // gates (pin audit evidence, inventory-waterfall explanation) still hold
+  // the verdict at NO_GO — asserted by adjacent tests.
+  assert(
+    !result.blockers.some((step) => step.key === "map_style_url_missing"),
+    "default OpenFreeMap style URL must not register as missing"
+  );
 });
 
 test("map launch preflight requires reviewed pin audit evidence", () => {
