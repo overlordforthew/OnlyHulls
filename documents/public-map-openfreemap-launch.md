@@ -57,3 +57,4 @@ sed -i 's|^NEXT_PUBLIC_MAP_ENABLED=true$|NEXT_PUBLIC_MAP_ENABLED=false|' "$ENV_F
 - MapTiler fallback mechanism if OpenFreeMap ever goes down (operational, not product).
 - Buyer-facing "data quality varies by region" notice on the map if feedback warrants.
 - Additional gazetteer entries as source-text improves.
+
