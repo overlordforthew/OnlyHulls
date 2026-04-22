@@ -36,7 +36,7 @@ test("source health still flags held sources that leak into public visibility", 
 test("source health flags active sources without an explicit policy decision", () => {
   assert.deepEqual(
     buildSourceHealthPolicySignals({
-      source: "Boats.com",
+      source: "Unregistered Source",
       active: 3,
       qualityVisibleBeforePolicy: 3,
       visible: 3,

@@ -50,6 +50,12 @@ const EXPECTED_DECISIONS = [
     reasonPrefix: "Keep Rightboat in the controlled-test lane only;",
   },
   {
+    key: "boats_com",
+    name: "Boats.com",
+    status: "test",
+    reasonPrefix: "Keep Boats.com in the controlled-test lane only",
+  },
+  {
     key: "apolloduck_us",
     name: "Apollo Duck US",
     status: "hold",
@@ -115,8 +121,8 @@ test("source policy resolves explicit decisions by key and name", () => {
 });
 
 test("source policy leaves unrelated sources undecided", () => {
-  assert.equal(getSourceDecisionByKey("boats_com"), null);
-  assert.equal(getSourceDecisionByName("Boats.com"), null);
+  assert.equal(getSourceDecisionByKey("unregistered_source"), null);
+  assert.equal(getSourceDecisionByName("Unregistered Source"), null);
 });
 
 test("source policy exposes the daily scrape run decision", () => {
@@ -129,7 +135,7 @@ test("source policy exposes the daily scrape run decision", () => {
     assert.equal(shouldRunSourceInDailyPortfolio(decision.key), decision.status === "keep");
   }
 
-  const undecided = getDailySourceDecision("boats_com", "Boats.com");
+  const undecided = getDailySourceDecision("unregistered_source", "Unregistered Source");
   assert.equal(undecided.run, false);
   assert.equal(undecided.status, "undecided");
   assert.match(undecided.reason, /not in the daily portfolio yet/i);
