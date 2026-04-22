@@ -1,4 +1,5 @@
 import { hasConfiguredValue } from "@/lib/capabilities";
+import { getCountryCentroid } from "@/lib/locations/country-centroids";
 import {
   getVerifiedPublicPinAliasDefinition,
   getVerifiedPublicPinAliasInText,
@@ -8,7 +9,7 @@ import {
   type VerifiedPublicPinLocationAlias,
 } from "@/lib/locations/verified-public-pin-aliases";
 
-export type GeocodingProvider = "disabled" | "nominatim" | "opencage";
+export type GeocodingProvider = "disabled" | "nominatim" | "opencage" | "derived";
 export type GeocodePrecision =
   | "exact"
   | "street"
@@ -1121,6 +1122,27 @@ export function getCountryCode(country?: string | null) {
   return COUNTRY_CODES[normalizeLookupValue(country)] || null;
 }
 
+// Resolves a GeocodeCandidateInput to a country-precision result without
+// calling any provider. Used when the only usable data is the stored country
+// field — the pipeline's floor under the country-minimum policy.
+export function deriveCountryGeocodeResult(input: GeocodeCandidateInput): GeocodeResult | null {
+  const countryCode = getCountryCode(input.country);
+  if (!countryCode) return null;
+  const centroid = getCountryCentroid(countryCode);
+  if (!centroid) return null;
+  return {
+    status: "geocoded",
+    latitude: centroid.lat,
+    longitude: centroid.lng,
+    precision: "country",
+    score: 1,
+    placeName: centroid.name,
+    provider: "derived",
+    payload: null,
+    error: null,
+  };
+}
+
 function getCountryHintForQuery(queryText: string, country?: string | null) {
   return chooseTargetCountryCode(
     uniqueParts(queryText.split(",").map(canonicalizeGeocodePart)),
@@ -1569,7 +1591,8 @@ export async function geocodeWithNominatim(
 
     const precision = inferNominatimPrecision(result);
     const score = scoreNominatimResult(result, precision);
-    const needsReview = precision === "country" || precision === "unknown" || score < 0.35;
+    const needsReview =
+      precision === "unknown" || (precision !== "country" && score < 0.35);
 
     return reviewGeocodeResultQuality(query.queryText, {
       status: needsReview ? "review" : "geocoded",
@@ -1723,19 +1746,20 @@ export async function geocodeWithOpenCage(
       components
     );
     const lowConfidence =
-      (normalizedConfidence < 3 && !allowsLowConfidenceExactCity) ||
-      (normalizedConfidence <= 3 && !allowsLowConfidenceExactCity) ||
-      (typeof precisionConfidenceFloor === "number" &&
-        normalizedConfidence < precisionConfidenceFloor &&
-        !allowsMarineSpecificConfidenceFloor(
-          precision,
-          normalizedConfidence,
-          query.queryText,
-          formatted || "",
-          components,
-          marineAliasAnchorInput
-        ));
-    const lowPrecision = precision === "country" || precision === "unknown";
+      precision !== "country" &&
+      ((normalizedConfidence < 3 && !allowsLowConfidenceExactCity) ||
+        (normalizedConfidence <= 3 && !allowsLowConfidenceExactCity) ||
+        (typeof precisionConfidenceFloor === "number" &&
+          normalizedConfidence < precisionConfidenceFloor &&
+          !allowsMarineSpecificConfidenceFloor(
+            precision,
+            normalizedConfidence,
+            query.queryText,
+            formatted || "",
+            components,
+            marineAliasAnchorInput
+          )));
+    const lowPrecision = precision === "unknown";
 
     return reviewGeocodeResultQuality(query.queryText, {
       status: lowConfidence || lowPrecision ? "review" : "geocoded",

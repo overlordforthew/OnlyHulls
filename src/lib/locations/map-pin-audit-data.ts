@@ -5,6 +5,7 @@ import {
   buildMapPinAuditWhereSql,
   buildMapPinListingUrl,
   normalizePublicBaseUrl,
+  parseMapPinAuditPrecision,
   type MapPinAuditReport,
   type MapPinAuditRow,
 } from "@/lib/locations/map-pin-audit";
@@ -39,9 +40,6 @@ function toNumber(value: string | number | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toPrecision(value: string | null): PublicMapPrecision | null {
-  return value === "exact" || value === "street" || value === "marina" ? value : null;
-}
 
 async function runQuery<T extends Record<string, unknown>>(text: string, params?: unknown[]) {
   const result = await pool.query(text, params);
@@ -87,7 +85,7 @@ export async function getMapPinAuditReport(input: MapPinAuditQueryInput): Promis
       const slug = String(row.slug || "").trim();
       const latitude = toNumber(row.latitude);
       const longitude = toNumber(row.longitude);
-      const rowPrecision = toPrecision(row.precision);
+      const rowPrecision = parseMapPinAuditPrecision(row.precision);
       if (!slug || latitude === null || longitude === null || !rowPrecision) return null;
       const auditUrl = buildMapPinAuditUrl(latitude, longitude);
       if (!auditUrl) return null;

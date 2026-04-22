@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildGeocodeQuery,
+  deriveCountryGeocodeResult,
   geocodeWithOpenCage,
   geocodeWithNominatim,
   getGeocodeCandidateReason,
@@ -3487,6 +3488,88 @@ test("geocodeWithOpenCage maps provider quota and rate errors to review", async 
       assert.equal(result.status, "review");
       assert.equal(result.error, `http_${status}`);
     }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("deriveCountryGeocodeResult resolves stored country to centroid with country precision", () => {
+  const result = deriveCountryGeocodeResult({
+    locationText: null,
+    country: "Greece",
+    region: null,
+    marketSlugs: null,
+    confidence: null,
+  });
+  assert.ok(result);
+  assert.equal(result?.status, "geocoded");
+  assert.equal(result?.precision, "country");
+  assert.equal(result?.provider, "derived");
+  assert.equal(result?.score, 1);
+  assert.equal(result?.placeName, "Greece");
+  assert.ok(typeof result?.latitude === "number" && result.latitude >= -90 && result.latitude <= 90);
+  assert.ok(typeof result?.longitude === "number" && result.longitude >= -180 && result.longitude <= 180);
+});
+
+test("deriveCountryGeocodeResult returns null when country is missing or unknown", () => {
+  assert.equal(
+    deriveCountryGeocodeResult({ country: null }),
+    null
+  );
+  assert.equal(
+    deriveCountryGeocodeResult({ country: "" }),
+    null
+  );
+  assert.equal(
+    deriveCountryGeocodeResult({ country: "Atlantis" }),
+    null
+  );
+});
+
+test("deriveCountryGeocodeResult ignores locationText — the stored country is the only authority", () => {
+  // Boat with text like "Alimos Marina, Athens, Greece" but no country field:
+  // the derivation does not parse text. Provider pipeline handles specific text;
+  // derivation only fires when country is the sole reliable signal.
+  const result = deriveCountryGeocodeResult({
+    locationText: "Alimos Marina, Athens, Greece",
+    country: null,
+  });
+  assert.equal(result, null);
+});
+
+test("geocodeWithOpenCage accepts country precision as geocoded under the country-minimum policy", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          status: { code: 200, message: "OK" },
+          total_results: 1,
+          results: [
+            {
+              components: {
+                _type: "country",
+                country: "Greece",
+                country_code: "gr",
+                "ISO_3166-1_alpha-2": "GR",
+              },
+              confidence: 1,
+              formatted: "Greece",
+              geometry: { lat: 39.0742, lng: 21.8243 },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )) as typeof fetch;
+
+    const result = await geocodeWithOpenCage(
+      { queryText: "Greece", queryKey: "greece", countryHint: "gr" },
+      openCageConfig
+    );
+
+    assert.equal(result.precision, "country");
+    assert.equal(result.status, "geocoded");
+    assert.equal(result.error, null);
   } finally {
     globalThis.fetch = originalFetch;
   }
