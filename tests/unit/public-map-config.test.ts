@@ -16,7 +16,7 @@ import {
 } from "../../src/lib/locations/map-url-state";
 import { getInitialMapViewport } from "../../src/lib/locations/map-viewports";
 
-test("public map client capability requires flag, style URL, and attribution", () => {
+test("public map client capability requires the flag; style URL and attribution fall back to OpenFreeMap defaults", () => {
   const ready = {
     NEXT_PUBLIC_MAP_ENABLED: "true",
     NEXT_PUBLIC_MAP_STYLE_URL: "https://tiles.example.com/style.json",
@@ -25,21 +25,28 @@ test("public map client capability requires flag, style URL, and attribution", (
 
   assert.equal(getPublicMapClientConfig(ready).enabled, true);
   assert.equal(getPublicMapClientConfig({ ...ready, NEXT_PUBLIC_MAP_ENABLED: "false" }).enabled, false);
-  assert.equal(getPublicMapClientConfig({ ...ready, NEXT_PUBLIC_MAP_STYLE_URL: "" }).enabled, false);
-  assert.equal(getPublicMapClientConfig({ ...ready, NEXT_PUBLIC_MAP_ATTRIBUTION: "" }).enabled, false);
+  // Round 37: empty or missing style URL/attribution now falls back to the
+  // OpenFreeMap defaults, so the map stays enabled when the flag is set.
+  assert.equal(getPublicMapClientConfig({ ...ready, NEXT_PUBLIC_MAP_STYLE_URL: "" }).enabled, true);
+  assert.equal(getPublicMapClientConfig({ ...ready, NEXT_PUBLIC_MAP_ATTRIBUTION: "" }).enabled, true);
+  // Unsafe/invalid URLs still reject without falling back to defaults
+  // (javascript:… cannot be used as a tile style). The fallback only applies
+  // when the supplied value is empty or unparseable; here the URL parses to
+  // a non-http(s) protocol, so it becomes the empty string and then the
+  // default fills in.
   assert.equal(
     getPublicMapClientConfig({
       ...ready,
       NEXT_PUBLIC_MAP_STYLE_URL: "javascript:alert(1)",
     }).enabled,
-    false
+    true
   );
   assert.equal(
     getPublicMapClientConfig({
       ...ready,
       NEXT_PUBLIC_MAP_STYLE_URL: "http://tiles.example.com/style.json",
     }).enabled,
-    false
+    true
   );
   assert.equal(
     getPublicMapClientConfig({
@@ -48,6 +55,40 @@ test("public map client capability requires flag, style URL, and attribution", (
     }).enabled,
     true
   );
+});
+
+test("public map defaults to OpenFreeMap tiles when env vars are absent", () => {
+  // Round 37: when no operator-configured NEXT_PUBLIC_MAP_STYLE_URL or
+  // NEXT_PUBLIC_MAP_ATTRIBUTION is provided, the config falls back to
+  // OpenFreeMap (free, no API key). Enabling the flag alone is enough to
+  // launch with zero tile-provider cost.
+  const config = getPublicMapClientConfig({ NEXT_PUBLIC_MAP_ENABLED: "true" });
+  assert.equal(config.enabled, true);
+  assert.equal(config.styleUrl, "https://tiles.openfreemap.org/styles/liberty");
+  assert.ok(
+    config.attribution.includes("OpenStreetMap"),
+    "default attribution must credit OpenStreetMap contributors"
+  );
+  assert.ok(
+    config.resourceOrigins.includes("https://tiles.openfreemap.org"),
+    "default resource origins must include the OpenFreeMap host"
+  );
+
+  // Operator-supplied commercial values still win. Setting MapTiler URL +
+  // attribution does NOT fall back to OpenFreeMap.
+  const mapTiler = getPublicMapClientConfig({
+    NEXT_PUBLIC_MAP_ENABLED: "true",
+    NEXT_PUBLIC_MAP_STYLE_URL: "https://api.maptiler.com/maps/streets-v2/style.json?key=abc",
+    NEXT_PUBLIC_MAP_ATTRIBUTION: "© MapTiler © OpenStreetMap contributors",
+    NEXT_PUBLIC_MAP_RESOURCE_ORIGINS: "https://api.maptiler.com,https://tiles.maptiler.com",
+  });
+  assert.equal(mapTiler.styleUrl.startsWith("https://api.maptiler.com"), true);
+  assert.equal(
+    mapTiler.resourceOrigins.some((origin) => origin.includes("maptiler")),
+    true
+  );
+  // Still disabled without the flag, even with good defaults.
+  assert.equal(getPublicMapClientConfig({}).enabled, false);
 });
 
 test("public map resource origins are provider-agnostic and reject wildcards", () => {
