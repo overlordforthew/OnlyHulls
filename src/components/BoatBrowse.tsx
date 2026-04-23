@@ -251,7 +251,12 @@ function BoatBrowseInner({
   const [activeTag, setActiveTag] = useState(initialTag);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
+  // Map users expect filters to be visible next to the inventory, so the panel
+  // opens by default when the map view is active. In grid/rows the panel stays
+  // collapsed until the user asks for it.
+  const [showFilters, setShowFilters] = useState(() =>
+    PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams)
+  );
   const [sortField, setSortField] = useState<SortField>(initialSortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortDir);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
@@ -292,6 +297,14 @@ function BoatBrowseInner({
   useEffect(() => {
     setIsSearchFormReady(true);
   }, []);
+
+  // Keep filters expanded whenever the user is on the map view — they were
+  // told "Browse Boats" has filters, but on the map the sidebar is the only
+  // affordance that hints at them, so hiding the panel feels like they went
+  // missing.
+  useEffect(() => {
+    if (viewMode === "map") setShowFilters(true);
+  }, [viewMode]);
 
   useEffect(() => {
     if (PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams)) {

@@ -294,6 +294,8 @@ export default function BoatsMapView({
 
     const link = document.createElement("a");
     link.href = getMarkerHref(marker.slug);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
     link.className = "mt-3 inline-flex text-xs font-semibold text-sky-700 underline";
     link.textContent = t("viewListing");
     wrapper.appendChild(link);
@@ -1059,6 +1061,8 @@ export default function BoatsMapView({
                     </button>
                     <Link
                       href={getMarkerHref(marker.slug)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-light"
                     >
                       {t("viewListing")}

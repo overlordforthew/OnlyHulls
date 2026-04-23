@@ -13,6 +13,7 @@ import {
   Zap,
   Globe,
   MapPin,
+  Compass,
   Shield,
   Search,
   ArrowRight,
@@ -204,8 +205,15 @@ export default async function Home() {
               ))}
             </div>
 
-            {/* CTA buttons */}
+            {/* CTA buttons — Map first as a visually distinctive entry point. */}
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/boats?view=map"
+                className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary via-primary-btn to-accent px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-accent/30"
+              >
+                <Compass className="h-4 w-4 transition-transform duration-500 group-hover:rotate-[360deg]" aria-hidden="true" />
+                {t("exploreOnMap")}
+              </Link>
               <Link
                 href="/boats"
                 className="rounded-full bg-primary-btn px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-light hover:shadow-lg hover:shadow-primary/20"
