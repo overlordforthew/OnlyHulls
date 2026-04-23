@@ -39,46 +39,48 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
       <JsonLdScript data={collectionSchema} />
       <JsonLdScript data={breadcrumbSchema} />
 
-      <section className="border-b border-border bg-surface/40 py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            {localizedHub.eyebrow}
-          </p>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
-            {localizedHub.heading}
-          </h1>
-          <p className="mt-4 max-w-3xl text-base text-text-secondary sm:text-lg">
-            {localizedHub.intro}
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
-            <span className="rounded-full bg-primary/10 px-3 py-1.5 font-medium text-primary">
-              {copy.liveListings(total)}
-            </span>
-            <Link
-              href="/boats"
-              className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              {copy.browseAllBoats}
-            </Link>
-            <Link
-              href="/match"
-              className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              {copy.getAiMatched}
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {browseScope ? (
         <BoatBrowse
           initialFilters={browseScope.filters}
           initialLocation={browseScope.location}
           initialSearch={browseScope.search}
+          heading={localizedHub.heading}
+          description={localizedHub.intro}
+          eyebrow={localizedHub.eyebrow}
         />
       ) : (
-        <section className="mx-auto max-w-7xl px-5 pt-10">
+        <>
+          <section className="border-b border-border bg-surface/40 py-12 sm:py-16">
+            <div className="mx-auto max-w-7xl px-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                {localizedHub.eyebrow}
+              </p>
+              <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
+                {localizedHub.heading}
+              </h1>
+              <p className="mt-4 max-w-3xl text-base text-text-secondary sm:text-lg">
+                {localizedHub.intro}
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+                <span className="rounded-full bg-primary/10 px-3 py-1.5 font-medium text-primary">
+                  {copy.liveListings(total)}
+                </span>
+                <Link
+                  href="/boats"
+                  className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  {copy.browseAllBoats}
+                </Link>
+                <Link
+                  href="/match"
+                  className="rounded-full border border-border px-4 py-1.5 font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  {copy.getAiMatched}
+                </Link>
+              </div>
+            </div>
+          </section>
+          <section className="mx-auto max-w-7xl px-5 pt-10">
           {boats.length === 0 ? (
             <div className="rounded-2xl border border-border bg-surface p-8 text-center">
               <h2 className="text-xl font-semibold">{copy.noBoatsTitle}</h2>
@@ -164,6 +166,7 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
             </>
           )}
         </section>
+        </>
       )}
 
       <section className="mx-auto mt-14 max-w-7xl px-5">

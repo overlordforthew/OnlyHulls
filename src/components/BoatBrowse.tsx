@@ -152,6 +152,11 @@ export interface BoatBrowseProps {
   initialFilters?: Partial<FilterState>;
   initialLocation?: string;
   initialSearch?: string;
+  // Optional hub context: the hub page folds its heading + intro into the
+  // browse header instead of stacking a separate hero band above.
+  heading?: string;
+  description?: string;
+  eyebrow?: string;
 }
 
 function formatBoatType(value?: string | null) {
@@ -209,6 +214,9 @@ function BoatBrowseInner({
   initialFilters: seedFilters,
   initialLocation: seedLocation,
   initialSearch: seedSearch,
+  heading: headingOverride,
+  description,
+  eyebrow,
 }: BoatBrowseProps) {
   const t = useTranslations("boatsPage");
   const router = useRouter();
@@ -666,7 +674,19 @@ function BoatBrowseInner({
         <div className="mx-auto max-w-7xl px-5 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">{t("heading")}</h1>
+              {eyebrow && (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  {eyebrow}
+                </p>
+              )}
+              <h1 className={headingOverride ? "text-3xl font-bold tracking-tight sm:text-4xl" : "text-2xl font-bold"}>
+                {headingOverride || t("heading")}
+              </h1>
+              {description && (
+                <p className="mt-3 max-w-3xl text-sm text-text-secondary sm:text-base">
+                  {description}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 {!loading && (
                   <p className="text-sm text-text-secondary">
