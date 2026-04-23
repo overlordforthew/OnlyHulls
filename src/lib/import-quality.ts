@@ -589,11 +589,24 @@ const KNOWN_HTML_TAG_NAMES = new Set([
   "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead",
   "time", "title", "tr", "track",
   "u", "ul", "var", "video", "wbr",
+  // MathML / SVG carrier tags that pentests use to smuggle scripts through
+  // sanitizers focused on the outer wrapper.
+  "foreignobject", "annotation", "annotation-xml",
+  "mtext", "mo", "mi", "mn", "mrow", "mfenced", "mspace",
+  "msub", "msup", "msubsup", "mfrac", "mroot", "msqrt",
+  "munder", "mover", "munderover", "mstyle", "merror", "mphantom", "mpadded",
+  "mtable", "mtr", "mtd",
+  "desc", "use", "animate", "set",
 ]);
 
+// Tag name allows hyphens (annotation-xml, my-component), attribute block
+// may start with whitespace OR `/` (to handle bogus-slash payloads like
+// `<svg/onload=x>`). The whitelist callback only drops matches whose
+// normalised tag name is in KNOWN_HTML_TAG_NAMES, so legitimate prose
+// like "Port <St Louis>" stays intact.
 function stripHtmlTags(value: string) {
   return value
-    .replace(/<\s*\/?\s*([a-zA-Z][a-zA-Z0-9]*)(\s[^<>]*)?\s*\/?\s*>/g, (match, tagName) => {
+    .replace(/<\s*\/?\s*([a-zA-Z][a-zA-Z0-9-]*)([\s\/][^<>]*)?\s*\/?\s*>/g, (match, tagName) => {
       return KNOWN_HTML_TAG_NAMES.has(String(tagName).toLowerCase()) ? " " : match;
     })
     .replace(/javascript\s*:/gi, "")

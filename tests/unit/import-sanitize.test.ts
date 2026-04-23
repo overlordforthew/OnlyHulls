@@ -50,3 +50,13 @@ test("normalizeSpacing preserves angle-bracket prose that isn't real HTML", () =
   assert.doesNotMatch(normalizeSpacing("Nassau<br/>Bahamas"), /<br/);
   assert.doesNotMatch(normalizeSpacing("Miami<IMG src=x onerror=y>"), /<IMG/i);
 });
+
+test("normalizeSpacing defuses MathML/SVG carrier tags and bogus-slash XSS", () => {
+  // Codex round-4 finding: earlier whitelist missed these; pentest payloads
+  // lean on them to bypass naive sanitizers.
+  assert.doesNotMatch(normalizeSpacing("<foreignObject><script>x</script></foreignObject>body"), /<foreignObject|<script|<\/script/i);
+  assert.doesNotMatch(normalizeSpacing("<annotation foo=1>payload</annotation>body"), /<annotation/i);
+  assert.doesNotMatch(normalizeSpacing("<annotation-xml>payload</annotation-xml>body"), /<annotation-xml/i);
+  assert.doesNotMatch(normalizeSpacing("tail<svg/onload=alert(1)>"), /<svg/i);
+  assert.doesNotMatch(normalizeSpacing("tail<IMG/src=x/onerror=alert(1)>"), /<IMG/i);
+});
