@@ -46,6 +46,12 @@ type BoatsMapViewProps = {
   urlViewport: MapInitialViewport | null;
   displayCurrency?: SupportedCurrency;
   onViewportChange: (viewport: MapInitialViewport) => void;
+  // True when any search scope is active (location, query, tag, or applied
+  // filters). When true we skip the geolocation override so filter-scoped
+  // views keep their global viewport and don't empty the map for users
+  // browsing outside a boat region.
+  hasSearchScope: boolean;
+  onMapUnavailable?: () => void;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -141,6 +147,8 @@ export default function BoatsMapView({
   urlViewport,
   displayCurrency,
   onViewportChange,
+  hasSearchScope,
+  onMapUnavailable,
 }: BoatsMapViewProps) {
   const t = useTranslations("boatsPage.map");
   const config = useMemo(() => getPublicMapClientConfig(), []);
@@ -148,6 +156,9 @@ export default function BoatsMapView({
   const homeViewportRef = useRef(homeViewport);
   const urlViewportRef = useRef(urlViewport);
   const locationFilterRef = useRef(locationFilter);
+  const hasSearchScopeRef = useRef(hasSearchScope);
+  const onMapUnavailableRef = useRef(onMapUnavailable);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const mapReadyRef = useRef(false);
@@ -588,6 +599,14 @@ export default function BoatsMapView({
   }, [locationFilter]);
 
   useEffect(() => {
+    hasSearchScopeRef.current = hasSearchScope;
+  }, [hasSearchScope]);
+
+  useEffect(() => {
+    onMapUnavailableRef.current = onMapUnavailable;
+  }, [onMapUnavailable]);
+
+  useEffect(() => {
     selectedSlugRef.current = selectedSlug;
     markerElementsRef.current.forEach((button, slug) => {
       const selected = slug === selectedSlug;
@@ -602,14 +621,26 @@ export default function BoatsMapView({
 
     const mountViewport = initialViewportRef.current;
     mapReadyRef.current = false;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: config.styleUrl,
-      center: [mountViewport.longitude, mountViewport.latitude],
-      zoom: mountViewport.zoom,
-      attributionControl: false,
-      cooperativeGestures: true,
-    });
+    let map: MapLibreMap;
+    try {
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: config.styleUrl,
+        center: [mountViewport.longitude, mountViewport.latitude],
+        zoom: mountViewport.zoom,
+        attributionControl: false,
+        cooperativeGestures: true,
+      });
+    } catch (err) {
+      // MapLibre throws synchronously when the browser can't create a WebGL
+      // context (old devices, privacy-hardened browsers, some headless envs).
+      // Fail gracefully to a text fallback instead of letting the throw unwind
+      // to the public layout's error boundary.
+      console.warn("BoatsMapView: failed to initialize MapLibre", err);
+      setWebglUnavailable(true);
+      onMapUnavailableRef.current?.();
+      return;
+    }
 
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -634,11 +665,14 @@ export default function BoatsMapView({
       // When the user arrived without a search scope or a viewport in the URL,
       // fly to their browser-reported location so the first marker batch
       // matches their area instead of the hardcoded Caribbean default. If the
-      // browser blocks or times out, the default viewport stays.
-      const hasSearchScope = Boolean(locationFilterRef.current?.trim());
+      // browser blocks or times out, the default viewport stays. "Search
+      // scope" covers any active filter/query/tag/location — not just a
+      // location filter — because filter-only scopes (e.g. catamarans-for-sale
+      // with no location) would otherwise empty the map for users outside a
+      // boat region.
       if (
         !activeUrlViewport &&
-        !hasSearchScope &&
+        !hasSearchScopeRef.current &&
         typeof navigator !== "undefined" &&
         navigator.geolocation
       ) {
@@ -813,6 +847,19 @@ export default function BoatsMapView({
     return (
       <div className="rounded-lg border border-border bg-surface p-6 text-sm text-text-secondary">
         {t("disabled")}
+      </div>
+    );
+  }
+
+  if (webglUnavailable) {
+    return (
+      <div
+        data-testid="boats-map-webgl-unavailable"
+        className="flex min-h-[240px] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-surface p-6 text-center text-sm text-text-secondary"
+      >
+        <AlertTriangle className="h-5 w-5 text-accent" aria-hidden="true" />
+        <p className="font-semibold text-foreground">{t("webglUnavailableTitle")}</p>
+        <p className="max-w-md text-xs text-text-tertiary">{t("webglUnavailableBody")}</p>
       </div>
     );
   }
