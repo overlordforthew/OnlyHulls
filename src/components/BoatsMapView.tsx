@@ -147,6 +147,7 @@ export default function BoatsMapView({
   const initialViewportRef = useRef(initialViewport);
   const homeViewportRef = useRef(homeViewport);
   const urlViewportRef = useRef(urlViewport);
+  const locationFilterRef = useRef(locationFilter);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const mapReadyRef = useRef(false);
@@ -583,6 +584,10 @@ export default function BoatsMapView({
   }, [homeViewport]);
 
   useEffect(() => {
+    locationFilterRef.current = locationFilter;
+  }, [locationFilter]);
+
+  useEffect(() => {
     selectedSlugRef.current = selectedSlug;
     markerElementsRef.current.forEach((button, slug) => {
       const selected = slug === selectedSlug;
@@ -625,6 +630,35 @@ export default function BoatsMapView({
       if (!activeUrlViewport || !isSameViewport(getCurrentViewport(map), activeUrlViewport)) {
         scheduleViewportWrite(0);
       }
+
+      // When the user arrived without a search scope or a viewport in the URL,
+      // fly to their browser-reported location so the first marker batch
+      // matches their area instead of the hardcoded Caribbean default. If the
+      // browser blocks or times out, the default viewport stays.
+      const hasSearchScope = Boolean(locationFilterRef.current?.trim());
+      if (
+        !activeUrlViewport &&
+        !hasSearchScope &&
+        typeof navigator !== "undefined" &&
+        navigator.geolocation
+      ) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            if (!mapRef.current) return;
+            beginProgrammaticMove(mapRef.current);
+            mapRef.current.once("moveend", () => scheduleFetch(0));
+            mapRef.current.easeTo({
+              center: [position.coords.longitude, position.coords.latitude],
+              zoom: 9,
+              duration: 600,
+            });
+          },
+          () => {
+            // Silently fall through — user denied or the browser has no GPS.
+          },
+          { timeout: 5000, maximumAge: 600000 }
+        );
+      }
     });
     map.on("error", () => {
       if (!map.isStyleLoaded()) {
@@ -639,6 +673,10 @@ export default function BoatsMapView({
       if (!programmaticMoveRef.current) {
         setHasStaleViewport(hasMapViewportDrifted(lastFetchedViewportRef.current, viewport));
         scheduleViewportWrite();
+        // Auto-refresh markers when the user pans or zooms so the visible
+        // viewport always reflects the current boat set without requiring a
+        // "Search this area" click. scheduleFetch debounces rapid events.
+        scheduleFetch();
       }
     });
 
