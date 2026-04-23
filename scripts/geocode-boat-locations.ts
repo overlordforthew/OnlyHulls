@@ -2,11 +2,14 @@ import { pool, query } from "../src/lib/db/index";
 import { buildVisibleImportQualitySql } from "../src/lib/import-quality";
 import {
   buildGeocodeQuery,
+  deriveCountryGeocodeResult,
   geocodeWithOpenCage,
   geocodeWithNominatim,
+  getCountryCode,
   getGeocodeCandidateReason,
   getGeocodingConfig,
   reviewGeocodeResultQuality,
+  type GeocodeQuery,
   type GeocodingConfig,
   type GeocodePrecision,
   type GeocodeResult,
@@ -56,12 +59,13 @@ type GeocodeCacheRow = {
 };
 
 type PreparedCandidate = BoatGeocodeCandidate & {
-  geocodeQuery: ReturnType<typeof buildGeocodeQuery>;
+  geocodeQuery: GeocodeQuery | null;
+  derivedResult: GeocodeResult | null;
   reason: string;
 };
 
 type ReadyCandidate = PreparedCandidate & {
-  geocodeQuery: NonNullable<PreparedCandidate["geocodeQuery"]>;
+  geocodeQuery: GeocodeQuery;
 };
 
 type PrecisionSplit = Record<GeocodePrecision, number>;
@@ -103,7 +107,7 @@ type SelectedQuerySample = {
 };
 
 type GeocodeAuditRow = SelectedQuerySample & {
-  source: "cache" | "provider";
+  source: "cache" | "provider" | "derived";
   status: GeocodeStatus;
   precision: GeocodePrecision;
   score: number | null;
@@ -637,25 +641,37 @@ async function createBackupSnapshot(candidateIds: string[]) {
 }
 
 function prepareCandidate(boat: BoatGeocodeCandidate): PreparedCandidate {
-  const geocodeQuery = buildGeocodeQuery({
+  const input = {
     locationText: boat.location_text,
     country: boat.location_country,
     region: boat.location_region,
     marketSlugs: boat.location_market_slugs,
     confidence: boat.location_confidence,
-  });
-  const reason = getGeocodeCandidateReason({
-    locationText: boat.location_text,
-    country: boat.location_country,
-    region: boat.location_region,
-    marketSlugs: boat.location_market_slugs,
-    confidence: boat.location_confidence,
-  });
+  };
+  let geocodeQuery: GeocodeQuery | null = buildGeocodeQuery(input);
+  let derivedResult: GeocodeResult | null = null;
+
+  // If there is no actionable query text but we know the country, synthesize a
+  // country-precision result locally. Keeps the country-minimum floor cost-free
+  // and gives the downstream apply machinery a uniform candidate shape.
+  if (!geocodeQuery) {
+    derivedResult = deriveCountryGeocodeResult(input);
+    if (derivedResult) {
+      const countryCode = getCountryCode(boat.location_country) || "unknown";
+      const queryText = (boat.location_country || "").trim() || countryCode.toUpperCase();
+      geocodeQuery = {
+        queryText,
+        queryKey: `derived:country:${countryCode}`,
+        countryHint: countryCode,
+      };
+    }
+  }
 
   return {
     ...boat,
     geocodeQuery,
-    reason,
+    derivedResult,
+    reason: getGeocodeCandidateReason(input),
   };
 }
 
@@ -773,6 +789,7 @@ async function main() {
     selectedRows: selectedCandidates.length,
     selectedUniqueQueries: selectedQueryKeys.length,
     cached: 0,
+    derived: 0,
     uncachedSelected: 0,
     providerFetches: 0,
     dryRunProviderFetchSkipped: 0,
@@ -818,7 +835,9 @@ async function main() {
   };
 
   for (const candidate of candidates) {
-    if (!candidate.geocodeQuery) incrementCount(summary.nonGeocodableReasons, candidate.reason);
+    if (!candidate.geocodeQuery && !candidate.derivedResult) {
+      incrementCount(summary.nonGeocodableReasons, candidate.reason);
+    }
   }
 
   if (
@@ -849,6 +868,14 @@ async function main() {
 
   for (const boat of selectedCandidates) {
     const geocodeQuery = boat.geocodeQuery;
+
+    // Derived country-precision results bypass cache and provider — they are
+    // pure local lookups and always cheaper than any cache round-trip.
+    if (boat.derivedResult) {
+      summary.derived += 1;
+      recordProcessedResult(boat, geocodeQuery, boat.derivedResult, "derived");
+      continue;
+    }
 
     const cached = cacheByKey.get(geocodeQuery.queryKey) || (await getCachedResult(geocodeQuery.queryKey, config.provider));
     if (cached) {
@@ -898,7 +925,7 @@ async function main() {
     summary.backupTable = backupTable;
 
     for (const processed of processedResults) {
-      if (processed.result.status !== "skipped") {
+      if (processed.result.status !== "skipped" && processed.source !== "derived") {
         await cacheResult(
           processed.geocodeQuery.queryKey,
           processed.geocodeQuery.queryText,
