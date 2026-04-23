@@ -62,11 +62,15 @@ function getMarkerHref(slug: string) {
   return `/boats/${encodeURIComponent(slug)}`;
 }
 
-function getPrecisionLabel(_precision: PublicMapMarker["precision"]) {
+// Precision tier now collapses to a single bucket (public map only serves
+// `city`-grade pins per PUBLIC_MAP_PRECISIONS), so these helpers don't need
+// the marker argument. Leaving the call sites unchanged so a future tier
+// re-expansion stays a one-line swap.
+function getPrecisionLabel() {
   return "City area";
 }
 
-function getPrecisionZoomTarget(_precision: PublicMapMarker["precision"]) {
+function getPrecisionZoomTarget() {
   return 8;
 }
 
@@ -328,7 +332,7 @@ export default function BoatsMapView({
 
     map?.easeTo({
       center: [marker.lng, marker.lat],
-      zoom: Math.max(map.getZoom(), getPrecisionZoomTarget(marker.precision)),
+      zoom: Math.max(map.getZoom(), getPrecisionZoomTarget()),
       duration: 420,
     });
   }, [openMarkerPopup, scrollListingIntoView]);
@@ -730,6 +734,11 @@ export default function BoatsMapView({
       mapReadyRef.current = false;
       setMapReady(false);
     };
+    // Intentional: this effect mounts the MapLibre instance exactly once.
+    // beginProgrammaticMove and the other callbacks are read fresh via
+    // closure each time they fire — adding them to the dep array would
+    // tear down and rebuild the map on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     config.attribution,
     config.enabled,
@@ -1047,7 +1056,7 @@ export default function BoatsMapView({
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase text-text-tertiary">
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5 text-primary" />
-                            {getPrecisionLabel(marker.precision)}
+                            {getPrecisionLabel()}
                             {marker.approximate ? ` ${t("approximate")}` : ""}
                           </span>
                           {loa ? (

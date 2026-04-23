@@ -1110,9 +1110,7 @@ function scoreNominatimResult(result: Record<string, unknown>, precision: Geocod
 
 function inferOpenCagePrecision(
   components: Record<string, unknown>,
-  confidence: number,
-  queryText: string,
-  formatted: string
+  confidence: number
 ): GeocodePrecision {
   const type = normalizeLookupValue(String(components._type || ""));
   const category = normalizeLookupValue(String(components._category || ""));
@@ -1506,12 +1504,7 @@ export async function geocodeWithOpenCage(
     const normalizedConfidence = Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 10) : 0;
     const formatted = String(result.formatted || "") || null;
     const precision = clampPrecisionToCountryOrCity(
-      inferOpenCagePrecision(
-        components,
-        normalizedConfidence,
-        query.queryText,
-        formatted || ""
-      )
+      inferOpenCagePrecision(components, normalizedConfidence)
     );
     const score = scorePrecision(normalizedConfidence / 10, precision);
     const precisionConfidenceFloor = OPENCAGE_MIN_CONFIDENCE_BY_PRECISION[precision];
