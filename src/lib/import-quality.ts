@@ -581,7 +581,7 @@ const KNOWN_HTML_TAG_NAMES = new Set([
   "em", "embed", "fieldset", "figcaption", "figure", "footer", "form",
   "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hr", "html",
   "i", "iframe", "img", "input", "ins",
-  "kbd", "label", "legend", "li", "link", "main", "map", "mark", "meta", "meter",
+  "kbd", "label", "legend", "li", "link", "main", "map", "mark", "math", "meta", "meter",
   "nav", "noscript", "object", "ol", "optgroup", "option", "output",
   "p", "param", "picture", "pre", "progress", "q",
   "s", "samp", "script", "section", "select", "small", "source", "span",
@@ -672,9 +672,12 @@ function trimNarrativeLocationTail(value: string) {
 }
 
 export function normalizeImportedSummary(value?: string | null) {
+  // normalizeSpacing now runs stripHtmlTags internally (whitelist-based), so
+  // the broad `<[^>]+>/g` regex that used to live here was eating angle-
+  // bracket prose like "Port <St Louis>" in summaries too. Trust the shared
+  // sanitizer instead.
   const normalized = normalizeSpacing(
     String(value || "")
-      .replace(/<[^>]+>/g, " ")
       .replace(/\bcontent=.*$/i, "")
       .replace(/^["'\s]+/, "")
   );

@@ -547,6 +547,10 @@ function BoatBrowseInner({
       const params = buildParams(q, tag, 1, nextFilters, location);
       const query = params.toString();
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      // The replace re-fires this effect with the canonical URL. Clear the
+      // skip ref so that second pass is allowed to fetch — otherwise `total`
+      // / `hasMore` would stay at seed values until the user interacts.
+      skipInitialParamsFetchRef.current = false;
       return;
     }
     setSearchInput(q);
