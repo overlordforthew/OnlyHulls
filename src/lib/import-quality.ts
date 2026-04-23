@@ -556,10 +556,23 @@ function normalizeLocationPart(value: string) {
 }
 
 export function normalizeSpacing(value?: string | null) {
-  return stripMojibake(decodeHtmlTextArtifacts(String(value || "")))
+  return stripMojibake(stripHtmlTags(decodeHtmlTextArtifacts(String(value || ""))))
     .replace(/[|]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Strip HTML/SGML-style tags and javascript:/data: URL schemes from scraped
+// text. Defense in depth for fields like make / model / location_text that
+// get echoed into page titles, JSON-LD, and search indexes — a past pentest
+// run left XSS payloads in the DB (2026-04-23), and future scrapers may hit
+// pages where broker HTML leaks into copy. React output-escapes by default,
+// so this is belt-and-braces, not the last line of defense.
+function stripHtmlTags(value: string) {
+  return value
+    .replace(/<\s*\/?\s*[a-zA-Z][^<>]*>/g, " ")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/data\s*:[^,\s]+base64/gi, "");
 }
 
 function decodeHtmlTextArtifacts(value: string) {

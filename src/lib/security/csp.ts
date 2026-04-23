@@ -8,6 +8,7 @@ const IMAGE_SOURCES = [
   "https://ics.apolloduck.com",
   "https://*.theyachtmarket.com",
   "https://images.boatsgroup.com",
+  "https://images.boats.com",
   "https://www.yachtsite.com",
   "https://www.catamarans.com",
   "https://www.dreamyachtsales.com",

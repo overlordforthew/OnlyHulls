@@ -20,7 +20,18 @@ const EXACT_TEXT_COUNTRY_FALLBACKS: Record<
   "virgin islands": { country: "United States Virgin Islands", region: "Caribbean" },
   "virgin islands british": { country: "British Virgin Islands", region: "Caribbean" },
   "virgin islands, british": { country: "British Virgin Islands", region: "Caribbean" },
+  // Ambiguous-alone tokens that legacy imports left behind; our top-markets
+  // hint pipeline declines them without more context, but the most common
+  // boat-listing usage is these specific places.
+  jamestown: { country: "United States", region: "Rhode Island" },
+  portland: { country: "United States", region: "Oregon" },
 };
+
+// De Valk is a Netherlands-based brokerage; their scraped listings used to
+// land with a "Contact De Valk <marina>" prefix. Treat those as Netherlands
+// and strip the prefix before running the generic inference so the inner
+// marina name can still seed marketSlugs / region.
+const BROKER_PREFIX_NETHERLANDS = /^contact\s+de\s+valk\s+/i;
 
 type Candidate = {
   id: string;
@@ -57,7 +68,10 @@ async function main() {
   for (const row of rows) {
     const raw = String(row.location_text || "").trim();
     const normalized = raw.toLowerCase();
-    const signals = inferLocationMarketSignals({ locationText: raw });
+    const brokerStrippedText = raw.replace(BROKER_PREFIX_NETHERLANDS, "").trim();
+    const hasDeValkPrefix = brokerStrippedText !== raw;
+    const textForInference = brokerStrippedText || raw;
+    const signals = inferLocationMarketSignals({ locationText: textForInference });
     let country = signals.country;
     let region = signals.region;
     let marketSlugs = signals.marketSlugs;
@@ -69,6 +83,14 @@ async function main() {
         region = fallback.region;
         marketSlugs = []; // leave market signals for a later enrichment pass
       }
+    }
+
+    // De Valk is Dutch — if the prefix was there and nothing stronger matched,
+    // fall back to Netherlands so we at least set a country floor.
+    if (!country && hasDeValkPrefix) {
+      country = "Netherlands";
+      region = "Netherlands";
+      marketSlugs = [];
     }
 
     if (country) {
