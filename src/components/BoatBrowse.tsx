@@ -252,7 +252,14 @@ function BoatBrowseInner({
   const hasSeedInventory = Array.isArray(seedBoats) && seedBoats.length > 0;
   const [boats, setBoats] = useState<Boat[]>(seedBoats ?? []);
   const [loading, setLoading] = useState(!hasSeedInventory);
-  const skipInitialFetchRef = useRef(hasSeedInventory);
+  // BoatBrowse has two mount-time refetch effects — one on sort/currency, one
+  // on search-param changes. Both would otherwise clobber the seeded inventory
+  // on first paint (flicker), and the server-side hub SQL (character_tags OR
+  // make) returns a different set than /api/boats?hullType= (vessel_type), so
+  // the flicker is not just cosmetic. Each effect gets its own skip flag and
+  // flips it off after the mount run, so subsequent URL/sort changes fetch.
+  const skipInitialSortFetchRef = useRef(hasSeedInventory);
+  const skipInitialParamsFetchRef = useRef(hasSeedInventory);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(initialQ);
@@ -417,8 +424,8 @@ function BoatBrowseInner({
   // mount should not re-fetch (avoid a shimmer blink) — let subsequent
   // changes flow through normally.
   useEffect(() => {
-    if (skipInitialFetchRef.current) {
-      skipInitialFetchRef.current = false;
+    if (skipInitialSortFetchRef.current) {
+      skipInitialSortFetchRef.current = false;
       return;
     }
     fetchBoats();
@@ -549,6 +556,15 @@ function BoatBrowseInner({
     setActiveTag(tag);
     setFilters(nextFilters);
     setAppliedFilters(nextFilters);
+    // Preserve the SSR seed on first mount — the hub server SQL and
+    // /api/boats filter semantics don't always agree (character_tags vs
+    // vessel_type), and refetching here would flicker half the cards out.
+    // Once the user changes the URL (filter, sort, location) the effect
+    // fires normally and the client takes over.
+    if (skipInitialParamsFetchRef.current) {
+      skipInitialParamsFetchRef.current = false;
+      return;
+    }
     fetchBoats(q, tag, nextFilters, location);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boatSearchParamString]);

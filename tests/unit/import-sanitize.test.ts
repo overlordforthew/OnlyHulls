@@ -37,3 +37,16 @@ test("normalizeImportedLocation keeps legit text when tags are mixed in", () => 
   assert.match(result, /Kiel/);
   assert.doesNotMatch(result, /[<>]/);
 });
+
+test("normalizeSpacing preserves angle-bracket prose that isn't real HTML", () => {
+  // Scrapers sometimes embed city aliases or annotations in angle brackets.
+  // The whitelist-based stripper should leave these alone while still
+  // eating real HTML.
+  assert.match(normalizeSpacing("Port <St Louis>"), /St Louis/);
+  assert.match(normalizeSpacing("Rio <de Janeiro>"), /de Janeiro/);
+  assert.match(normalizeSpacing("La Spezia <IT>"), /IT/);
+  // But real HTML still goes:
+  assert.doesNotMatch(normalizeSpacing("Kiel<script>evil()</script>"), /<script>/);
+  assert.doesNotMatch(normalizeSpacing("Nassau<br/>Bahamas"), /<br/);
+  assert.doesNotMatch(normalizeSpacing("Miami<IMG src=x onerror=y>"), /<IMG/i);
+});

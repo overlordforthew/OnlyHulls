@@ -568,9 +568,34 @@ export function normalizeSpacing(value?: string | null) {
 // run left XSS payloads in the DB (2026-04-23), and future scrapers may hit
 // pages where broker HTML leaks into copy. React output-escapes by default,
 // so this is belt-and-braces, not the last line of defense.
+//
+// The tag-name whitelist protects legitimate angle-bracket prose like
+// "Port <St Louis>" or "Rio <de Janeiro>"; only recognised HTML tag names
+// are removed. Covers the inventory of tags seen in scraped broker HTML
+// plus anything an XSS payload might target.
+const KNOWN_HTML_TAG_NAMES = new Set([
+  "a", "abbr", "address", "area", "article", "aside", "audio",
+  "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button",
+  "canvas", "caption", "cite", "code", "col", "colgroup",
+  "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt",
+  "em", "embed", "fieldset", "figcaption", "figure", "footer", "form",
+  "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hr", "html",
+  "i", "iframe", "img", "input", "ins",
+  "kbd", "label", "legend", "li", "link", "main", "map", "mark", "meta", "meter",
+  "nav", "noscript", "object", "ol", "optgroup", "option", "output",
+  "p", "param", "picture", "pre", "progress", "q",
+  "s", "samp", "script", "section", "select", "small", "source", "span",
+  "strong", "style", "sub", "summary", "sup", "svg",
+  "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead",
+  "time", "title", "tr", "track",
+  "u", "ul", "var", "video", "wbr",
+]);
+
 function stripHtmlTags(value: string) {
   return value
-    .replace(/<\s*\/?\s*[a-zA-Z][^<>]*>/g, " ")
+    .replace(/<\s*\/?\s*([a-zA-Z][a-zA-Z0-9]*)(\s[^<>]*)?\s*\/?\s*>/g, (match, tagName) => {
+      return KNOWN_HTML_TAG_NAMES.has(String(tagName).toLowerCase()) ? " " : match;
+    })
     .replace(/javascript\s*:/gi, "")
     .replace(/data\s*:[^,\s]+base64/gi, "");
 }
