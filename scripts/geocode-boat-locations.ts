@@ -15,6 +15,7 @@ import {
   type GeocodeResult,
   type GeocodeStatus,
 } from "../src/lib/locations/geocoding";
+import { getCountryCentroid } from "../src/lib/locations/country-centroids";
 import {
   getGeocodeApplySafetyStop,
   isEnabledEnvValue,
@@ -559,6 +560,14 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
         coordinatesApproximate: coordinatesAreApproximate(result.precision),
       })
     : null;
+  // Providers (OpenCage/Nominatim) return structured country info even when
+  // local inference can't parse the raw text — e.g. "Burnham Yacht Harbour"
+  // has no country token but OpenCage responds with country="United Kingdom".
+  // Fall back to that provider country so location_country isn't left null.
+  const providerCountryName = result.countryCode
+    ? getCountryCentroid(result.countryCode)?.name || null
+    : null;
+  const resolvedCountry = signals?.country || providerCountryName || null;
 
   await query(
     `UPDATE boats
@@ -586,7 +595,7 @@ async function applyResult(boat: BoatGeocodeCandidate, queryText: string, result
       hasMappableCoordinates,
       result.latitude,
       result.longitude,
-      signals?.country || null,
+      resolvedCountry,
       signals?.region || null,
       signals?.marketSlugs || null,
       signals?.confidence || null,

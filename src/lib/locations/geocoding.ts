@@ -36,6 +36,10 @@ export type GeocodeResult = {
   provider: GeocodingProvider;
   payload?: unknown;
   error?: string | null;
+  // ISO 3166-1 alpha-2 country code extracted from the provider response. Used
+  // by apply code to backfill location_country when our local inference
+  // couldn't recover it from the raw input.
+  countryCode?: string | null;
 };
 
 export type GeocodingConfig = {
@@ -981,6 +985,7 @@ export function deriveCountryGeocodeResult(input: GeocodeCandidateInput): Geocod
     provider: "derived",
     payload: null,
     error: null,
+    countryCode,
   };
 }
 
@@ -1387,6 +1392,7 @@ export async function geocodeWithNominatim(
       provider: "nominatim",
       payload: result,
       error: needsReview ? "low_precision" : null,
+      countryCode: getPayloadCountryCode(result),
     });
   } catch (err) {
     return {
@@ -1534,6 +1540,7 @@ export async function geocodeWithOpenCage(
       provider: "opencage",
       payload: result,
       error: lowPrecision ? "low_precision" : lowConfidence ? "low_confidence" : null,
+      countryCode: getPayloadCountryCode(result),
     });
   } catch (err) {
     return {
