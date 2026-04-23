@@ -316,6 +316,12 @@ export default async function BoatDetailPage({
     .map((mediaItem) => toAbsoluteUrl(mediaItem.url, appUrl))
     .filter((url): url is string => Boolean(url));
   const safeSourceUrl = getSafeExternalUrl(boat.source_url);
+  // Prefer a stable hub URL ("Lagoon boats for sale", "Florida boats") over
+  // the legacy query form `/boats?q=Lagoon&location=...` — query URLs
+  // canonical back to /boats, so the detail page's "see more like this" link
+  // otherwise leaks SEO authority into a dead end. The relatedHubLinks list
+  // already ranks make hubs first, then category, then location — pick the
+  // first one and fall back to the query URL only when no hub matched.
   const similarBrowseParams = new URLSearchParams();
   similarBrowseParams.set("q", boat.make);
   if (boat.location_text) {
@@ -323,7 +329,8 @@ export default async function BoatDetailPage({
   }
   similarBrowseParams.set("sort", "newest");
   similarBrowseParams.set("dir", "desc");
-  const similarBrowseUrl = `/boats?${similarBrowseParams.toString()}`;
+  const similarBrowseUrl =
+    relatedHubLinks[0]?.href ?? `/boats?${similarBrowseParams.toString()}`;
   const listingSchema = {
     "@context": "https://schema.org",
     "@type": "Product",
