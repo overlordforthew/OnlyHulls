@@ -2,33 +2,87 @@ import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
-import { CATEGORY_HUBS, LOCATION_HUBS, MAKE_HUBS } from "@/lib/seo/hubs";
+import { CATEGORY_HUBS, LOCATION_HUBS, MAKE_HUBS, type SeoHubDefinition } from "@/lib/seo/hubs";
 
-export const dynamic = "force-dynamic";
+// Cache one sitemap per hour — catalog updates flow through on the next
+// refresh without re-running the boat scan on every crawler hit.
+export const revalidate = 3600;
+
+// Build timestamp is frozen at module load, so static pages don't churn a
+// fresh lastmod on every request. Crawlers use lastmod stability as a
+// freshness signal; rotating it every request trains them to ignore it.
+const BUILD_TIMESTAMP = new Date();
+
+type HubLastModRow = { href: string; last_updated: string | null; boat_count: number };
+
+async function fetchHubLastMods(hubs: SeoHubDefinition[]): Promise<Map<string, HubLastModRow>> {
+  const lastMods = new Map<string, HubLastModRow>();
+  for (const hub of hubs) {
+    try {
+      const result = await query<{ last_updated: string | null; boat_count: string }>(
+        `SELECT MAX(b.updated_at) AS last_updated, COUNT(*)::text AS boat_count
+           FROM boats b
+           LEFT JOIN boat_dna d ON d.boat_id = b.id
+          WHERE b.status = 'active'
+            AND ${buildVisibleImportQualitySql("b")}
+            AND (${hub.queryWhere})`,
+        hub.queryParams || []
+      );
+      const row = result[0];
+      lastMods.set(hub.href, {
+        href: hub.href,
+        last_updated: row?.last_updated ?? null,
+        boat_count: Number(row?.boat_count ?? 0),
+      });
+    } catch {
+      lastMods.set(hub.href, { href: hub.href, last_updated: null, boat_count: 0 });
+    }
+  }
+  return lastMods;
+}
+
+function hubPriority(boatCount: number) {
+  if (boatCount >= 100) return 0.9;
+  if (boatCount >= 20) return 0.75;
+  return 0.6;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getPublicAppUrl();
-  const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: appUrl, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${appUrl}/boats`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: `${appUrl}/match`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${appUrl}/sell`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${appUrl}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${appUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${appUrl}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: appUrl, lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 1 },
+    { url: `${appUrl}/boats`, lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 0.9 },
+    { url: `${appUrl}/match`, lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${appUrl}/sell`, lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${appUrl}/about`, lastModified: BUILD_TIMESTAMP, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${appUrl}/privacy`, lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${appUrl}/terms`, lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 },
   ];
-  const hubPages: MetadataRoute.Sitemap = [
+
+  const allHubs = [
     ...Object.values(CATEGORY_HUBS),
     ...Object.values(MAKE_HUBS),
     ...Object.values(LOCATION_HUBS),
-  ].map((hub) => ({
-    url: `${appUrl}${hub.href}`,
-    lastModified: now,
-    changeFrequency: "daily" as const,
-    priority: 0.75,
-  }));
+  ];
+  const lastMods = await fetchHubLastMods(allHubs);
+  const hubPages: MetadataRoute.Sitemap = allHubs
+    // Thin-content guard — don't publish hubs with fewer than 3 live boats.
+    // They still stay reachable via internal links; they just don't get
+    // broadcast to crawlers until inventory catches up.
+    .filter((hub) => {
+      const row = lastMods.get(hub.href);
+      return (row?.boat_count ?? 0) >= 3;
+    })
+    .map((hub) => {
+      const row = lastMods.get(hub.href);
+      return {
+        url: `${appUrl}${hub.href}`,
+        lastModified: row?.last_updated ? new Date(row.last_updated) : BUILD_TIMESTAMP,
+        changeFrequency: "daily" as const,
+        priority: hubPriority(row?.boat_count ?? 0),
+      };
+    });
 
   try {
     const boats = await query<{ slug: string; updated_at: string }>(

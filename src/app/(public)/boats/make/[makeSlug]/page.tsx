@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { localizeSeoHubDefinition } from "@/i18n/copy/seo";
 import { buildSeoHubMetadata, getMakeHub, getSeoHubData, MAKE_HUBS, requireSeoHub } from "@/lib/seo/hubs";
+import { getSeoHubBoatCount } from "@/lib/db/queries";
 import SeoHubPage from "@/components/seo/SeoHubPage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   return Object.keys(MAKE_HUBS).map((makeSlug) => ({ makeSlug }));
@@ -18,7 +19,8 @@ export async function generateMetadata({
   const { makeSlug } = await params;
   const hub = requireSeoHub(getMakeHub(makeSlug));
   const locale = await getLocale();
-  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub));
+  const inventoryCount = await getSeoHubBoatCount(hub.queryWhere, hub.queryParams || []);
+  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount });
 }
 
 export default async function MakeHubPage({

@@ -273,9 +273,20 @@ export async function getSeoHubData(hub: SeoHubDefinition) {
   return { boats, total };
 }
 
-export function buildSeoHubMetadata(hub: SeoHubDefinition): Metadata {
+// Hubs with fewer than this many active boats get robots noindex so Google
+// doesn't flag them as thin content. They stay reachable via internal links
+// until inventory recovers.
+const HUB_MIN_INDEXABLE_INVENTORY = 3;
+
+export function buildSeoHubMetadata(
+  hub: SeoHubDefinition,
+  options: { inventoryCount?: number } = {}
+): Metadata {
   const appUrl = getPublicAppUrl();
   const canonical = `${appUrl}${hub.href}`;
+  const inventoryCount = options.inventoryCount;
+  const thinContent =
+    typeof inventoryCount === "number" && inventoryCount < HUB_MIN_INDEXABLE_INVENTORY;
 
   return {
     title: hub.title,
@@ -284,6 +295,10 @@ export function buildSeoHubMetadata(hub: SeoHubDefinition): Metadata {
     alternates: {
       canonical,
     },
+    // When inventory is thin we let crawlers follow internal links but keep
+    // the page out of the index — otherwise repeated low-content hubs drag
+    // sitewide quality signals.
+    robots: thinContent ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       type: "website",
       url: canonical,

@@ -3,14 +3,19 @@ import { getLocale } from "next-intl/server";
 import SeoHubPage from "@/components/seo/SeoHubPage";
 import { localizeSeoHubDefinition } from "@/i18n/copy/seo";
 import { buildSeoHubMetadata, getCategoryHub, getSeoHubData, requireSeoHub } from "@/lib/seo/hubs";
+import { getSeoHubBoatCount } from "@/lib/db/queries";
 
 const hub = requireSeoHub(getCategoryHub("sailboats-for-sale"));
 
-export const dynamic = "force-dynamic";
+// Keep hub HTML cached for 5 minutes — crawler hits and repeat visits stop
+// hammering the DB, and inventory staleness at 300s is acceptable for a
+// marketplace whose expiry cadence is measured in days.
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub));
+  const inventoryCount = await getSeoHubBoatCount(hub.queryWhere, hub.queryParams || []);
+  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount });
 }
 
 export default async function SailboatsForSalePage() {
