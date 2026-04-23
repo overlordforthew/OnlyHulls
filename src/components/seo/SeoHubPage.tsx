@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
+import BoatBrowse from "@/components/BoatBrowse";
 import BoatCard from "@/components/BoatCard";
 import {
   getSeoHubPageCopy,
@@ -31,6 +32,7 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
   const breadcrumbSchema = buildHubBreadcrumbSchema(localizedHub);
   const lowInventory = boats.length > 0 && boats.length < 6;
   const showBrowseOverflow = Boolean(localizedHub.browseHref) && total > boats.length;
+  const browseScope = localizedHub.browseScope;
 
   return (
     <div className="pb-16">
@@ -69,94 +71,100 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 pt-10">
-        {boats.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-surface p-8 text-center">
-            <h2 className="text-xl font-semibold">{copy.noBoatsTitle}</h2>
-            <p className="mt-2 text-text-secondary">
-              {copy.noBoatsDescription}
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/boats"
-                className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
-              >
-                {copy.browseAllBoats}
-              </Link>
-              <Link
-                href="/match"
-                className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                {copy.getAiMatched}
-              </Link>
-            </div>
-            <div className="mt-8 grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
-              {localizedRelatedLinks.slice(0, 3).map((link) => (
+      {browseScope ? (
+        <BoatBrowse
+          initialFilters={browseScope.filters}
+          initialLocation={browseScope.location}
+          initialSearch={browseScope.search}
+        />
+      ) : (
+        <section className="mx-auto max-w-7xl px-5 pt-10">
+          {boats.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-surface p-8 text-center">
+              <h2 className="text-xl font-semibold">{copy.noBoatsTitle}</h2>
+              <p className="mt-2 text-text-secondary">{copy.noBoatsDescription}</p>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-xl border border-border bg-background/40 px-4 py-4 transition-all hover:border-primary/30"
+                  href="/boats"
+                  className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
                 >
-                  <p className="font-medium text-foreground">{link.label}</p>
-                  <p className="mt-1 text-sm text-text-secondary">{link.description}</p>
+                  {copy.browseAllBoats}
                 </Link>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {boats.map((boat) => (
-                <BoatCard key={boat.id} boat={boat} />
-              ))}
-            </div>
-
-            {showBrowseOverflow && localizedHub.browseHref && (
-              <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-7 text-text-secondary">
-                  {copy.showingHubSubset(boats.length, total)}
-                </p>
                 <Link
-                  href={localizedHub.browseHref}
-                  className="inline-flex rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                  href="/match"
+                  className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
                 >
-                  {copy.seeAllListings(total)}
+                  {copy.getAiMatched}
                 </Link>
               </div>
-            )}
-
-            {lowInventory && (
-              <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
-                <h2 className="text-xl font-semibold">{copy.broaderSearchHeading}</h2>
-                <p className="mt-3 text-sm leading-7 text-text-secondary">
-                  {copy.broaderSearchDescription}
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-8 grid gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
+                {localizedRelatedLinks.slice(0, 3).map((link) => (
                   <Link
-                    href="/boats"
-                    className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-xl border border-border bg-background/40 px-4 py-4 transition-all hover:border-primary/30"
                   >
-                    {copy.browseAllBoats}
+                    <p className="font-medium text-foreground">{link.label}</p>
+                    <p className="mt-1 text-sm text-text-secondary">{link.description}</p>
                   </Link>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {boats.map((boat) => (
+                  <BoatCard key={boat.id} boat={boat} />
+                ))}
+              </div>
+
+              {showBrowseOverflow && localizedHub.browseHref && (
+                <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm leading-7 text-text-secondary">
+                    {copy.showingHubSubset(boats.length, total)}
+                  </p>
                   <Link
-                    href="/match"
-                    className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                    href={localizedHub.browseHref}
+                    className="inline-flex rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
                   >
-                    {copy.getAiMatched}
+                    {copy.seeAllListings(total)}
                   </Link>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
-              <h2 className="text-xl font-semibold">{copy.whyPageMattersHeading}</h2>
-              <p className="mt-3 text-sm leading-7 text-text-secondary">
-                {copy.whyPageMattersDescription}
-              </p>
-            </div>
-          </>
-        )}
-      </section>
+              {lowInventory && (
+                <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
+                  <h2 className="text-xl font-semibold">{copy.broaderSearchHeading}</h2>
+                  <p className="mt-3 text-sm leading-7 text-text-secondary">
+                    {copy.broaderSearchDescription}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link
+                      href="/boats"
+                      className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+                    >
+                      {copy.browseAllBoats}
+                    </Link>
+                    <Link
+                      href="/match"
+                      className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+                    >
+                      {copy.getAiMatched}
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
+                <h2 className="text-xl font-semibold">{copy.whyPageMattersHeading}</h2>
+                <p className="mt-3 text-sm leading-7 text-text-secondary">
+                  {copy.whyPageMattersDescription}
+                </p>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       <section className="mx-auto mt-14 max-w-7xl px-5">
         <div className="rounded-2xl border border-border bg-surface/30 p-6">

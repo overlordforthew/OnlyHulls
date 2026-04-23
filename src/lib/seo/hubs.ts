@@ -9,6 +9,23 @@ import {
 } from "@/lib/locations/top-markets";
 import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 
+export interface SeoHubBrowseScope {
+  // Passed to BoatBrowse as initialFilters — URL params still win, so users
+  // can refine further inside the hub page.
+  filters?: {
+    hullType?: string;
+    rigType?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    minYear?: string;
+    maxYear?: string;
+  };
+  // Location slug consumed by BoatBrowse's location filter.
+  location?: string;
+  // Initial search query — used by make hubs to scope to a specific brand.
+  search?: string;
+}
+
 export interface SeoHubDefinition {
   slug: string;
   href: string;
@@ -22,6 +39,9 @@ export interface SeoHubDefinition {
   queryParams?: unknown[];
   countLabel: string;
   relatedLinks: SeoHubLink[];
+  // When set, the hub page embeds the interactive BoatBrowse below its hero
+  // and seeds its filter/location state from this scope.
+  browseScope?: SeoHubBrowseScope;
 }
 
 const CATAMARAN_MAKES = [
@@ -87,6 +107,7 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: CATAMARAN_MAKES,
     countLabel: "live catamaran listings",
     relatedLinks: buildSeoHubLinks("/catamarans-for-sale"),
+    browseScope: { filters: { hullType: "catamaran" } },
   },
   "sailboats-for-sale": {
     slug: "sailboats-for-sale",
@@ -105,6 +126,7 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: CATAMARAN_MAKES,
     countLabel: "live sailboat listings",
     relatedLinks: buildSeoHubLinks("/sailboats-for-sale"),
+    browseScope: { filters: { hullType: "monohull" } },
   },
 };
 
@@ -123,6 +145,7 @@ export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: ["lagoon"],
     countLabel: "live Lagoon listings",
     relatedLinks: buildSeoHubLinks("/boats/make/lagoon"),
+    browseScope: { search: "Lagoon" },
   },
   leopard: {
     slug: "leopard",
@@ -138,6 +161,7 @@ export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: ["leopard"],
     countLabel: "live Leopard listings",
     relatedLinks: buildSeoHubLinks("/boats/make/leopard"),
+    browseScope: { search: "Leopard" },
   },
   bali: {
     slug: "bali",
@@ -153,6 +177,7 @@ export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: ["bali"],
     countLabel: "live Bali listings",
     relatedLinks: buildSeoHubLinks("/boats/make/bali"),
+    browseScope: { search: "Bali" },
   },
   catana: {
     slug: "catana",
@@ -168,6 +193,7 @@ export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
     queryParams: ["catana"],
     countLabel: "live Catana listings",
     relatedLinks: buildSeoHubLinks("/boats/make/catana"),
+    browseScope: { search: "Catana" },
   },
 };
 
@@ -186,6 +212,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     ...buildLocationMarketQuery("florida"),
     countLabel: "live Florida listings",
     relatedLinks: buildSeoHubLinks("/boats/location/florida"),
+    browseScope: { location: "florida" },
   },
   caribbean: {
     slug: "caribbean",
@@ -201,6 +228,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     ...buildLocationMarketQuery("caribbean"),
     countLabel: "live Caribbean listings",
     relatedLinks: buildSeoHubLinks("/boats/location/caribbean"),
+    browseScope: { location: "caribbean" },
   },
   "puerto-rico": {
     slug: "puerto-rico",
@@ -216,6 +244,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     ...buildLocationMarketQuery("puerto-rico"),
     countLabel: "live Puerto Rico listings",
     relatedLinks: buildSeoHubLinks("/boats/location/puerto-rico"),
+    browseScope: { location: "puerto-rico" },
   },
   bahamas: {
     slug: "bahamas",
@@ -231,6 +260,7 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
     ...buildLocationMarketQuery("bahamas"),
     countLabel: "live Bahamas listings",
     relatedLinks: buildSeoHubLinks("/boats/location/bahamas"),
+    browseScope: { location: "bahamas" },
   },
 };
 
