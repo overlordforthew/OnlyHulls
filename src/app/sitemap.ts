@@ -4,9 +4,12 @@ import { getPublicAppUrl } from "@/lib/config/urls";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import { CATEGORY_HUBS, LOCATION_HUBS, MAKE_HUBS, type SeoHubDefinition } from "@/lib/seo/hubs";
 
-// Cache one sitemap per hour — catalog updates flow through on the next
-// refresh without re-running the boat scan on every crawler hit.
-export const revalidate = 3600;
+// The sitemap needs DB access to compute hub lastmods and emit boat URLs;
+// Coolify's build container can't reach Postgres, so Next.js SSG of this
+// route at build time silently produces an empty sitemap and caches it.
+// Staying dynamic keeps generation at request time where the DB is live.
+// Crawlers hit this URL infrequently, so per-request cost is fine.
+export const dynamic = "force-dynamic";
 
 // Build timestamp is frozen at module load, so static pages don't churn a
 // fresh lastmod on every request. Crawlers use lastmod stability as a
