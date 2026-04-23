@@ -162,6 +162,10 @@ export default function BoatsMapView({
   const locationFilterRef = useRef(locationFilter);
   const hasSearchScopeRef = useRef(hasSearchScope);
   const onMapUnavailableRef = useRef(onMapUnavailable);
+  // Flipped to true the first time we auto-fit the map around the initial
+  // marker set for a filter-only search. Stops the fit from firing again on
+  // subsequent refetches, user pans, or filter tweaks.
+  const autoFitDoneRef = useRef(false);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -611,6 +615,42 @@ export default function BoatsMapView({
   useEffect(() => {
     onMapUnavailableRef.current = onMapUnavailable;
   }, [onMapUnavailable]);
+
+  // After the first marker batch returns for a filter-only search (e.g.
+  // /catamarans-for-sale with no location), zoom the map to fit those
+  // markers. Without this the map keeps the Caribbean default viewport even
+  // when the actual catamarans are spread across Florida, the Med, Bali etc.
+  // — user has to pan to find them. Only fires once per mount, and only
+  // when the user didn't bring their own URL viewport or a location filter
+  // (those cases already have a correct viewport).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (autoFitDoneRef.current) return;
+    if (markers.length < 2) return;
+    if (urlViewportRef.current) return;
+    if (!hasSearchScopeRef.current) return;
+    if (locationFilterRef.current?.trim()) return;
+
+    const lngs = markers.map((m) => m.lng);
+    const lats = markers.map((m) => m.lat);
+    const west = Math.min(...lngs);
+    const east = Math.max(...lngs);
+    const south = Math.min(...lats);
+    const north = Math.max(...lats);
+    if (west === east || south === north) return;
+
+    autoFitDoneRef.current = true;
+    beginProgrammaticMove(map);
+    map.once("moveend", () => scheduleFetch(0));
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, maxZoom: 10, duration: 500 }
+    );
+  }, [markers, mapReady, beginProgrammaticMove, scheduleFetch]);
 
   useEffect(() => {
     selectedSlugRef.current = selectedSlug;
