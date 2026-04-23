@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -73,7 +73,7 @@ const BoatsMapView = dynamic(() => import("@/components/BoatsMapView"), {
   ),
 });
 
-interface Boat {
+export interface Boat {
   id: string;
   make: string;
   model: string;
@@ -157,6 +157,11 @@ export interface BoatBrowseProps {
   heading?: string;
   description?: string;
   eyebrow?: string;
+  // Server-rendered inventory for the first paint. SEO hubs pass this so the
+  // initial HTML contains real boat cards (not an empty shimmer) for
+  // crawlers. Client-side fetches can still override as the user filters.
+  initialBoats?: Boat[];
+  initialTotal?: number;
 }
 
 function formatBoatType(value?: string | null) {
@@ -217,6 +222,8 @@ function BoatBrowseInner({
   heading: headingOverride,
   description,
   eyebrow,
+  initialBoats: seedBoats,
+  initialTotal: seedTotal,
 }: BoatBrowseProps) {
   const t = useTranslations("boatsPage");
   const router = useRouter();
@@ -240,8 +247,12 @@ function BoatBrowseInner({
   const initialViewMode =
     PUBLIC_MAP_CLIENT_CONFIG.enabled && wantsMapView(searchParams) ? "map" : "grid";
 
-  const [boats, setBoats] = useState<Boat[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed from server when the hub page pre-fetches — lets crawlers (and the
+  // first client paint) see real boat cards instead of a shimmer.
+  const hasSeedInventory = Array.isArray(seedBoats) && seedBoats.length > 0;
+  const [boats, setBoats] = useState<Boat[]>(seedBoats ?? []);
+  const [loading, setLoading] = useState(!hasSeedInventory);
+  const skipInitialFetchRef = useRef(hasSeedInventory);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(initialQ);
@@ -249,7 +260,7 @@ function BoatBrowseInner({
   const [search, setSearch] = useState(initialQ);
   const [locationFilter, setLocationFilter] = useState(initialLocation);
   const [activeTag, setActiveTag] = useState(initialTag);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(seedTotal ?? 0);
   const [page, setPage] = useState(1);
   // Map users expect filters to be visible next to the inventory, so the panel
   // opens by default when the map view is active. In grid/rows the panel stays
@@ -401,8 +412,15 @@ function BoatBrowseInner({
     router.push("/boats");
   }
 
-  // Refetch when sort changes
+  // Refetch when sort changes. On SSR hubs we seeded `boats` with the
+  // server inventory that already matches the initial filters, so the first
+  // mount should not re-fetch (avoid a shimmer blink) — let subsequent
+  // changes flow through normally.
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
     fetchBoats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortField, sortDir, displayCurrency]);

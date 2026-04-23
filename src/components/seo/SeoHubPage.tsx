@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
-import BoatBrowse from "@/components/BoatBrowse";
+import BoatBrowse, { type Boat as BoatBrowseBoat } from "@/components/BoatBrowse";
 import BoatCard from "@/components/BoatCard";
 import {
   getSeoHubPageCopy,
@@ -47,6 +47,11 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
           heading={localizedHub.heading}
           description={localizedHub.intro}
           eyebrow={localizedHub.eyebrow}
+          // Server-rendered inventory so the initial HTML carries real boat
+          // cards for crawlers — without this, /catamarans-for-sale paints
+          // with an empty shimmer until the client hydrates.
+          initialBoats={boats as unknown as BoatBrowseBoat[]}
+          initialTotal={total}
         />
       ) : (
         <>
