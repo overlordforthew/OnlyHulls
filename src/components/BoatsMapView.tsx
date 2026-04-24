@@ -1018,7 +1018,9 @@ export default function BoatsMapView({
                           // eslint-disable-next-line @next/next/no-img-element -- map thumbnails use sanitized, arbitrary broker/CDN URLs.
                           <img
                             src={marker.heroUrl}
-                            alt={marker.title}
+                            alt={[marker.title, marker.locationText || null]
+                              .filter(Boolean)
+                              .join(" in ")}
                             loading="lazy"
                             decoding="async"
                             data-testid="boats-map-listing-image"

@@ -78,7 +78,15 @@ export default function BoatCard({
           {boat.hero_url ? (
             <Image
               src={boat.hero_url}
-              alt={`${boat.year} ${boat.make} ${boat.model}`}
+              alt={[
+                boat.year,
+                boat.make,
+                boat.model,
+                boat.location_text ? `for sale in ${boat.location_text}` : null,
+                boat.specs.loa ? `${Math.round(boat.specs.loa)} ft` : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, 33vw"
