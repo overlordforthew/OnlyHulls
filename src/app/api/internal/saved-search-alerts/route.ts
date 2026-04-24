@@ -27,8 +27,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
+  // Canonical empty-result body shape. All success/failure paths return
+  // the same field set so monitors can parse without branching.
+  const emptyBody = {
+    emailsSent: 0,
+    searchesMarked: 0,
+    newBoats: 0,
+    sendFailures: 0,
+    markFailures: 0,
+  };
+
   if (!emailEnabled()) {
-    return NextResponse.json({ skipped: "email-not-configured" });
+    return NextResponse.json({ ...emptyBody, skipped: "email-not-configured" });
   }
 
   const url = new URL(req.url);
@@ -37,7 +47,7 @@ export async function POST(req: Request) {
 
   const candidates = await listSavedSearchAlertCandidates(limitPerSearch);
   if (candidates.length === 0) {
-    return NextResponse.json({ emailsSent: 0, searchesMarked: 0, newBoats: 0 });
+    return NextResponse.json(emptyBody);
   }
 
   const grouped = new Map<string, { email: string; displayName: string | null; alerts: SavedSearchAlertCandidate[] }>();
@@ -96,13 +106,12 @@ export async function POST(req: Request) {
     { emailsSent, searchesMarked, newBoats, sendFailures: errors.length, markFailures },
     "saved-search-alerts run"
   );
-  // Return 5xx when the host cron should flip red. Two distinct failure
-  // modes both deserve that:
+  // Return 5xx when the host cron should flip red. Three failure modes:
   //   1. All sends failed (no emails landed).
-  //   2. Emails sent but NO watermarks advanced — next run will re-send
-  //      the same alerts, which is the exact duplicate-email bug we're
-  //      guarding against. Partial mark failure still 200 (monitoring
-  //      via markFailures in the body / logs).
+  //   2. Any mark failed — even one — because an unadvanced watermark
+  //      means that user will get a duplicate alert on the next run.
+  //      Partial-send success isn't enough to pass monitoring; the
+  //      operator needs to intervene before cron fires again.
   const body = {
     emailsSent,
     searchesMarked,
@@ -111,7 +120,7 @@ export async function POST(req: Request) {
     markFailures,
   };
   const allSendsFailed = grouped.size > 0 && emailsSent === 0 && errors.length > 0;
-  const allMarksFailed = emailsSent > 0 && searchesMarked === 0;
-  const shouldFail = allSendsFailed || allMarksFailed;
+  const anyMarkFailed = markFailures > 0;
+  const shouldFail = allSendsFailed || anyMarkFailed;
   return NextResponse.json(body, { status: shouldFail ? 500 : 200 });
 }

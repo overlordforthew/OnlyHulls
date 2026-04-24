@@ -195,12 +195,12 @@ EXPIRE_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/expire-stale.ts" 2>&1
 log "  $EXPIRE_RESULT"
 
 # --- Saved search email alerts ---
-log "Sending saved search alerts..."
-if ALERT_RESULT=$(cd "$PROJECT_DIR" && npx tsx "$SCRIPTS_DIR/send-saved-search-alerts.ts" 2>&1 | tail -1); then
-    log "  $ALERT_RESULT"
-else
-    log "  FAILED: saved search alerts"
-fi
+# Saved-search alerts moved out of this script — they now run via the
+# dedicated /etc/cron.d/onlyhulls-saved-search-alerts host cron which
+# hits POST /api/internal/saved-search-alerts daily at 08:00. That path
+# has mark-failure monitoring and returns non-2xx on failure; running
+# the legacy send-saved-search-alerts.ts script in parallel would just
+# race the endpoint and hide monitoring signal.
 
 # --- Summary ---
 TOTAL_BOATS=$(docker exec onlyhulls-db psql -U onlyhulls -d onlyhulls -t -c "SELECT count(*) FROM boats WHERE status='active'" 2>/dev/null | tr -d ' ')
