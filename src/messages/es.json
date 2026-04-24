@@ -86,6 +86,7 @@
     "imageAltWithLocation": "{year} {make} {model} en venta en {location}",
     "imageAltWithLength": "{year} {make} {model} {length}",
     "imageAltBasic": "{year} {make} {model}",
+    "lengthUnit": "pies",
     "matchPercent": "{score}% Match",
     "locationRefining": "Ubicación en revisión",
     "locationApproximate": "Zona",

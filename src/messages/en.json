@@ -86,6 +86,7 @@
     "imageAltWithLocation": "{year} {make} {model} for sale in {location}",
     "imageAltWithLength": "{year} {make} {model} {length}",
     "imageAltBasic": "{year} {make} {model}",
+    "lengthUnit": "ft",
     "matchPercent": "{score}% Match",
     "locationRefining": "Location being refined",
     "locationApproximate": "Area",

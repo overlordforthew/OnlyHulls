@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 import { getPublicMapClientConfig } from "@/lib/config/public-map";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
+import { formatBoatLengthWithUnit } from "@/lib/boats/format";
 import {
   createBoatMapClusterIndex,
   getBoatMapClusterBounds,
@@ -84,10 +85,10 @@ function getMarkerClassName(marker: PublicMapMarker, selected: boolean) {
     .join(" ");
 }
 
-function formatLoa(loa: number | null) {
-  if (loa === null) return null;
-  const rounded = Number.isInteger(loa) ? String(loa) : loa.toFixed(1).replace(/\.0$/, "");
-  return `${rounded} ft`;
+// Backed by the shared formatter so alt text, visible specs, and map UI all
+// announce the same length string.
+function formatLoa(loa: number | null, unitLabel: string) {
+  return formatBoatLengthWithUnit(loa, unitLabel);
 }
 
 function getMapMarkerPrice(marker: PublicMapMarker, displayCurrency?: SupportedCurrency) {
@@ -248,7 +249,10 @@ export default function BoatsMapView({
     if (marker.heroUrl) {
       const image = document.createElement("img");
       image.src = marker.heroUrl;
-      image.alt = marker.title;
+      // The popup's title / location / LOA are rendered as text below the
+      // photo, so the image is decorative for assistive tech. Leaving alt
+      // as the title duplicates the announcement.
+      image.alt = "";
       image.loading = "lazy";
       image.decoding = "async";
       image.className = "mb-3 h-32 w-full rounded-md object-cover";
@@ -288,7 +292,7 @@ export default function BoatsMapView({
       wrapper.appendChild(location);
     }
 
-    const loa = formatLoa(marker.loa);
+    const loa = formatLoa(marker.loa, t("lengthUnit"));
     if (loa) {
       const specs = document.createElement("p");
       specs.className = "mt-2 text-[11px] font-semibold uppercase text-slate-500";
@@ -988,7 +992,7 @@ export default function BoatsMapView({
               {markers.map((marker) => {
                 const selected = marker.slug === selectedSlug;
                 const displayedPrice = getMapMarkerPrice(marker, displayCurrency);
-                const loa = formatLoa(marker.loa);
+                const loa = formatLoa(marker.loa, t("lengthUnit"));
                 return (
                   <div
                     key={marker.slug}

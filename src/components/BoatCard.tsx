@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ExternalLink, GitCompareArrows, Heart, MapPin, MessageCircle, X } from "lucide-react";
 import { getDisplayedPrice, type SupportedCurrency } from "@/lib/currency";
+import { formatBoatLengthNumber, formatBoatLengthWithUnit } from "@/lib/boats/format";
 import { isLocalMediaUrl } from "@/lib/media";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 
@@ -79,10 +80,7 @@ export default function BoatCard({
             <Image
               src={boat.hero_url}
               alt={(() => {
-                const loa = boat.specs.loa;
-                const length = loa
-                  ? `${Number.isInteger(loa) ? String(loa) : loa.toFixed(1).replace(/\.0$/, "")} ft`
-                  : null;
+                const length = formatBoatLengthWithUnit(boat.specs.loa, t("lengthUnit"));
                 const hasLocation = Boolean(boat.location_text);
                 const hasLength = Boolean(length);
                 const vars = {
@@ -165,7 +163,7 @@ export default function BoatCard({
         ) : null}
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-          {boat.specs.loa && <span>{boat.specs.loa}ft</span>}
+          {boat.specs.loa && <span>{formatBoatLengthNumber(boat.specs.loa)}{t("lengthUnit")}</span>}
           {vesselType && (
             <>
               <span className="text-text-tertiary">/</span>
