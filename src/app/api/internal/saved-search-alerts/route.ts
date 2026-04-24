@@ -58,6 +58,7 @@ export async function POST(req: Request) {
   let searchesMarked = 0;
   const errors: string[] = [];
 
+  let markFailures = 0;
   for (const group of grouped.values()) {
     try {
       await sendSavedSearchAlertEmail({
@@ -67,8 +68,21 @@ export async function POST(req: Request) {
       });
       emailsSent += 1;
       for (const alert of group.alerts) {
-        const marked = await markSavedSearchAlertSent(alert.savedSearchId, alert.lastCheckedAt);
-        if (marked) searchesMarked += 1;
+        try {
+          const marked = await markSavedSearchAlertSent(alert.savedSearchId, alert.lastCheckedAt);
+          if (marked) {
+            searchesMarked += 1;
+          } else {
+            markFailures += 1;
+            logger.warn(
+              { savedSearchId: alert.savedSearchId, userId: alert.userId },
+              "saved-search-alert mark returned false — watermark not advanced, next run will re-send"
+            );
+          }
+        } catch (err) {
+          markFailures += 1;
+          logger.error({ err, savedSearchId: alert.savedSearchId }, "saved-search-alert mark threw");
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -78,18 +92,26 @@ export async function POST(req: Request) {
   }
 
   const newBoats = candidates.reduce((sum, c) => sum + c.newResults, 0);
-  logger.info({ emailsSent, searchesMarked, newBoats, errorCount: errors.length }, "saved-search-alerts run");
-  // When every attempted send failed, return 5xx so the host cron's
-  // `curl --fail` flips the job to error state. Partial failures still
-  // return 200 — some emails landed and we don't want to retry the whole
-  // batch — but the payload surfaces the counts and sanitized failure
-  // count so alerting can detect them.
+  logger.info(
+    { emailsSent, searchesMarked, newBoats, sendFailures: errors.length, markFailures },
+    "saved-search-alerts run"
+  );
+  // Return 5xx when the host cron should flip red. Two distinct failure
+  // modes both deserve that:
+  //   1. All sends failed (no emails landed).
+  //   2. Emails sent but NO watermarks advanced — next run will re-send
+  //      the same alerts, which is the exact duplicate-email bug we're
+  //      guarding against. Partial mark failure still 200 (monitoring
+  //      via markFailures in the body / logs).
   const body = {
     emailsSent,
     searchesMarked,
     newBoats,
-    failureCount: errors.length,
+    sendFailures: errors.length,
+    markFailures,
   };
-  const allFailed = grouped.size > 0 && emailsSent === 0 && errors.length > 0;
-  return NextResponse.json(body, { status: allFailed ? 500 : 200 });
+  const allSendsFailed = grouped.size > 0 && emailsSent === 0 && errors.length > 0;
+  const allMarksFailed = emailsSent > 0 && searchesMarked === 0;
+  const shouldFail = allSendsFailed || allMarksFailed;
+  return NextResponse.json(body, { status: shouldFail ? 500 : 200 });
 }

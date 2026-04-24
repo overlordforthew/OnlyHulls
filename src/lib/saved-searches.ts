@@ -210,7 +210,7 @@ export async function listSavedSearches(userId: string): Promise<SavedSearchReco
   const rows = await query<SavedSearchRow>(
     `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
             rig_type, hull_type, sort, dir,
-            last_checked_at::text AS last_checked_at, created_at, updated_at
+            to_char(last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1
      ORDER BY created_at DESC`,
@@ -234,7 +234,7 @@ export async function listSavedSearchAlertCandidates(limitPerSearch = 5) {
   const rows = await query<SavedSearchEmailRow>(
     `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.location_query, ss.currency_code, ss.tag, ss.min_price, ss.max_price,
             ss.min_year, ss.max_year, ss.rig_type, ss.hull_type, ss.sort, ss.dir,
-            ss.last_checked_at::text AS last_checked_at, ss.created_at, ss.updated_at,
+            to_char(ss.last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, ss.created_at, ss.updated_at,
             u.email, u.display_name, u.email_alerts
      FROM saved_searches ss
      JOIN users u ON u.id = ss.user_id
@@ -281,7 +281,7 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
   const existing = await queryOne<SavedSearchRow>(
     `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
             rig_type, hull_type, sort, dir,
-            last_checked_at::text AS last_checked_at, created_at, updated_at
+            to_char(last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1 AND signature = $2`,
     [userId, signature]
@@ -307,7 +307,7 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
        WHERE user_id = $1 AND signature = $2
        RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                  rig_type, hull_type, sort, dir,
-            last_checked_at::text AS last_checked_at, created_at, updated_at`,
+            to_char(last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, created_at, updated_at`,
       [
         userId,
         signature,
@@ -343,7 +343,7 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
      )
      RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                rig_type, hull_type, sort, dir,
-            last_checked_at::text AS last_checked_at, created_at, updated_at`,
+            to_char(last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, created_at, updated_at`,
     [
       userId,
       buildSavedSearchName(filters),
@@ -376,7 +376,7 @@ export async function acknowledgeSavedSearch(userId: string, savedSearchId: stri
      WHERE id = $1 AND user_id = $2
      RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
                rig_type, hull_type, sort, dir,
-            last_checked_at::text AS last_checked_at, created_at, updated_at`,
+            to_char(last_checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_checked_at, created_at, updated_at`,
     [savedSearchId, userId]
   );
 
@@ -395,10 +395,14 @@ export async function deleteSavedSearch(userId: string, savedSearchId: string) {
 }
 
 export async function markSavedSearchAlertSent(savedSearchId: string, lastCheckedAt: string) {
+  // Explicit ::timestamptz cast — the incoming string is formatted by
+  // to_char as strict ISO-UTC (e.g. "2026-04-24T17:53:42.625979Z"),
+  // so pg parses it back to microsecond-exact timestamptz and the
+  // equality comparison below matches the stored value.
   const updated = await queryOne<{ id: string }>(
     `UPDATE saved_searches
      SET last_checked_at = NOW(), updated_at = NOW()
-     WHERE id = $1 AND last_checked_at = $2
+     WHERE id = $1 AND last_checked_at = $2::timestamptz
      RETURNING id`,
     [savedSearchId, lastCheckedAt]
   );
