@@ -82,6 +82,10 @@
   },
   "boatCard": {
     "boatFallbackAlt": "Barco",
+    "imageAltWithLocationAndLength": "{year} {make} {model} en venta en {location} {length}",
+    "imageAltWithLocation": "{year} {make} {model} en venta en {location}",
+    "imageAltWithLength": "{year} {make} {model} {length}",
+    "imageAltBasic": "{year} {make} {model}",
     "matchPercent": "{score}% Match",
     "locationRefining": "Ubicación en revisión",
     "locationApproximate": "Zona",

@@ -82,6 +82,10 @@
   },
   "boatCard": {
     "boatFallbackAlt": "Boat",
+    "imageAltWithLocationAndLength": "{year} {make} {model} for sale in {location} {length}",
+    "imageAltWithLocation": "{year} {make} {model} for sale in {location}",
+    "imageAltWithLength": "{year} {make} {model} {length}",
+    "imageAltBasic": "{year} {make} {model}",
     "matchPercent": "{score}% Match",
     "locationRefining": "Location being refined",
     "locationApproximate": "Area",

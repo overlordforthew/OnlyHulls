@@ -78,15 +78,25 @@ export default function BoatCard({
           {boat.hero_url ? (
             <Image
               src={boat.hero_url}
-              alt={[
-                boat.year,
-                boat.make,
-                boat.model,
-                boat.location_text ? `for sale in ${boat.location_text}` : null,
-                boat.specs.loa ? `${Math.round(boat.specs.loa)} ft` : null,
-              ]
-                .filter(Boolean)
-                .join(" ")}
+              alt={(() => {
+                const loa = boat.specs.loa;
+                const length = loa
+                  ? `${Number.isInteger(loa) ? String(loa) : loa.toFixed(1).replace(/\.0$/, "")} ft`
+                  : null;
+                const hasLocation = Boolean(boat.location_text);
+                const hasLength = Boolean(length);
+                const vars = {
+                  year: boat.year,
+                  make: boat.make,
+                  model: boat.model,
+                  location: boat.location_text || "",
+                  length: length || "",
+                };
+                if (hasLocation && hasLength) return t("imageAltWithLocationAndLength", vars);
+                if (hasLocation) return t("imageAltWithLocation", vars);
+                if (hasLength) return t("imageAltWithLength", vars);
+                return t("imageAltBasic", vars);
+              })()}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, 33vw"

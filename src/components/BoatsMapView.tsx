@@ -1018,9 +1018,11 @@ export default function BoatsMapView({
                           // eslint-disable-next-line @next/next/no-img-element -- map thumbnails use sanitized, arbitrary broker/CDN URLs.
                           <img
                             src={marker.heroUrl}
-                            alt={[marker.title, marker.locationText || null]
-                              .filter(Boolean)
-                              .join(" in ")}
+                            // Thumbnail is decorative — the surrounding
+                            // <button> already exposes title, price, location,
+                            // and LOA to assistive tech, and announcing those
+                            // again inside the alt just doubles the output.
+                            alt=""
                             loading="lazy"
                             decoding="async"
                             data-testid="boats-map-listing-image"
