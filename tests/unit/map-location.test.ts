@@ -107,8 +107,8 @@ test("map bounds parser accepts bounded viewports and rejects world-sized reques
 });
 
 test("map marker limit is capped for scraper resistance", () => {
-  assert.equal(parseMapMarkerLimit(new URLSearchParams("limit=9999")), 250);
-  assert.equal(parseMapMarkerLimit(new URLSearchParams("limit=0")), 150);
+  assert.equal(parseMapMarkerLimit(new URLSearchParams("limit=9999")), 1500);
+  assert.equal(parseMapMarkerLimit(new URLSearchParams("limit=0")), 800);
   assert.equal(parseMapMarkerLimit(new URLSearchParams("limit=1")), 1);
 });
 

@@ -621,6 +621,10 @@ export function getRelevantSeoHubLinksForBoat(input: {
   locationText?: string | null;
   characterTags?: string[] | null;
   rigType?: string | null;
+  // Canonical hull field is `specs.vessel_type` (see import-quality.ts
+  // normaliser and boat-search.ts filter). `hullType` is accepted as a
+  // legacy alias and falls back if vesselType is empty.
+  vesselType?: string | null;
   hullType?: string | null;
 }) {
   const links: SeoHubLink[] = [];
@@ -628,7 +632,7 @@ export function getRelevantSeoHubLinksForBoat(input: {
   const makeSlug = String(input.make || "").trim().toLowerCase();
   const tagSet = new Set((input.characterTags || []).map((tag) => tag.toLowerCase()));
   const rigType = String(input.rigType || "").trim().toLowerCase();
-  const hullType = String(input.hullType || "").trim().toLowerCase();
+  const vesselType = String(input.vesselType || input.hullType || "").trim().toLowerCase();
 
   const push = (link: SeoHubLink | undefined) => {
     if (!link || seen.has(link.href)) return;
@@ -638,25 +642,39 @@ export function getRelevantSeoHubLinksForBoat(input: {
 
   // Resolve an explicit hull axis so we never emit a programmatic link on
   // ambiguous input. "not catamaran" is NOT "is sailboat" — a Boston Whaler
-  // in Florida should not point at /sailboats-for-sale-in-florida.
+  // in Florida should not point at /sailboats-for-sale-in-florida. We lean
+  // on vessel_type first because it's the normalised catalog field.
   const hullAxis: ProgrammaticCategory["hullAxis"] | null =
-    tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug) || hullType === "catamaran"
+    tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug) || vesselType === "catamaran"
       ? "catamaran"
-      : hullType === "monohull" || (tagSet.has("monohull") || tagSet.has("sailboat")) || isSailingRig(rigType)
+      : vesselType === "monohull" || (tagSet.has("monohull") || tagSet.has("sailboat")) || isSailingRig(rigType)
         ? "monohull"
         : null;
   const isCatamaran = hullAxis === "catamaran";
 
   // Delegate location resolution to the shared market inference so the
   // boat-detail path picks up every alias already encoded in TOP_LOCATION_MARKETS
-  // (Miami, Fort Lauderdale, Nassau, Fajardo, Tortola, etc.). Fall through
-  // the returned slug cascade to the first slug that maps to a LOCATION_HUB.
+  // (Miami, Fort Lauderdale, Nassau, Fajardo, Tortola, etc.). Catalog order
+  // isn't consistently parent-first — "Nassau" returns [bahamas, caribbean]
+  // but "Miami" returns [united-states, florida] — so we pick the most-specific
+  // LOCATION_HUB by counting how many of a candidate's parentSlugs are also
+  // in the returned cascade (a leaf with its parent in the list wins over
+  // a bare country/region slug).
   const locationSlug = (() => {
     const signals = inferLocationMarketSignals({ locationText: input.locationText ?? null });
+    const signalSet = new Set(signals.marketSlugs);
+    let best: string | null = null;
+    let bestSpecificity = -1;
     for (const slug of signals.marketSlugs) {
-      if (LOCATION_HUBS[slug]) return slug;
+      if (!LOCATION_HUBS[slug]) continue;
+      const market = getTopLocationMarket(slug);
+      const specificity = (market?.parentSlugs || []).filter((p) => signalSet.has(p)).length;
+      if (specificity > bestSpecificity) {
+        best = slug;
+        bestSpecificity = specificity;
+      }
     }
-    return null;
+    return best;
   })();
 
   if (hullAxis && locationSlug) {

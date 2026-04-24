@@ -337,7 +337,7 @@ export default async function BoatDetailPage({
     locationText: boat.location_text,
     characterTags: boat.character_tags,
     rigType: specs.rig_type ? String(specs.rig_type) : null,
-    hullType: specs.hull_type ? String(specs.hull_type) : null,
+    vesselType: specs.vessel_type ? String(specs.vessel_type) : null,
   });
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,
