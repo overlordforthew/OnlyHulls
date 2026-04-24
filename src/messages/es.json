@@ -516,6 +516,8 @@
     "maxPrice": "Precio máx.",
     "minYear": "Año mín.",
     "maxYear": "Año máx.",
+    "minLoa": "Eslora mín. (pies)",
+    "maxLoa": "Eslora máx. (pies)",
     "allBoatTypes": "Todos los tipos",
     "allRigs": "Todos los aparejos",
     "applyFilters": "Aplicar",

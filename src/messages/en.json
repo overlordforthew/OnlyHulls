@@ -516,6 +516,8 @@
     "maxPrice": "Max price",
     "minYear": "Min year",
     "maxYear": "Max year",
+    "minLoa": "Min size (ft)",
+    "maxLoa": "Max size (ft)",
     "allBoatTypes": "All boat types",
     "allRigs": "All rigs",
     "applyFilters": "Apply",

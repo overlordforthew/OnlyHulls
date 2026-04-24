@@ -106,6 +106,8 @@ interface FilterState {
   maxPrice: string;
   minYear: string;
   maxYear: string;
+  minLoa: string;
+  maxLoa: string;
   rigType: string;
   hullType: string;
 }
@@ -115,6 +117,8 @@ const EMPTY_FILTERS: FilterState = {
   maxPrice: "",
   minYear: "",
   maxYear: "",
+  minLoa: "",
+  maxLoa: "",
   rigType: "",
   hullType: "",
 };
@@ -141,6 +145,8 @@ function filtersFromParams(
     maxPrice: searchParams.get("maxPrice") || seed?.maxPrice || "",
     minYear: searchParams.get("minYear") || seed?.minYear || "",
     maxYear: searchParams.get("maxYear") || seed?.maxYear || "",
+    minLoa: searchParams.get("minLoa") || seed?.minLoa || "",
+    maxLoa: searchParams.get("maxLoa") || seed?.maxLoa || "",
     rigType: searchParams.get("rigType") || seed?.rigType || "",
     hullType: searchParams.get("hullType") || seed?.hullType || "",
   };
@@ -623,6 +629,8 @@ function BoatBrowseInner({
     maxPrice: appliedFilters.maxPrice || null,
     minYear: appliedFilters.minYear || null,
     maxYear: appliedFilters.maxYear || null,
+    minLoa: appliedFilters.minLoa || null,
+    maxLoa: appliedFilters.maxLoa || null,
     rigType: appliedFilters.rigType || null,
     hullType: appliedFilters.hullType || null,
     currency: displayCurrency,
@@ -633,8 +641,10 @@ function BoatBrowseInner({
     appliedFilters.hullType,
     appliedFilters.maxPrice,
     appliedFilters.maxYear,
+    appliedFilters.maxLoa,
     appliedFilters.minPrice,
     appliedFilters.minYear,
+    appliedFilters.minLoa,
     appliedFilters.rigType,
     displayCurrency,
     locationFilter,
@@ -972,6 +982,24 @@ function BoatBrowseInner({
                 placeholder={t("maxYear")}
                 value={filters.maxYear}
                 onChange={(e) => setFilters((f) => ({ ...f, maxYear: e.target.value }))}
+                className={`${inputClass} w-28 min-w-[7rem]`}
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("minLoa")}
+                value={filters.minLoa}
+                onChange={(e) => setFilters((f) => ({ ...f, minLoa: e.target.value }))}
+                data-testid="boats-filter-min-loa"
+                className={`${inputClass} w-28 min-w-[7rem]`}
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={t("maxLoa")}
+                value={filters.maxLoa}
+                onChange={(e) => setFilters((f) => ({ ...f, maxLoa: e.target.value }))}
+                data-testid="boats-filter-max-loa"
                 className={`${inputClass} w-28 min-w-[7rem]`}
               />
               <select

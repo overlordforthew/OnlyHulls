@@ -9,15 +9,21 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const copy = getBoatsLayoutCopy(locale);
 
+  const canonical = locale === "en" ? `${appUrl}/boats` : `${appUrl}/es/boats`;
   return {
     title: copy.title,
     description: copy.description,
     alternates: {
-      canonical: `${appUrl}/boats`,
+      canonical,
+      languages: {
+        en: `${appUrl}/boats`,
+        es: `${appUrl}/es/boats`,
+        "x-default": `${appUrl}/boats`,
+      },
     },
     openGraph: {
       type: "website",
-      url: `${appUrl}/boats`,
+      url: canonical,
       title: copy.ogTitle,
       description: copy.ogDescription,
       images: [

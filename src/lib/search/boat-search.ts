@@ -25,6 +25,8 @@ export interface BoatSearchFilters {
   maxPrice: string | null;
   minYear: string | null;
   maxYear: string | null;
+  minLoa: string | null;
+  maxLoa: string | null;
   rigType: string | null;
   hullType: string | null;
   tag: string | null;
@@ -112,6 +114,8 @@ export function normalizeBoatSearchFilters(input: BoatSearchFilterInput): BoatSe
     maxPrice: normalizeNumberString(input.maxPrice),
     minYear: normalizeIntegerString(input.minYear),
     maxYear: normalizeIntegerString(input.maxYear),
+    minLoa: normalizeNumberString(input.minLoa),
+    maxLoa: normalizeNumberString(input.maxLoa),
     rigType: normalizeText(input.rigType),
     hullType: normalizeText(input.hullType),
     tag: normalizeText(input.tag),
@@ -131,6 +135,8 @@ export function filtersFromSearchParams(searchParams: URLSearchParams): BoatSear
     maxPrice: searchParams.get("maxPrice"),
     minYear: searchParams.get("minYear"),
     maxYear: searchParams.get("maxYear"),
+    minLoa: searchParams.get("minLoa"),
+    maxLoa: searchParams.get("maxLoa"),
     rigType: searchParams.get("rigType"),
     hullType: searchParams.get("hullType"),
     tag: searchParams.get("tag"),
@@ -151,6 +157,8 @@ export function buildBoatSearchParams(filters: Partial<BoatSearchFilters>) {
   if (normalized.maxPrice) params.set("maxPrice", normalized.maxPrice);
   if (normalized.minYear) params.set("minYear", normalized.minYear);
   if (normalized.maxYear) params.set("maxYear", normalized.maxYear);
+  if (normalized.minLoa) params.set("minLoa", normalized.minLoa);
+  if (normalized.maxLoa) params.set("maxLoa", normalized.maxLoa);
   if (normalized.rigType) params.set("rigType", normalized.rigType);
   if (normalized.hullType) params.set("hullType", normalized.hullType);
   if (normalized.currency !== "USD") params.set("currency", normalized.currency);
@@ -249,6 +257,14 @@ export function buildWhereClause(filters: BoatSearchFilters) {
   if (filters.maxYear) {
     conditions.push(`b.year <= $${paramIdx++}`);
     params.push(parseInt(filters.maxYear, 10));
+  }
+  if (filters.minLoa) {
+    conditions.push(`${SANITIZED_LOA_SQL} >= $${paramIdx++}`);
+    params.push(parseFloat(filters.minLoa));
+  }
+  if (filters.maxLoa) {
+    conditions.push(`${SANITIZED_LOA_SQL} <= $${paramIdx++}`);
+    params.push(parseFloat(filters.maxLoa));
   }
   if (filters.rigType) {
     conditions.push(`LOWER(COALESCE(d.specs->>'rig_type', '')) = LOWER($${paramIdx++})`);
