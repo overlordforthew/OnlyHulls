@@ -8,20 +8,32 @@ import {
   localizeSeoHubLink,
 } from "@/i18n/copy/seo";
 import JsonLdScript from "@/components/JsonLdScript";
-import type { BoatRow } from "@/lib/db/queries";
+import type { BoatRow, SeoHubLocationBounds } from "@/lib/db/queries";
 import {
   buildHubBreadcrumbSchema,
   buildHubCollectionSchema,
   type SeoHubDefinition,
 } from "@/lib/seo/hubs";
+import { bboxToViewport, type MapInitialViewport } from "@/lib/locations/map-viewports";
 
 interface SeoHubPageProps {
   hub: SeoHubDefinition;
   boats: BoatRow[];
   total: number;
+  // Optional: 5-95 percentile lat/lng bounds of the hub's city-precision
+  // inventory. When present we feed the map a viewport that actually frames
+  // the matching boats instead of the Caribbean default — key for filter-only
+  // hubs like /catamarans-for-sale where the real pins span Florida / Med /
+  // SE Asia.
+  locationBounds?: SeoHubLocationBounds;
 }
 
-export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps) {
+export default async function SeoHubPage({
+  hub,
+  boats,
+  total,
+  locationBounds,
+}: SeoHubPageProps) {
   const locale = await getLocale();
   const copy = getSeoHubPageCopy(locale);
   const localizedHub = localizeSeoHubDefinition(locale, hub);
@@ -33,6 +45,9 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
   const lowInventory = boats.length > 0 && boats.length < 6;
   const showBrowseOverflow = Boolean(localizedHub.browseHref) && total > boats.length;
   const browseScope = localizedHub.browseScope;
+  const seedMapViewport: MapInitialViewport | undefined = locationBounds
+    ? bboxToViewport(locationBounds)
+    : undefined;
 
   return (
     <div className="pb-16">
@@ -52,6 +67,7 @@ export default async function SeoHubPage({ hub, boats, total }: SeoHubPageProps)
           // with an empty shimmer until the client hydrates.
           initialBoats={boats as unknown as BoatBrowseBoat[]}
           initialTotal={total}
+          seedMapViewport={seedMapViewport}
         />
       ) : (
         <>

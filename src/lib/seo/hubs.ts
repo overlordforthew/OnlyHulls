@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicAppUrl } from "@/lib/config/urls";
-import { getSeoHubBoatCount, getSeoHubBoats, type BoatRow } from "@/lib/db/queries";
+import {
+  getSeoHubBoatCount,
+  getSeoHubBoats,
+  getSeoHubLocationBounds,
+  type BoatRow,
+} from "@/lib/db/queries";
 import {
   buildLocationLikePattern,
   getLocationSearchTerms,
@@ -265,12 +270,13 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
 };
 
 export async function getSeoHubData(hub: SeoHubDefinition) {
-  const [boats, total] = await Promise.all([
+  const [boats, total, locationBounds] = await Promise.all([
     getSeoHubBoats(hub.queryWhere, hub.queryParams || []),
     getSeoHubBoatCount(hub.queryWhere, hub.queryParams || []),
+    getSeoHubLocationBounds(hub.queryWhere, hub.queryParams || []),
   ]);
 
-  return { boats, total };
+  return { boats, total, locationBounds };
 }
 
 // Hubs with fewer than this many active boats get robots noindex so Google

@@ -36,3 +36,32 @@ export function getInitialMapViewport(location?: string | null): MapInitialViewp
   const slug = canonicalizeLocationParam(location);
   return (slug && LOCATION_MAP_VIEWPORTS[slug]) || DEFAULT_MAP_VIEWPORT;
 }
+
+// Convert a lat/lng bounding box into a map viewport that approximately
+// frames it. Assumes a ~1024px-wide map container so the returned zoom
+// packs the box into that width. Server-side helper so filter-only hub
+// pages can hand BoatBrowse a real viewport instead of the Caribbean
+// default when no location is set.
+export function bboxToViewport(bounds: {
+  latLo: number;
+  latHi: number;
+  lngLo: number;
+  lngHi: number;
+}): MapInitialViewport {
+  const latCenter = (bounds.latLo + bounds.latHi) / 2;
+  const lngCenter = (bounds.lngLo + bounds.lngHi) / 2;
+  const lngSpan = Math.max(0.01, Math.abs(bounds.lngHi - bounds.lngLo));
+  // At zoom Z, the horizontal world width is 256 * 2^Z px. We want a
+  // container of ~1024 px to fit lngSpan degrees, with a small padding
+  // factor so edges aren't flush with the viewport.
+  const CONTAINER_WIDTH_PX = 1024;
+  const TILE_WIDTH_PX = 256;
+  const PADDING = 0.8;
+  const zoomRaw = Math.log2((360 / lngSpan) * (CONTAINER_WIDTH_PX / TILE_WIDTH_PX) * PADDING);
+  const zoom = Math.max(2, Math.min(10, Number.isFinite(zoomRaw) ? zoomRaw : 5));
+  return {
+    latitude: latCenter,
+    longitude: lngCenter,
+    zoom: Math.round(zoom * 10) / 10,
+  };
+}

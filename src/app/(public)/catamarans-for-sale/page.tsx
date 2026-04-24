@@ -18,5 +18,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function CatamaransForSalePage() {
   const data = await getSeoHubData(hub);
-  return <SeoHubPage hub={hub} boats={data.boats} total={data.total} />;
+  return <SeoHubPage hub={hub} boats={data.boats} total={data.total} locationBounds={data.locationBounds} />;
 }

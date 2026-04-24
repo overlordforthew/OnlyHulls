@@ -189,6 +189,59 @@ export async function getSeoHubBoatCount(
   return parseInt(result?.count || "0", 10);
 }
 
+export type SeoHubLocationBounds = {
+  // 5th–95th percentile lat/lng of the filter's city-precision geocoded
+  // boats. Percentiles trim outliers so one mis-geocoded Atlantic-centroid
+  // pin doesn't stretch the map viewport to planet-scale.
+  latLo: number;
+  latHi: number;
+  lngLo: number;
+  lngHi: number;
+  count: number;
+} | null;
+
+export async function getSeoHubLocationBounds(
+  whereSql: string,
+  params: unknown[] = []
+): Promise<SeoHubLocationBounds> {
+  const row = await queryOne<{
+    n: string;
+    lat_lo: number | null;
+    lat_hi: number | null;
+    lng_lo: number | null;
+    lng_hi: number | null;
+  }>(
+    `SELECT
+       COUNT(*)::text AS n,
+       percentile_cont(0.05) WITHIN GROUP (ORDER BY b.location_lat) AS lat_lo,
+       percentile_cont(0.95) WITHIN GROUP (ORDER BY b.location_lat) AS lat_hi,
+       percentile_cont(0.05) WITHIN GROUP (ORDER BY b.location_lng) AS lng_lo,
+       percentile_cont(0.95) WITHIN GROUP (ORDER BY b.location_lng) AS lng_hi
+     FROM boats b
+     LEFT JOIN boat_dna d ON d.boat_id = b.id
+     WHERE b.status = 'active'
+       AND ${buildVisibleImportQualitySql("b")}
+       AND b.location_lat IS NOT NULL
+       AND b.location_lng IS NOT NULL
+       AND b.location_geocode_precision = 'city'
+       AND (${whereSql})`,
+    params
+  );
+
+  const count = Number(row?.n ?? 0);
+  if (!row || count < 3) return null;
+  if (row.lat_lo === null || row.lat_hi === null || row.lng_lo === null || row.lng_hi === null) {
+    return null;
+  }
+  return {
+    latLo: Number(row.lat_lo),
+    latHi: Number(row.lat_hi),
+    lngLo: Number(row.lng_lo),
+    lngHi: Number(row.lng_hi),
+    count,
+  };
+}
+
 export async function getBoatsByIds(ids: string[]): Promise<BoatRow[]> {
   if (ids.length === 0) {
     return [];

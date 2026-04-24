@@ -162,6 +162,11 @@ export interface BoatBrowseProps {
   // crawlers. Client-side fetches can still override as the user filters.
   initialBoats?: Boat[];
   initialTotal?: number;
+  // Optional: server-computed viewport that frames the hub's filtered boats.
+  // Used when the hub has no location scope (e.g. /catamarans-for-sale) —
+  // otherwise the map would keep the Caribbean default while the actual
+  // catamarans span Florida / Med / SE Asia.
+  seedMapViewport?: { latitude: number; longitude: number; zoom: number };
 }
 
 function formatBoatType(value?: string | null) {
@@ -224,6 +229,7 @@ function BoatBrowseInner({
   eyebrow,
   initialBoats: seedBoats,
   initialTotal: seedTotal,
+  seedMapViewport,
 }: BoatBrowseProps) {
   const t = useTranslations("boatsPage");
   const router = useRouter();
@@ -304,8 +310,15 @@ function BoatBrowseInner({
     [searchParams]
   );
   const homeMapViewport = useMemo(
-    () => getInitialMapViewport(locationFilter),
-    [locationFilter]
+    () => {
+      // Server-computed viewport wins when the hub has no location scope but
+      // does have a real filter-matched bbox (e.g. catamarans spread across
+      // Florida / Med / SE Asia). Location-scoped hubs keep the per-location
+      // preset.
+      if (!locationFilter && seedMapViewport) return seedMapViewport;
+      return getInitialMapViewport(locationFilter);
+    },
+    [locationFilter, seedMapViewport]
   );
   const initialMapViewport = useMemo(
     () => urlMapViewport || homeMapViewport,

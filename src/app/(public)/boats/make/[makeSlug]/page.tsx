@@ -32,6 +32,6 @@ export default async function MakeHubPage({
   const hub = requireSeoHub(getMakeHub(makeSlug));
   const data = await getSeoHubData(hub);
 
-  return <SeoHubPage hub={hub} boats={data.boats} total={data.total} />;
+  return <SeoHubPage hub={hub} boats={data.boats} total={data.total} locationBounds={data.locationBounds} />;
 }
 
