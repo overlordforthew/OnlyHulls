@@ -135,3 +135,53 @@ test("boat-detail relevance caps at 4 links", () => {
   });
   assert.ok(links.length <= 4);
 });
+
+test("boat-detail relevance: vessel_type=powerboat blocks sailboat rig fallback", () => {
+  // Canonical vessel_type must be authoritative. A powerboat with rig_type
+  // set (bad data, but can happen) must NOT route to sailboats-for-sale-in-X.
+  const links = getRelevantSeoHubLinksForBoat({
+    make: "Custom",
+    locationText: "Miami, FL",
+    vesselType: "powerboat",
+    rigType: "sloop",
+  });
+  const hrefs = links.map((l) => l.href);
+  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale-in-")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale-in-")), `got ${hrefs.join(", ")}`);
+});
+
+test("boat-detail relevance: vessel_type=trimaran blocks programmatic emission", () => {
+  // Trimarans aren't catamarans and aren't monohulls — should emit no
+  // programmatic hub link regardless of rig_type.
+  const links = getRelevantSeoHubLinksForBoat({
+    make: "Neel",
+    locationText: "Fort Lauderdale",
+    vesselType: "trimaran",
+    rigType: "sloop",
+  });
+  const hrefs = links.map((l) => l.href);
+  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale-in-")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale-in-")), `got ${hrefs.join(", ")}`);
+});
+
+test("boat-detail relevance: rig_type=motor classifies as non-sailing", () => {
+  const links = getRelevantSeoHubLinksForBoat({
+    make: "Pacific Seacraft",
+    locationText: "Miami, FL",
+    rigType: "motor",
+  });
+  const hrefs = links.map((l) => l.href);
+  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale-in-")), `got ${hrefs.join(", ")}`);
+});
+
+test("catamaran hub SQL includes vessel_type=catamaran classification", () => {
+  const hub = resolveProgrammaticHub("catamarans-for-sale-in-florida");
+  assert.ok(hub);
+  assert.match(hub!.queryWhere, /vessel_type.*=.*'catamaran'/);
+});
+
+test("sailboat hub SQL excludes powerboat and trimaran vessel_types", () => {
+  const hub = resolveProgrammaticHub("sailboats-for-sale-in-florida");
+  assert.ok(hub);
+  assert.match(hub!.queryWhere, /vessel_type.*NOT IN.*'powerboat'.*'trimaran'/);
+});

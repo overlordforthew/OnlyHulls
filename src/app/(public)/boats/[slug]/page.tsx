@@ -338,6 +338,9 @@ export default async function BoatDetailPage({
     characterTags: boat.character_tags,
     rigType: specs.rig_type ? String(specs.rig_type) : null,
     vesselType: specs.vessel_type ? String(specs.vessel_type) : null,
+    // Legacy alias — some older records never got their hull_type migrated
+    // into the canonical vessel_type field, so pass it through.
+    hullType: specs.hull_type ? String(specs.hull_type) : null,
   });
   const displayedPrice = getDisplayedPrice({
     amount: boat.asking_price,

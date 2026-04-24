@@ -65,6 +65,10 @@ const CATAMARAN_MAKES = [
 
 function buildCatamaranWhereSql(paramOffset = 0) {
   const makeParams = CATAMARAN_MAKES.map((_, index) => `$${paramOffset + index + 1}`).join(", ");
+  // Also match the canonical normalised vessel_type field so boats with
+  // `specs.vessel_type='catamaran'` (ingestion normaliser's output) are
+  // included even when character_tags wasn't populated and the make isn't
+  // in the CATAMARAN_MAKES shortlist.
   return `(
     EXISTS (
       SELECT 1
@@ -73,6 +77,7 @@ function buildCatamaranWhereSql(paramOffset = 0) {
         AND 'catamaran' = ANY(COALESCE(hub_d.character_tags, '{}'))
     )
     OR LOWER(b.make) IN (${makeParams})
+    OR LOWER(COALESCE(d.specs->>'vessel_type', '')) = 'catamaran'
   )`;
 }
 
@@ -125,8 +130,12 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
     intro:
       "This page focuses on sailboats and monohull-style listings with useful rig data and cleaner buyer-facing inventory.",
     eyebrow: "Popular Sailboat Market",
+    // Sailboat hub must exclude canonical non-monohull vessel_types so a
+    // powerboat or trimaran with a stray rig_type doesn't qualify.
+    // Catamarans are already excluded via NOT buildCatamaranWhereSql().
     queryWhere: `(
       NOT ${buildCatamaranWhereSql()}
+      AND LOWER(COALESCE(d.specs->>'vessel_type', '')) NOT IN ('powerboat', 'trimaran')
       AND COALESCE(NULLIF(TRIM(d.specs->>'rig_type'), ''), '') <> ''
     )`,
     queryParams: CATAMARAN_MAKES,
@@ -194,6 +203,7 @@ const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
     buildWhereSql: (offset) => ({
       sql: `(
         NOT ${buildCatamaranWhereSql(offset)}
+        AND LOWER(COALESCE(d.specs->>'vessel_type', '')) NOT IN ('powerboat', 'trimaran')
         AND COALESCE(NULLIF(TRIM(d.specs->>'rig_type'), ''), '') <> ''
       )`,
       params: [...CATAMARAN_MAKES],
@@ -642,14 +652,20 @@ export function getRelevantSeoHubLinksForBoat(input: {
 
   // Resolve an explicit hull axis so we never emit a programmatic link on
   // ambiguous input. "not catamaran" is NOT "is sailboat" — a Boston Whaler
-  // in Florida should not point at /sailboats-for-sale-in-florida. We lean
-  // on vessel_type first because it's the normalised catalog field.
-  const hullAxis: ProgrammaticCategory["hullAxis"] | null =
-    tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug) || vesselType === "catamaran"
-      ? "catamaran"
-      : vesselType === "monohull" || (tagSet.has("monohull") || tagSet.has("sailboat")) || isSailingRig(rigType)
-        ? "monohull"
-        : null;
+  // in Florida should not point at /sailboats-for-sale-in-florida.
+  //
+  // Canonical vessel_type is AUTHORITATIVE when recognised: a boat with
+  // vessel_type="powerboat" and rig_type="sloop" must NOT fall through to
+  // the sailing-rig inference path. Fallback chain (tags → make → rig)
+  // only fires when vessel_type is empty or unrecognised.
+  const hullAxis: ProgrammaticCategory["hullAxis"] | null = (() => {
+    if (vesselType === "catamaran") return "catamaran";
+    if (vesselType === "monohull") return "monohull";
+    if (vesselType === "powerboat" || vesselType === "trimaran") return null;
+    if (tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug)) return "catamaran";
+    if (tagSet.has("monohull") || tagSet.has("sailboat") || isSailingRig(rigType)) return "monohull";
+    return null;
+  })();
   const isCatamaran = hullAxis === "catamaran";
 
   // Delegate location resolution to the shared market inference so the
