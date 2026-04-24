@@ -5,8 +5,13 @@ export type MapBounds = {
   north: number;
 };
 
-export const MAP_MARKER_DEFAULT_LIMIT = 150;
-export const MAP_MARKER_MAX_LIMIT = 250;
+// Supercluster on the client groups pins at zoom-out, so the real cap is
+// the DB payload / network transfer rather than DOM cost. Caribbean-wide
+// views can legitimately contain ~740 catamarans + ~8k monohulls; we raise
+// the limits so zoomed-out users see the whole dataset instead of a
+// 150-pin truncation while still keeping response bodies bounded.
+export const MAP_MARKER_DEFAULT_LIMIT = 800;
+export const MAP_MARKER_MAX_LIMIT = 1500;
 export const MAX_BOUNDS_AREA_DEGREES = 900;
 
 type MapBoundsParseResult =
