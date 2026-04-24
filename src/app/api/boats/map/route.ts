@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { buildWhereClause, filtersFromSearchParams } from "@/lib/search/boat-search";
+import { buildOrderBy, buildWhereClause, filtersFromSearchParams } from "@/lib/search/boat-search";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
 import {
   PUBLIC_MAP_PRECISIONS,
@@ -79,6 +79,11 @@ export async function GET(req: Request) {
 
     const whereSql = conditions.join(" AND ");
     queryParams.push(limit + 1);
+    // Honor the user's sort selection so the sidebar list matches the rest
+    // of the browse surface. Previously we hardcoded updated_at DESC which
+    // meant "Price asc" etc. silently fell back to newest — misleading for
+    // users who came to the map to sort pins by price or LOA.
+    const orderBy = buildOrderBy(filters.sort, filters.dir);
     const rows = await query<PublicMapBoatRow>(
       `SELECT b.id, b.slug, b.make, b.model, b.year, b.asking_price, b.currency,
               b.asking_price_usd, b.location_text,
@@ -91,7 +96,7 @@ export async function GET(req: Request) {
        LEFT JOIN boat_dna d ON d.boat_id = b.id
        WHERE ${whereSql}
          AND ${buildVisibleImportQualitySql("b")}
-       ORDER BY b.updated_at DESC, b.id DESC
+       ORDER BY ${orderBy}
        LIMIT $${queryParams.length}`,
       queryParams
     );
