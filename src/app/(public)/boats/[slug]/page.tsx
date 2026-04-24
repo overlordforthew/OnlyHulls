@@ -25,7 +25,7 @@ import { buildBoatPublicSummary } from "@/lib/browse-summary";
 import { buildBoatFitReasons } from "@/lib/boat-fit";
 import { getRelatedBoats } from "@/lib/db/queries";
 import { sanitizeHullMaterial } from "@/lib/specs/hull-material";
-import { getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
+import { getMakeHub, getRelevantSeoHubLinksForBoat } from "@/lib/seo/hubs";
 import { getSafeExternalUrl } from "@/lib/url-safety";
 import { buildBoatDetailFacts, buildBoatDisplayTitle } from "@/lib/boats/detail-display";
 
@@ -155,6 +155,11 @@ type EndedBoatInfo = {
   make_slug: string | null;
 };
 
+// Whitelist of "was public, now no longer for sale" statuses. Never include
+// draft / pending_review / rejected / under_offer — those are private states
+// and a public request for the slug must 404, not leak the listing shell.
+const PUBLIC_ENDED_STATUSES = ["expired", "sold", "unlisted", "withdrawn"] as const;
+
 // A boat slug that used to be active but is now expired / sold / unlisted.
 // We render a dedicated "listing ended" state with robots noindex so Google
 // deindexes the URL gracefully instead of leaving a 404 to soft-404.
@@ -166,10 +171,12 @@ async function getEndedBoatInfo(slug: string): Promise<EndedBoatInfo | null> {
               ORDER BY sort_order LIMIT 1) AS hero_url,
             LOWER(REGEXP_REPLACE(b.make, '[^a-zA-Z0-9]+', '-', 'g')) AS make_slug
        FROM boats b
-      WHERE (b.slug = $1 OR b.id::text = $1)
-        AND b.status <> 'active'
+       LEFT JOIN boat_dna d ON d.boat_id = b.id
+      WHERE b.slug = $1
+        AND b.status = ANY($2::text[])
+        AND ${buildVisibleImportQualitySql("b")}
       LIMIT 1`,
-    [slug]
+    [slug, [...PUBLIC_ENDED_STATUSES]]
   );
   return boat ?? null;
 }
@@ -805,7 +812,12 @@ function SpecRow({ label, value }: { label: string; value: string }) {
 
 function EndedListing({ ended }: { ended: EndedBoatInfo }) {
   const title = `${ended.year} ${ended.make} ${ended.model}`.trim();
-  const makeHubHref = ended.make_slug ? `/boats/make/${ended.make_slug}` : null;
+  // Only link to an actual make hub — the inline regex in getEndedBoatInfo
+  // can produce slugs that don't exist in MAKE_HUBS, which would 404.
+  const makeHubHref =
+    ended.make_slug && getMakeHub(ended.make_slug)
+      ? `/boats/make/${ended.make_slug}`
+      : null;
   const statusCopy: Record<string, string> = {
     expired: "This listing has expired.",
     sold: "This boat has been sold.",
