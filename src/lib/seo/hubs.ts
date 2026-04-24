@@ -642,7 +642,17 @@ export function getRelevantSeoHubLinksForBoat(input: {
   const makeSlug = String(input.make || "").trim().toLowerCase();
   const tagSet = new Set((input.characterTags || []).map((tag) => tag.toLowerCase()));
   const rigType = String(input.rigType || "").trim().toLowerCase();
-  const vesselType = String(input.vesselType || input.hullType || "").trim().toLowerCase();
+  // Prefer a recognised canonical vesselType; only fall back to legacy
+  // hullType if vesselType is absent OR present-but-unrecognised. This
+  // prevents an unknown vesselType string from suppressing a valid
+  // hull_type on legacy records that were never migrated.
+  const vesselType = (() => {
+    const v = String(input.vesselType || "").trim().toLowerCase();
+    const h = String(input.hullType || "").trim().toLowerCase();
+    if (CANONICAL_VESSEL_TYPES.has(v)) return v;
+    if (CANONICAL_VESSEL_TYPES.has(h)) return h;
+    return v || h;
+  })();
 
   const push = (link: SeoHubLink | undefined) => {
     if (!link || seen.has(link.href)) return;
@@ -718,13 +728,39 @@ export function getRelevantSeoHubLinksForBoat(input: {
     }
   }
 
+  // When the boat has no resolved hull axis — powerboat, trimaran, or
+  // unknown — the fallback filler must NOT anchor it in catamaran- or
+  // sailboat-aligned SEO surfaces. STATIC_SEO_HUB_LINKS currently starts
+  // with the two generic category hubs plus catamaran-only make hubs
+  // (Lagoon/Leopard/Bali/Catana) — all hull-specific. Skip them when we
+  // can't positively classify the boat's hull.
   for (const fallback of buildSeoHubLinks("__none__")) {
     if (links.length >= 4) break;
+    if (hullAxis === null && HULL_AXIS_SPECIFIC_HREFS.has(fallback.href)) continue;
     push(fallback);
   }
 
   return links.slice(0, 4);
 }
+
+// Canonical vessel_type taxonomy — kept in sync with import-quality.ts
+// normaliser output. Used by the hull-axis resolver to decide whether a
+// given vessel_type string is authoritative or should fall through to
+// legacy hullType / tags / rig heuristics.
+const CANONICAL_VESSEL_TYPES = new Set(["catamaran", "monohull", "powerboat", "trimaran"]);
+
+// Hrefs that presuppose a catamaran or sailing hull — skipped from the
+// fallback filler when the resolver couldn't positively classify the boat.
+// Covers the two generic category hubs plus every make hub in
+// STATIC_SEO_HUB_LINKS (all four listed makes are catamaran brands).
+const HULL_AXIS_SPECIFIC_HREFS = new Set([
+  "/catamarans-for-sale",
+  "/sailboats-for-sale",
+  "/boats/make/lagoon",
+  "/boats/make/leopard",
+  "/boats/make/bali",
+  "/boats/make/catana",
+]);
 
 // Non-exhaustive sailing-rig recognizer: anything that isn't empty, a
 // powerboat marker, or an unknown string counts as a sailing-monohull signal

@@ -136,9 +136,12 @@ test("boat-detail relevance caps at 4 links", () => {
   assert.ok(links.length <= 4);
 });
 
-test("boat-detail relevance: vessel_type=powerboat blocks sailboat rig fallback", () => {
+test("boat-detail relevance: vessel_type=powerboat blocks sailboat rig fallback AND static category anchors", () => {
   // Canonical vessel_type must be authoritative. A powerboat with rig_type
-  // set (bad data, but can happen) must NOT route to sailboats-for-sale-in-X.
+  // set (bad data, but can happen) must NOT route to sailboats-for-sale-in-X
+  // — and the generic /sailboats-for-sale / /catamarans-for-sale static
+  // hubs must not appear as fallback fillers either. Same rule for
+  // catamaran-only make hubs.
   const links = getRelevantSeoHubLinksForBoat({
     make: "Custom",
     locationText: "Miami, FL",
@@ -146,13 +149,12 @@ test("boat-detail relevance: vessel_type=powerboat blocks sailboat rig fallback"
     rigType: "sloop",
   });
   const hrefs = links.map((l) => l.href);
-  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale-in-")), `got ${hrefs.join(", ")}`);
-  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale-in-")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => /^\/boats\/make\/(lagoon|leopard|bali|catana)$/.test(h)), `got ${hrefs.join(", ")}`);
 });
 
-test("boat-detail relevance: vessel_type=trimaran blocks programmatic emission", () => {
-  // Trimarans aren't catamarans and aren't monohulls — should emit no
-  // programmatic hub link regardless of rig_type.
+test("boat-detail relevance: vessel_type=trimaran blocks programmatic AND static category anchors", () => {
   const links = getRelevantSeoHubLinksForBoat({
     make: "Neel",
     locationText: "Fort Lauderdale",
@@ -160,8 +162,8 @@ test("boat-detail relevance: vessel_type=trimaran blocks programmatic emission",
     rigType: "sloop",
   });
   const hrefs = links.map((l) => l.href);
-  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale-in-")), `got ${hrefs.join(", ")}`);
-  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale-in-")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/sailboats-for-sale")), `got ${hrefs.join(", ")}`);
+  assert.ok(!hrefs.some((h) => h.startsWith("/catamarans-for-sale")), `got ${hrefs.join(", ")}`);
 });
 
 test("boat-detail relevance: rig_type=motor classifies as non-sailing", () => {
@@ -184,4 +186,36 @@ test("sailboat hub SQL excludes powerboat and trimaran vessel_types", () => {
   const hub = resolveProgrammaticHub("sailboats-for-sale-in-florida");
   assert.ok(hub);
   assert.match(hub!.queryWhere, /vessel_type.*NOT IN.*'powerboat'.*'trimaran'/);
+});
+
+test("boat-detail relevance: unrecognised vesselType falls back to canonical hullType", () => {
+  // Legacy record shape: vesselType populated with a non-canonical string
+  // ("yacht"), but hullType carries the real signal. The resolver must not
+  // let the unknown vesselType suppress a recognised hullType.
+  const links = getRelevantSeoHubLinksForBoat({
+    make: "Custom",
+    locationText: "Miami, FL",
+    vesselType: "yacht",
+    hullType: "catamaran",
+  });
+  assert.equal(links[0]?.href, "/catamarans-for-sale-in-florida");
+});
+
+test("boat-detail relevance: powerboat gets no related hubs except location", () => {
+  // Concrete regression anchor for Codex's HIGH finding. A Boston Whaler
+  // in Miami should land only on /boats/location/florida — no catamaran or
+  // sailboat category hubs, no catamaran make hubs.
+  const links = getRelevantSeoHubLinksForBoat({
+    make: "Boston Whaler",
+    locationText: "Miami, FL",
+    vesselType: "powerboat",
+    rigType: "motor",
+  });
+  const hrefs = links.map((l) => l.href);
+  // Must contain the neutral location hub.
+  assert.ok(hrefs.includes("/boats/location/florida"));
+  // Must NOT contain any hull-axis-specific surface.
+  assert.ok(!hrefs.includes("/catamarans-for-sale"));
+  assert.ok(!hrefs.includes("/sailboats-for-sale"));
+  assert.ok(!hrefs.includes("/boats/make/lagoon"));
 });
