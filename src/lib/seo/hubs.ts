@@ -141,6 +141,13 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
 // applies per-request via generateMetadata's inventory count.
 type ProgrammaticCategory = {
   slug: string;
+  // Parent static hub the programmatic route specialises — so the synthesized
+  // relatedLinks surface the correct "broader search" anchor alongside the
+  // location. Used by buildProgrammaticHubSiblingLinks to prioritise parents.
+  staticHubHref: string;
+  // Classification used by getRelevantSeoHubLinksForBoat to map a boat's hull
+  // signal (catamaran tag / catamaran make) onto the right programmatic axis.
+  hullAxis: "catamaran" | "monohull";
   heading: (location: string) => string;
   title: (location: string) => string;
   description: (location: string) => string;
@@ -154,6 +161,8 @@ type ProgrammaticCategory = {
 const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
   {
     slug: "catamarans-for-sale-in",
+    staticHubHref: "/catamarans-for-sale",
+    hullAxis: "catamaran",
     heading: (loc) => `Catamarans for Sale in ${loc}`,
     title: (loc) => `Catamarans for Sale in ${loc}`,
     description: (loc) =>
@@ -170,6 +179,8 @@ const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
   },
   {
     slug: "sailboats-for-sale-in",
+    staticHubHref: "/sailboats-for-sale",
+    hullAxis: "monohull",
     heading: (loc) => `Sailboats for Sale in ${loc}`,
     title: (loc) => `Sailboats for Sale in ${loc}`,
     description: (loc) =>
@@ -214,11 +225,68 @@ function synthesizeProgrammaticHub(
     queryWhere: `(${categoryWhere.sql} AND ${locationWhere.queryWhere})`,
     queryParams: [...categoryWhere.params, ...locationWhere.queryParams],
     countLabel: category.countLabel(locationLabel),
-    relatedLinks: buildSeoHubLinks(href),
+    // Sibling programmatic hubs first (same category × other locations, then
+    // same location × other categories) so cross-axis discovery gets priority
+    // over generic static hubs. Parent static hubs (the category and the
+    // location) appear next as higher-authority anchors, then the remaining
+    // static set fills to the end.
+    relatedLinks: [
+      ...buildProgrammaticHubSiblingLinks(category.slug, locationSlug),
+      ...buildSeoHubLinks(href).filter((link) =>
+        link.href === category.staticHubHref || link.href === locationHub.href
+      ),
+      ...buildSeoHubLinks(href).filter(
+        (link) => link.href !== category.staticHubHref && link.href !== locationHub.href
+      ),
+    ],
     browseScope: {
       filters: category.scopeFilters,
       location: locationSlug,
     },
+  };
+}
+
+// Enumerate sibling programmatic hubs for a given (category, location) pair:
+// same-category × other-locations, then same-location × other-categories.
+// Used to cross-link programmatic pages so crawlers (and users) discover the
+// full matrix once they land on one page in it.
+function buildProgrammaticHubSiblingLinks(
+  currentCategorySlug: string,
+  currentLocationSlug: string
+): SeoHubLink[] {
+  const links: SeoHubLink[] = [];
+  // Same category × other locations
+  for (const locationSlug of Object.keys(LOCATION_HUBS)) {
+    if (locationSlug === currentLocationSlug) continue;
+    const category = PROGRAMMATIC_CATEGORIES.find((c) => c.slug === currentCategorySlug);
+    if (!category) continue;
+    const synth = synthesizeProgrammaticHubWithoutSiblings(category, locationSlug);
+    if (synth) links.push({ href: synth.href, label: synth.heading, description: synth.description });
+  }
+  // Other categories × same location
+  for (const category of PROGRAMMATIC_CATEGORIES) {
+    if (category.slug === currentCategorySlug) continue;
+    const synth = synthesizeProgrammaticHubWithoutSiblings(category, currentLocationSlug);
+    if (synth) links.push({ href: synth.href, label: synth.heading, description: synth.description });
+  }
+  return links;
+}
+
+// Lightweight variant used by buildProgrammaticHubSiblingLinks to avoid
+// recursing through synthesizeProgrammaticHub's own sibling build. Produces
+// just the fields needed to format a link, not a full SeoHubDefinition.
+function synthesizeProgrammaticHubWithoutSiblings(
+  category: ProgrammaticCategory,
+  locationSlug: string
+): { href: string; heading: string; description: string } | null {
+  const locationHub = LOCATION_HUBS[locationSlug];
+  if (!locationHub) return null;
+  const locationLabel =
+    locationHub.heading.replace(/^Boats for Sale in\s+/i, "") || locationHub.slug;
+  return {
+    href: `/${category.slug}-${locationSlug}`,
+    heading: category.heading(locationLabel),
+    description: category.description(locationLabel),
   };
 }
 
@@ -512,6 +580,7 @@ export function getRelevantSeoHubLinksForBoat(input: {
   const makeSlug = String(input.make || "").trim().toLowerCase();
   const location = String(input.locationText || "").trim().toLowerCase();
   const tagSet = new Set((input.characterTags || []).map((tag) => tag.toLowerCase()));
+  const isCatamaran = tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug);
 
   const push = (link: SeoHubLink | undefined) => {
     if (!link || seen.has(link.href)) return;
@@ -519,30 +588,54 @@ export function getRelevantSeoHubLinksForBoat(input: {
     links.push(link);
   };
 
+  // Resolve the best location slug from the boat's location_text. This also
+  // lets us synthesize a programmatic hub link ({hull} × {location}) when both
+  // signals are present — the highest-intent internal link we can show on a
+  // boat detail page.
+  const locationSlug = (() => {
+    if (location.includes("puerto rico")) return "puerto-rico";
+    if (location.includes("bahamas")) return "bahamas";
+    if (location.includes("florida")) return "florida";
+    if (
+      location.includes("caribbean") ||
+      location.includes("virgin islands") ||
+      location.includes("tortola") ||
+      location.includes("grenada") ||
+      location.includes("st martin") ||
+      location.includes("martinique")
+    )
+      return "caribbean";
+    return null;
+  })();
+
+  if (locationSlug) {
+    const categorySlug = isCatamaran ? "catamarans-for-sale-in" : "sailboats-for-sale-in";
+    const programmatic = PROGRAMMATIC_CATEGORIES.find((c) => c.slug === categorySlug);
+    if (programmatic) {
+      const synth = synthesizeProgrammaticHubWithoutSiblings(programmatic, locationSlug);
+      if (synth) {
+        push({ href: synth.href, label: synth.heading, description: synth.description });
+      }
+    }
+  }
+
   push(STATIC_HUB_LOOKUP[`/boats/make/${makeSlug}`]);
 
-  if (tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug)) {
+  if (isCatamaran) {
     push(STATIC_HUB_LOOKUP["/catamarans-for-sale"]);
   } else {
     push(STATIC_HUB_LOOKUP["/sailboats-for-sale"]);
   }
 
-  if (location.includes("puerto rico")) {
+  if (locationSlug === "puerto-rico") {
     push(STATIC_HUB_LOOKUP["/boats/location/puerto-rico"]);
     push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
-  } else if (location.includes("bahamas")) {
+  } else if (locationSlug === "bahamas") {
     push(STATIC_HUB_LOOKUP["/boats/location/bahamas"]);
     push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
-  } else if (location.includes("florida")) {
+  } else if (locationSlug === "florida") {
     push(STATIC_HUB_LOOKUP["/boats/location/florida"]);
-  } else if (
-    location.includes("caribbean") ||
-    location.includes("virgin islands") ||
-    location.includes("tortola") ||
-    location.includes("grenada") ||
-    location.includes("st martin") ||
-    location.includes("martinique")
-  ) {
+  } else if (locationSlug === "caribbean") {
     push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
   }
 
