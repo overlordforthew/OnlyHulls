@@ -7,6 +7,7 @@ import { ArrowLeft, Sparkles, User } from "lucide-react";
 import { query, queryOne } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import {
+  buildBaseVisibleImportQualitySqlWithoutSourceFreshness,
   buildVisibleImportQualitySql,
   hasUsableImportedLocation,
   sanitizeImportedBoatRecord,
@@ -174,7 +175,11 @@ async function getEndedBoatInfo(slug: string): Promise<EndedBoatInfo | null> {
        LEFT JOIN boat_dna d ON d.boat_id = b.id
       WHERE b.slug = $1
         AND b.status::text = ANY($2::text[])
-        AND ${buildVisibleImportQualitySql("b")}
+        -- Use the without-source-freshness variant: expired/sold listings
+        -- legitimately have stale source signals, and rejecting them here
+        -- would 404 every ended page. Held-source suppression, price floor,
+        -- and image-presence checks still apply.
+        AND ${buildBaseVisibleImportQualitySqlWithoutSourceFreshness("b")}
       LIMIT 1`,
     [slug, [...PUBLIC_ENDED_STATUSES]]
   );
