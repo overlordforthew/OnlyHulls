@@ -7,7 +7,9 @@ import {
   getRelevantSeoHubLinksForBoat,
   listProgrammaticHubSlugs,
   resolveProgrammaticHub,
+  synthesizeProgrammaticHubCopyForLocale,
 } from "../../src/lib/seo/hubs";
+import { localizeSeoHubDefinition, localizeSeoHubLink } from "../../src/i18n/copy/seo";
 
 test("listProgrammaticHubSlugs enumerates the full matrix", () => {
   const slugs = listProgrammaticHubSlugs();
@@ -199,6 +201,59 @@ test("boat-detail relevance: unrecognised vesselType falls back to canonical hul
     hullType: "catamaran",
   });
   assert.equal(links[0]?.href, "/catamarans-for-sale-in-florida");
+});
+
+test("ES synthesis produces Spanish copy for every programmatic hub", () => {
+  for (const slug of listProgrammaticHubSlugs()) {
+    const copy = synthesizeProgrammaticHubCopyForLocale(`/${slug}`, "es");
+    assert.ok(copy, `missing copy for ${slug}`);
+    // Sanity checks: Spanish markers, no EN fallback bleed.
+    assert.ok(
+      /venta en/.test(copy!.heading),
+      `${slug} heading should use "venta en": ${copy!.heading}`
+    );
+    assert.ok(
+      !/for Sale in/i.test(copy!.heading),
+      `${slug} heading leaked EN: ${copy!.heading}`
+    );
+    assert.ok(
+      !/Browse catamarans|Browse sailboats/.test(copy!.description),
+      `${slug} description leaked EN: ${copy!.description}`
+    );
+  }
+});
+
+test("localizeSeoHubDefinition applies ES to programmatic hubs", () => {
+  const hub = resolveProgrammaticHub("catamarans-for-sale-in-caribbean");
+  assert.ok(hub);
+  const es = localizeSeoHubDefinition("es", hub!);
+  assert.equal(es.heading, "Catamaranes en venta en el Caribe");
+  assert.match(es.description, /catamaranes en venta en el Caribe/);
+  assert.match(es.intro, /monocascos|catamaranes|catálogo/i);
+});
+
+test("localizeSeoHubDefinition falls back to EN hub when locale is en", () => {
+  const hub = resolveProgrammaticHub("catamarans-for-sale-in-florida");
+  assert.ok(hub);
+  const en = localizeSeoHubDefinition("en", hub!);
+  assert.equal(en.heading, "Catamarans for Sale in Florida");
+});
+
+test("localizeSeoHubLink translates programmatic hub labels to ES", () => {
+  const link = {
+    href: "/sailboats-for-sale-in-bahamas",
+    label: "Sailboats for Sale in the Bahamas",
+    description: "…",
+  };
+  const es = localizeSeoHubLink("es", link);
+  assert.equal(es.label, "Veleros en venta en Bahamas");
+  assert.match(es.description, /veleros/i);
+});
+
+test("synthesizeProgrammaticHubCopyForLocale returns null for non-programmatic hrefs", () => {
+  assert.equal(synthesizeProgrammaticHubCopyForLocale("/catamarans-for-sale", "es"), null);
+  assert.equal(synthesizeProgrammaticHubCopyForLocale("/boats/location/florida", "es"), null);
+  assert.equal(synthesizeProgrammaticHubCopyForLocale("/random-route", "es"), null);
 });
 
 test("boat-detail relevance: powerboat gets no related hubs except location", () => {

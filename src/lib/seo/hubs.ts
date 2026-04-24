@@ -149,6 +149,17 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
 // pair gets auto-generated via resolveProgrammaticHub(). The single dynamic
 // /[programmaticSlug] route serves them all and thin-content gating still
 // applies per-request via generateMetadata's inventory count.
+type ProgrammaticLocaleCopy = {
+  heading: (location: string) => string;
+  title: (location: string) => string;
+  description: (location: string) => string;
+  intro: (location: string) => string;
+  eyebrow: (location: string) => string;
+  countLabel: (location: string) => string;
+};
+
+type ProgrammaticLocale = "en" | "es";
+
 type ProgrammaticCategory = {
   slug: string;
   // Parent static hub the programmatic route specialises — so the synthesized
@@ -158,14 +169,23 @@ type ProgrammaticCategory = {
   // Classification used by getRelevantSeoHubLinksForBoat to map a boat's hull
   // signal (catamaran tag / catamaran make) onto the right programmatic axis.
   hullAxis: "catamaran" | "monohull";
-  heading: (location: string) => string;
-  title: (location: string) => string;
-  description: (location: string) => string;
-  intro: (location: string) => string;
-  eyebrow: (location: string) => string;
-  countLabel: (location: string) => string;
+  // Locale-keyed copy generators. EN is always present; ES is authored per
+  // category so programmatic hubs don't serve EN fallback text on /es (which
+  // would look to Google like duplicate content across the hreflang pair).
+  locales: Record<ProgrammaticLocale, ProgrammaticLocaleCopy>;
   scopeFilters: NonNullable<SeoHubBrowseScope["filters"]>;
   buildWhereSql: (paramOffset: number) => { sql: string; params: unknown[] };
+};
+
+// Spanish location labels for the programmatic synthesizer. Kept in hubs.ts
+// rather than i18n/copy/seo.ts because this file owns LOCATION_HUBS and
+// already needs the EN labels via heading-stripping; paralleling them here
+// avoids a cross-file dependency chain.
+const LOCATION_ES_LABELS: Record<string, string> = {
+  florida: "Florida",
+  caribbean: "el Caribe",
+  "puerto-rico": "Puerto Rico",
+  bahamas: "Bahamas",
 };
 
 const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
@@ -173,14 +193,28 @@ const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
     slug: "catamarans-for-sale-in",
     staticHubHref: "/catamarans-for-sale",
     hullAxis: "catamaran",
-    heading: (loc) => `Catamarans for Sale in ${loc}`,
-    title: (loc) => `Catamarans for Sale in ${loc}`,
-    description: (loc) =>
-      `Browse catamarans for sale in ${loc} on OnlyHulls — cleaner listings, stronger location data, and direct seller paths.`,
-    intro: (loc) =>
-      `This page narrows the OnlyHulls catamaran catalog to ${loc} listings only. Direct broker / owner contact, no middleman commission, cleaner geocoding than general catamaran search.`,
-    eyebrow: (loc) => `Catamaran × ${loc}`,
-    countLabel: (loc) => `live ${loc} catamarans`,
+    locales: {
+      en: {
+        heading: (loc) => `Catamarans for Sale in ${loc}`,
+        title: (loc) => `Catamarans for Sale in ${loc}`,
+        description: (loc) =>
+          `Browse catamarans for sale in ${loc} on OnlyHulls — cleaner listings, stronger location data, and direct seller paths.`,
+        intro: (loc) =>
+          `This page narrows the OnlyHulls catamaran catalog to ${loc} listings only. Direct broker / owner contact, no middleman commission, cleaner geocoding than general catamaran search.`,
+        eyebrow: (loc) => `Catamaran × ${loc}`,
+        countLabel: (loc) => `live ${loc} catamarans`,
+      },
+      es: {
+        heading: (loc) => `Catamaranes en venta en ${loc}`,
+        title: (loc) => `Catamaranes en venta en ${loc}`,
+        description: (loc) =>
+          `Explora catamaranes en venta en ${loc} en OnlyHulls — anuncios más limpios, mejor cobertura de ubicación y rutas directas al vendedor.`,
+        intro: (loc) =>
+          `Esta página reduce el catálogo de catamaranes de OnlyHulls a los anuncios en ${loc}. Contacto directo con broker o propietario, sin comisión de intermediario, y mejor geocodificación que la búsqueda general.`,
+        eyebrow: (loc) => `Catamarán × ${loc}`,
+        countLabel: (loc) => `catamaranes activos en ${loc}`,
+      },
+    },
     scopeFilters: { hullType: "catamaran" },
     buildWhereSql: (offset) => ({
       sql: buildCatamaranWhereSql(offset),
@@ -191,14 +225,28 @@ const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
     slug: "sailboats-for-sale-in",
     staticHubHref: "/sailboats-for-sale",
     hullAxis: "monohull",
-    heading: (loc) => `Sailboats for Sale in ${loc}`,
-    title: (loc) => `Sailboats for Sale in ${loc}`,
-    description: (loc) =>
-      `Browse sailboats and monohulls for sale in ${loc} on OnlyHulls with direct seller paths and AI-assisted discovery.`,
-    intro: (loc) =>
-      `This page narrows OnlyHulls monohulls to ${loc} listings with useful rig data and cleaner buyer-facing inventory.`,
-    eyebrow: (loc) => `Sailboat × ${loc}`,
-    countLabel: (loc) => `live ${loc} sailboats`,
+    locales: {
+      en: {
+        heading: (loc) => `Sailboats for Sale in ${loc}`,
+        title: (loc) => `Sailboats for Sale in ${loc}`,
+        description: (loc) =>
+          `Browse sailboats and monohulls for sale in ${loc} on OnlyHulls with direct seller paths and AI-assisted discovery.`,
+        intro: (loc) =>
+          `This page narrows OnlyHulls monohulls to ${loc} listings with useful rig data and cleaner buyer-facing inventory.`,
+        eyebrow: (loc) => `Sailboat × ${loc}`,
+        countLabel: (loc) => `live ${loc} sailboats`,
+      },
+      es: {
+        heading: (loc) => `Veleros en venta en ${loc}`,
+        title: (loc) => `Veleros en venta en ${loc}`,
+        description: (loc) =>
+          `Explora veleros y monocascos en venta en ${loc} en OnlyHulls con rutas directas al vendedor y descubrimiento asistido por IA.`,
+        intro: (loc) =>
+          `Esta página reduce los monocascos de OnlyHulls a los anuncios en ${loc} con datos útiles de aparejo e inventario más limpio para compradores.`,
+        eyebrow: (loc) => `Velero × ${loc}`,
+        countLabel: (loc) => `veleros activos en ${loc}`,
+      },
+    },
     scopeFilters: { hullType: "monohull" },
     buildWhereSql: (offset) => ({
       sql: `(
@@ -225,17 +273,18 @@ function synthesizeProgrammaticHub(
   const categoryWhere = category.buildWhereSql(0);
   const locationWhere = buildLocationMarketQuery(locationSlug, categoryWhere.params.length);
   const href = `/${category.slug}-${locationSlug}`;
+  const en = category.locales.en;
   return {
     slug: href.slice(1),
     href,
-    title: category.title(locationLabel),
-    heading: category.heading(locationLabel),
-    description: category.description(locationLabel),
-    intro: category.intro(locationLabel),
-    eyebrow: category.eyebrow(locationLabel),
+    title: en.title(locationLabel),
+    heading: en.heading(locationLabel),
+    description: en.description(locationLabel),
+    intro: en.intro(locationLabel),
+    eyebrow: en.eyebrow(locationLabel),
     queryWhere: `(${categoryWhere.sql} AND ${locationWhere.queryWhere})`,
     queryParams: [...categoryWhere.params, ...locationWhere.queryParams],
-    countLabel: category.countLabel(locationLabel),
+    countLabel: en.countLabel(locationLabel),
     // Sibling programmatic hubs first (same category × other locations, then
     // same location × other categories) so cross-axis discovery gets priority
     // over generic static hubs. Parent static hubs (the category and the
@@ -305,17 +354,53 @@ function buildProgrammaticHubSiblingLinks(
 // just the fields needed to format a link, not a full SeoHubDefinition.
 function synthesizeProgrammaticHubWithoutSiblings(
   category: ProgrammaticCategory,
-  locationSlug: string
+  locationSlug: string,
+  locale: ProgrammaticLocale = "en"
 ): { href: string; heading: string; description: string } | null {
   const locationHub = LOCATION_HUBS[locationSlug];
   if (!locationHub) return null;
+  const copy = category.locales[locale];
   const locationLabel =
-    locationHub.heading.replace(/^Boats for Sale in\s+/i, "") || locationHub.slug;
+    locale === "es"
+      ? LOCATION_ES_LABELS[locationSlug] ?? locationHub.slug
+      : locationHub.heading.replace(/^Boats for Sale in\s+/i, "") || locationHub.slug;
   return {
     href: `/${category.slug}-${locationSlug}`,
-    heading: category.heading(locationLabel),
-    description: category.description(locationLabel),
+    heading: copy.heading(locationLabel),
+    description: copy.description(locationLabel),
   };
+}
+
+// Locale-aware full synthesis — returns the programmatic hub copy fields
+// re-rendered in the target locale. Used by i18n/copy/seo.ts to overlay
+// Spanish copy on top of the (EN-synthesized) base hub so /es variants
+// don't serve English-fallback text. Returns null for non-programmatic
+// hrefs.
+export function synthesizeProgrammaticHubCopyForLocale(
+  href: string,
+  locale: string
+): { title: string; heading: string; description: string; intro: string; eyebrow: string } | null {
+  const targetLocale: ProgrammaticLocale = locale.toLowerCase().startsWith("es") ? "es" : "en";
+  for (const category of PROGRAMMATIC_CATEGORIES) {
+    const prefix = `/${category.slug}-`;
+    if (!href.startsWith(prefix)) continue;
+    const locationSlug = href.slice(prefix.length);
+    const locationHub = LOCATION_HUBS[locationSlug];
+    if (!locationHub) return null;
+    const copy = category.locales[targetLocale];
+    const locationLabel =
+      targetLocale === "es"
+        ? LOCATION_ES_LABELS[locationSlug] ?? locationHub.slug
+        : locationHub.heading.replace(/^Boats for Sale in\s+/i, "") || locationHub.slug;
+    return {
+      title: copy.title(locationLabel),
+      heading: copy.heading(locationLabel),
+      description: copy.description(locationLabel),
+      intro: copy.intro(locationLabel),
+      eyebrow: copy.eyebrow(locationLabel),
+    };
+  }
+  return null;
 }
 
 // Lookup used by the dynamic /[programmaticSlug] route. Returns null for

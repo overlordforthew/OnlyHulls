@@ -1,5 +1,5 @@
 import type { SeoHubLink } from "@/lib/seo/hub-links";
-import type { SeoHubDefinition } from "@/lib/seo/hubs";
+import { synthesizeProgrammaticHubCopyForLocale, type SeoHubDefinition } from "@/lib/seo/hubs";
 
 export interface SeoHubPageCopy {
   browseAllBoats: string;
@@ -349,15 +349,18 @@ export function localizeSeoHubLink(locale: string, link: SeoHubLink): SeoHubLink
   const copy = getSeoHubPageCopy(locale);
   const translated = copy.links[link.href];
 
-  if (!translated) {
-    return link;
+  if (translated) {
+    return { ...link, label: translated.label, description: translated.description };
   }
 
-  return {
-    ...link,
-    label: translated.label,
-    description: translated.description,
-  };
+  // Programmatic hubs aren't in the static links map — synthesize the
+  // locale-specific label/description so /es panels don't leak EN text.
+  const programmatic = synthesizeProgrammaticHubCopyForLocale(link.href, locale);
+  if (programmatic) {
+    return { ...link, label: programmatic.heading, description: programmatic.description };
+  }
+
+  return link;
 }
 
 export function localizeSeoHubDefinition(
@@ -367,16 +370,24 @@ export function localizeSeoHubDefinition(
   const copy = getSeoHubPageCopy(locale);
   const translated = copy.hubs[hub.href];
 
-  if (!translated) {
-    return hub;
+  if (translated) {
+    return {
+      ...hub,
+      title: translated.title,
+      heading: translated.heading,
+      description: translated.description,
+      intro: translated.intro,
+      eyebrow: translated.eyebrow,
+    };
   }
 
-  return {
-    ...hub,
-    title: translated.title,
-    heading: translated.heading,
-    description: translated.description,
-    intro: translated.intro,
-    eyebrow: translated.eyebrow,
-  };
+  // Programmatic hubs live under a dynamic route and aren't keyed in the
+  // static hubs map. Re-synthesize their copy in the target locale so /es
+  // variants serve Spanish text instead of the EN-fallback they got before.
+  const programmatic = synthesizeProgrammaticHubCopyForLocale(hub.href, locale);
+  if (programmatic) {
+    return { ...hub, ...programmatic };
+  }
+
+  return hub;
 }
