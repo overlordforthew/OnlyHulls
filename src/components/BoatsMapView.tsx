@@ -654,6 +654,20 @@ export default function BoatsMapView({
 
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    // "You are here" dot + locate-me button. We don't trackUserLocation (the
+    // pulsing marker gets noisy during panning) and we don't auto-fly on
+    // activation (the load handler already handles first-paint GPS in the
+    // no-search flow). Users can tap the button to re-center whenever.
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 },
+        trackUserLocation: false,
+        showUserLocation: true,
+        showAccuracyCircle: true,
+        fitBoundsOptions: { maxZoom: 9 },
+      }),
+      "top-right"
+    );
     map.addControl(
       new maplibregl.AttributionControl({
         compact: false,
