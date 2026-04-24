@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import { useTranslations } from "next-intl";
 import { Waves } from "lucide-react";
 

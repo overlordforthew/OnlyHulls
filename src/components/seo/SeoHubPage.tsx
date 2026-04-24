@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import { getLocale } from "next-intl/server";
 import BoatBrowse, { type Boat as BoatBrowseBoat } from "@/components/BoatBrowse";
 import BoatCard from "@/components/BoatCard";

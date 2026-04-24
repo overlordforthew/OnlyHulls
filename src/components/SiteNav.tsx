@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import { useTranslations } from "next-intl";
 import { Waves, Menu, X, User, LogOut, Bell, GitCompareArrows } from "lucide-react";
 import { useCompareBoats } from "@/hooks/useCompareBoats";
