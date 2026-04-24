@@ -11,6 +11,7 @@ import {
   buildLocationLikePattern,
   getLocationSearchTerms,
   getTopLocationMarket,
+  inferLocationMarketSignals,
 } from "@/lib/locations/top-markets";
 import { buildSeoHubLinks, type SeoHubLink } from "@/lib/seo/hub-links";
 
@@ -230,20 +231,37 @@ function synthesizeProgrammaticHub(
     // over generic static hubs. Parent static hubs (the category and the
     // location) appear next as higher-authority anchors, then the remaining
     // static set fills to the end.
-    relatedLinks: [
-      ...buildProgrammaticHubSiblingLinks(category.slug, locationSlug),
-      ...buildSeoHubLinks(href).filter((link) =>
-        link.href === category.staticHubHref || link.href === locationHub.href
-      ),
-      ...buildSeoHubLinks(href).filter(
-        (link) => link.href !== category.staticHubHref && link.href !== locationHub.href
-      ),
-    ],
+    relatedLinks: buildProgrammaticHubRelatedLinks(category, locationHub, href),
     browseScope: {
       filters: category.scopeFilters,
       location: locationSlug,
     },
   };
+}
+
+// Partition the static link set once (instead of filtering twice) into
+// [parents that anchor this programmatic hub, everything else] so the call
+// site can splice them in priority order without recomputing.
+function buildProgrammaticHubRelatedLinks(
+  category: ProgrammaticCategory,
+  locationHub: SeoHubDefinition,
+  href: string
+): SeoHubLink[] {
+  const staticLinks = buildSeoHubLinks(href);
+  const parents: SeoHubLink[] = [];
+  const rest: SeoHubLink[] = [];
+  for (const link of staticLinks) {
+    if (link.href === category.staticHubHref || link.href === locationHub.href) {
+      parents.push(link);
+    } else {
+      rest.push(link);
+    }
+  }
+  return [
+    ...buildProgrammaticHubSiblingLinks(category.slug, locationHub.slug),
+    ...parents,
+    ...rest,
+  ];
 }
 
 // Enumerate sibling programmatic hubs for a given (category, location) pair:
@@ -451,6 +469,34 @@ export const LOCATION_HUBS: Record<string, SeoHubDefinition> = {
   },
 };
 
+// Post-init: wire programmatic child links INTO the relatedLinks of static
+// parent hubs so the highest-authority pages (/catamarans-for-sale,
+// /sailboats-for-sale, /boats/location/florida, …) pass link equity DOWN to
+// /catamarans-for-sale-in-florida etc. Before this, programmatic hubs were
+// only reachable via sitemap or boat-detail pages — Codex consensus flagged
+// the missing parent→child crawl path in 2026-04-24 round 2.
+function augmentStaticHubRelatedLinks() {
+  for (const category of PROGRAMMATIC_CATEGORIES) {
+    const parent = CATEGORY_HUBS[category.staticHubHref.replace(/^\//, "")];
+    if (!parent) continue;
+    const children: SeoHubLink[] = [];
+    for (const locationSlug of Object.keys(LOCATION_HUBS)) {
+      const synth = synthesizeProgrammaticHubWithoutSiblings(category, locationSlug);
+      if (synth) children.push({ href: synth.href, label: synth.heading, description: synth.description });
+    }
+    parent.relatedLinks = [...children, ...parent.relatedLinks];
+  }
+  for (const [locationSlug, locationHub] of Object.entries(LOCATION_HUBS)) {
+    const children: SeoHubLink[] = [];
+    for (const category of PROGRAMMATIC_CATEGORIES) {
+      const synth = synthesizeProgrammaticHubWithoutSiblings(category, locationSlug);
+      if (synth) children.push({ href: synth.href, label: synth.heading, description: synth.description });
+    }
+    locationHub.relatedLinks = [...children, ...locationHub.relatedLinks];
+  }
+}
+augmentStaticHubRelatedLinks();
+
 export async function getSeoHubData(hub: SeoHubDefinition) {
   const [boats, total, locationBounds] = await Promise.all([
     getSeoHubBoats(hub.queryWhere, hub.queryParams || []),
@@ -574,13 +620,15 @@ export function getRelevantSeoHubLinksForBoat(input: {
   make?: string | null;
   locationText?: string | null;
   characterTags?: string[] | null;
+  rigType?: string | null;
+  hullType?: string | null;
 }) {
   const links: SeoHubLink[] = [];
   const seen = new Set<string>();
   const makeSlug = String(input.make || "").trim().toLowerCase();
-  const location = String(input.locationText || "").trim().toLowerCase();
   const tagSet = new Set((input.characterTags || []).map((tag) => tag.toLowerCase()));
-  const isCatamaran = tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug);
+  const rigType = String(input.rigType || "").trim().toLowerCase();
+  const hullType = String(input.hullType || "").trim().toLowerCase();
 
   const push = (link: SeoHubLink | undefined) => {
     if (!link || seen.has(link.href)) return;
@@ -588,29 +636,31 @@ export function getRelevantSeoHubLinksForBoat(input: {
     links.push(link);
   };
 
-  // Resolve the best location slug from the boat's location_text. This also
-  // lets us synthesize a programmatic hub link ({hull} × {location}) when both
-  // signals are present — the highest-intent internal link we can show on a
-  // boat detail page.
+  // Resolve an explicit hull axis so we never emit a programmatic link on
+  // ambiguous input. "not catamaran" is NOT "is sailboat" — a Boston Whaler
+  // in Florida should not point at /sailboats-for-sale-in-florida.
+  const hullAxis: ProgrammaticCategory["hullAxis"] | null =
+    tagSet.has("catamaran") || CATAMARAN_MAKES.includes(makeSlug) || hullType === "catamaran"
+      ? "catamaran"
+      : hullType === "monohull" || (tagSet.has("monohull") || tagSet.has("sailboat")) || isSailingRig(rigType)
+        ? "monohull"
+        : null;
+  const isCatamaran = hullAxis === "catamaran";
+
+  // Delegate location resolution to the shared market inference so the
+  // boat-detail path picks up every alias already encoded in TOP_LOCATION_MARKETS
+  // (Miami, Fort Lauderdale, Nassau, Fajardo, Tortola, etc.). Fall through
+  // the returned slug cascade to the first slug that maps to a LOCATION_HUB.
   const locationSlug = (() => {
-    if (location.includes("puerto rico")) return "puerto-rico";
-    if (location.includes("bahamas")) return "bahamas";
-    if (location.includes("florida")) return "florida";
-    if (
-      location.includes("caribbean") ||
-      location.includes("virgin islands") ||
-      location.includes("tortola") ||
-      location.includes("grenada") ||
-      location.includes("st martin") ||
-      location.includes("martinique")
-    )
-      return "caribbean";
+    const signals = inferLocationMarketSignals({ locationText: input.locationText ?? null });
+    for (const slug of signals.marketSlugs) {
+      if (LOCATION_HUBS[slug]) return slug;
+    }
     return null;
   })();
 
-  if (locationSlug) {
-    const categorySlug = isCatamaran ? "catamarans-for-sale-in" : "sailboats-for-sale-in";
-    const programmatic = PROGRAMMATIC_CATEGORIES.find((c) => c.slug === categorySlug);
+  if (hullAxis && locationSlug) {
+    const programmatic = PROGRAMMATIC_CATEGORIES.find((c) => c.hullAxis === hullAxis);
     if (programmatic) {
       const synth = synthesizeProgrammaticHubWithoutSiblings(programmatic, locationSlug);
       if (synth) {
@@ -623,20 +673,15 @@ export function getRelevantSeoHubLinksForBoat(input: {
 
   if (isCatamaran) {
     push(STATIC_HUB_LOOKUP["/catamarans-for-sale"]);
-  } else {
+  } else if (hullAxis === "monohull") {
     push(STATIC_HUB_LOOKUP["/sailboats-for-sale"]);
   }
 
-  if (locationSlug === "puerto-rico") {
-    push(STATIC_HUB_LOOKUP["/boats/location/puerto-rico"]);
-    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
-  } else if (locationSlug === "bahamas") {
-    push(STATIC_HUB_LOOKUP["/boats/location/bahamas"]);
-    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
-  } else if (locationSlug === "florida") {
-    push(STATIC_HUB_LOOKUP["/boats/location/florida"]);
-  } else if (locationSlug === "caribbean") {
-    push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
+  if (locationSlug) {
+    push(STATIC_HUB_LOOKUP[`/boats/location/${locationSlug}`]);
+    if (locationSlug === "puerto-rico" || locationSlug === "bahamas") {
+      push(STATIC_HUB_LOOKUP["/boats/location/caribbean"]);
+    }
   }
 
   for (const fallback of buildSeoHubLinks("__none__")) {
@@ -645,6 +690,16 @@ export function getRelevantSeoHubLinksForBoat(input: {
   }
 
   return links.slice(0, 4);
+}
+
+// Non-exhaustive sailing-rig recognizer: anything that isn't empty, a
+// powerboat marker, or an unknown string counts as a sailing-monohull signal
+// for the purposes of SEO inbound-link emission. Conservative on purpose —
+// we'd rather under-link than mis-link a powerboat into a sailboat hub.
+function isSailingRig(rigType: string): boolean {
+  if (!rigType) return false;
+  if (["motor", "power", "powerboat", "none", "n/a"].includes(rigType)) return false;
+  return true;
 }
 
 const STATIC_HUB_LOOKUP = Object.fromEntries(
