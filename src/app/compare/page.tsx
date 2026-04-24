@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "@/components/LocaleLink";
+import { localizedHref } from "@/i18n/href";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -378,14 +379,14 @@ function ComparePageContent() {
     clear();
     if (compareIdsFromUrl.length > 0) {
       setDismissedUrlSeed(true);
-      router.replace("/compare", { scroll: false });
+      router.replace(localizedHref("/compare", locale), { scroll: false });
     }
   }
 
   function removeBoatFromCompare(boatId: string) {
     if (compareIdsFromUrl.length > 0 && compareIds.length <= 1) {
       setDismissedUrlSeed(true);
-      router.replace("/compare", { scroll: false });
+      router.replace(localizedHref("/compare", locale), { scroll: false });
     }
     removeBoat(boatId);
   }
@@ -395,7 +396,7 @@ function ComparePageContent() {
       return;
     }
 
-    const shareUrl = new URL("/compare", window.location.origin);
+    const shareUrl = new URL(localizedHref("/compare", locale), window.location.origin);
     shareUrl.searchParams.set("ids", activeCompareIds.join(","));
 
     try {

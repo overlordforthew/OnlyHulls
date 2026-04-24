@@ -4,7 +4,8 @@ import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from "rea
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { localizedHref } from "@/i18n/href";
 import Image from "next/image";
 import Link from "@/components/LocaleLink";
 import BoatCard from "@/components/BoatCard";
@@ -238,6 +239,7 @@ function BoatBrowseInner({
   seedMapViewport,
 }: BoatBrowseProps) {
   const t = useTranslations("boatsPage");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -435,7 +437,7 @@ function BoatBrowseInner({
     setFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
     setSaveMessage(null);
-    router.push("/boats");
+    router.push(localizedHref("/boats", locale));
   }
 
   // Refetch when sort changes. On SSR hubs we seeded `boats` with the

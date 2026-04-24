@@ -9,17 +9,25 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const copy = getCompareLayoutCopy(locale);
 
+  const canonical =
+    locale === "en" ? `${appUrl}/compare` : `${appUrl}/${locale}/compare`;
+
   return {
     title: copy.title,
     metadataBase: new URL(appUrl),
     description: copy.description,
     alternates: {
-      canonical: `${appUrl}/compare`,
+      canonical,
+      languages: {
+        en: `${appUrl}/compare`,
+        es: `${appUrl}/es/compare`,
+        "x-default": `${appUrl}/compare`,
+      },
     },
     openGraph: {
       title: `${copy.title} | OnlyHulls`,
       description: copy.ogDescription,
-      url: `${appUrl}/compare`,
+      url: canonical,
     },
     twitter: {
       title: `${copy.title} | OnlyHulls`,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   ClipboardList,
   Camera,
@@ -59,13 +59,20 @@ const BENEFIT_CONFIG = [
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("sellPage");
+  const locale = await getLocale();
+  const canonical = locale === "en" ? `${appUrl}/sell` : `${appUrl}/${locale}/sell`;
 
   return {
     title: t("metadataTitle"),
     metadataBase: new URL(appUrl),
     description: t("metadataDescription"),
     alternates: {
-      canonical: `${appUrl}/sell`,
+      canonical,
+      languages: {
+        en: `${appUrl}/sell`,
+        es: `${appUrl}/es/sell`,
+        "x-default": `${appUrl}/sell`,
+      },
     },
   };
 }

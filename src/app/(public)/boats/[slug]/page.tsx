@@ -305,7 +305,11 @@ export default async function BoatDetailPage({
     notFound();
   }
   const appUrl = getPublicAppUrl();
-  const boatUrl = `${appUrl}/boats/${slug}`;
+  // Localized canonical: Spanish detail pages live at /es/boats/:slug, so
+  // the JSON-LD breadcrumb and Offer URL should reference the localized
+  // version (matches what generateMetadata emits).
+  const boatUrl =
+    locale === "en" ? `${appUrl}/boats/${slug}` : `${appUrl}/${locale}/boats/${slug}`;
   const formatNumber = (value: number) => value.toLocaleString(locale);
 
   if (boat.status === "active") {

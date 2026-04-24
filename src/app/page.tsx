@@ -1,5 +1,6 @@
 import Link from "@/components/LocaleLink";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { localizedHref } from "@/i18n/href";
 import {
   Sailboat,
   Home as HomeIcon,
@@ -77,6 +78,8 @@ const VALUE_CONFIG = [
 
 export default async function Home() {
   const t = await getTranslations("home");
+  const locale = await getLocale();
+  const searchAction = localizedHref("/boats", locale);
   const [count, boats] = await Promise.all([
     getBoatCount(),
     getFeaturedBoats(6),
@@ -146,7 +149,7 @@ export default async function Home() {
 
             {/* Search bar */}
             <form
-              action="/boats"
+              action={searchAction}
               className="mx-auto mt-8 grid max-w-3xl gap-2 rounded-2xl border border-border-bright bg-surface p-2 text-left shadow-lg shadow-black/20 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.86fr)_auto] sm:rounded-full"
             >
               <label className="flex min-w-0 items-center gap-3 rounded-xl px-4 py-2.5 transition-colors focus-within:bg-surface-elevated sm:rounded-full">

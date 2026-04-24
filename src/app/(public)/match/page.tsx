@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   Sailboat,
   MessageSquare,
@@ -66,13 +66,20 @@ const MATCH_SCORES = [97, 91, 84];
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("matchPage");
+  const locale = await getLocale();
+  const canonical = locale === "en" ? `${appUrl}/match` : `${appUrl}/${locale}/match`;
 
   return {
     title: t("metadataTitle"),
     metadataBase: new URL(appUrl),
     description: t("metadataDescription"),
     alternates: {
-      canonical: `${appUrl}/match`,
+      canonical,
+      languages: {
+        en: `${appUrl}/match`,
+        es: `${appUrl}/es/match`,
+        "x-default": `${appUrl}/match`,
+      },
     },
   };
 }

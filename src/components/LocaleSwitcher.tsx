@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   DEFAULT_LOCALE,
@@ -28,6 +28,8 @@ export default function LocaleSwitcher({
   onChangeComplete,
 }: LocaleSwitcherProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = useLocale() as AppLocale;
   const t = useTranslations("localeSwitcher");
 
@@ -37,8 +39,31 @@ export default function LocaleSwitcher({
       : DEFAULT_LOCALE;
 
     persistLocale(normalizedLocale);
+
+    // Locale is path-authoritative now (/es/* for Spanish, root for English).
+    // Cookie alone doesn't change the active locale because proxy.ts reads
+    // x-locale from the path. Rewrite the current URL to the chosen locale's
+    // prefix and navigate.
+    const currentPath = pathname || "/";
+    // Strip any supported non-default-locale prefix first.
+    let basePath = currentPath;
+    for (const prefix of SUPPORTED_LOCALES.filter((l) => l !== DEFAULT_LOCALE)) {
+      if (basePath === `/${prefix}` || basePath.startsWith(`/${prefix}/`)) {
+        basePath = basePath.slice(`/${prefix}`.length) || "/";
+        break;
+      }
+    }
+    const nextPath =
+      normalizedLocale === DEFAULT_LOCALE
+        ? basePath
+        : basePath === "/"
+        ? `/${normalizedLocale}`
+        : `/${normalizedLocale}${basePath}`;
+    const query = searchParams?.toString();
+    const destination = query ? `${nextPath}?${query}` : nextPath;
+
     startTransition(() => {
-      router.refresh();
+      router.replace(destination);
     });
     onChangeComplete?.();
   }
