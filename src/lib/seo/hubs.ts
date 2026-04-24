@@ -286,13 +286,19 @@ const HUB_MIN_INDEXABLE_INVENTORY = 3;
 
 export function buildSeoHubMetadata(
   hub: SeoHubDefinition,
-  options: { inventoryCount?: number } = {}
+  options: { inventoryCount?: number; locale?: string } = {}
 ): Metadata {
   const appUrl = getPublicAppUrl();
   const canonical = `${appUrl}${hub.href}`;
   const inventoryCount = options.inventoryCount;
   const thinContent =
     typeof inventoryCount === "number" && inventoryCount < HUB_MIN_INDEXABLE_INVENTORY;
+  // Non-default locales share the same canonical as English via cookie
+  // detection, which would create duplicate-content noise in Google's
+  // index. Noindex them until the /es path split lands.
+  const nonDefaultLocale =
+    typeof options.locale === "string" && options.locale !== "en";
+  const shouldNoindex = thinContent || nonDefaultLocale;
 
   return {
     title: hub.title,
@@ -301,10 +307,7 @@ export function buildSeoHubMetadata(
     alternates: {
       canonical,
     },
-    // When inventory is thin we let crawlers follow internal links but keep
-    // the page out of the index — otherwise repeated low-content hubs drag
-    // sitewide quality signals.
-    robots: thinContent ? { index: false, follow: true } : { index: true, follow: true },
+    robots: shouldNoindex ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       type: "website",
       url: canonical,

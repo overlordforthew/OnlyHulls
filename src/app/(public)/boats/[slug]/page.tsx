@@ -242,10 +242,13 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
     },
-    robots: {
-      index: true,
-      follow: true,
-    },
+    // Only the default locale is indexable today — shared-URL locale
+    // switching via cookie means the es variant would be duplicate
+    // content at the same canonical.
+    robots:
+      locale === "en"
+        ? { index: true, follow: true }
+        : { index: false, follow: true },
     openGraph: {
       type: "article",
       title: `${title} | OnlyHulls`,

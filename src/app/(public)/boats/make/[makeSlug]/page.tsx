@@ -20,7 +20,7 @@ export async function generateMetadata({
   const hub = requireSeoHub(getMakeHub(makeSlug));
   const locale = await getLocale();
   const inventoryCount = await getSeoHubBoatCount(hub.queryWhere, hub.queryParams || []);
-  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount });
+  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount, locale });
 }
 
 export default async function MakeHubPage({

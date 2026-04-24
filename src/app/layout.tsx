@@ -77,10 +77,14 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: appUrl,
     },
-    robots: {
-      index: true,
-      follow: true,
-    },
+    // Only the default locale is indexable today. Non-default locales
+    // serve the same canonical URL via cookie/Accept-Language routing,
+    // which Google would flag as duplicate content. Noindex shields
+    // sitewide quality signals until the /es path split lands.
+    robots:
+      locale === "en"
+        ? { index: true, follow: true }
+        : { index: false, follow: true },
   };
 }
 

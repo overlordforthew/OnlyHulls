@@ -15,7 +15,7 @@ export const revalidate = 300;
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const inventoryCount = await getSeoHubBoatCount(hub.queryWhere, hub.queryParams || []);
-  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount });
+  return buildSeoHubMetadata(localizeSeoHubDefinition(locale, hub), { inventoryCount, locale });
 }
 
 export default async function SailboatsForSalePage() {
