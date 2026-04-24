@@ -133,30 +133,121 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
     relatedLinks: buildSeoHubLinks("/sailboats-for-sale"),
     browseScope: { filters: { hullType: "monohull" } },
   },
-  // Smoke-test programmatic hub: catamarans × Florida. Highest-intent
-  // query pattern per SEO audit. Combines buildCatamaranWhereSql + the
-  // Florida location predicate; queryParams is the catamaran-make list
-  // followed by Florida's market slug + location text patterns.
-  "catamarans-for-sale-in-florida": (() => {
-    const fl = buildLocationMarketQuery("florida", CATAMARAN_MAKES.length);
-    return {
-      slug: "catamarans-for-sale-in-florida",
-      href: "/catamarans-for-sale-in-florida",
-      title: "Catamarans for Sale in Florida",
-      heading: "Catamarans for Sale in Florida",
-      description:
-        "Browse catamarans for sale in Florida on OnlyHulls — filter-scoped inventory with direct seller paths and cleaner location data.",
-      intro:
-        "Florida is the highest-volume US catamaran market. This page narrows our catamaran catalog to Florida listings only.",
-      eyebrow: "Catamaran × Florida",
-      queryWhere: `(${buildCatamaranWhereSql()} AND ${fl.queryWhere})`,
-      queryParams: [...CATAMARAN_MAKES, ...fl.queryParams],
-      countLabel: "live Florida catamarans",
-      relatedLinks: buildSeoHubLinks("/catamarans-for-sale-in-florida"),
-      browseScope: { filters: { hullType: "catamaran" }, location: "florida" },
-    };
-  })(),
 };
+
+// Programmatic hub expansion. Every catamaran/sailboat × known-location
+// pair gets auto-generated via resolveProgrammaticHub(). The single dynamic
+// /[programmaticSlug] route serves them all and thin-content gating still
+// applies per-request via generateMetadata's inventory count.
+type ProgrammaticCategory = {
+  slug: string;
+  heading: (location: string) => string;
+  title: (location: string) => string;
+  description: (location: string) => string;
+  intro: (location: string) => string;
+  eyebrow: (location: string) => string;
+  countLabel: (location: string) => string;
+  scopeFilters: NonNullable<SeoHubBrowseScope["filters"]>;
+  buildWhereSql: (paramOffset: number) => { sql: string; params: unknown[] };
+};
+
+const PROGRAMMATIC_CATEGORIES: ProgrammaticCategory[] = [
+  {
+    slug: "catamarans-for-sale-in",
+    heading: (loc) => `Catamarans for Sale in ${loc}`,
+    title: (loc) => `Catamarans for Sale in ${loc}`,
+    description: (loc) =>
+      `Browse catamarans for sale in ${loc} on OnlyHulls — cleaner listings, stronger location data, and direct seller paths.`,
+    intro: (loc) =>
+      `This page narrows the OnlyHulls catamaran catalog to ${loc} listings only. Direct broker / owner contact, no middleman commission, cleaner geocoding than general catamaran search.`,
+    eyebrow: (loc) => `Catamaran × ${loc}`,
+    countLabel: (loc) => `live ${loc} catamarans`,
+    scopeFilters: { hullType: "catamaran" },
+    buildWhereSql: (offset) => ({
+      sql: buildCatamaranWhereSql(offset),
+      params: [...CATAMARAN_MAKES],
+    }),
+  },
+  {
+    slug: "sailboats-for-sale-in",
+    heading: (loc) => `Sailboats for Sale in ${loc}`,
+    title: (loc) => `Sailboats for Sale in ${loc}`,
+    description: (loc) =>
+      `Browse sailboats and monohulls for sale in ${loc} on OnlyHulls with direct seller paths and AI-assisted discovery.`,
+    intro: (loc) =>
+      `This page narrows OnlyHulls monohulls to ${loc} listings with useful rig data and cleaner buyer-facing inventory.`,
+    eyebrow: (loc) => `Sailboat × ${loc}`,
+    countLabel: (loc) => `live ${loc} sailboats`,
+    scopeFilters: { hullType: "monohull" },
+    buildWhereSql: (offset) => ({
+      sql: `(
+        NOT ${buildCatamaranWhereSql(offset)}
+        AND COALESCE(NULLIF(TRIM(d.specs->>'rig_type'), ''), '') <> ''
+      )`,
+      params: [...CATAMARAN_MAKES],
+    }),
+  },
+];
+
+function synthesizeProgrammaticHub(
+  category: ProgrammaticCategory,
+  locationSlug: string
+): SeoHubDefinition | null {
+  const locationHub = LOCATION_HUBS[locationSlug];
+  if (!locationHub) return null;
+  // Location hubs' heading format is "Boats for Sale in {Location}" — strip
+  // the prefix to get a display-ready location label for the programmatic
+  // hub copy.
+  const locationLabel =
+    locationHub.heading.replace(/^Boats for Sale in\s+/i, "") || locationHub.slug;
+  const categoryWhere = category.buildWhereSql(0);
+  const locationWhere = buildLocationMarketQuery(locationSlug, categoryWhere.params.length);
+  const href = `/${category.slug}-${locationSlug}`;
+  return {
+    slug: href.slice(1),
+    href,
+    title: category.title(locationLabel),
+    heading: category.heading(locationLabel),
+    description: category.description(locationLabel),
+    intro: category.intro(locationLabel),
+    eyebrow: category.eyebrow(locationLabel),
+    queryWhere: `(${categoryWhere.sql} AND ${locationWhere.queryWhere})`,
+    queryParams: [...categoryWhere.params, ...locationWhere.queryParams],
+    countLabel: category.countLabel(locationLabel),
+    relatedLinks: buildSeoHubLinks(href),
+    browseScope: {
+      filters: category.scopeFilters,
+      location: locationSlug,
+    },
+  };
+}
+
+// Lookup used by the dynamic /[programmaticSlug] route. Returns null for
+// any slug that doesn't match the {category}-{location} pattern or whose
+// location piece isn't a known LOCATION_HUBS slug.
+export function resolveProgrammaticHub(slug: string): SeoHubDefinition | null {
+  for (const category of PROGRAMMATIC_CATEGORIES) {
+    const prefix = `${category.slug}-`;
+    if (slug.startsWith(prefix)) {
+      const locationSlug = slug.slice(prefix.length);
+      return synthesizeProgrammaticHub(category, locationSlug);
+    }
+  }
+  return null;
+}
+
+// Enumerate every valid programmatic slug (category × known-location cross
+// product). Used by the sitemap to broadcast them; inventory gating is
+// applied downstream against live counts.
+export function listProgrammaticHubSlugs(): string[] {
+  const slugs: string[] = [];
+  for (const category of PROGRAMMATIC_CATEGORIES) {
+    for (const locationSlug of Object.keys(LOCATION_HUBS)) {
+      slugs.push(`${category.slug}-${locationSlug}`);
+    }
+  }
+  return slugs;
+}
 
 export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
   lagoon: {

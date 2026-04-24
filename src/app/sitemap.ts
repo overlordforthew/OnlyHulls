@@ -2,7 +2,14 @@ import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 import { getPublicAppUrl } from "@/lib/config/urls";
 import { buildVisibleImportQualitySql } from "@/lib/import-quality";
-import { CATEGORY_HUBS, LOCATION_HUBS, MAKE_HUBS, type SeoHubDefinition } from "@/lib/seo/hubs";
+import {
+  CATEGORY_HUBS,
+  LOCATION_HUBS,
+  MAKE_HUBS,
+  listProgrammaticHubSlugs,
+  resolveProgrammaticHub,
+  type SeoHubDefinition,
+} from "@/lib/seo/hubs";
 
 // The sitemap needs DB access to compute hub lastmods and emit boat URLs;
 // Coolify's build container can't reach Postgres, so Next.js SSG of this
@@ -87,10 +94,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     withLanguages(appUrl, "/terms", { lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 }),
   ];
 
+  const programmaticHubs = listProgrammaticHubSlugs()
+    .map((slug) => resolveProgrammaticHub(slug))
+    .filter((hub): hub is SeoHubDefinition => hub !== null);
   const allHubs = [
     ...Object.values(CATEGORY_HUBS),
     ...Object.values(MAKE_HUBS),
     ...Object.values(LOCATION_HUBS),
+    ...programmaticHubs,
   ];
   const lastMods = await fetchHubLastMods(allHubs);
   const hubPages: MetadataRoute.Sitemap = allHubs
