@@ -79,5 +79,17 @@ export async function POST(req: Request) {
 
   const newBoats = candidates.reduce((sum, c) => sum + c.newResults, 0);
   logger.info({ emailsSent, searchesMarked, newBoats, errorCount: errors.length }, "saved-search-alerts run");
-  return NextResponse.json({ emailsSent, searchesMarked, newBoats, errors: errors.length ? errors : undefined });
+  // When every attempted send failed, return 5xx so the host cron's
+  // `curl --fail` flips the job to error state. Partial failures still
+  // return 200 — some emails landed and we don't want to retry the whole
+  // batch — but the payload surfaces the counts and sanitized failure
+  // count so alerting can detect them.
+  const body = {
+    emailsSent,
+    searchesMarked,
+    newBoats,
+    failureCount: errors.length,
+  };
+  const allFailed = grouped.size > 0 && emailsSent === 0 && errors.length > 0;
+  return NextResponse.json(body, { status: allFailed ? 500 : 200 });
 }

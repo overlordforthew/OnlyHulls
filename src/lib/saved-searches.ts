@@ -209,7 +209,8 @@ async function hydrateSavedSearch(row: SavedSearchRow): Promise<SavedSearchRecor
 export async function listSavedSearches(userId: string): Promise<SavedSearchRecord[]> {
   const rows = await query<SavedSearchRow>(
     `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
-            rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at
+            rig_type, hull_type, sort, dir,
+            last_checked_at::text AS last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1
      ORDER BY created_at DESC`,
@@ -233,7 +234,7 @@ export async function listSavedSearchAlertCandidates(limitPerSearch = 5) {
   const rows = await query<SavedSearchEmailRow>(
     `SELECT ss.id, ss.user_id, ss.name, ss.search_query, ss.location_query, ss.currency_code, ss.tag, ss.min_price, ss.max_price,
             ss.min_year, ss.max_year, ss.rig_type, ss.hull_type, ss.sort, ss.dir,
-            ss.last_checked_at, ss.created_at, ss.updated_at,
+            ss.last_checked_at::text AS last_checked_at, ss.created_at, ss.updated_at,
             u.email, u.display_name, u.email_alerts
      FROM saved_searches ss
      JOIN users u ON u.id = ss.user_id
@@ -279,7 +280,8 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
   const signature = buildSavedSearchSignature(filters);
   const existing = await queryOne<SavedSearchRow>(
     `SELECT id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
-            rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at
+            rig_type, hull_type, sort, dir,
+            last_checked_at::text AS last_checked_at, created_at, updated_at
      FROM saved_searches
      WHERE user_id = $1 AND signature = $2`,
     [userId, signature]
@@ -304,7 +306,8 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
            updated_at = NOW()
        WHERE user_id = $1 AND signature = $2
        RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
-                 rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
+                 rig_type, hull_type, sort, dir,
+            last_checked_at::text AS last_checked_at, created_at, updated_at`,
       [
         userId,
         signature,
@@ -339,7 +342,8 @@ export async function createSavedSearch(userId: string, input: Partial<BoatSearc
        $9, $10, $11, $12, $13, $14, $15
      )
      RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
-               rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
+               rig_type, hull_type, sort, dir,
+            last_checked_at::text AS last_checked_at, created_at, updated_at`,
     [
       userId,
       buildSavedSearchName(filters),
@@ -371,7 +375,8 @@ export async function acknowledgeSavedSearch(userId: string, savedSearchId: stri
      SET last_checked_at = NOW(), updated_at = NOW()
      WHERE id = $1 AND user_id = $2
      RETURNING id, name, search_query, location_query, currency_code, tag, min_price, max_price, min_year, max_year,
-               rig_type, hull_type, sort, dir, last_checked_at, created_at, updated_at`,
+               rig_type, hull_type, sort, dir,
+            last_checked_at::text AS last_checked_at, created_at, updated_at`,
     [savedSearchId, userId]
   );
 
