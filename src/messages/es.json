@@ -563,7 +563,8 @@
     "resetView": "Restablecer vista",
     "clusterLabel": "{count, plural, one {# barco en esta zona. Acerca el mapa para expandir.} other {# barcos en esta zona. Acerca el mapa para expandir.}}",
     "webglUnavailableTitle": "El mapa no se puede renderizar en este navegador",
-    "webglUnavailableBody": "Tu navegador no pudo iniciar un contexto WebGL. Cambia a la vista Cuadrícula o Filas arriba, o prueba con otro navegador."
+    "webglUnavailableBody": "Tu navegador no pudo iniciar un contexto WebGL. Cambia a la vista Cuadrícula o Filas arriba, o prueba con otro navegador.",
+    "lengthUnit": "pies"
   },
   "searchHubsTitle": "Explora hubs de búsqueda",
     "searchHubsSubtitle": "Usa páginas estables de exploración para marcas, regiones y tipos de barco populares.",

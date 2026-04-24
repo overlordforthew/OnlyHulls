@@ -563,7 +563,8 @@
     "resetView": "Reset view",
     "clusterLabel": "{count, plural, one {# boat in this area. Zoom in to expand.} other {# boats in this area. Zoom in to expand.}}",
     "webglUnavailableTitle": "Map can't render in this browser",
-    "webglUnavailableBody": "Your browser couldn't start a WebGL context. Switch to Grid or Rows view above, or try a different browser."
+    "webglUnavailableBody": "Your browser couldn't start a WebGL context. Switch to Grid or Rows view above, or try a different browser.",
+    "lengthUnit": "ft"
   },
   "searchHubsTitle": "Explore Search Hubs",
     "searchHubsSubtitle": "Use stable browse pages for popular makes, regions, and boat types.",
