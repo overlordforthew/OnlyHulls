@@ -133,6 +133,29 @@ export const CATEGORY_HUBS: Record<string, SeoHubDefinition> = {
     relatedLinks: buildSeoHubLinks("/sailboats-for-sale"),
     browseScope: { filters: { hullType: "monohull" } },
   },
+  // Smoke-test programmatic hub: catamarans × Florida. Highest-intent
+  // query pattern per SEO audit. Combines buildCatamaranWhereSql + the
+  // Florida location predicate; queryParams is the catamaran-make list
+  // followed by Florida's market slug + location text patterns.
+  "catamarans-for-sale-in-florida": (() => {
+    const fl = buildLocationMarketQuery("florida", CATAMARAN_MAKES.length);
+    return {
+      slug: "catamarans-for-sale-in-florida",
+      href: "/catamarans-for-sale-in-florida",
+      title: "Catamarans for Sale in Florida",
+      heading: "Catamarans for Sale in Florida",
+      description:
+        "Browse catamarans for sale in Florida on OnlyHulls — filter-scoped inventory with direct seller paths and cleaner location data.",
+      intro:
+        "Florida is the highest-volume US catamaran market. This page narrows our catamaran catalog to Florida listings only.",
+      eyebrow: "Catamaran × Florida",
+      queryWhere: `(${buildCatamaranWhereSql()} AND ${fl.queryWhere})`,
+      queryParams: [...CATAMARAN_MAKES, ...fl.queryParams],
+      countLabel: "live Florida catamarans",
+      relatedLinks: buildSeoHubLinks("/catamarans-for-sale-in-florida"),
+      browseScope: { filters: { hullType: "catamaran" }, location: "florida" },
+    };
+  })(),
 };
 
 export const MAKE_HUBS: Record<string, SeoHubDefinition> = {
