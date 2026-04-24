@@ -173,7 +173,7 @@ async function getEndedBoatInfo(slug: string): Promise<EndedBoatInfo | null> {
        FROM boats b
        LEFT JOIN boat_dna d ON d.boat_id = b.id
       WHERE b.slug = $1
-        AND b.status = ANY($2::text[])
+        AND b.status::text = ANY($2::text[])
         AND ${buildVisibleImportQualitySql("b")}
       LIMIT 1`,
     [slug, [...PUBLIC_ENDED_STATUSES]]
