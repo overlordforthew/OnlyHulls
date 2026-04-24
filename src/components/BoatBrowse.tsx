@@ -1080,7 +1080,7 @@ function BoatBrowseInner({
         </div>
       </div>
 
-      {!hasActiveSearchCriteria && (
+      {!hasActiveSearchCriteria && viewMode !== "map" && (
         <div className="pt-6">
           <SeoHubLinks
             compact
