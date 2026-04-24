@@ -145,6 +145,35 @@ async function getBoatForViewer(
   return null;
 }
 
+type EndedBoatInfo = {
+  status: string;
+  make: string;
+  model: string;
+  year: number;
+  location_text: string | null;
+  hero_url: string | null;
+  make_slug: string | null;
+};
+
+// A boat slug that used to be active but is now expired / sold / unlisted.
+// We render a dedicated "listing ended" state with robots noindex so Google
+// deindexes the URL gracefully instead of leaving a 404 to soft-404.
+async function getEndedBoatInfo(slug: string): Promise<EndedBoatInfo | null> {
+  const boat = await queryOne<EndedBoatInfo>(
+    `SELECT b.status, b.make, b.model, b.year, b.location_text,
+            (SELECT url FROM boat_media bm
+              WHERE bm.boat_id = b.id AND bm.type = 'image'
+              ORDER BY sort_order LIMIT 1) AS hero_url,
+            LOWER(REGEXP_REPLACE(b.make, '[^a-zA-Z0-9]+', '-', 'g')) AS make_slug
+       FROM boats b
+      WHERE (b.slug = $1 OR b.id::text = $1)
+        AND b.status <> 'active'
+      LIMIT 1`,
+    [slug]
+  );
+  return boat ?? null;
+}
+
 async function getBoatMedia(boatId: string) {
   return query<{
     id: string;
@@ -170,7 +199,20 @@ export async function generateMetadata({
   const locale = await getLocale();
   const copy = getBoatDetailCopy(locale);
   const boat = await getPublicBoat(slug);
-  if (!boat) return { title: copy.metadata.boatNotFoundTitle };
+  if (!boat) {
+    // If a same-slug row exists but is expired/sold/unlisted, tell crawlers
+    // to deindex while the user gets a "listing ended" page below.
+    const ended = await getEndedBoatInfo(slug);
+    if (ended) {
+      const endedTitle = `${ended.year} ${ended.make} ${ended.model}`.trim();
+      return {
+        title: `${endedTitle} — listing ended | OnlyHulls`,
+        description: `This ${endedTitle} listing is no longer active on OnlyHulls. Explore similar boats still for sale.`,
+        robots: { index: false, follow: true },
+      };
+    }
+    return { title: copy.metadata.boatNotFoundTitle };
+  }
 
   const appUrl = getPublicAppUrl();
   const canonicalUrl = `${appUrl}/boats/${slug}`;
@@ -234,7 +276,16 @@ export default async function BoatDetailPage({
   );
   const viewer = await getCurrentUser();
   const boat = await getBoatForViewer(slug, viewer?.id ?? null, viewer?.role ?? null);
-  if (!boat) notFound();
+  if (!boat) {
+    // Slug might point at a boat that used to be active but is now
+    // expired / sold / unlisted. Render an "ended" state instead of a
+    // bare 404 — gets ~90% of a 410's deindex benefit without middleware.
+    const ended = await getEndedBoatInfo(slug);
+    if (ended) {
+      return <EndedListing ended={ended} />;
+    }
+    notFound();
+  }
   const appUrl = getPublicAppUrl();
   const boatUrl = `${appUrl}/boats/${slug}`;
   const formatNumber = (value: number) => value.toLocaleString(locale);
@@ -745,6 +796,55 @@ function SpecRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between gap-4 rounded-lg bg-surface px-3 py-2.5">
       <span className="shrink-0 whitespace-nowrap text-sm text-text-secondary">{label}</span>
       <span className="min-w-0 break-words text-right text-sm font-medium">{value}</span>
+    </div>
+  );
+}
+
+function EndedListing({ ended }: { ended: EndedBoatInfo }) {
+  const title = `${ended.year} ${ended.make} ${ended.model}`.trim();
+  const makeHubHref = ended.make_slug ? `/boats/make/${ended.make_slug}` : null;
+  const statusCopy: Record<string, string> = {
+    expired: "This listing has expired.",
+    sold: "This boat has been sold.",
+    unlisted: "This listing is no longer available.",
+    withdrawn: "The seller has withdrawn this listing.",
+  };
+  const statusLine = statusCopy[ended.status] ?? "This listing is no longer active.";
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-16 text-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+        Listing ended
+      </p>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+      {ended.location_text && (
+        <p className="mt-2 text-sm text-text-secondary">{ended.location_text}</p>
+      )}
+      <p className="mt-6 text-base text-text-secondary">{statusLine}</p>
+      <p className="mt-2 text-sm text-text-tertiary">
+        Explore similar live listings below — we keep the catalog fresh every day.
+      </p>
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        {makeHubHref && (
+          <Link
+            href={makeHubHref}
+            className="rounded-full bg-primary-btn px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-light"
+          >
+            {ended.make} boats for sale
+          </Link>
+        )}
+        <Link
+          href="/boats"
+          className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+        >
+          Browse all boats
+        </Link>
+        <Link
+          href="/match"
+          className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
+        >
+          Get AI matched
+        </Link>
+      </div>
     </div>
   );
 }
