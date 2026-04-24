@@ -75,16 +75,21 @@ export async function generateMetadata(): Promise<Metadata> {
       images: ["/og-image.png"],
     },
     alternates: {
-      canonical: appUrl,
+      // Each locale self-canonicalises: en → appUrl, es → appUrl/es. This
+      // lets both variants live in Google's index without duplicate-content
+      // penalties now that the /es path split + hreflang alternates are
+      // live.
+      canonical: locale === "en" ? appUrl : `${appUrl}/${locale}`,
+      languages: {
+        en: appUrl,
+        es: `${appUrl}/es`,
+        "x-default": appUrl,
+      },
     },
-    // Only the default locale is indexable today. Non-default locales
-    // serve the same canonical URL via cookie/Accept-Language routing,
-    // which Google would flag as duplicate content. Noindex shields
-    // sitewide quality signals until the /es path split lands.
-    robots:
-      locale === "en"
-        ? { index: true, follow: true }
-        : { index: false, follow: true },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 

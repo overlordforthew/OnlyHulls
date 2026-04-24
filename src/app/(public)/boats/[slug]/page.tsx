@@ -252,15 +252,18 @@ export async function generateMetadata({
     description,
     keywords,
     alternates: {
-      canonical: canonicalUrl,
+      canonical:
+        locale === "en" ? canonicalUrl : `${appUrl}/es/boats/${slug}`,
+      languages: {
+        en: canonicalUrl,
+        es: `${appUrl}/es/boats/${slug}`,
+        "x-default": canonicalUrl,
+      },
     },
-    // Only the default locale is indexable today — shared-URL locale
-    // switching via cookie means the es variant would be duplicate
-    // content at the same canonical.
-    robots:
-      locale === "en"
-        ? { index: true, follow: true }
-        : { index: false, follow: true },
+    robots: {
+      index: true,
+      follow: true,
+    },
     openGraph: {
       type: "article",
       title: `${title} | OnlyHulls`,

@@ -50,17 +50,41 @@ function hubPriority(boatCount: number) {
   return 0.6;
 }
 
+// Every entry gets an `alternates.languages` map so Google understands the
+// en/es pairing. The helper expands a single path into a sitemap entry plus
+// explicit hreflang alternates.
+function withLanguages(
+  appUrl: string,
+  path: string,
+  entry: { lastModified: Date; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }
+): MetadataRoute.Sitemap[number] {
+  const pathForEs = path === "" ? "/es" : `/es${path}`;
+  return {
+    url: `${appUrl}${path || "/"}`.replace(/\/$/, "") || appUrl,
+    lastModified: entry.lastModified,
+    changeFrequency: entry.changeFrequency,
+    priority: entry.priority,
+    alternates: {
+      languages: {
+        en: `${appUrl}${path || "/"}`.replace(/\/$/, "") || appUrl,
+        es: `${appUrl}${pathForEs}`,
+        "x-default": `${appUrl}${path || "/"}`.replace(/\/$/, "") || appUrl,
+      },
+    },
+  };
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getPublicAppUrl();
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: appUrl, lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 1 },
-    { url: `${appUrl}/boats`, lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 0.9 },
-    { url: `${appUrl}/match`, lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${appUrl}/sell`, lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${appUrl}/about`, lastModified: BUILD_TIMESTAMP, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${appUrl}/privacy`, lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${appUrl}/terms`, lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 },
+    withLanguages(appUrl, "", { lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 1 }),
+    withLanguages(appUrl, "/boats", { lastModified: BUILD_TIMESTAMP, changeFrequency: "daily", priority: 0.9 }),
+    withLanguages(appUrl, "/match", { lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.8 }),
+    withLanguages(appUrl, "/sell", { lastModified: BUILD_TIMESTAMP, changeFrequency: "weekly", priority: 0.7 }),
+    withLanguages(appUrl, "/about", { lastModified: BUILD_TIMESTAMP, changeFrequency: "monthly", priority: 0.5 }),
+    withLanguages(appUrl, "/privacy", { lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 }),
+    withLanguages(appUrl, "/terms", { lastModified: BUILD_TIMESTAMP, changeFrequency: "yearly", priority: 0.2 }),
   ];
 
   const allHubs = [
@@ -79,12 +103,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .map((hub) => {
       const row = lastMods.get(hub.href);
-      return {
-        url: `${appUrl}${hub.href}`,
+      return withLanguages(appUrl, hub.href, {
         lastModified: row?.last_updated ? new Date(row.last_updated) : BUILD_TIMESTAMP,
-        changeFrequency: "daily" as const,
+        changeFrequency: "daily",
         priority: hubPriority(row?.boat_count ?? 0),
-      };
+      });
     });
 
   try {
@@ -97,12 +120,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
        ORDER BY b.updated_at DESC`
     );
 
-    const boatPages: MetadataRoute.Sitemap = boats.map((boat) => ({
-      url: `${appUrl}/boats/${boat.slug}`,
-      lastModified: new Date(boat.updated_at),
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
+    const boatPages: MetadataRoute.Sitemap = boats.map((boat) =>
+      withLanguages(appUrl, `/boats/${boat.slug}`, {
+        lastModified: new Date(boat.updated_at),
+        changeFrequency: "weekly",
+        priority: 0.6,
+      })
+    );
 
     return [...staticPages, ...hubPages, ...boatPages];
   } catch {

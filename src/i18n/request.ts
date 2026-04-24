@@ -7,9 +7,24 @@ import {
   isSupportedLocale,
 } from "./config";
 
+// Locale resolution order:
+//  1. x-locale header set by middleware.ts based on the /es path prefix.
+//     This is the authoritative signal once /es URL split is live.
+//  2. Explicit locale from next-intl request context (rare — used by tests).
+//  3. User cookie.
+//  4. Accept-Language header.
+//  5. DEFAULT_LOCALE.
 export default getRequestConfig(async ({ requestLocale }) => {
-  const explicitLocale = await requestLocale;
+  const headerStore = await headers();
+  const routeLocale = headerStore.get("x-locale");
+  if (isSupportedLocale(routeLocale)) {
+    return {
+      locale: routeLocale,
+      messages: (await import(`../messages/${routeLocale}.json`)).default,
+    };
+  }
 
+  const explicitLocale = await requestLocale;
   let locale = isSupportedLocale(explicitLocale) ? explicitLocale : null;
 
   if (!locale) {
@@ -19,7 +34,6 @@ export default getRequestConfig(async ({ requestLocale }) => {
   }
 
   if (!locale) {
-    const headerStore = await headers();
     locale = getLocaleFromAcceptLanguage(headerStore.get("accept-language"));
   }
 

@@ -312,16 +312,12 @@ export function buildSeoHubMetadata(
   options: { inventoryCount?: number; locale?: string } = {}
 ): Metadata {
   const appUrl = getPublicAppUrl();
-  const canonical = `${appUrl}${hub.href}`;
+  const locale = options.locale === "es" ? "es" : "en";
+  const canonical =
+    locale === "en" ? `${appUrl}${hub.href}` : `${appUrl}/es${hub.href}`;
   const inventoryCount = options.inventoryCount;
   const thinContent =
     typeof inventoryCount === "number" && inventoryCount < HUB_MIN_INDEXABLE_INVENTORY;
-  // Non-default locales share the same canonical as English via cookie
-  // detection, which would create duplicate-content noise in Google's
-  // index. Noindex them until the /es path split lands.
-  const nonDefaultLocale =
-    typeof options.locale === "string" && options.locale !== "en";
-  const shouldNoindex = thinContent || nonDefaultLocale;
 
   return {
     title: hub.title,
@@ -329,8 +325,16 @@ export function buildSeoHubMetadata(
     metadataBase: new URL(appUrl),
     alternates: {
       canonical,
+      // hreflang matrix so Google understands the en/es pair. x-default
+      // points at en to match Google's recommendation for unknown-locale
+      // fallback.
+      languages: {
+        en: `${appUrl}${hub.href}`,
+        es: `${appUrl}/es${hub.href}`,
+        "x-default": `${appUrl}${hub.href}`,
+      },
     },
-    robots: shouldNoindex ? { index: false, follow: true } : { index: true, follow: true },
+    robots: thinContent ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       type: "website",
       url: canonical,
